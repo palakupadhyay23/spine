@@ -7,7 +7,7 @@ in this four-language set** — it is a demand-pulled addition, admitted under t
 first prioritisation criterion; its own track is
 [perl-support-roadmap.md](perl-support-roadmap.md) (P1–P5 landed with evidence, P6 review in
 progress).
-**Date:** 2026-07-21 · spine v3.6.0
+**Date:** 2026-07-21 · spine v3.6.0 · **Kotlin track opened 2026-09-10** on `feat/kotlin_support` — see [kotlin-support-roadmap.md](kotlin-support-roadmap.md) (full scope in one MR: comprehension, CALLS, Room/Retrofit, Compose navigation + Hilt, Gradle modules, Ktor/Spring routes, KMP, and Kotlin/JVM + Android codegen — the "reuses Java/Gradle plumbing" assumption below is only half true: the JVM test runner is Maven-only, so P8 builds the Gradle runner).
 **Why:** the PKG is the substrate every grounded capability stands on — `understand`, `state`,
 `design`, `investigate`, `localize`, `rca`, `regression`, and grounded codegen all consume it.
 Adding a language doesn't add *one* feature; it makes **every feature work on more codebases**,
