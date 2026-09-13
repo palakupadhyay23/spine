@@ -1,6 +1,6 @@
 # Design + Plan: Perl codegen — `sdlc feature --language perl`, built and tested with `prove`
 
-**Status:** Ready to execute — plan reviewed, no code written. **Dependency satisfied:** the
+**Status:** C-0 DONE — dispatch characterization proves 8/8 mutation detection; C-1 is next. **Dependency satisfied:** the
 comprehension track merged to `develop` on 2026-09-12 ([#359](https://github.com/synaptixs/spine/pull/359)).
 **Adjusted 2026-09-13** after a readiness check: generic work moved ahead of the machinery, §5.2's
 premise corrected, and the toolchain verified (C3). **Then C-0 was added** when the refactor's
@@ -75,13 +75,21 @@ brownfield repository before and after C-4, which must not grow. Before C-1 touc
 
 ### 2.2 Blast radius — measured from the PKG
 
-At `d84e666` (this and the Kotlin track's base). `_resolve_language`: **4 callers** (`run_feature`,
-`autorun._require_plan`, two tests), 9 touches — the `auto` branch gains a Perl line, and `autorun`
-is the second production caller that must see it. To measure in C-1 step 0 (the registry is now the first thing to touch `sdlc/`), with the command in the
-Kotlin roadmap §8: `resolve_layout`, `scaffold`, `make_test_runner` / the runner selection in
-`activities.py`, `SUPPORTED_LANGUAGES` readers in `cli/sdlc.py`, and `preflight.py`'s dispatcher.
-The PHP codegen merge (`fae8c30`) touched 38 files across `sdlc/`; its diff is the map of every site
-a language must reach, and the registry in §5.1 exists so the next language touches one.
+Measured through the configured Spine MCP stdio server before C-0 edits, at `e8a0da5` on 2026-09-13.
+
+| Symbol | Callers | Touches | Finding |
+|---|---:|---:|---|
+| `py:orchestrator.sdlc.feature_runner._resolve_language` | 4 | 9 | MCP `blast_radius` |
+| `py:orchestrator.sdlc.layout.resolve_layout` | 30 | 49 | MCP `blast_radius` |
+| `py:orchestrator.sdlc.scaffold.scaffold` | 37 | 46 | MCP `blast_radius` |
+| `py:orchestrator.sdlc.testenv.make_test_runner` | 16 | 28 | MCP `blast_radius` |
+| `SUPPORTED_LANGUAGES` | — | — | Not represented as a graph node; inspect readers in source. |
+| `py:orchestrator.sdlc.activities.SDLCActivities.preflight` | 0 | 1 | MCP `blast_radius` |
+| `py:orchestrator.sdlc.deps.SDLCDeps.preflight` | 0 | 1 | MCP `blast_radius` |
+
+Source inspection: runner selection lives in `testenv.make_test_runner`, called by `run_feature`; `activities` uses injected dependencies. The two PHP dispatch sites in `testenv.py` select environment and runner; availability is a separate `php_toolchain_available` guard. Nine supported languages include SQL. These are baseline facts, not behavior changes.
+
+MCP `design_change` ran with C1–C8 as preservation intent and the C-0 mutation criterion. It returned a grounded heuristic design, no model, and no unverified references. Its suggested production edits are outside C-0: this phase changes characterization tests only. [Raw blast-radius and design evidence](../evidence/perl-codegen-c0-mcp.json).
 
 ---
 
@@ -89,7 +97,7 @@ a language must reach, and the registry in §5.1 exists so the next language tou
 
 | Phase | Work | Effort | Exit criteria | Status | Started | Finished | Evidence |
 |---|---|---|---|---|---|---|---|
-| **C-0 Characterize the dispatch** — **before any refactor** | Tests that pin the behaviour of every per-language branch the registry will replace, especially the **non-uniform** ones: C#'s `target_framework=detect_dotnet_tfm()` rewrite, C/C++'s shared branch (per-language availability probe, and the brownfield CMake-vs-Meson pick), PHP's *two* separate `codegen.py` branches, and the two `if language == "php"` sites in `testenv.py` (environment vs availability). Each new test must be shown to **fail** when its behaviour is mutated, not merely to pass today | ~0.5–1 d | **Measured, and this phase exists because of it:** the mutation set is checked in as `scripts/mutate-dispatch.py` — eight transcription errors a language-to-row flattening plausibly makes, each applied on its own with the whole `tests/sdlc` suite run against it. **Baseline 2026-09-13: caught 4 of 8.** The four misses: C#'s TFM detection, C++ getting C's toolchain probe, CMake forced on a Meson brownfield, and PHP's `codegen.py` guidance branch — **all passed with 0 failures**. (First run reported 3 of 7; the eighth mutation could not be located because `if language == "php":` occurs twice in `testenv.py`. The checked-in script anchors it to `make_test_environment`, and that one is caught — hence 4 of 8.) Exit: `python scripts/mutate-dispatch.py` reports **8 of 8** | ⬜ | | | |
+| **C-0 Characterize the dispatch** — **before any refactor** | Tests that pin the behaviour of every per-language branch the registry will replace, especially the **non-uniform** ones: C#'s `target_framework=detect_dotnet_tfm()` rewrite, C/C++'s shared branch (per-language availability probe, and the brownfield CMake-vs-Meson pick), PHP's *two* separate `codegen.py` branches, and the two `if language == "php"` sites in `testenv.py` (environment vs availability). Each new test must be shown to **fail** when its behaviour is mutated, not merely to pass today | ~0.5–1 d | **Measured, and this phase exists because of it:** the mutation set is checked in as `scripts/mutate-dispatch.py` — eight transcription errors a language-to-row flattening plausibly makes, each applied on its own with the whole `tests/sdlc` suite run against it. **Baseline 2026-09-13: caught 4 of 8.** The four misses: C#'s TFM detection, C++ getting C's toolchain probe, CMake forced on a Meson brownfield, and PHP's `codegen.py` guidance branch — **all passed with 0 failures**. (First run reported 3 of 7; the eighth mutation could not be located because `if language == "php":` occurs twice in `testenv.py`. The checked-in script anchors it to `make_test_environment`, and that one is caught — hence 4 of 8.) Exit: `python scripts/mutate-dispatch.py` reports **8 of 8** | ✅ | 2026-09-13 | 2026-09-13 | `scripts/mutate-dispatch.py`: **4/8 before → 8/8 after**, 0 skipped mutations; [baseline](../evidence/perl-codegen-c0-mutations-before.txt), [after](../evidence/perl-codegen-c0-mutations-after.txt). 11 new characterization cases; C# scaffold TFM, C/C++ distinct probes and Meson selection, PHP guidance and convention sampling. MCP blast-radius/design evidence: §2.2. [Validation](../evidence/perl-codegen-c0-validation.txt): 3,640 passed, 4 skipped, 51 deselected; lint/type/docs/roadmap/state gates pass; accuracy 0 regressions, verify 0 errors (1 warning), four shapes pass. |
 | **C-1 Generic work** (§5.1, §5.2) — after C-0 | the toolchain registry, built on C-0's net and *before* Perl is wired so Perl is its first row rather than a language migrated onto it afterwards (moved ahead of the machinery in review: wiring Perl the old way and refactoring after means writing Perl's dispatch twice); the preflight row per §5.2 | ~2–3 d | `feature_runner`, `activities` and `preflight` select by one table; adding a language is one row + its classes; every existing language's codegen tests pass unchanged | ⬜ | | | |
 | **C-2 Machinery** | §2 in full; unit tests: `test_scaffold_perl_*` (+ idempotency), `test_perl_toolchain_available` (monkeypatched `which`), layout detection, runner argv, the `FeatureRunError` hint; `tests/sdlc/test_perl_integration.py` gated on `perl_toolchain_available()` — scaffold → real `prove` **green and red** | ~3–4 d | integration test green and red against real `perl`/`prove`; `--language perl` validated; gate green | ⬜ | | | |
 | **C-3 Greenfield live-proven** | `sdlc feature --language perl` from a spec with a real model, `--safe`; `perl-conventions` selected; grounded on the Perl graph | ~1–2 d | `prove` green, independently re-run from a clean checkout; the run's build document names the grounding used | ⬜ | | | |
@@ -187,3 +195,7 @@ C-3 greenfield       → live-proven, independently re-run
 C-4 brownfield       → into the Mojolicious repo, owning t/ then the suite
 C-5 preflight + docs → /review-pr, then one MR to develop
 ```
+
+## 9. C-0 execution evidence
+
+The official mutation set is unchanged. Both runs used `uv run --frozen` with CI extras `dev mcp typescript java csharp c cpp go php perl`; `UV_NO_SYNC=1` preserved that installed environment for the script's nested `uv run --frozen pytest` commands. The script's final historical footer still says 3/7; its measured summary is the eight-case result above. C-0 edits no production implementation. PHP convention sampling was additionally disabled in a [separate probe](../evidence/perl-codegen-c0-php-conventions.txt) and its characterization test failed.

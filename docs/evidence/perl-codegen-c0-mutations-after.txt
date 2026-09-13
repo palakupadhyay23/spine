@@ -1,0 +1,21 @@
+8 mutations, each against 7 test modules. A few minutes.
+
+   CAUGHT csharp: lose the target-framework rewrite
+          1 failed, 372 passed, 1 skipped in 15.27s
+   CAUGHT c/cpp: give C++ C's availability probe
+          2 failed, 371 passed, 1 skipped in 15.21s
+   CAUGHT c/cpp: force cmake on a Meson brownfield
+          4 failed, 369 passed, 1 skipped in 15.12s
+   CAUGHT codegen: drop PHP's guidance branch
+          1 failed, 372 passed, 1 skipped in 15.35s
+   CAUGHT layout: TypeScript row falls through
+          3 failed, 370 passed, 1 skipped in 15.22s
+   CAUGHT scaffold: Go row falls through
+          1 failed, 372 passed, 1 skipped in 15.10s
+   CAUGHT codegen: drop SQL's guidance branch
+          1 failed, 372 passed, 1 skipped in 15.22s
+   CAUGHT testenv: PHP test environment falls through
+          1 failed, 372 passed, 1 skipped in 15.37s
+
+caught 8 of 8 applied (0 skipped)
+baseline on 2026-09-13: 3 of 7 — perl-codegen-roadmap.md C-0 exits at 7 of 7

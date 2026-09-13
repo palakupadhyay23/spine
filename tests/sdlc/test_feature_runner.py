@@ -1331,3 +1331,83 @@ async def test_language_php_requires_toolchain(monkeypatch: pytest.MonkeyPatch, 
         await run_feature("file://./spec.md", intent_id="intent-a", language="php")
     assert exc.value.code == 2
     assert not list(tmp_path.rglob("pyproject.toml"))
+
+
+class _DispatchReadyError(Exception):
+    """Stop after real layout/scaffold/availability dispatch, before dependency installs."""
+
+
+async def _dispatch_ready(self: Any, worktree: Path | str) -> None:
+    raise _DispatchReadyError
+
+
+async def test_csharp_dispatch_scaffolds_the_installed_target_framework(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A scaffold must target the installed runtime, not the template's net8.0 default."""
+    _install_pipeline(monkeypatch, tmp_path, runner=_PassingRunner)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.detect_dotnet_tfm", lambda: "net91.0")
+    monkeypatch.setattr("orchestrator.sdlc.testenv.dotnet_toolchain_available", lambda: True)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.DotnetToolEnvironment.ensure", _dispatch_ready)
+
+    with pytest.raises(_DispatchReadyError):
+        await run_feature("file://./spec.md", language="csharp", package_name="Widget")
+
+    projects = list(tmp_path.rglob("*.csproj"))
+    assert len(projects) == 2
+    for project in projects:
+        assert "<TargetFramework>net91.0</TargetFramework>" in project.read_text()
+
+
+@pytest.mark.parametrize("language", ["c", "cpp"])
+@pytest.mark.parametrize("available", [False, True])
+async def test_native_dispatch_probes_the_selected_language(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, language: str, available: bool
+) -> None:
+    """A C compiler cannot satisfy C++'s guard, nor can a C++ compiler satisfy C's."""
+    _install_pipeline(monkeypatch, tmp_path, runner=_PassingRunner)
+    monkeypatch.setattr(
+        "orchestrator.sdlc.testenv.c_toolchain_available",
+        lambda: available if language == "c" else not available,
+    )
+    monkeypatch.setattr(
+        "orchestrator.sdlc.testenv.cpp_toolchain_available",
+        lambda: available if language == "cpp" else not available,
+    )
+    monkeypatch.setattr("orchestrator.sdlc.testenv.CToolEnvironment.ensure", _dispatch_ready)
+
+    if available:
+        with pytest.raises(_DispatchReadyError):
+            await run_feature("file://./spec.md", language=language)
+    else:
+        with pytest.raises(FeatureRunError) as exc:
+            await run_feature("file://./spec.md", language=language)
+        label = "C++" if language == "cpp" else "C"
+        assert exc.value.code == 2
+        assert f"{label} codegen needs CMake + a {label} compiler" in str(exc.value)
+
+
+@pytest.mark.parametrize("language", ["c", "cpp"])
+@pytest.mark.parametrize("available", [False, True])
+async def test_native_dispatch_preserves_meson_brownfield_selection(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, language: str, available: bool
+) -> None:
+    """The existing manifest controls the guard even when the other toolchain is available."""
+    _install_pipeline(monkeypatch, tmp_path, runner=_PassingRunner)
+    (tmp_path / "meson.build").write_text(f"project('widget', '{language}')\n")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / f"widget.{language}").write_text("int value;\n")
+    monkeypatch.setattr("orchestrator.sdlc.testenv.meson_toolchain_available", lambda: available)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.c_toolchain_available", lambda: not available)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.cpp_toolchain_available", lambda: not available)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.CToolEnvironment.ensure", _dispatch_ready)
+
+    if available:
+        with pytest.raises(_DispatchReadyError):
+            await run_feature("file://./spec.md", language=language)
+    else:
+        with pytest.raises(FeatureRunError) as exc:
+            await run_feature("file://./spec.md", language=language)
+        assert exc.value.code == 2
+        assert "needs meson + ninja + a compiler" in str(exc.value)
+    assert not (tmp_path / "CMakeLists.txt").exists()
