@@ -44,6 +44,18 @@ def test_is_test_node_by_path_and_name() -> None:
     assert not is_test_node(_fn("x", "validate", "core.py"))
 
 
+def test_perl_tap_file_is_a_covering_test() -> None:
+    batch = FactBatch()
+    target = _fn("perl:Shop.Cart.subtotal", "subtotal", "lib/Shop/Cart.pm")
+    caller = _fn("perl:cart_check.main", "main", "t/10-cart.t")
+    batch.add_node(target)
+    batch.add_node(caller)
+    batch.add_edge(Edge(caller.id, target.id, EdgeKind.CALLS, Provenance("t/10-cart.t", 3)))
+    plan = build_regression_plan(FactStore(batch), target.id)
+    assert plan.target_covered
+    assert plan.covering_tests == ["main @ t/10-cart.t:1"]
+
+
 def test_plan_splits_covering_tests_from_gaps() -> None:
     store = FactStore(_graph())
     plan = build_regression_plan(store, "py:core.validate")

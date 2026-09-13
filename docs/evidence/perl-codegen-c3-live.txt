@@ -1,0 +1,45 @@
+[spec] injected (intake skipped): Shop Cart subtotal and tax total
+======================================================================
+SPEC: Shop Cart subtotal and tax total
+  intent: perl-cart-c3
+  summary: Implement Shop::Cart, a small Perl shopping cart with subtotal and total methods.
+    - Shop::Cart->new(items => [{price => 10, quantity => 2}, {price => 5, quantity => 1}], tax_rate => 0.1) constructs a cart; subtotal returns 25 and total returns 27.5.
+    - An omitted or empty items array has subtotal and total zero; omitted tax_rate defaults to zero.
+    - Reject negative item prices, nonpositive or noninteger quantities, and negative tax rates with a useful error.
+    - Calculating subtotal and total does not mutate the supplied items.
+    - Executable Test::More tests load Shop::Cart and assert normal, empty, error and immutability cases; use strict and warnings and document public methods with POD.
+======================================================================
+[jira] dry-run issue: DRY-1
+[workspace] worktree /tmp/spine-perl-c3-live/d4332deeca274d04/DRY-1 on feat/d4332deeca274d04/DRY-1
+[scaffold] created ['cpanfile', 'lib/Shop/Cart.pm', 't/00-load.t', '.gitignore']
+[layout] mode=new package=Shop::Cart src=lib
+[testenv] Perl/prove; .: CPAN dependencies installed
+[grounding] target-KG context: 309 chars
+[persona] software_engineer · skills: perl-conventions, repo-pkg-grounding
+[implement] ['Cart.pm'] - Implement Shop::Cart with validated items, subtotal and tax-inclusive total
+[author_tests] ['10-cart.t'] - Add t/10-cart.t covering Shop::Cart subtotal/total, defaults, validation errors and immutability
+[run_tests #1] passed=True rc=0
+[coverage] nothing exercises the change in: .gitignore, cpanfile
+sdlc.codegen.empty_retry summary='Add behavioral tests for Shop::Cart (t/10-cart.t) plus distribution metadata tests covering cpanfile and .gitignore (t/20-dist-metadata.t)'
+[cover] ['10-cart.t', '20-dist-metadata.t'] - Add behavioral tests for Shop::Cart (t/10-cart.t) and distribution metadata tests for cpanfile/.gitignore (t/20-dist-metadata.t)
+[run_tests #2] passed=False rc=1
+sdlc.codegen.skipped_existing_file
+sdlc.codegen.skipped_existing_file
+sdlc.codegen.repair_retry
+[refine] ['cpanfile', '.gitignore'] - Declare Carp/Test::More prereqs in cpanfile and ignore blib, Makefile and MYMETA build artifacts
+[run_tests #3] passed=False rc=1
+[refine] ['cpanfile'] - Drop the bogus 'perl' requires line from cpanfile so declared prereqs are all loadable modules
+[run_tests #4] passed=True rc=0
+[coverage] every changed file is exercised by a test
+[proof] the tests fail without the change, as they must
+[judge] approve — Shop::Cart implementation and tests satisfy all five acceptance criteria; validation, defaults, immutability and POD are present.
+[commit] committed locally (safe mode — no push/PR)
+
+======================================================================
+VERDICT: PASSED — ready for deployment.
+  issue:  DRY-1
+  branch: feat/d4332deeca274d04/DRY-1
+  files:  ['.gitignore', 'cpanfile', 'lib/Shop/Cart.pm', 't/00-load.t', 't/10-cart.t', 't/20-dist-metadata.t']
+  diff:   git -C /tmp/spine-perl-c3-live/d4332deeca274d04/DRY-1 show --stat HEAD
+  Re-run with --live to create the Jira issue, push, and open a real PR.
+======================================================================

@@ -829,8 +829,12 @@ _REFINE_SYSTEM_PHP = (
 
 
 _IMPLEMENT_SYSTEM_PERL = (
-    "You implement a feature in a Perl distribution. Return the submit_files tool payload "
-    "with complete file contents and a summary. Follow the authoritative layout and grounded "
+    "You implement a feature in a Perl distribution. Submit changes with submit_files. "
+    "Output one JSON object, no prose or code fences:\n" + _FILE_FORMS + "\n"
+    "Use content for new files and anchored edits for existing files, including scaffolded modules. "
+    "Implement production code only; the separate author_tests phase writes tests. "
+    "Leave scaffold/config files alone unless the feature needs a specific change. "
+    "Follow the authoritative layout and grounded "
     "package names: lib/<Package/Path>.pm and t/*.t. Use strict and warnings in every file. "
     "Match observed Moo/Moose usage, otherwise use classic bless. Follow existing public APIs; "
     "prefix private subs with an underscore and give each public sub a POD stub. End modules "
@@ -838,16 +842,24 @@ _IMPLEMENT_SYSTEM_PERL = (
     "No XS compilation. Implement every acceptance criterion without inventing unrelated paths."
 )
 _TESTS_SYSTEM_PERL = (
-    "Write executable Perl tests for the supplied implementation. Return complete files through "
-    "submit_files. Put tests in the authoritative t/ directory, following existing names "
+    "Write executable Perl tests for the supplied implementation. Submit changes with submit_files. "
+    "Output one JSON object, no prose or code fences:\n" + _FILE_FORMS + "\n"
+    "Use content for new test files and anchored edits for existing tests; write tests only. "
+    "Put tests in the authoritative t/ directory, following existing names "
     "and numbering. Use strict; use warnings; use Test::More; (or Test2::V0 when observed). "
     "Load the real package, assert actual behavior, cover acceptance criteria and edge cases, "
-    "and finish with done_testing. Never skip, weaken assertions, or report an empty passing suite. "
+    "and group new behavioral checks in named test_* subroutines invoked by the test file. "
+    "Construct the package receiver inside those subroutines so test-to-production calls "
+    "are visible in the graph. "
+    "Finish with done_testing. Never skip, weaken assertions, or report an empty passing suite. "
     "Tests must run with prove -l t/. Do not modify unrelated legacy tests."
 )
 _REFINE_SYSTEM_PERL = (
     "Fix the Perl implementation and tests using the supplied perl -c / prove failure output. "
-    "Return complete changed files through submit_files. Preserve package clauses and "
+    "Submit changes with submit_files. Output one JSON object, no prose or code fences:\n"
+    + _FILE_FORMS
+    + "\n"
+    "Use anchored edits for existing files; content is only for new files. Preserve package clauses and "
     "the lib/ and t/ layout; use strict and warnings. Keep existing packaging. Never disable "
     "tests, weaken assertions, add skip_all, or remove failing coverage to obtain green."
 )

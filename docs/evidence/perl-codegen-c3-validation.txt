@@ -1,0 +1,32 @@
+C-3 validation, 2026-09-13
+All commands used uv run --frozen with CI extras:
+--extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl
+
+Model: claude-opus-5 for codegen and judge (resolved using the existing development .env).
+Command: orchestrator sdlc feature --source file://./docs/evidence/perl-codegen-c3-spec.json --spec docs/evidence/perl-codegen-c3-spec.json --language perl --package-name Shop::Cart --safe
+Environment: credentials loaded with load_local_env('/Users/falcon/projects/ai/spine/.env'); SDLC_WORKSPACE_ROOT=/tmp/spine-perl-c3-live; SDLC_REPO_URL and SPINE_ONTOMESH_URL empty for this greenfield proof.
+Final run d4332deeca274d04: PASS, judge approve; real cpanm dependency installation;
+perl-conventions selected; real tests fail without the implementation.
+Grounding size at generation: 309 characters, matched by MCP pkg_grounding. After: 5175.
+MCP blast_radius subtotal: 12 call sites (11 from three named tests, one from total).
+CLI sdlc plan captured the build document; MCP sdlc_plan's nullable output metadata failed
+its pre-existing output schema, recorded in the roadmap findings without changing that API.
+
+Full suite pytest -q: 3680 passed, 4 skipped, 51 deselected, 152 warnings in 188.48s.
+Final focused prompt/Perl/coverage tests: 171 passed. Missing .t coverage classification is pinned.
+Skips: E2B credentials absent; pytesseract absent; PHP/Composer absent; PostgreSQL opt-in absent.
+ruff check .; ruff format --check .; mypy src tests (717 files): pass.
+Both diagram checks, matrix-count, state-numbers, roadmap-status, docs_audit: pass.
+pkg accuracy --check: 0 gated regressions. pkg verify .: 0 errors, 1 phantom-module warning.
+sdlc_shapes.py: all four pass. understand .: builds successfully, episteme excluded.
+Existing per-file coverage policy was preserved; generated metadata tests satisfy it.
+
+Independent clean-checkout rerun:
+Clean checkout HEAD f4b10aef3bf15fd060e3eec4a4d8a513e7fff569
+$ uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl prove -l t/
+t/00-load.t ........... ok
+t/10-cart.t ........... ok
+t/20-dist-metadata.t .. ok
+All tests successful.
+Files=3, Tests=81,  0 wallclock secs ( 0.01 usr  0.00 sys +  0.05 cusr  0.01 csys =  0.07 CPU)
+Result: PASS
