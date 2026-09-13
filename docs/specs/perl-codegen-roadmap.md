@@ -2,8 +2,9 @@
 
 **Status:** Ready to execute — plan reviewed, no code written. **Dependency satisfied:** the
 comprehension track merged to `develop` on 2026-09-12 ([#359](https://github.com/synaptixs/spine/pull/359)).
-**Adjusted 2026-09-13** after a readiness check: generic work moved ahead of the machinery (C-1,
-see its row), §5.2's premise corrected, and the toolchain verified (C3). **Date:** 2026-09-13 ·
+**Adjusted 2026-09-13** after a readiness check: generic work moved ahead of the machinery, §5.2's
+premise corrected, and the toolchain verified (C3). **Then C-0 was added** when the refactor's
+stated safety net was measured at 3-of-7 detection — see §5.1 and C-0's own row. **Date:** 2026-09-13 ·
 spine v3.33.2.
 **Depends on:** [perl-support-roadmap.md](perl-support-roadmap.md) merged (P1 for grounding, P2 for
 the call graph the generated code is grounded on). **Branch:** `feat/perl-codegen` off `develop`,
@@ -88,13 +89,14 @@ a language must reach, and the registry in §5.1 exists so the next language tou
 
 | Phase | Work | Effort | Exit criteria | Status | Started | Finished | Evidence |
 |---|---|---|---|---|---|---|---|
-| **C-1 Generic work** (§5.1, §5.2) — **first, deliberately** | the toolchain registry, built *before* Perl is wired so Perl is its first row rather than a language migrated onto it afterwards (moved ahead of the machinery in review: wiring Perl the old way and refactoring after means writing Perl's dispatch twice); the preflight row per §5.2 | ~2–3 d | `feature_runner`, `activities` and `preflight` select by one table; adding a language is one row + its classes; every existing language's codegen tests pass unchanged | ⬜ | | | |
+| **C-0 Characterize the dispatch** — **before any refactor** | Tests that pin the behaviour of every per-language branch the registry will replace, especially the **non-uniform** ones: C#'s `target_framework=detect_dotnet_tfm()` rewrite, C/C++'s shared branch (per-language availability probe, and the brownfield CMake-vs-Meson pick), PHP's *two* separate `codegen.py` branches, and the two `if language == "php"` sites in `testenv.py` (environment vs availability). Each new test must be shown to **fail** when its behaviour is mutated, not merely to pass today | ~0.5–1 d | **Measured 2026-09-13, and this phase exists because of it:** seven realistic transcription errors were injected one at a time and the whole `tests/sdlc` suite run against each — it caught **3 of 7**. Losing C#'s TFM detection, giving C++ C's toolchain probe, forcing CMake on a Meson brownfield, and dropping PHP's codegen guidance **all passed silently, 0 failures**. Exit: re-run that mutation set and catch **7 of 7** | ⬜ | | | |
+| **C-1 Generic work** (§5.1, §5.2) — after C-0 | the toolchain registry, built on C-0's net and *before* Perl is wired so Perl is its first row rather than a language migrated onto it afterwards (moved ahead of the machinery in review: wiring Perl the old way and refactoring after means writing Perl's dispatch twice); the preflight row per §5.2 | ~2–3 d | `feature_runner`, `activities` and `preflight` select by one table; adding a language is one row + its classes; every existing language's codegen tests pass unchanged | ⬜ | | | |
 | **C-2 Machinery** | §2 in full; unit tests: `test_scaffold_perl_*` (+ idempotency), `test_perl_toolchain_available` (monkeypatched `which`), layout detection, runner argv, the `FeatureRunError` hint; `tests/sdlc/test_perl_integration.py` gated on `perl_toolchain_available()` — scaffold → real `prove` **green and red** | ~3–4 d | integration test green and red against real `perl`/`prove`; `--language perl` validated; gate green | ⬜ | | | |
 | **C-3 Greenfield live-proven** | `sdlc feature --language perl` from a spec with a real model, `--safe`; `perl-conventions` selected; grounded on the Perl graph | ~1–2 d | `prove` green, independently re-run from a clean checkout; the run's build document names the grounding used | ⬜ | | | |
 | **C-4 Brownfield on the Mojolicious validation repo** | placement per C4 into an existing `lib/` tree; the owning `t/` targeted first, then the suite | ~2–3 d | `prove` green on the changed package **and** the whole suite, independently re-run; no package clause mismatch; grounding measured (chars of PKG context) | ⬜ | | | |
 | **C-5 Preflight + docs + MR** | C6; every row of §6; `/review-pr`; one MR to `develop` | ~1–2 d | preflight runs `perl -c` on a changed file and fails on a syntax error (tested); docs audit clean; verdict "mergeable" | ⬜ | | | |
 
-**Rough total: ~9–14 days.** Delivery is one MR. The reorder adds a day to C-1 (the registry now lands before Perl needs it, and the other languages migrate onto it under their own tests) and removes the rework it was going to cost later.
+**Rough total: ~10–15 days.** Delivery is one MR. The reorder adds a day to C-1 (the registry now lands before Perl needs it, and the other languages migrate onto it under their own tests) and removes the rework it was going to cost later.
 
 ---
 
@@ -114,7 +116,16 @@ a language must reach, and the registry in §5.1 exists so the next language tou
 Today a language's codegen is wired by `elif lang == "go"` branches in `feature_runner.py`
 (`_resolve_language`, the toolchain guard), `activities.py` (runner selection), `layout.py`,
 `scaffold.py`, `preflight.py` and `codegen.py`'s prompt maps — the PHP merge touched 38 files to add
-one language. A `Toolchain` record per language (`source_ext`, `layout`, `scaffold`, `environment`,
+one language. **Precondition, added 2026-09-13: C-0 first.** This section's original plan said the existing
+languages "migrate in the same phase, with their tests as the regression net". That net was
+measured and **it is not there**: injecting seven realistic transcription errors one at a time and
+running the whole `tests/sdlc` suite against each caught **3 of 7**. The four misses were all in the
+non-uniform branches — C#'s TFM rewrite, C++'s toolchain probe, the C/C++ brownfield build-tool
+pick, and PHP's codegen guidance — each of which passed with **zero** failures. Refactoring eight
+working languages behind a net with 43% detection is the one genuinely unsafe thing in this track,
+so C-0 builds the net first and proves it by re-running the same mutations.
+
+A `Toolchain` record per language (`source_ext`, `layout`, `scaffold`, `environment`,
 `runner`, `available()`, `preflight`, prompt set, conventions skill id) in one table, with the
 call sites reading the table, makes the next language one row plus its classes. Perl's row is the
 first written against it; the existing languages migrate in the same phase, with their tests as the
@@ -169,7 +180,8 @@ false-green is the reason the second field is not optional.
 
 ```
 depends on perl-support-roadmap.md merged (P1 + P2 at least) — SATISFIED 2026-09-12 (#359)
-C-1 generic work     → the toolchain registry FIRST; every language one row
+C-0 characterize     → pin the 8 languages' dispatch; mutation set caught 7/7 (is 3/7 today)
+C-1 generic work     → the toolchain registry, on C-0's net; every language one row
 C-2 machinery        → Perl as the registry's first row; prove green + red on real perl
 C-3 greenfield       → live-proven, independently re-run
 C-4 brownfield       → into the Mojolicious repo, owning t/ then the suite
