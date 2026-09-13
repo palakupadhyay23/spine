@@ -1,0 +1,146 @@
+commit fc010fd1149fe483127065d5f23cd4e82594eb39
+Author:     SDLC Orchestrator <sdlc@orchestrator.local>
+AuthorDate: Sun Sep 13 19:55:43 2026 -0400
+Commit:     SDLC Orchestrator <sdlc@orchestrator.local>
+CommitDate: Sun Sep 13 19:55:43 2026 -0400
+
+    DRY-1: Mojo Util trailing text removal
+
+diff --git a/lib/Mojo/Util.pm b/lib/Mojo/Util.pm
+index 97d8fae..a612cc4 100644
+--- a/lib/Mojo/Util.pm
++++ b/lib/Mojo/Util.pm
+@@ -87,0 +88 @@ our @EXPORT_OK = (
++  qw(strip_suffix),
+@@ -386,0 +388,12 @@ sub secure_compare {
++sub strip_suffix {
++  my ($text, $suffix) = @_;
++
++  return $text unless defined $text && defined $suffix && length $suffix;
++
++  my $offset = length($text) - length($suffix);
++  return $text if $offset < 0;
++  return $text unless substr($text, $offset) eq $suffix;
++
++  return substr($text, 0, $offset);
++}
++
+@@ -957,0 +971,14 @@ Generate SHA1 checksum for bytes with L<Digest::SHA>.
++=head2 strip_suffix
++
++  my $new = strip_suffix $text, $suffix;
++
++Remove a single trailing literal C<$suffix> from C<$text> and return the result as a new string. The original string is
++never modified, matching is case sensitive, and regular expression metacharacters in the suffix are treated literally.
++An empty or unmatched suffix leaves the text unchanged.
++
++  # "testbar"
++  strip_suffix 'testbarbar', 'bar';
++
++  # "test"
++  strip_suffix 'test', 'BAR';
++
+diff --git a/t/mojo/strip_suffix.t b/t/mojo/strip_suffix.t
+new file mode 100644
+index 0000000..59b40e5
+--- /dev/null
++++ b/t/mojo/strip_suffix.t
+@@ -0,0 +1,17 @@
++use Mojo::Base -strict;
++
++use Test::More;
++
++use Mojo::Util qw(strip_suffix);
++
++subtest 'strip_suffix' => sub {
++  is strip_suffix('testbarbar', 'bar'), 'testbar', 'exactly one suffix removed';
++  is strip_suffix('test',       'bar'), 'test',    'unmatched suffix leaves text unchanged';
++  is strip_suffix('test',       ''),    'test',    'empty suffix leaves text unchanged';
++  is strip_suffix('bar',        'bar'), '',        'whole string removed';
++  is strip_suffix('testbar',    'BAR'), 'testbar', 'matching is case sensitive';
++  is strip_suffix('testxbar',   '.bar'), 'testxbar', 'metacharacters are literal';
++  is strip_suffix("t\x{e9}st\x{2603}", "\x{2603}"), "t\x{e9}st", 'unicode suffix removed';
++};
++
++done_testing();
+diff --git a/t/mojo/util.t b/t/mojo/util.t
+index f1acfdf..68acaf0 100644
+--- a/t/mojo/util.t
++++ b/t/mojo/util.t
+@@ -15 +15,75 @@ use Mojo::Util qw(b64_decode b64_encode camelize class_to_file class_to_path dec
+-  qw(steady_time tablify term_escape trim unindent unquote url_escape url_unescape xml_escape xor_encode);
++  qw(steady_time strip_suffix tablify term_escape trim unindent unquote url_escape url_unescape xml_escape xor_encode);
++
++sub test_strip_suffix {
++  subtest 'strip_suffix (basic)' => sub {
++    is Mojo::Util::strip_suffix('testbar',     'bar'), 'test',     'suffix removed';
++    is Mojo::Util::strip_suffix('testbarbar',  'bar'), 'testbar',  'exactly one suffix removed';
++    is Mojo::Util::strip_suffix('test.tar.gz', '.gz'), 'test.tar', 'extension removed';
++    is strip_suffix('testbarbar', 'bar'), 'testbar', 'exported function works';
++    ok scalar(grep { $_ eq 'strip_suffix' } @Mojo::Util::EXPORT_OK), 'strip_suffix in @EXPORT_OK';
++  };
++
++  subtest 'strip_suffix (unmatched and empty)' => sub {
++    is Mojo::Util::strip_suffix('test',      'bar'),    'test',      'unmatched suffix leaves text unchanged';
++    is Mojo::Util::strip_suffix('test',      ''),       'test',      'empty suffix leaves text unchanged';
++    is Mojo::Util::strip_suffix('',          'bar'),    '',          'empty text stays empty';
++    is Mojo::Util::strip_suffix('bar',       'barbar'), 'bar',       'suffix longer than text';
++    is Mojo::Util::strip_suffix('bartest',   'bar'),    'bartest',   'prefix match is not removed';
++    is Mojo::Util::strip_suffix('foobarbaz', 'bar'),    'foobarbaz', 'middle match is not removed';
++  };
++
++  subtest 'strip_suffix (case sensitive)' => sub {
++    is Mojo::Util::strip_suffix('testbar', 'BAR'), 'testbar', 'case sensitive mismatch';
++    is Mojo::Util::strip_suffix('testBAR', 'bar'), 'testBAR', 'case sensitive mismatch reversed';
++    is Mojo::Util::strip_suffix('testBAR', 'BAR'), 'test',    'case sensitive match';
++  };
++
++  subtest 'strip_suffix (metacharacters are literal)' => sub {
++    is Mojo::Util::strip_suffix('test.bar',   '.bar'),  'test',     'dot is literal';
++    is Mojo::Util::strip_suffix('testxbar',   '.bar'),  'testxbar', 'dot does not match any character';
++    is Mojo::Util::strip_suffix('test[1]',    '[1]'),   'test',     'brackets are literal';
++    is Mojo::Util::strip_suffix('test$^*',    '$^*'),   'test',     'anchors and quantifiers are literal';
++    is Mojo::Util::strip_suffix('testaaa',    'a+'),    'testaaa',  'quantifier does not match';
++    is Mojo::Util::strip_suffix('test(a|b)',  '(a|b)'), 'test',     'alternation group is literal';
++  };
++
++  subtest 'strip_suffix (whole string and repeats)' => sub {
++    is Mojo::Util::strip_suffix('bar',       'bar'), '',       'suffix equal to whole string returns empty string';
++    is Mojo::Util::strip_suffix('barbarbar', 'bar'), 'barbar', 'exactly one copy removed';
++    is Mojo::Util::strip_suffix(Mojo::Util::strip_suffix('barbarbar', 'bar'), 'bar'), 'bar',
++      'two calls remove two copies';
++    is length(Mojo::Util::strip_suffix('bar', 'bar')), 0, 'result is really empty';
++  };
++
++  subtest 'strip_suffix (unicode)' => sub {
++    is Mojo::Util::strip_suffix("t\x{e9}st\x{2603}", "\x{2603}"),   "t\x{e9}st",  'unicode suffix removed';
++    is Mojo::Util::strip_suffix("b\x{fc}cher",        'cher'),       "b\x{fc}",    'ascii suffix from unicode string';
++    is Mojo::Util::strip_suffix("\x{263a}\x{263b}",   "\x{263b}"),   "\x{263a}",   'only last character removed';
++    is Mojo::Util::strip_suffix("\x{263a}",           "\x{263b}"),   "\x{263a}",   'unmatched unicode suffix';
++  };
++
++  subtest 'strip_suffix (arguments are never mutated)' => sub {
++    my $text   = 'testbar';
++    my $suffix = 'bar';
++    is Mojo::Util::strip_suffix($text, $suffix), 'test', 'right result';
++    is $text,   'testbar', 'first argument not modified';
++    is $suffix, 'bar',     'second argument not modified';
++
++    my $literal = eval { Mojo::Util::strip_suffix('testbar', 'bar') };
++    is $@,       '',     'no exception with read-only first argument';
++    is $literal, 'test', 'literal first argument works';
++
++    my @list = ('testbar');
++    is Mojo::Util::strip_suffix($list[0], 'bar'), 'test', 'works with list element';
++    is $list[0], 'testbar', 'list element not modified';
++
++    for my $ro ('testbar') {
++      my $out = eval { Mojo::Util::strip_suffix($ro, 'bar') };
++      is $@,   '',        'no exception with aliased read-only value';
++      is $out, 'test',    'right result for read-only value';
++      is $ro,  'testbar', 'read-only value unchanged';
++    }
++  };
++}
++
++test_strip_suffix();

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+- test(sdlc): independently prove Perl brownfield codegen against an existing distribution; owning and full prove suites pass, with unchanged regression gaps ([C-4](docs/specs/perl-codegen-roadmap.md)).
+
 - fix(sdlc): align Perl prompts with new-file/anchored-edit payloads and recognize TAP .t files as graph-covering tests; greenfield live proof and clean-checkout evidence are recorded in [C-3](docs/specs/perl-codegen-roadmap.md).
 
 - feat(sdlc): add Perl codegen layout, scaffold, optional CPAN installation, observed conventions and prompts; compile changed sources and run owning/full prove suites, with real green/red integration proof ([C-2](docs/specs/perl-codegen-roadmap.md)).
