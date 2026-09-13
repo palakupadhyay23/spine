@@ -210,6 +210,10 @@ the usual cause.
 | Design records | [docs/specs/README.md](docs/specs/README.md) |
 | Security policy · license | [SECURITY.md](SECURITY.md) · `LICENSE` (MIT) |
 
+Perl codegen requires `perl` and `prove` on PATH. `cpanm` is optional for installing
+`cpanfile` dependencies; missing or failed installation is logged and tests still run.
+XS builds are unsupported. See [Perl code generation](USER_GUIDE.md#perl-code-generation).
+
 PHP codegen requires PHP on PATH (including XML and mbstring extensions), plus Composer
 for repositories with `composer.json`. See [PHP code generation](USER_GUIDE.md#php-code-generation)
 for version selection, PHPUnit installation, and legacy repository behavior.

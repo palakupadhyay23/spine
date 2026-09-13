@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+- feat(sdlc): add Perl codegen layout, scaffold, optional CPAN installation, observed conventions and prompts; compile changed sources and run owning/full prove suites, with real green/red integration proof ([C-2](docs/specs/perl-codegen-roadmap.md)).
+
 ### Added
 
 - **Perl codegen C-1: shared toolchain registry.** Existing language layout, scaffold,

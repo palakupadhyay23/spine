@@ -121,6 +121,14 @@ def _identity_layout(layout: TargetLayout) -> TargetLayout:
     return layout
 
 
+def _identity_name(module: str) -> str:
+    return module
+
+
+def _perl_module_name(module: str) -> str:
+    return module.replace("::", "/")
+
+
 def _dotnet_layout(layout: TargetLayout) -> TargetLayout:
     return replace(layout, target_framework=_load("testenv", "detect_dotnet_tfm")())
 
@@ -133,6 +141,10 @@ def _php_conventions(root: Path, layout: TargetLayout | None) -> str:
     if layout is None:
         return _conventions(root, layout)
     return cast("str", _load("conventions", "php_convention_block")(root, layout))
+
+
+def _perl_conventions(root: Path, layout: TargetLayout | None) -> str:
+    return cast("str", _load("conventions", "perl_convention_block")(root, layout))
 
 
 def _preflight(name: str, *, argument: str = "") -> Callable[..., PreflightRunner]:
@@ -182,6 +194,7 @@ class Toolchain:
     missing_hint: str = ""
     native_label: str = ""
     requires_pytest: bool = False
+    module_name: Callable[[str], str] = _identity_name
 
     def layout_guidance(self, layout: TargetLayout) -> str:
         return cast("str", _load("language_guidance", self.guidance)(layout))
@@ -330,6 +343,22 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             conventions=_php_conventions,
             auto_priority=3,
             missing_hint="PHP codegen needs `php` on PATH (install it, then retry).",
+        ),
+        "perl": Toolchain(
+            "pm",
+            _layout("_resolve_perl_layout"),
+            _scaffold("_perl_files"),
+            _environment("PerlToolEnvironment"),
+            _runner("ProveTestRunner"),
+            _prompts("_PERL"),
+            "perl_guidance",
+            "perl-conventions",
+            available=_probe("perl_toolchain_available"),
+            preflight=_preflight("PerlPreflightRunner", argument="perl"),
+            conventions=_perl_conventions,
+            module_name=_perl_module_name,
+            auto_priority=7,
+            missing_hint="Perl codegen needs `perl` and `prove` on PATH (install both, then retry).",
         ),
         # author_tests previously falls back to Python's prompt for SQL; retain it.
         "sql": Toolchain(

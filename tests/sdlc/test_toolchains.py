@@ -18,7 +18,7 @@ from orchestrator.sdlc.toolchains import TOOLCHAINS
     [
         (set(), "python"),
         ({"sql"}, "python"),
-        ({"perl"}, "python"),
+        ({"perl"}, "perl"),
         ({"python", "java", "php"}, "python"),
         ({"java", "typescript"}, "java"),
         ({"typescript", "csharp"}, "typescript"),

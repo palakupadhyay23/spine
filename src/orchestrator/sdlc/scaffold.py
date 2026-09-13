@@ -69,6 +69,23 @@ dist/
 """
 
 
+def _perl_files(layout: TargetLayout) -> dict[str, str]:
+    name = layout.package_name
+    module = name.replace("::", "/")
+    return {
+        "cpanfile": "requires 'perl', '5.016';\non 'test' => sub { requires 'Test::More'; };\n",
+        f"{layout.source_dir}/{module}.pm": f"package {name};\nuse strict;\nuse warnings;\n\n1;\n",
+        f"{layout.tests_dir}/00-load.t": (
+            f"use strict;\nuse warnings;\nuse Test::More;\nuse_ok('{name}');\ndone_testing;\n"
+        ),
+        "README.md": (
+            f"# {name}\n\nRun tests with `prove -l t/`.\n"
+            "Install dependencies with `cpanm --installdeps . --notest` when available.\n"
+        ),
+        ".gitignore": "/blib/\n/local/\n/.prove\n",
+    }
+
+
 def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile | None = None) -> list[str]:
     """Write the project skeleton for ``layout`` into ``root``, idempotently.
 

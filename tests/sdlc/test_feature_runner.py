@@ -1421,3 +1421,11 @@ async def test_unknown_direct_language_retains_python_fallback_without_pytest_gu
     await run_feature("file://./spec.md", intent_id="intent-a", language="unknown")
     assert created[0].layout is not None
     assert created[0].layout.language == "python"
+
+
+async def test_perl_missing_toolchain_hint(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _install_pipeline(monkeypatch, tmp_path, runner=_PassingRunner)
+    monkeypatch.setattr("orchestrator.sdlc.testenv.perl_toolchain_available", lambda: False)
+    with pytest.raises(FeatureRunError, match="needs `perl` and `prove`") as exc:
+        await run_feature("file://./spec.md", language="perl")
+    assert exc.value.code == 2

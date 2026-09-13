@@ -131,6 +131,19 @@ def sql_guidance(layout: TargetLayout) -> str:
     )
 
 
+def perl_guidance(layout: TargetLayout) -> str:
+    return (
+        "PROJECT LAYOUT (authoritative):\n"
+        f"- Perl package: `{layout.package_name}`. Sources belong under `{layout.source_dir}/`; "
+        "map each package separator `::` to `/` and finish with `.pm`. Match neighboring package clauses.\n"
+        f"- Tests belong in `{layout.tests_dir}/<name>.t`; follow existing numbering and use Test::More "
+        "or the observed Test2::V0. Run the owning tests then the whole suite.\n"
+        "- Use strict and warnings; use the observed Moo/Moose style or classic bless. "
+        "Private subs start with `_`; public subs get POD. "
+        "Preserve cpanfile/Makefile.PL/Build.PL/dist.ini.\n\n"
+    )
+
+
 def python_guidance(layout: TargetLayout) -> str:
     return (
         "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"

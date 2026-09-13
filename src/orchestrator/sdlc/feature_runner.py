@@ -509,7 +509,7 @@ def _is_test_path(rel: str) -> bool:
     name = Path(rel).name
     return (
         name.startswith("test_")
-        or name.endswith(("_test.py", "Test.php"))
+        or name.endswith(("_test.py", "Test.php", ".t"))
         or "tests" in {p.lower() for p in Path(rel.replace("\\", "/")).parts}
     )
 

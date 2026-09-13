@@ -45,6 +45,9 @@ _REVIEWABLE_SUFFIXES = frozenset(
         ".java",
         ".go",
         ".php",
+        ".pm",
+        ".pl",
+        ".t",
         ".c",
         ".h",
         ".cc",
@@ -75,7 +78,7 @@ _REVIEWABLE_SUFFIXES = frozenset(
 )
 
 
-_REVIEWABLE_FILENAMES = frozenset({".gitignore", ".php-version", ".gitkeep"})
+_REVIEWABLE_FILENAMES = frozenset({".gitignore", ".php-version", ".gitkeep", "cpanfile", "dist.ini"})
 
 
 @dataclass(frozen=True)

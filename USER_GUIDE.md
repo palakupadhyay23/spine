@@ -75,8 +75,8 @@ Optional extras, added when you need them:
   adds `.php` comprehension + a call graph (namespaces, classes/interfaces/traits, `CALLS`,
   typed-receiver resolution) + Laravel/Slim/Symfony routes + Eloquent/Doctrine entities —
   codegen uses Composer or a pinned PHPUnit PHAR. `[perl]` adds `.pl`/`.pm`/`.t` comprehension
-  (every package is its own type, inheritance across its five spellings) — comprehension only
-  so far; codegen is a separate, not-yet-started track.
+  (every package is its own type, inheritance across its five spellings)
+  and codegen: install `perl` and `prove` on PATH; `cpanm` is optional for dependencies.
 - `[docs]` — **PDF** doc ingestion; `[office]` — **Word/Excel** (`.docx`/`.xlsx`) ingestion.
   Markdown, `.rst`, `.txt` and **HTML** need no extra. Without an extra those files are simply
   skipped, so a base install still ingests everything it can read.
@@ -362,7 +362,7 @@ is: `orchestrator understand .` → commit `episteme/`, then re-run whenever the
 > / `[cpp]` / `[go]` / `[php]` / `[perl]` / `[sql]`). `understand`, codegen grounding, and `pkg extract` then
 > process `.java` / `.ts` / `.cs` / `.c` / `.h` / `.cpp` / `.hpp` / `.go` / `.php` / `.pl` / `.pm` / `.t` / `.sql` too
 > (`.blade.php` is skipped as a template, not PHP source). PHP also builds and tests code with Composer or a pinned PHPUnit PHAR.
-> Perl is comprehension-only for now — its codegen track is separate and not yet started. For **SQL**, the
+> Perl builds and tests with `perl -c` and `prove`; optional `cpanm` installs declared dependencies. For **SQL**, the
 > graph models the **data layer from source** — `CREATE TABLE`/columns → `Entity`/`Field`,
 > foreign keys → `REFERENCES`, views and `SELECT`/`INSERT`/`UPDATE`/`DELETE` → `READS`/
 > `WRITES`, and stored procedures → `Function` + `CALLS`. A `migrations/` folder is folded
@@ -725,6 +725,25 @@ It **fails closed**: with no terminal to ask on, it declines rather than assumin
 yes. Pass it from an interactive shell, not from cron or a background job.
 
 ---
+
+### Perl code generation
+
+Use `orchestrator sdlc feature --source file://./requirements.md --language perl --safe`.
+Install `perl` and `prove` on PATH, plus the `[perl]` extra for grounding. `cpanm` is optional:
+when a `cpanfile` exists, Spine runs `cpanm --installdeps . --notest`; missing or failed
+installation is a logged warning and the runner checks whether installed dependencies suffice.
+
+Greenfield scaffolds `lib/<Package/Path>.pm`, `t/00-load.t`, and `cpanfile`. Use
+`--package-name Shop::Cart` to select a package. Existing distributions keep `Makefile.PL`,
+`Build.PL`, `dist.ini`, and their package clauses. In a monorepo, select an existing package
+to identify its owning distribution. Conventions follow nearby Moo/Moose or classic `bless`
+code and Test::More or Test2::V0 tests.
+
+The runner compiles changed `.pm`/`.pl` files with `perl -c`, tests their owning `t/` paths,
+then runs every distribution suite with `prove -l`; nested suites add `-r`. Empty suites fail.
+`.proverc` include paths and `dist.ini` PERL5LIB settings inform syntax checks. XS builds stop
+with an unsupported-build message. Real model validation is tracked separately in the
+[Perl codegen roadmap](docs/specs/perl-codegen-roadmap.md).
 
 ### PHP code generation
 

@@ -379,6 +379,84 @@ class PhpUnitTestRunner:
             return TestRunResult(False, 2, str(exc))
 
 
+class ProveTestRunner:
+    """Compile changed Perl sources, test their owners, then every distribution's suite."""
+
+    def __init__(self, perl: str = "perl", prove: str = "prove", *, timeout: float = 600) -> None:
+        self._perl = perl
+        self._prove = prove
+        self._timeout = timeout
+
+    async def run(self, *, path: str) -> TestRunResult:
+        from orchestrator.sdlc.perl import (
+            changed_perl_files,
+            distribution_for,
+            distributions,
+            include_args,
+            owning_tests,
+            perl_files,
+        )
+
+        captured: list[str] = []
+        try:
+            root = Path(path).resolve()
+            if next(perl_files(root, (".xs",)), None) is not None:
+                return TestRunResult(False, 2, "Perl XS builds are unsupported; .xs requires compilation.")
+            changed = await changed_perl_files(root)
+            # A clean independent checkout still compiles and tests the real distribution.
+            sources = changed or list(perl_files(root))
+            owners = {distribution_for(file, root) for file in sources}
+            suites = sorted(set(distributions(root)) | owners) or [root]
+            for file in sources:
+                if file.suffix not in {".pm", ".pl"}:
+                    continue
+                dist = distribution_for(file, root)
+                argv = (self._perl, *include_args(dist), "-c", str(file))
+                rc, output = await _exec_capture(argv, cwd=str(dist), timeout=self._timeout)
+                captured.append(f"# {' '.join(argv)}\n{output}")
+                if rc:
+                    return TestRunResult(False, rc, _clip("\n".join(captured)))
+            targets: list[tuple[Path, Path]] = []
+            for file in changed:
+                dist = distribution_for(file, root)
+                target = owning_tests(file, dist)
+                if (dist, target) not in targets:
+                    targets.append((dist, target))
+            # Whole suites always follow owning targets, including other distributions.
+            targets.extend((dist, dist / "t") for dist in suites)
+            for dist, target in targets:
+                tests = (
+                    [target]
+                    if target.is_file() and target.suffix == ".t"
+                    else list(perl_files(target, (".t",)))
+                )
+                if not tests:
+                    return TestRunResult(
+                        False,
+                        5,
+                        _clip(
+                            "\n".join(captured)
+                            + f"\nNo Perl tests found in {target}; refusing an empty green."
+                        ),
+                    )
+                # prove does not recurse by default; nested suites need -r to be whole.
+                recurse = ("-r",) if target.is_dir() and any(f.parent != target for f in tests) else ()
+                argv = (
+                    self._prove,
+                    "-l",
+                    *include_args(dist)[2:],
+                    *recurse,
+                    target.relative_to(dist).as_posix(),
+                )
+                rc, output = await _exec_capture(argv, cwd=str(dist), timeout=self._timeout)
+                captured.append(f"# ({dist.relative_to(root)}) {' '.join(argv)}\n{output}")
+                if rc or "NOTESTS" in output:
+                    return TestRunResult(False, rc or 5, _clip("\n".join(captured)))
+            return TestRunResult(True, 0, _clip("\n".join(captured)))
+        except (OSError, ValueError, RuntimeError) as exc:
+            return TestRunResult(False, 2, _clip("\n".join(captured) + f"\n{exc}"))
+
+
 class GoTestRunner:
     """Builds and tests the Go module(s) a change actually touched, via ``go build ./...``
     then ``go test ./... -v`` **run from each changed module's directory**.

@@ -182,6 +182,34 @@ class StubPreflightRunner:
         return PreflightResult(passed=True, output="stub preflight")
 
 
+class PerlPreflightRunner:
+    """Syntax validation for changed .pm/.pl files, using their owning lib/ tree."""
+
+    def __init__(self, perl: str = "perl") -> None:
+        self._perl = perl
+
+    async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult:
+        from orchestrator.sdlc.perl import changed_perl_files, distribution_for, include_args
+        from orchestrator.sdlc.testrunner import _exec_capture
+
+        captured: list[str] = []
+        try:
+            root = Path(path).resolve()
+            for file in await changed_perl_files(root):
+                if file.suffix not in {".pm", ".pl"}:
+                    continue
+                dist = distribution_for(file, root)
+                rc, output = await _exec_capture(
+                    (self._perl, *include_args(dist), "-c", str(file)), cwd=str(dist), timeout=_TOOL_TIMEOUT
+                )
+                captured.append(f"{file.relative_to(root)}: {output}")
+                if rc:
+                    return PreflightResult(False, "\n".join(captured)[-_MAX_OUTPUT_CHARS:])
+            return PreflightResult(True, ("Perl syntax green\n" + "\n".join(captured))[-_MAX_OUTPUT_CHARS:])
+        except (OSError, ValueError, RuntimeError) as exc:
+            return PreflightResult(False, str(exc))
+
+
 class PhpPreflightRunner:
     """Changed-file syntax validation, independent of the repository's existing suite."""
 
@@ -312,6 +340,7 @@ def make_preflight_runner(language: str = "python", *, executable: str | None = 
 
 
 __all__ = [
+    "PerlPreflightRunner",
     "PhpPreflightRunner",
     "PreflightResult",
     "PreflightRunner",

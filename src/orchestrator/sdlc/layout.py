@@ -92,8 +92,8 @@ class TargetLayout:
         """Worktree-relative path for a new source module/class (no leading dir)."""
         from orchestrator.sdlc.toolchains import get_toolchain
 
-        ext = get_toolchain(self.language).source_ext
-        return f"{self.source_dir}/{module}.{ext}"
+        toolchain = get_toolchain(self.language)
+        return f"{self.source_dir}/{toolchain.module_name(module)}.{toolchain.source_ext}"
 
 
 def derive_package_name(name: str) -> str:
@@ -723,3 +723,48 @@ __all__ = [
     "is_effectively_empty",
     "resolve_layout",
 ]
+
+
+def detect_perl_layout(root: Path, package_name: str | None = None) -> tuple[str, str, str] | None:
+    from orchestrator.sdlc.perl import distributions, package_in, perl_files
+
+    candidates = distributions(root)
+    matches = [
+        (dist, file, package_in(file)) for dist in candidates for file in perl_files(dist / "lib", (".pm",))
+    ]
+    if package_name:
+        selected = [
+            m for m in matches if m[2] == package_name or (m[2] or "").startswith(package_name + "::")
+        ]
+        if selected:
+            matches = selected
+            candidates = sorted({m[0] for m in selected})
+    if len(candidates) > 1:
+        raise ValueError("Several Perl distributions found; select the existing package with --package-name.")
+    if not candidates:
+        return None
+    dist = candidates[0]
+    named = [(file, name) for owner, file, name in matches if owner == dist and name]
+    name = str(min(named, key=lambda item: (len(item[0].parts), str(item[0])))[1]) if named else "App"
+    return name, (dist / "lib").relative_to(root).as_posix(), (dist / "t").relative_to(root).as_posix()
+
+
+def _resolve_perl_layout(
+    root: Path, *, mode: str, package_name: str | None, repo: str | None
+) -> TargetLayout:
+    from orchestrator.sdlc.perl import package_name as validate_name
+
+    if package_name:
+        validate_name(package_name)
+    existing = detect_perl_layout(root, package_name) if mode != "new" else None
+    if mode == "existing" and existing is None:
+        raise ValueError(
+            "No Perl distribution found: expected lib/ or a cpanfile/Makefile.PL/Build.PL/dist.ini marker."
+        )
+    if existing is not None:
+        name, source, tests = existing
+        return TargetLayout(package_name or name, source, tests, False, "existing", language="perl")
+    derived = "::".join(
+        part.capitalize() for part in derive_package_name(repo or str(root)).split("_") if part
+    )
+    return TargetLayout(validate_name(package_name or derived), "lib", "t", False, "new", language="perl")

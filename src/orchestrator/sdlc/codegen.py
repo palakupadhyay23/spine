@@ -828,6 +828,31 @@ _REFINE_SYSTEM_PHP = (
 )
 
 
+_IMPLEMENT_SYSTEM_PERL = (
+    "You implement a feature in a Perl distribution. Return the submit_files tool payload "
+    "with complete file contents and a summary. Follow the authoritative layout and grounded "
+    "package names: lib/<Package/Path>.pm and t/*.t. Use strict and warnings in every file. "
+    "Match observed Moo/Moose usage, otherwise use classic bless. Follow existing public APIs; "
+    "prefix private subs with an underscore and give each public sub a POD stub. End modules "
+    "with 1;. Declare dependencies in cpanfile; preserve existing packaging and build files. "
+    "No XS compilation. Implement every acceptance criterion without inventing unrelated paths."
+)
+_TESTS_SYSTEM_PERL = (
+    "Write executable Perl tests for the supplied implementation. Return complete files through "
+    "submit_files. Put tests in the authoritative t/ directory, following existing names "
+    "and numbering. Use strict; use warnings; use Test::More; (or Test2::V0 when observed). "
+    "Load the real package, assert actual behavior, cover acceptance criteria and edge cases, "
+    "and finish with done_testing. Never skip, weaken assertions, or report an empty passing suite. "
+    "Tests must run with prove -l t/. Do not modify unrelated legacy tests."
+)
+_REFINE_SYSTEM_PERL = (
+    "Fix the Perl implementation and tests using the supplied perl -c / prove failure output. "
+    "Return complete changed files through submit_files. Preserve package clauses and "
+    "the lib/ and t/ layout; use strict and warnings. Keep existing packaging. Never disable "
+    "tests, weaken assertions, add skip_all, or remove failing coverage to obtain green."
+)
+
+
 class LLMCodegenAdapter:
     """Real codegen: the LLM writes runnable source + tests into the worktree.
 
@@ -1683,6 +1708,8 @@ _TESTABLE_SUFFIXES = frozenset(
         ".java",
         ".go",
         ".php",
+        ".pm",
+        ".pl",
         ".c",
         ".h",
         ".cc",
@@ -1767,7 +1794,7 @@ def _is_test_file(path: Path) -> bool:
     name = path.name
     return (
         name.startswith("test_")
-        or name.endswith(("_test.py", "Test.php"))
+        or name.endswith(("_test.py", "Test.php", ".t"))
         or "tests" in {p.lower() for p in path.parts}
     )
 

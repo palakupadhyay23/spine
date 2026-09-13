@@ -381,6 +381,68 @@ def php_toolchain_available() -> bool:
     return shutil.which("php") is not None
 
 
+class PerlToolEnvironment:
+    """Core Perl/prove are required; installing declared CPAN dependencies is best effort."""
+
+    declared: set[str] = set()
+
+    def __init__(self) -> None:
+        self.setup_note = "dependencies not checked"
+
+    @property
+    def python(self) -> str:
+        raise RuntimeError("PerlToolEnvironment has no Python interpreter")
+
+    async def ensure(self, worktree: Path | str) -> None:
+        import logging
+
+        from orchestrator.sdlc.perl import distributions, perl_files
+        from orchestrator.sdlc.testrunner import _exec_capture
+
+        root = Path(worktree).resolve()
+        if not perl_toolchain_available():
+            raise RuntimeError("Perl codegen needs `perl` and `prove` on PATH (install both, then retry).")
+        if next(perl_files(root, (".xs",)), None) is not None:
+            raise RuntimeError("Perl XS builds are unsupported: this runner does not compile .xs sources.")
+        notes: list[str] = []
+        cpanm = shutil.which("cpanm")
+        if cpanm is None:
+            warning = "WARNING: cpanm is unavailable; using installed dependencies"
+            logging.getLogger(__name__).warning(warning)
+            notes.append(warning)
+        for dist in distributions(root) or [root]:
+            if not (dist / "cpanfile").is_file():
+                note = f"{dist.relative_to(root)}: no cpanfile; using installed dependencies"
+            elif cpanm is None:
+                note = "cpanfile present; dependency installation skipped because cpanm is unavailable"
+            else:
+                try:
+                    rc, output = await _exec_capture(
+                        (cpanm, "--installdeps", ".", "--notest"), cwd=str(dist), timeout=600
+                    )
+                    note = (
+                        f"{dist.relative_to(root)}: CPAN dependencies installed"
+                        if rc == 0
+                        else f"WARNING: cpanm exited {rc}; using installed dependencies: {output[-1000:]}"
+                    )
+                except OSError as exc:
+                    note = f"WARNING: cpanm could not run; using installed dependencies: {exc}"
+            if note.startswith("WARNING"):
+                logging.getLogger(__name__).warning(note)
+            notes.append(note)
+        self.setup_note = "; ".join(notes)
+
+    async def install(self, packages: list[str]) -> bool:
+        return False
+
+    def describe(self) -> str:
+        return f"Perl/prove; {self.setup_note}"
+
+
+def perl_toolchain_available() -> bool:
+    return shutil.which("perl") is not None and shutil.which("prove") is not None
+
+
 class GoToolEnvironment:
     """Go build toolchain. Dependencies are resolved from ``go.mod`` (not pip), so
     ``install`` (auto-heal) is a no-op; ``ensure`` runs ``go mod download`` best-effort
