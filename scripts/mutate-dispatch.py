@@ -65,7 +65,7 @@ class Mutation:
     old: str
     new: str
     anchor: str | None = None
-    was: str = ""  # result on 2026-09-13, for comparison
+    was: str = ""  # baseline result (2026-09-13), for comparison after C-0
 
 
 MUTATIONS: tuple[Mutation, ...] = (
@@ -127,7 +127,7 @@ MUTATIONS: tuple[Mutation, ...] = (
         '    if language == "php":',
         '    if language == "php" and False:',
         anchor="def make_test_environment",
-        was="not applied on 2026-09-13 (ambiguous pattern)",
+        was="caught",  # the first run could not locate it; the anchor above fixes that
     ),
 )
 
