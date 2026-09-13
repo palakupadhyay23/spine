@@ -58,6 +58,33 @@ regenerated with `--scoreboard` and the PR saying so.
 
 See `docs-matrix.md`, row "New language front-end".
 
+## Codegen registration and runner proof
+
+Register a complete `Toolchain` row in `sdlc/toolchains.py`: source extension, layout,
+scaffold, environment, runner, availability guard, preflight, phase prompts, layout
+guidance and the existing conventions capability id (or `None`). Preserve the language's
+auto-detection priority and any scaffold preparation or build-ignore rules. Factories
+resolve implementations lazily; importing the registry must not require installed tools.
+`SUPPORTED_LANGUAGES` derives from this table, so register a language only when its whole
+runner set and prompts exist. A comprehension-only language must remain rejected.
+
+Temporal activities keep their injected test and preflight adapters and the worker's
+existing defaults. Moving codegen dispatch into the registry does not authorize changing
+workflow payloads or replacing an injected runner.
+
+Use the existing build-then-test template: perform prerequisite checks, return immediately
+on failure, then run tests and clip the output for refinement. `CTestRunner`, `GoTestRunner`
+and `PhpUnitTestRunner` are examples. Require four proofs: real-tool green, deliberately
+red, an actionable missing-toolchain error, and an idempotent scaffold. A successful build
+or an empty suite is not evidence that a generated change passed its tests.
+
+For registry migrations, run each language's codegen tests before and after, explicitly
+including `tests/sdlc/test_php_codegen.py`. Run `uv run --frozen python
+scripts/mutate-dispatch.py`: it reads CI's extras for child test commands and must report
+**8 of 8 applied, 0 skipped**. Record behavioral differences as findings. Live codegen
+proofs additionally record model, command, independent clean-checkout rerun and grounding
+size in the roadmap's evidence cell.
+
 ## Precision rules every front-end must honour (findings if violated)
 
 - Emit nothing for a computed path, prefix, name, or target. A wrong grounded fact is worse

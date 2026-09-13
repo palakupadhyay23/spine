@@ -8,9 +8,9 @@ rewrites the dispatch of **eight working languages** at once, and its stated saf
 was "the existing languages migrate in the same phase, with their tests as the
 regression net".
 
-**That net was measured on 2026-09-13 and it caught 3 of 7.** This script is the
+**That net was measured on 2026-09-13 and it caught 4 of 8.** This script is the
 measurement, checked in so the roadmap's C-0 exit criterion ("re-run that mutation set
-and catch 7 of 7") is a command rather than a description.
+and catch 8 of 8") is a command rather than a description.
 
 Each mutation is a transcription error a language-to-row flattening plausibly makes.
 The script applies one, runs the SDLC tests, restores the file, and reports whether
@@ -27,6 +27,7 @@ mutation (about a minute each), which belongs in a deliberate run, not in CI.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -68,7 +69,7 @@ class Mutation:
     was: str = ""  # baseline result (2026-09-13), for comparison after C-0
 
 
-MUTATIONS: tuple[Mutation, ...] = (
+LEGACY_MUTATIONS: tuple[Mutation, ...] = (
     Mutation(
         "csharp: lose the target-framework rewrite",
         "feature_runner.py",
@@ -132,6 +133,37 @@ MUTATIONS: tuple[Mutation, ...] = (
 )
 
 
+# Same eight behavioral errors, relocated to the registry by C-1. Keep the original
+# definitions for inspecting/replaying the pre-registry baseline; no mutation was removed.
+_REGISTRY_EDITS = (
+    ("prepare_layout=_dotnet_layout", "prepare_layout=_identity_layout"),
+    ('available=_probe("cpp_toolchain_available")', 'available=_probe("c_toolchain_available")'),
+    ('build_tool = layout.build_tool if layout.mode == "existing" else "cmake"', 'build_tool = "cmake"'),
+    ('"php_guidance"', '"python_guidance"'),
+    ('_layout("_resolve_typescript_layout")', '_layout("_resolve_python_layout", python=True)'),
+    ('_scaffold("_go_files")', '_scaffold("_python_files")'),
+    ('"sql_guidance"', '"python_guidance"'),
+    ('_environment("PhpToolEnvironment")', "_python_environment"),
+)
+MUTATIONS = (
+    tuple(
+        Mutation(m.name, "toolchains.py", old, new, was=m.was)
+        for m, (old, new) in zip(LEGACY_MUTATIONS, _REGISTRY_EDITS, strict=True)
+    )
+    if (SDLC / "toolchains.py").is_file()
+    else LEGACY_MUTATIONS
+)
+
+
+def _ci_extras() -> list[str]:
+    """Keep the measurement's child pytest environment identical to CI's sync."""
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    install = workflow.split("uv sync --extra", 1)[1].split("\n\n", 1)[0]
+    return [
+        part for name in re.findall(r"--extra ([a-z-]+)", "--extra" + install) for part in ("--extra", name)
+    ]
+
+
 def _apply(m: Mutation, text: str) -> str | None:
     """The mutated text, or ``None`` when the pattern is not uniquely locatable."""
     if m.anchor is not None:
@@ -161,6 +193,7 @@ def run_one(m: Mutation) -> tuple[str, str]:
                 "uv",
                 "run",
                 "--frozen",
+                *_ci_extras(),
                 "pytest",
                 "-q",
                 "-p",
@@ -203,7 +236,7 @@ def main() -> int:
     caught = sum(1 for v, _ in results if v == "CAUGHT")
     applied = sum(1 for v, _ in results if v != "SKIP")
     print(f"\ncaught {caught} of {applied} applied ({len(results) - applied} skipped)")
-    print("baseline on 2026-09-13: 3 of 7 — perl-codegen-roadmap.md C-0 exits at 7 of 7")
+    print("baseline on 2026-09-13: 4 of 8 — perl-codegen-roadmap.md C-0 exits at 8 of 8")
     # Deliberately always 0: this reports a measurement, it does not gate a build.
     return 0
 

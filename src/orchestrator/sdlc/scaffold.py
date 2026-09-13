@@ -78,24 +78,10 @@ def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile 
     """
     root_path = Path(root)
     _ = profile  # reserved: future template selection beyond language
-    if layout.language == "java":
-        files = _java_files(layout)
-    elif layout.language == "typescript":
-        files = _typescript_files(layout)
-    elif layout.language == "csharp":
-        files = _csharp_files(layout)
-    elif layout.language == "c":
-        files = _c_files(layout)
-    elif layout.language == "cpp":
-        files = _cpp_files(layout)
-    elif layout.language == "php":
-        files = _php_files(layout)
-    elif layout.language == "go":
-        files = _go_files(layout)
-    elif layout.language == "sql":
-        files = _sql_files(layout)
-    else:
-        files = _python_files(layout)
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    toolchain = get_toolchain(layout.language)
+    files = toolchain.scaffold(layout)
 
     created: list[str] = []
     for rel, content in files.items():
@@ -105,10 +91,8 @@ def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         created.append(rel)
-    if layout.language == "csharp":
-        created += _ensure_build_ignores(root_path, ("bin", "obj"))
-    elif layout.language in ("c", "cpp"):
-        created += _ensure_build_ignores(root_path, ("build",))
+    if toolchain.build_ignores:
+        created += _ensure_build_ignores(root_path, toolchain.build_ignores)
     return created
 
 

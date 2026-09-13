@@ -25,6 +25,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from orchestrator.sdlc.toolchains import TOOLCHAINS
+
 # Test-run byproducts that should never appear in a feature's changed-files
 # summary (or, ideally, its commit) regardless of the repo's .gitignore.
 _BUILD_DIRS = {
@@ -583,7 +585,7 @@ async def _changed_files(path: Path) -> list[str]:
 # set, test env + runner). `--language auto` detects from the worktree. Anything outside
 # this set is rejected at the CLI — historically an unknown value silently fell through
 # to the Python branch and scaffolded a Python project.
-SUPPORTED_LANGUAGES = frozenset({"python", "java", "typescript", "csharp", "c", "cpp", "go", "php", "sql"})
+SUPPORTED_LANGUAGES = frozenset(TOOLCHAINS)
 
 
 def unsupported_language_error(language: str) -> str | None:
@@ -606,24 +608,9 @@ def _resolve_language(path: Path, requested: str) -> str:
     if requested != "auto":
         return requested
     from orchestrator.catalog.profile import ProjectProfile
+    from orchestrator.sdlc.toolchains import detect_language
 
-    langs = ProjectProfile.from_repo(path).languages
-    if "python" not in langs:
-        if "java" in langs:
-            return "java"
-        if "typescript" in langs:
-            return "typescript"
-        if "csharp" in langs:
-            return "csharp"
-        if "php" in langs:
-            return "php"
-        if "go" in langs:
-            return "go"
-        if "cpp" in langs:
-            return "cpp"
-        if "c" in langs:
-            return "c"
-    return "python"
+    return detect_language(ProjectProfile.from_repo(path).languages)
 
 
 async def run_feature(
@@ -691,17 +678,8 @@ async def run_feature(
     from orchestrator.sdlc.scaffold import scaffold
     from orchestrator.sdlc.telemetry import jira_duration, render_worklog
     from orchestrator.sdlc.testenv import (
-        c_toolchain_available,
-        cpp_toolchain_available,
-        detect_dotnet_tfm,
-        dotnet_toolchain_available,
-        go_toolchain_available,
-        java_toolchain_available,
         make_test_environment,
         make_test_runner,
-        meson_toolchain_available,
-        node_toolchain_available,
-        php_toolchain_available,
         run_with_autoheal,
     )
     from orchestrator.sdlc.testrunner import pytest_available
@@ -871,10 +849,10 @@ async def run_feature(
     #     (existing package) is detected and reused — never scaffolded.
     lang = _resolve_language(path, language)
     layout = resolve_layout(path, mode=layout_mode, package_name=package_name, repo=repo_url, language=lang)
-    if lang == "csharp":
-        # Target the installed SDK so a greenfield scaffold builds AND runs (a TFM
-        # with no matching runtime fails at the test host, not at build).
-        layout = replace(layout, target_framework=detect_dotnet_tfm())
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    toolchain = get_toolchain(lang)
+    layout = toolchain.prepare_layout(layout)
     if layout.mode == "new":
         was_empty = is_effectively_empty(path)
         created = scaffold(path, layout)
@@ -893,63 +871,9 @@ async def run_feature(
     # with the project's own deps — so generated tests don't depend on (or run
     # in) the orchestrator's interpreter. SDLC_TEST_ISOLATION=local opts out.
     testenv = make_test_environment(lang, build_tool=layout.build_tool)
-    if lang == "java":
-        if not java_toolchain_available():
-            raise FeatureRunError(
-                "Java codegen needs a JDK + Maven on PATH (install both, then retry).",
-                code=2,
-            )
-    elif lang == "typescript":
-        pm = layout.build_tool or "npm"
-        if not node_toolchain_available(pm):
-            raise FeatureRunError(
-                f"TypeScript codegen needs Node.js + {pm} on PATH (install both, then retry).",
-                code=2,
-            )
-    elif lang == "csharp" and not dotnet_toolchain_available():
-        raise FeatureRunError(
-            "C# codegen needs the .NET SDK (`dotnet`) on PATH (install it, then retry).",
-            code=2,
-        )
-    elif lang == "php" and not php_toolchain_available():
-        raise FeatureRunError("PHP codegen needs `php` on PATH (install it, then retry).", code=2)
-    elif lang == "go" and not go_toolchain_available():
-        raise FeatureRunError(
-            "Go codegen needs the Go toolchain (`go`) on PATH (install it, then retry).",
-            code=2,
-        )
-    elif lang in ("c", "cpp"):
-        # Greenfield always scaffolds a CMake project; brownfield uses the repo's own
-        # build system (CMake or Meson). Preflight the matching toolchain and fail
-        # fast with a clear message rather than a cryptic build error in refine.
-        label = "C++" if lang == "cpp" else "C"
-        cmake_ok = cpp_toolchain_available if lang == "cpp" else c_toolchain_available
-        build_tool = layout.build_tool if layout.mode == "existing" else "cmake"
-        if build_tool == "meson":
-            if not meson_toolchain_available():
-                raise FeatureRunError(
-                    f"Meson {label} codegen needs meson + ninja + a compiler on PATH "
-                    "(install them, then retry).",
-                    code=2,
-                )
-        elif build_tool in ("cmake", ""):
-            if not cmake_ok():
-                raise FeatureRunError(
-                    f"{label} codegen needs CMake + a {label} compiler on PATH (install both, then retry).",
-                    code=2,
-                )
-            if layout.mode == "existing" and not (path / "CMakeLists.txt").is_file():
-                raise FeatureRunError(
-                    f"{label} codegen builds with CMake or Meson, but this repo has neither a "
-                    "CMakeLists.txt nor a recognized meson.build.",
-                    code=2,
-                )
-        else:  # make or another unrecognized build system
-            raise FeatureRunError(
-                f"{label} codegen builds with CMake or Meson, but this repo uses "
-                f"{build_tool} (not supported yet).",
-                code=2,
-            )
+    toolchain_error = toolchain.availability_error(path, layout)
+    if toolchain_error is not None:
+        raise FeatureRunError(toolchain_error, code=2)
     # ``ensure`` may install deps (Node ``<pm> install``); run it after the
     # toolchain preflight so a missing toolchain fails fast with a clear message.
     try:
@@ -957,7 +881,7 @@ async def run_feature(
     except RuntimeError as exc:
         raise FeatureRunError(str(exc), code=2) from exc
     emit(f"[testenv] {testenv.describe()}")
-    if lang == "python" and not await pytest_available(testenv.python):
+    if lang in TOOLCHAINS and toolchain.requires_pytest and not await pytest_available(testenv.python):
         raise FeatureRunError(
             "pytest is required to run the generated tests but isn't available in the test "
             "environment. Install it: pip install 'synaptixs-spine[sdlc]' (or pip install pytest).",

@@ -8,6 +8,11 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Added
 
+- **Perl codegen C-1: shared toolchain registry.** Existing language layout, scaffold,
+  environment, runner, availability, preflight and prompt selection now come from one
+  registry. Temporal activities retain their injected adapters and worker defaults.
+  Perl enablement remains reserved for C-2 ([roadmap](docs/specs/perl-codegen-roadmap.md)).
+
 - **Perl codegen C-0: dispatch characterization.** Tests pin C# runtime targeting, separate C/C++ toolchain guards, Meson brownfield selection, and PHP layout/convention guidance. The committed mutation measurement improves from **4/8 to 8/8**. Perl codegen remains disabled until its complete machinery lands ([roadmap](docs/specs/perl-codegen-roadmap.md)).
 
 - **Perl comprehension (P1 of the Perl support track).** The 10th PKG front-end:

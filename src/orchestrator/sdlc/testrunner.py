@@ -334,13 +334,13 @@ class PhpUnitTestRunner:
 
     async def run(self, *, path: str) -> TestRunResult:
         from orchestrator.sdlc.php import changed_php_files, read_phpunit_config
-        from orchestrator.sdlc.preflight import PhpPreflightRunner
+        from orchestrator.sdlc.preflight import make_preflight_runner
 
         try:
             root = Path(path).resolve()
             config = read_phpunit_config(root)
             changed = await changed_php_files(root)
-            lint = await PhpPreflightRunner(self._php).run(path=path)
+            lint = await make_preflight_runner("php", executable=self._php).run(path=path)
             if not lint.passed:
                 return TestRunResult(False, 1, lint.output)
             tests = [name for name in changed if name.endswith(config.suffix)]

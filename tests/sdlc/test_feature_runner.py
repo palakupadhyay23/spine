@@ -1411,3 +1411,13 @@ async def test_native_dispatch_preserves_meson_brownfield_selection(
         assert exc.value.code == 2
         assert "needs meson + ninja + a compiler" in str(exc.value)
     assert not (tmp_path / "CMakeLists.txt").exists()
+
+
+async def test_unknown_direct_language_retains_python_fallback_without_pytest_guard(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    created = _install_pipeline(monkeypatch, tmp_path, runner=_PassingRunner)
+    monkeypatch.setattr("orchestrator.sdlc.testrunner.pytest_available", lambda python: _aresult(False))
+    await run_feature("file://./spec.md", intent_id="intent-a", language="unknown")
+    assert created[0].layout is not None
+    assert created[0].layout.language == "python"

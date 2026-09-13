@@ -31,18 +31,6 @@ _NON_PACKAGE_DIRS = {"tests", "test", "docs", "doc", "examples", "scripts", "bui
 _FALLBACK_PACKAGE = "app"
 _JAVA_GROUP = "org.example"  # default reverse-DNS group for greenfield Java
 
-# Source-file extension per language (Python is the default).
-_SOURCE_EXT = {
-    "java": "java",
-    "typescript": "ts",
-    "csharp": "cs",
-    "c": "c",
-    "cpp": "cpp",
-    "sql": "sql",
-    "go": "go",
-    "php": "php",
-}
-
 # Go package names can't be a reserved keyword (or `init`); guard the derived slug.
 _GO_KEYWORDS = frozenset(
     {
@@ -102,7 +90,9 @@ class TargetLayout:
 
     def module_rel_path(self, module: str) -> str:
         """Worktree-relative path for a new source module/class (no leading dir)."""
-        ext = _SOURCE_EXT.get(self.language, "py")
+        from orchestrator.sdlc.toolchains import get_toolchain
+
+        ext = get_toolchain(self.language).source_ext
         return f"{self.source_dir}/{module}.{ext}"
 
 
@@ -683,23 +673,16 @@ def resolve_layout(
     derived name; ``repo`` (clone URL) seeds derivation. Deterministic; the caller
     scaffolds when ``mode == "new"``.
     """
-    root_path = Path(root)
-    if language == "java":
-        return _resolve_java_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "typescript":
-        return _resolve_typescript_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "csharp":
-        return _resolve_csharp_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "c":
-        return _resolve_c_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "cpp":
-        return _resolve_cpp_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "php":
-        return _resolve_php_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "go":
-        return _resolve_go_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "sql":
-        return _resolve_sql_layout(root_path, mode=mode, package_name=package_name, repo=repo)
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return get_toolchain(language).layout(
+        Path(root), mode=mode, package_name=package_name, repo=repo, src_layout=src_layout
+    )
+
+
+def _resolve_python_layout(
+    root_path: Path, *, mode: str, package_name: str | None, repo: str | None, src_layout: bool = True
+) -> TargetLayout:
     existing = detect_existing_package(root_path)
     derived = package_name or derive_package_name(repo or str(root_path))
 

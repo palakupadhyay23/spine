@@ -304,10 +304,18 @@ class SubprocessPreflightRunner:
         return rc, stdout_bytes.decode("utf-8", "replace")
 
 
+def make_preflight_runner(language: str = "python", *, executable: str | None = None) -> PreflightRunner:
+    """Select a registered preflight without changing the caller's invocation policy."""
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return get_toolchain(language).preflight(executable=executable)
+
+
 __all__ = [
     "PhpPreflightRunner",
     "PreflightResult",
     "PreflightRunner",
     "StubPreflightRunner",
     "SubprocessPreflightRunner",
+    "make_preflight_runner",
 ]

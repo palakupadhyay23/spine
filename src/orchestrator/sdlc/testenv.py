@@ -515,64 +515,17 @@ def make_test_environment(language: str = "python", *, build_tool: str = "") -> 
     """The test environment for ``language``: Java toolchain, Node toolchain
     (``build_tool`` selects the package manager), or a Python venv
     (``VenvTestEnvironment`` unless ``SDLC_TEST_ISOLATION=local``)."""
-    if language == "java":
-        return JavaToolEnvironment()
-    if language == "typescript":
-        return NodeToolEnvironment(build_tool or "npm")
-    if language == "csharp":
-        return DotnetToolEnvironment()
-    if language in ("c", "cpp"):
-        return CToolEnvironment(build_tool or "cmake")
-    if language == "php":
-        return PhpToolEnvironment()
-    if language == "go":
-        return GoToolEnvironment()
-    if language == "sql":
-        return SqlToolEnvironment(build_tool or "postgres")
-    if os.getenv("SDLC_TEST_ISOLATION", "venv").lower() == "local":
-        return LocalTestEnvironment()
-    return VenvTestEnvironment()
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return get_toolchain(language).environment(build_tool)
 
 
 def make_test_runner(language: str, env: TestEnvironment) -> TestRunner:
     """The runner for ``language``: Maven for Java, the package manager's ``test``
     script for TypeScript, pytest (on the env's interpreter) for Python."""
-    from orchestrator.sdlc.testrunner import (
-        CTestRunner,
-        DotnetTestRunner,
-        GoTestRunner,
-        MavenTestRunner,
-        MesonTestRunner,
-        NodeTestRunner,
-        PhpUnitTestRunner,
-        SubprocessTestRunner,
-    )
+    from orchestrator.sdlc.toolchains import get_toolchain
 
-    if language == "java":
-        return MavenTestRunner()
-    if language == "typescript":
-        return NodeTestRunner(package_manager=getattr(env, "package_manager", "npm"))
-    if language == "csharp":
-        return DotnetTestRunner()
-    if language in ("c", "cpp"):
-        # The build tool (cmake/meson) is carried on the C/C++ tool environment.
-        return MesonTestRunner() if getattr(env, "build_tool", "cmake") == "meson" else CTestRunner()
-    if language == "php":
-        return PhpUnitTestRunner(php=getattr(env, "php", "php"), phpunit=getattr(env, "phpunit", None))
-    if language == "go":
-        return GoTestRunner()
-    if language == "sql":
-        dialect = getattr(env, "dialect", "postgres")
-        # Default: fast, zero-dependency SQLite. Opt into real Postgres (Docker +
-        # the sql-postgres extra) for dialect fidelity via SDLC_SQL_ENGINE=postgres.
-        if os.getenv("SDLC_SQL_ENGINE", "sqlite").lower() == "postgres":
-            from orchestrator.sdlc.testrunner import PostgresSqlTestRunner
-
-            return PostgresSqlTestRunner(dialect=dialect)
-        from orchestrator.sdlc.testrunner import SqlTestRunner
-
-        return SqlTestRunner(dialect=dialect)
-    return SubprocessTestRunner(python=env.python)
+    return get_toolchain(language).runner(env)
 
 
 _MISSING_RE = re.compile(r"No module named ['\"]([\w.]+)['\"]")
