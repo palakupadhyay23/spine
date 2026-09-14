@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "docs" / "specs" / "STATE-OF-SPINE.md"
 SPEC_INDEX = ROOT / "docs" / "specs" / "SPEC-INDEX.md"
 WALKTHROUGH = ROOT / "docs" / "specs" / "doc-binding-walkthrough.md"
+PARSING = ROOT / "docs" / "specs" / "parsing-and-the-pkg.md"
 
 
 _TEST_DEF = re.compile(r"^(?:async )?def test_", re.M)
@@ -149,6 +150,24 @@ def ts_calls_recall() -> str:
     return f"{calls['matched'] / calls['expected']:.2f}"
 
 
+def corpus_languages() -> int:
+    """Front-ends the committed corpus actually scores, from the same scoreboard as the recall.
+
+    The accuracy claim names a language count, and nothing counted it: `parsing-and-the-pkg.md`
+    still read "in all eight languages" two front-ends after PHP and Perl were being measured —
+    the same drift that left all three plugin manifests advertising eight (#366) and the
+    operator console advertising six (#367). Prose restating a number that lives in a
+    machine-readable source goes stale the moment the source moves.
+
+    `multirepo` is a cross-repository case, not a front-end, so it does not count toward a
+    language total.
+    """
+    import json
+
+    board = json.loads((ROOT / "src" / "orchestrator" / "pkg" / "scoreboard.json").read_text())
+    return len([name for name in board["metrics"]["corpus"]["languages"] if name != "multirepo"])
+
+
 def package_version() -> str:
     import tomllib
 
@@ -228,6 +247,25 @@ CLAIMS: tuple[Claim, ...] = (
         "TypeScript CALLS recall (STATE §3)",
         STATE,
         re.compile(r"· \*\*([\d.]+) \(typescript\)\*\*"),
+        ts_calls_recall,
+        numeric=False,
+    ),
+    Claim(
+        "corpus languages (parsing §3)",
+        PARSING,
+        re.compile(r"on the corpus, in all (\d+) languages"),
+        corpus_languages,
+    ),
+    Claim(
+        "corpus languages (parsing §6)",
+        PARSING,
+        re.compile(r"every edge kind, all (\d+) languages"),
+        corpus_languages,
+    ),
+    Claim(
+        "TypeScript CALLS recall (parsing §6)",
+        PARSING,
+        re.compile(r"([\d.]+) \(typescript\)"),
         ts_calls_recall,
         numeric=False,
     ),
