@@ -61,7 +61,11 @@ for the models, commands, counts and limits.
 
 ## What's new
 
-**3.34.1 (current)** — documentation has one home per task: [AGENT_GUIDE.md](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md) replaces the two
+**3.34.2 (current)** — maintainer tooling: a generic plan skeleton every development
+plan starts from, and a roadmap-currency gate that can check a plan kept outside the
+checkout. No engine changes.
+
+**3.34.1** — documentation has one home per task: [AGENT_GUIDE.md](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md) replaces the two
 host guides (its MCP tool inventory is generated and gated), [SETUP.md](https://github.com/synaptixs/spine/blob/main/SETUP.md) owns installation and
 credentials, [USER_GUIDE.md](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md) the
 everyday build, and [OPERATIONS.md](https://github.com/synaptixs/spine/blob/main/OPERATIONS.md)
