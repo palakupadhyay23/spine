@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## 3.34.2 — 2026-09-14
+
+### Added
+
+- **A generic plan skeleton, `docs/specs/templates/track-plan.md`.** Every development plan
+  re-derived its shape from whichever roadmap was nearest; the only skeleton was bound to
+  adding a language. The generic parent carries §5, a housekeeping block identical across
+  tracks (branch off `develop`, the gate, the four generated-artifact checks, the docs audit,
+  `episteme/`, rebase-never-re-run, one MR), and §6.1, which assigns every tooling site
+  hard-coding a name a track renames to the phase that must carry it, in the same commit.
+  `language-track.md` now specialises it ([#376](https://github.com/synaptixs/spine/pull/376)).
+
+### Changed
+
+- **`scripts/roadmap-status.py` accepts paths.** Plans for non-language tracks live outside
+  the checkout, so nothing checked their currency. Naming a file applies the same checks to
+  it; `check_indexed` skips out-of-tree files by construction, and a relative link falls back
+  to the repository root before being reported.
+
 ## 3.34.1 — 2026-09-14
 
 ### Changed
