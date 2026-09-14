@@ -5,7 +5,7 @@ modes, the full pipeline, and the steps to turn on each advanced
 capability — including the semantic spine (ontomesh × Spine × infodrift).
 
 See [SETUP.md](SETUP.md) for first install + the local stack, [USER_GUIDE.md](USER_GUIDE.md)
-for the everyday workflow, and [FEATURES.md](FEATURES.md) for the capability catalog.
+for the everyday workflow, and [README capability table](README.md#capabilities) for the capability catalog.
 
 ---
 

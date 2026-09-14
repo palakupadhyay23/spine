@@ -639,6 +639,6 @@ ordinary code.
 ## See also
 
 - [USER_GUIDE.md](USER_GUIDE.md) — the everyday workflow (the Understand step uses the PKG).
-- [FEATURES.md](FEATURES.md) — where the PKG sits among Spine's capabilities.
+- [README capability table](README.md#capabilities) — where the PKG sits among Spine's capabilities.
 - [OPERATIONS.md](OPERATIONS.md#the-semantic-spine) — the optional ontomesh domain layer.
 - [CLI_REFERENCE.md](CLI_REFERENCE.md) — every flag on `understand`, `state` and `pkg *`.

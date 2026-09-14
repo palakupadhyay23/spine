@@ -311,6 +311,9 @@ orchestrator catalog plan [PATH] [OPTIONS]
 
 Extract grounded code facts from a repo and print a summary (read-only).
 
+SQL extraction handles UTF-16 scripts and SQL Server `GO` batch separators, including
+scripted database projects. No flag is needed for the encoding or batch separators.
+
 ```
 orchestrator pkg extract [PATH] [OPTIONS]
 ```

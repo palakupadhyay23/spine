@@ -63,7 +63,6 @@ def set_root(path: Path | str) -> None:
 
 USER_DOCS = [
     "README.md",
-    "FEATURES.md",
     "USER_GUIDE.md",
     "KNOWLEDGE_GRAPH.md",
     "AGENT_GUIDE.md",

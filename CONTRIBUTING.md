@@ -124,6 +124,16 @@ the repository keeps the reference documents and the scripts, which need no assi
    it — with a clear description of **what** and **why**, linking any issue.
 5. A maintainer reviews; the `security scan` check must pass.
 
+### Release-cut documentation notes
+
+Use the [release row in the docs matrix](docs/reviewing/docs-matrix.md) to check
+the version, plugin manifests and generated artifacts together. Search the previous
+version across tracked Markdown and JSON; verify both digits and number words in
+language counts. The former capability catalog is now README's capability table;
+the agent guide is `AGENT_GUIDE.md`. `CLAUDE_GUIDE.md` and `CODEX_GUIDE.md` are dated
+redirects, not release claim surfaces. Preserve their links and do not stamp a
+version into them. Historical changelog entries retain the names they shipped with.
+
 ### When a check fails on something you didn't change
 
 **A re-run cannot fix a failure that came from the base branch. Push to your branch
