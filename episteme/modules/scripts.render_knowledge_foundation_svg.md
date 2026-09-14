@@ -26,7 +26,7 @@ _15 of the symbols other code depends on here have no test path the graph can se
 
 ## Documented in
 
-`CHANGELOG.md`, `CONTRIBUTING.md#opening-a-pull-request`, `docs/specs/knowledge-foundation-diagram-prompt.md#prompt-animated-knowledge-foundation-architecture-diagram`
+`CHANGELOG.md`, `CONTRIBUTING.md#opening-a-pull-request`, `docs/evidence/perl-codegen-c0-validation.txt`, `docs/evidence/perl-codegen-c1-validation.txt`, `docs/evidence/perl-codegen-c2-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`
 
 ## Types
 

@@ -4,6 +4,18 @@ A front-end is "one module", but registering it touches all of these. A PR that 
 ships a language that works on the author's machine and nowhere else, or a cache that never
 notices the language exists. Check each with `file:line` in the report.
 
+**Starting a new language track:** copy `docs/specs/templates/language-track.md` rather than
+re-deriving the roadmap shape from an existing one. Its living phase table is checked by
+`scripts/roadmap-status.py --check`; the real-repository smoke test below is
+`scripts/validate-frontend.py <language> <git-url> [<git-url> ...]`.
+
+**D1 (parser choice) — run `scripts/parse-census.py <grammar-module> <dir>` before writing
+the extractor**, not after: it parses every file of the language with the candidate grammar
+and reports the recall ceiling (files with a parse `ERROR`, lines inside `ERROR` spans,
+declaration counts by CST kind) independent of any extraction logic, so the D1 recall number
+in the roadmap's own evidence is measured before a line of `pkg/<lang>_extractor.py` exists,
+not reverse-engineered from it afterward.
+
 ## Registration (src)
 
 | Site | What | Failure if missed |
@@ -45,6 +57,34 @@ regenerated with `--scoreboard` and the PR saying so.
 ## Docs
 
 See `docs-matrix.md`, row "New language front-end".
+
+## Codegen registration and runner proof
+
+Register a complete `Toolchain` row in `sdlc/toolchains.py`: source extension, layout,
+scaffold, environment, runner, availability guard, preflight, phase prompts, layout
+guidance and the existing conventions capability id (or `None`). Preserve the language's
+auto-detection priority, separate test-authoring policy, and any scaffold preparation or
+build-ignore rules. Factories
+resolve implementations lazily; importing the registry must not require installed tools.
+`SUPPORTED_LANGUAGES` derives from this table, so register a language only when its whole
+runner set and prompts exist. A comprehension-only language must remain rejected.
+
+Temporal activities keep their injected test and preflight adapters and the worker's
+existing defaults. Moving codegen dispatch into the registry does not authorize changing
+workflow payloads or replacing an injected runner.
+
+Use the existing build-then-test template: perform prerequisite checks, return immediately
+on failure, then run tests and clip the output for refinement. `CTestRunner`, `GoTestRunner`,
+`PhpUnitTestRunner` and `ProveTestRunner` are examples. Require four proofs: real-tool green, deliberately
+red, an actionable missing-toolchain error, and an idempotent scaffold. A successful build
+or an empty suite is not evidence that a generated change passed its tests.
+
+For registry migrations, run each language's codegen tests before and after, explicitly
+including `tests/sdlc/test_php_codegen.py`. Run `uv run --frozen python
+scripts/mutate-dispatch.py`: it reads CI's extras for child test commands and must report
+**8 of 8 applied, 0 skipped**. Record behavioral differences as findings. Live codegen
+proofs additionally record model, command, independent clean-checkout rerun and grounding
+size in the roadmap's evidence cell.
 
 ## Precision rules every front-end must honour (findings if violated)
 

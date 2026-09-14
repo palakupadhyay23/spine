@@ -1,0 +1,210 @@
+C-4 brownfield proof. Every command uses uv run --frozen with CI extras dev mcp typescript java csharp c cpp go php perl.
+
+BASELINE (NO_COLOR removed):
+t/mojo/asset.t ............................. ok
+t/mojo/base.t .............................. ok
+t/mojo/base_util.t ......................... ok
+t/mojo/bytestream.t ........................ ok
+t/mojo/cache.t ............................. ok
+t/mojo/cgi.t ............................... ok
+t/mojo/collection.t ........................ ok
+t/mojo/content.t ........................... ok
+t/mojo/cookie.t ............................ ok
+t/mojo/cookiejar.t ......................... ok
+t/mojo/daemon.t ............................ ok
+t/mojo/daemon_ipv6_tls.t ................... skipped: set TEST_IPV6 to enable this test (developer only!)
+t/mojo/date.t .............................. ok
+t/mojo/dom.t ............................... ok
+t/mojo/dynamic_methods.t ................... ok
+t/mojo/eventemitter.t ...................... ok
+t/mojo/exception.t ......................... ok
+t/mojo/file.t .............................. ok
+t/mojo/file_download.t ..................... ok
+t/mojo/headers.t ........................... ok
+t/mojo/home.t .............................. ok
+t/mojo/hypnotoad.t ......................... skipped: set TEST_HYPNOTOAD to enable this test (developer only!)
+t/mojo/ioloop.t ............................ ok
+t/mojo/ioloop_ipv6.t ....................... skipped: set TEST_IPV6 to enable this test (developer only!)
+t/mojo/ioloop_tls.t ........................ skipped: set TEST_TLS to enable this test (developer only!)
+t/mojo/json.t .............................. ok
+t/mojo/json_pointer.t ...................... ok
+t/mojo/json_xs.t ........................... skipped: Cpanel::JSON::XS 4.20+ required for this test!
+t/mojo/loader.t ............................ ok
+t/mojo/log.t ............................... ok
+t/mojo/morbo.t ............................. skipped: set TEST_MORBO to enable this test (developer only!)
+t/mojo/parameters.t ........................ ok
+t/mojo/path.t .............................. ok
+t/mojo/prefork.t ........................... skipped: set TEST_PREFORK to enable this test (developer only!)
+t/mojo/promise.t ........................... ok
+t/mojo/promise_async_await.t ............... skipped: set TEST_ASYNC_AWAIT to enable this test (developer only!)
+t/mojo/proxy.t ............................. ok
+t/mojo/psgi.t .............................. ok
+t/mojo/reactor_detect.t .................... ok
+t/mojo/reactor_ev.t ........................ skipped: set TEST_EV to enable this test (developer only!)
+t/mojo/reactor_poll.t ...................... ok
+t/mojo/request.t ........................... ok
+t/mojo/request_cgi.t ....................... ok
+t/mojo/response.t .......................... ok
+t/mojo/roles.t ............................. ok
+t/mojo/signatures.t ........................ ok
+t/mojo/sse.t ............................... ok
+t/mojo/subprocess.t ........................ skipped: set TEST_SUBPROCESS to enable this test (developer only!)
+t/mojo/subprocess_ev.t ..................... skipped: set TEST_SUBPROCESS to enable this test (developer only!)
+t/mojo/template.t .......................... ok
+t/mojo/tls.t ............................... skipped: set TEST_TLS to enable this test (developer only!)
+t/mojo/transactor.t ........................ ok
+t/mojo/url.t ............................... ok
+t/mojo/user_agent.t ........................ ok
+t/mojo/user_agent_online.t ................. skipped: set TEST_ONLINE to enable this test (developer only!)
+t/mojo/user_agent_socks.t .................. skipped: set TEST_SOCKS to enable this test (developer only!)
+t/mojo/user_agent_tls.t .................... skipped: set TEST_TLS to enable this test (developer only!)
+t/mojo/user_agent_unix.t ................... skipped: set TEST_UNIX to enable this test (developer only!)
+t/mojo/util.t .............................. ok
+t/mojo/websocket.t ......................... ok
+t/mojo/websocket_frames.t .................. ok
+t/mojo/websocket_proxy.t ................... ok
+t/mojo/websocket_proxy_tls.t ............... skipped: set TEST_TLS to enable this test (developer only!)
+t/mojolicious/app.t ........................ ok
+t/mojolicious/charset_lite_app.t ........... ok
+t/mojolicious/command.t .................... ok
+t/mojolicious/commands.t ................... ok
+t/mojolicious/dispatch.t ................... ok
+t/mojolicious/dispatcher_lite_app.t ........ ok
+t/mojolicious/embedded_app.t ............... ok
+t/mojolicious/embedded_lite_app.t .......... ok
+t/mojolicious/exception_lite_app.t ......... ok
+t/mojolicious/external_app.t ............... ok
+t/mojolicious/external_lite_app.t .......... ok
+t/mojolicious/group_lite_app.t ............. ok
+t/mojolicious/json_config_lite_app.t ....... ok
+t/mojolicious/json_config_mode_lite_app.t .. ok
+t/mojolicious/layouted_lite_app.t .......... ok
+t/mojolicious/lite_app.t ................... ok
+t/mojolicious/log_lite_app.t ............... ok
+t/mojolicious/longpolling_lite_app.t ....... ok
+t/mojolicious/multipath_lite_app.t ......... ok
+t/mojolicious/ojo.t ........................ ok
+t/mojolicious/ojo_signatures.t ............. ok
+t/mojolicious/pattern.t .................... ok
+t/mojolicious/production_app.t ............. ok
+t/mojolicious/proxy_app.t .................. ok
+t/mojolicious/rebased_lite_app.t ........... ok
+t/mojolicious/renderer.t ................... ok
+t/mojolicious/restful_lite_app.t ........... ok
+t/mojolicious/routes.t ..................... ok
+t/mojolicious/session_lite_app.t ........... ok
+t/mojolicious/signatures_lite_app.t ........ ok
+t/mojolicious/sse_lite_app.t ............... ok
+t/mojolicious/static_lite_app.t ............ ok
+t/mojolicious/static_prefix_lite_app.t ..... ok
+t/mojolicious/tag_helper_lite_app.t ........ ok
+t/mojolicious/testing_app.t ................ ok
+t/mojolicious/tls_lite_app.t ............... skipped: set TEST_TLS to enable this test (developer only!)
+t/mojolicious/twinkle_lite_app.t ........... ok
+t/mojolicious/types.t ...................... ok
+t/mojolicious/upload_lite_app.t ............ ok
+t/mojolicious/upload_stream_lite_app.t ..... ok
+t/mojolicious/validation_lite_app.t ........ ok
+t/mojolicious/websocket_lite_app.t ......... ok
+t/mojolicious/yaml_config_lite_app.t ....... ok
+t/pod.t .................................... skipped: set TEST_POD to enable this test (developer only!)
+t/pod_coverage.t ........................... skipped: set TEST_POD to enable this test (developer only!)
+t/test/mojo.t .............................. ok
+All tests successful.
+Files=109, Tests=4184, 27 wallclock secs ( 0.36 usr  0.15 sys + 14.81 cusr  2.05 csys = 17.37 CPU)
+Result: PASS
+
+Elapsed: 27.19s
+
+INDEPENDENT CLEAN CHECKOUT:
+{
+  "model": "claude-opus-5",
+  "generated_commit": "fc010fd1149fe483127065d5f23cd4e82594eb39",
+  "clean_checkout": "/tmp/spine-perl-c4-independent",
+  "environment": "NO_COLOR removed; other repository test defaults preserved",
+  "runs": [
+    {
+      "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl perl -I lib -c lib/Mojo/Util.pm",
+      "returncode": 0,
+      "elapsed_seconds": 0.07,
+      "output": "Name \"IO::Uncompress::Gunzip::GzipError\" used only once: possible typo at lib/Mojo/Util.pm line 198.\nlib/Mojo/Util.pm syntax OK\n"
+    },
+    {
+      "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl prove -l t/mojo/util.t",
+      "returncode": 0,
+      "elapsed_seconds": 0.16,
+      "output": "t/mojo/util.t .. ok\nAll tests successful.\nFiles=1, Tests=73,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.09 cusr  0.01 csys =  0.12 CPU)\nResult: PASS\n"
+    },
+    {
+      "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl prove -l -r t/",
+      "returncode": 0,
+      "elapsed_seconds": 27.32,
+      "output": "t/mojo/asset.t ............................. ok\nt/mojo/base.t .............................. ok\nt/mojo/base_util.t ......................... ok\nt/mojo/bytestream.t ........................ ok\nt/mojo/cache.t ............................. ok\nt/mojo/cgi.t ............................... ok\nt/mojo/collection.t ........................ ok\nt/mojo/content.t ........................... ok\nt/mojo/cookie.t ............................ ok\nt/mojo/cookiejar.t ......................... ok\nt/mojo/daemon.t ............................ ok\nt/mojo/daemon_ipv6_tls.t ................... skipped: set TEST_IPV6 to enable this test (developer only!)\nt/mojo/date.t .............................. ok\nt/mojo/dom.t ............................... ok\nt/mojo/dynamic_methods.t ................... ok\nt/mojo/eventemitter.t ...................... ok\nt/mojo/exception.t ......................... ok\nt/mojo/file.t .............................. ok\nt/mojo/file_download.t ..................... ok\nt/mojo/headers.t ........................... ok\nt/mojo/home.t .............................. ok\nt/mojo/hypnotoad.t ......................... skipped: set TEST_HYPNOTOAD to enable this test (developer only!)\nt/mojo/ioloop.t ............................ ok\nt/mojo/ioloop_ipv6.t ....................... skipped: set TEST_IPV6 to enable this test (developer only!)\nt/mojo/ioloop_tls.t ........................ skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/json.t .............................. ok\nt/mojo/json_pointer.t ...................... ok\nt/mojo/json_xs.t ........................... skipped: Cpanel::JSON::XS 4.20+ required for this test!\nt/mojo/loader.t ............................ ok\nt/mojo/log.t ............................... ok\nt/mojo/morbo.t ............................. skipped: set TEST_MORBO to enable this test (developer only!)\nt/mojo/parameters.t ........................ ok\nt/mojo/path.t .............................. ok\nt/mojo/prefork.t ........................... skipped: set TEST_PREFORK to enable this test (developer only!)\nt/mojo/promise.t ........................... ok\nt/mojo/promise_async_await.t ............... skipped: set TEST_ASYNC_AWAIT to enable this test (developer only!)\nt/mojo/proxy.t ............................. ok\nt/mojo/psgi.t .............................. ok\nt/mojo/reactor_detect.t .................... ok\nt/mojo/reactor_ev.t ........................ skipped: set TEST_EV to enable this test (developer only!)\nt/mojo/reactor_poll.t ...................... ok\nt/mojo/request.t ........................... ok\nt/mojo/request_cgi.t ....................... ok\nt/mojo/response.t .......................... ok\nt/mojo/roles.t ............................. ok\nt/mojo/signatures.t ........................ ok\nt/mojo/sse.t ............................... ok\nt/mojo/strip_suffix.t ...................... ok\nt/mojo/subprocess.t ........................ skipped: set TEST_SUBPROCESS to enable this test (developer only!)\nt/mojo/subprocess_ev.t ..................... skipped: set TEST_SUBPROCESS to enable this test (developer only!)\nt/mojo/template.t .......................... ok\nt/mojo/tls.t ............................... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/transactor.t ........................ ok\nt/mojo/url.t ............................... ok\nt/mojo/user_agent.t ........................ ok\nt/mojo/user_agent_online.t ................. skipped: set TEST_ONLINE to enable this test (developer only!)\nt/mojo/user_agent_socks.t .................. skipped: set TEST_SOCKS to enable this test (developer only!)\nt/mojo/user_agent_tls.t .................... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/user_agent_unix.t ................... skipped: set TEST_UNIX to enable this test (developer only!)\nt/mojo/util.t .............................. ok\nt/mojo/websocket.t ......................... ok\nt/mojo/websocket_frames.t .................. ok\nt/mojo/websocket_proxy.t ................... ok\nt/mojo/websocket_proxy_tls.t ............... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojolicious/app.t ........................ ok\nt/mojolicious/charset_lite_app.t ........... ok\nt/mojolicious/command.t .................... ok\nt/mojolicious/commands.t ................... ok\nt/mojolicious/dispatch.t ................... ok\nt/mojolicious/dispatcher_lite_app.t ........ ok\nt/mojolicious/embedded_app.t ............... ok\nt/mojolicious/embedded_lite_app.t .......... ok\nt/mojolicious/exception_lite_app.t ......... ok\nt/mojolicious/external_app.t ............... ok\nt/mojolicious/external_lite_app.t .......... ok\nt/mojolicious/group_lite_app.t ............. ok\nt/mojolicious/json_config_lite_app.t ....... ok\nt/mojolicious/json_config_mode_lite_app.t .. ok\nt/mojolicious/layouted_lite_app.t .......... ok\nt/mojolicious/lite_app.t ................... ok\nt/mojolicious/log_lite_app.t ............... ok\nt/mojolicious/longpolling_lite_app.t ....... ok\nt/mojolicious/multipath_lite_app.t ......... ok\nt/mojolicious/ojo.t ........................ ok\nt/mojolicious/ojo_signatures.t ............. ok\nt/mojolicious/pattern.t .................... ok\nt/mojolicious/production_app.t ............. ok\nt/mojolicious/proxy_app.t .................. ok\nt/mojolicious/rebased_lite_app.t ........... ok\nt/mojolicious/renderer.t ................... ok\nt/mojolicious/restful_lite_app.t ........... ok\nt/mojolicious/routes.t ..................... ok\nt/mojolicious/session_lite_app.t ........... ok\nt/mojolicious/signatures_lite_app.t ........ ok\nt/mojolicious/sse_lite_app.t ............... ok\nt/mojolicious/static_lite_app.t ............ ok\nt/mojolicious/static_prefix_lite_app.t ..... ok\nt/mojolicious/tag_helper_lite_app.t ........ ok\nt/mojolicious/testing_app.t ................ ok\nt/mojolicious/tls_lite_app.t ............... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojolicious/twinkle_lite_app.t ........... ok\nt/mojolicious/types.t ...................... ok\nt/mojolicious/upload_lite_app.t ............ ok\nt/mojolicious/upload_stream_lite_app.t ..... ok\nt/mojolicious/validation_lite_app.t ........ ok\nt/mojolicious/websocket_lite_app.t ......... ok\nt/mojolicious/yaml_config_lite_app.t ....... ok\nt/pod.t .................................... skipped: set TEST_POD to enable this test (developer only!)\nt/pod_coverage.t ........................... skipped: set TEST_POD to enable this test (developer only!)\nt/test/mojo.t .............................. ok\nAll tests successful.\nFiles=110, Tests=4192, 28 wallclock secs ( 0.36 usr  0.15 sys + 14.92 cusr  2.06 csys = 17.49 CPU)\nResult: PASS\n"
+    }
+  ]
+}
+
+No production changes in this phase; C-3 full Spine suite: 3680 passed, 4 skipped, 51 deselected. Full gate repeated in C-5.
+
+PRE-COMMIT DOCUMENT GATES:
+$ python scripts/roadmap-status.py --check
+roadmap-status --check: OK — 2 phase table(s) checked, 7 checks each.
+
+$ python scripts/state-numbers.py --check
+[trend] binding: total mentions: doc-binding-walkthrough.md says 9482, the source says 11806
+[trend] binding: one symbol anchor: doc-binding-walkthrough.md says 3168, the source says 3613
+[trend] binding: ambiguous: doc-binding-walkthrough.md says 2030, the source says 2672
+[trend] binding: file only: doc-binding-walkthrough.md says 891, the source says 1140
+[trend] binding: no anchor: doc-binding-walkthrough.md says 3393, the source says 4381
+[trend] binding: edges drawn: doc-binding-walkthrough.md says 3120, the source says 3563
+[trend] binding: drift findings: doc-binding-walkthrough.md says 1556, the source says 2117
+[trend] binding: unbound sections: doc-binding-walkthrough.md says 826, the source says 919
+[trend] binding: Doc nodes: doc-binding-walkthrough.md says 1622, the source says 1788
+state-numbers --check: OK — 11 gated claim(s) match; 9 trended.
+
+$ python scripts/docs_audit.py --base develop --head HEAD
+[INFO] registered front-ends (10): python, java, typescript, csharp, c, cpp, go, php, perl, sql
+[INFO] front-end count: README.md:135 says '8', registry has 10: first full run over the tree fixed fifteen stale claims, from "8 front-ends" written before PHP to a
+[INFO] front-end count: README.md:238 says 'four', registry has 10: **3.22.0** — four front-ends were fabricating a `CALLS` edge when a parameter shadowed a
+[INFO] front-end count: BENCHMARK.md:47 says 'six', registry has 10: **C# has no slot.** Five repositories, six front-ends at 3.29.0 (there are nine now) — one
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:104 says '6', registry has 10: | Invention | **0** on this repo and on 11 pinned public repos across 6 front-ends, gated `strict` a
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:183 says 'six', registry has 10: `invention` was the same until 2026-08-24 and now walks six front-ends, naming Java and SQL
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:375 says '8', registry has 10: | `stale_findings` fabricated staleness on 7 of 8 front-ends | ✅ **fixed 2026-08-31** — dispatch is
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:385 says '6', registry has 10: | Shadowed-name `CALLS` invention in TypeScript, Go, C++, C# | ✅ **closed 2026-08-24** — oracle wide
+[INFO] front-end count: docs/specs/SPEC-INDEX.md:152 says '8', registry has 10: | [invention-oracle-cross-language](invention-oracle-cross-language.md) | The invention oracle acros
+[INFO] front-end count: docs/specs/SPEC-INDEX.md:152 says 'four', registry has 10: | [invention-oracle-cross-language](invention-oracle-cross-language.md) | The invention oracle acros
+[INFO] enumeration omits SQL: README.md:428: Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl** — each
+[INFO] enumeration omits SQL: FEATURES.md:41: | Multi-language comprehension + codegen — Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl | ✅ |
+[INFO] enumeration omits PHP, Perl, SQL: USER_GUIDE.md:335: > caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, and Go** (Java/TS
+[INFO] enumeration omits Python, Java: USER_GUIDE.md:360: > **TypeScript**, **C#**, **C**, **C++**, **Go**, **PHP**, **Perl**, and **SQL** when the matching p
+[INFO] enumeration omits SQL: CLAUDE_GUIDE.md:7: **brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, PHP, and Perl**.
+[INFO] enumeration omits Python, TypeScript, SQL: CLAUDE_GUIDE.md:833: | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](
+[INFO] enumeration omits SQL: CODEX_GUIDE.md:7: **brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, PHP, and Perl**.
+[INFO] enumeration omits Python, TypeScript, SQL: CODEX_GUIDE.md:739: | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](
+[INFO] enumeration omits TypeScript, Go, PHP, Perl, SQL: CLI_REFERENCE.md:784: gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS).
+[INFO] enumeration omits Python, Java, C#, C++, Go: docs/specs/STATE-OF-SPINE.md:35: | `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.89** (Perl,
+[INFO] enumeration omits Python, Java, C, PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:107: fixed.** When a parameter or local **shadowed** a resolvable name, TypeScript, Go, C++ and C#
+[INFO] enumeration omits PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:371: | Express endpoint extraction (TypeScript) | 🟡 **scoped 2026-09-02, and it is wider than this row sa
+[INFO] enumeration omits Python, Java, C, PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:385: | Shadowed-name `CALLS` invention in TypeScript, Go, C++, C# | ✅ **closed 2026-08-24** — oracle wide
+[INFO] MCP tool `doctor` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `ingest_preview` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `pkg_grounding` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_start_run` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_run_status` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_decide_gate` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_run_result` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `understand_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `profile_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `design_change` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_baseline` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_address_review` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_complete` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_remediate` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `audit_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_runs` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_approvals` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_decide` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_trace` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] docs touched by the diff (16): .github/pull_request_template.md, CHANGELOG.md, CLAUDE_GUIDE.md, CLI_REFERENCE.md, CODEX_GUIDE.md, CONTRIBUTING.md, FEATURES.md, README.md, SETUP.md, USER_GUIDE.md, docs/evidence/perl-codegen-c3-build.md, docs/reviewing/language-frontend-checklist.md, docs/specs/SPEC-INDEX.md, docs/specs/STATE-OF-SPINE.md, docs/specs/perl-codegen-roadmap.md, docs/specs/perl-support-roadmap.md
+
+docs_audit: 0 STALE/MISSING, 43 INFO

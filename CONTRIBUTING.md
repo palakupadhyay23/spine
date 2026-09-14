@@ -47,16 +47,23 @@ of a feature you took out. Stdlib only; runs on any ref. The reviewer runs it on
 
 **Reviewing a pull request as a maintainer.** The checklist a merge or promotion decision
 needs — the gate with CI's extras, fan-out code review, a real-repository smoke test for
-front-end changes, and the documentation audit above walked against
+front-end changes (`python scripts/validate-frontend.py <language> <git-url> [<git-url>
+...]` — shallow-clones each repo, extracts, verifies, and prints the `state` stack line and
+top unresolved import targets, so this no longer needs re-deriving by hand each time), and
+the documentation audit above walked against
 [docs/reviewing/docs-matrix.md](docs/reviewing/docs-matrix.md) (plus
 [docs/reviewing/language-frontend-checklist.md](docs/reviewing/language-frontend-checklist.md)
-when a front-end changed). Maintainers who use Claude Code carry it as a local `/review-pr`
+when a front-end changed). A language-track roadmap's own phase table is checked by
+`python scripts/roadmap-status.py --check` — a DONE phase with no Evidence, a stale
+top-of-document Status line, or a codegen phase started before its comprehension
+dependency landed. Maintainers who use Claude Code carry it as a local `/review-pr`
 skill and a `pr-reviewer` subagent under `.claude/`, which this repository does not track;
-the repository keeps the two reference documents and the script, which need no assistant.
+the repository keeps the reference documents and the scripts, which need no assistant.
 
 ## Opening a pull request
 
-1. Fork the repo and create a branch from `main` (e.g. `fix/email-validator-edge-case`).
+1. Fork the repo and create a branch from **`develop`** (e.g. `fix/email-validator-edge-case`).
+   `main` only moves through a release promotion, so a branch cut from it is already behind.
 2. Make your change with tests; keep it focused — one concern per PR.
 3. Make sure the quality gate is green locally — note `mypy src tests`, **not** just `src`;
    typing `src` alone passes here and fails CI:
@@ -112,7 +119,8 @@ the repository keeps the two reference documents and the script, which need no a
    working rather than a contributor carrying the artifact, so the check skips when the base
    is `main`. Since 3.20.0 that promotion is the **only** way `main`'s bank moves:
    regeneration runs on `develop` alone, and `main` inherits it verbatim.
-4. Open the PR with a clear description of **what** and **why**, linking any issue.
+4. Open the PR **against `develop`** — GitHub pre-selects `main`, the default branch; change
+   it — with a clear description of **what** and **why**, linking any issue.
 5. A maintainer reviews; the `security scan` check must pass.
 
 ### When a check fails on something you didn't change
@@ -144,6 +152,15 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for commit
 messages (e.g. `fix(planner): handle empty claims list`).
 
 ## Development setup
+
+**Codegen language changes:** add the complete row to `sdlc/toolchains.py` together with
+its implementations; this table controls `SUPPORTED_LANGUAGES`. Preserve Temporal's
+injected runners and worker defaults. Follow the [codegen checklist](docs/reviewing/language-frontend-checklist.md#codegen-registration-and-runner-proof)
+for real green/red runner proof, missing-toolchain errors and scaffold idempotency. For
+dispatch migrations, run the existing language tests before and after (including
+`tests/sdlc/test_php_codegen.py` by name), then `uv run --frozen python
+scripts/mutate-dispatch.py`; all eight mutations must be caught without skips. Its child
+pytest commands install exactly the extras named by CI's sync step.
 
 See [SETUP.md](SETUP.md) for the full local stack and [USER_GUIDE.md](USER_GUIDE.md)
 for the everyday workflow. In short: Python 3.12+, [`uv`](https://docs.astral.sh/uv/),

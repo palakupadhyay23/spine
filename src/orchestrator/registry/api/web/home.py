@@ -63,7 +63,11 @@ def _cards_html() -> str:
 # (icon, headline, detail) — what the delegated engineer can build. Rendered as a
 # feature grid so the capabilities read at a glance, not as a wall of text.
 _CAPS: tuple[tuple[str, str, str], ...] = (
-    ("terminal", "Six languages", "Python, Java, TypeScript, C#, C, and C++ (plus SQL data-layer)."),
+    (
+        "terminal",
+        "Nine languages",
+        "Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl (plus SQL data-layer).",
+    ),
     (
         "branch",
         "New or existing repos",

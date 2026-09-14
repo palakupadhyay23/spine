@@ -188,6 +188,31 @@ def _top_package(root: Path) -> str:
 __all__ = ["RepoConventions", "extract_conventions"]
 
 
+def perl_convention_block(root: Path, layout: TargetLayout | None) -> str:
+    """Observe the owning distribution's object and test styles, with bounded examples."""
+    from orchestrator.core.prompt_safety import fence_untrusted
+    from orchestrator.sdlc.perl import perl_files
+
+    source = root / layout.source_dir if layout is not None else root / "lib"
+    tests = root / layout.tests_dir if layout is not None else root / "t"
+    files = list(perl_files(source, (".pm",)))[:3] + list(perl_files(tests, (".t",)))[:3]
+    bodies = [(file, file.read_text(encoding="utf-8", errors="replace")[:1800]) for file in files]
+    text = "\n".join(body for _, body in bodies)
+    objects = (
+        "Moose"
+        if re.search(r"\buse\s+Moose\b", text)
+        else "Moo"
+        if re.search(r"\buse\s+Moo\b", text)
+        else "classic bless"
+    )
+    testing = "Test2::V0" if re.search(r"\buse\s+Test2::V0\b", text) else "Test::More"
+    examples = "\n".join(fence_untrusted(file.relative_to(root).as_posix(), body) for file, body in bodies)
+    return (
+        f"PERL CONVENTIONS: use strict; use warnings; object style: {objects}; tests: {testing}. "
+        "Follow neighboring package clauses; underscore private subs; POD for public subs.\n" + examples
+    )
+
+
 def php_convention_block(root: Path, layout: TargetLayout) -> str:
     """Bounded source and test examples, retaining legacy naming/import evidence."""
     from orchestrator.core.prompt_safety import fence_untrusted

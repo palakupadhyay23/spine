@@ -5,307 +5,322 @@
 
 **Source:** [`src/orchestrator/sdlc/layout.py`](../../src/orchestrator/sdlc/layout.py)
 
-1 types · 37 functions · python
+1 types · 40 functions · python
 
 ## Changing this safely
 
-**Tested by** (7): `tests.sdlc.test_codegen`, `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_layout`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_scaffold`, `tests.sdlc.test_typescript_integration`
+**Tested by** (9): `tests.sdlc.test_codegen`, `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_layout`, `tests.sdlc.test_perl_codegen`, `tests.sdlc.test_perl_integration`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_scaffold`, +1 more
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
-- [`is_effectively_empty`](../../src/orchestrator/sdlc/layout.py#L653) — reaches **23** symbols
-- [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80) — reaches **18** symbols
-- [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L109) — reaches **16** symbols
-- [`_csharp_dirs`](../../src/orchestrator/sdlc/layout.py#L304) — reaches **9** symbols
-- [`_resolve_c_layout`](../../src/orchestrator/sdlc/layout.py#L433) — reaches **9** symbols
-- [`_resolve_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L470) — reaches **9** symbols
-- [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334) — reaches **9** symbols
-- [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L578) — reaches **9** symbols
+- [`is_effectively_empty`](../../src/orchestrator/sdlc/layout.py#L644) — reaches **25** symbols
+- [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69) — reaches **11** symbols
+- [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100) — reaches **9** symbols
+- [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L657) — reaches **9** symbols
+- [`_detect_c_build_tool`](../../src/orchestrator/sdlc/layout.py#L348) — reaches **6** symbols
+- [`_go_package_of_dir`](../../src/orchestrator/sdlc/layout.py#L500) — reaches **3** symbols
+- [`_nearest_go_module_dir`](../../src/orchestrator/sdlc/layout.py#L511) — reaches **3** symbols
+- [`_read_cmake_project_name`](../../src/orchestrator/sdlc/layout.py#L386) — reaches **3** symbols
+
+_7 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
 ## Documented in
 
-`docs/specs/java-codegen.md#whats-python-shaped-today-the-surfaces-to-generalize`, `docs/specs/multi-language-java.md#slice-2-java-codegen-follow-on`, `docs/specs/php-codegen-roadmap.md#5-files-to-change`, `docs/specs/project-comprehension-memory-bank.md#two-branches-same-output-shape`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
+`docs/evidence/perl-codegen-c0-php-conventions.txt`, `docs/specs/java-codegen.md#whats-python-shaped-today-the-surfaces-to-generalize`, `docs/specs/multi-language-java.md#slice-2-java-codegen-follow-on`, `docs/specs/perl-codegen-roadmap.md#2-design`, `docs/specs/php-codegen-roadmap.md#5-files-to-change`, `docs/specs/project-comprehension-memory-bank.md#two-branches-same-output-shape`
 
 ## Types
 
 ### `TargetLayout`
 
-[`src/orchestrator/sdlc/layout.py:80`](../../src/orchestrator/sdlc/layout.py#L80)
+[`src/orchestrator/sdlc/layout.py:69`](../../src/orchestrator/sdlc/layout.py#L69)
 
-- **Called by** (8 production · 12 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334), [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L578), [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L403), [`_resolve_php_layout`](../../src/orchestrator/sdlc/layout.py#L623), [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L448), [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L264), [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666), [`test_c_layout_selects_c_prompts`](../../tests/sdlc/test_codegen.py#L451), [`test_cpp_layout_selects_cpp_prompts`](../../tests/sdlc/test_codegen.py#L476), [`test_csharp_layout_selects_csharp_prompts`](../../tests/sdlc/test_codegen.py#L416), [`test_flat_layout_pythonpath`](../../tests/sdlc/test_scaffold.py#L273), [`test_java_layout_selects_java_prompts`](../../tests/sdlc/test_codegen.py#L283), [`test_layout_block_pins_paths_in_every_phase`](../../tests/sdlc/test_codegen.py#L257), [`test_scaffold_sql_coexists_with_app_code`](../../tests/sdlc/test_scaffold.py#L292), [`test_scaffold_sql_creates_migrations_dir`](../../tests/sdlc/test_scaffold.py#L280), [`test_sql_generate_validate_refine_loop`](../../tests/sdlc/test_codegen.py#L343), [`test_sql_layout_selects_sql_migration_prompts`](../../tests/sdlc/test_codegen.py#L317), [`test_the_layout_permits_editing_the_repo_s_own_docs`](../../tests/sdlc/test_codegen.py#L1436), [`test_typescript_layout_selects_typescript_prompts`](../../tests/sdlc/test_codegen.py#L379)
+- **Called by** (9 production · 14 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L325), [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L569), [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L186), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L394), [`_resolve_perl_layout`](../../src/orchestrator/sdlc/layout.py#L758), [`_resolve_php_layout`](../../src/orchestrator/sdlc/layout.py#L614), [`_resolve_python_layout`](../../src/orchestrator/sdlc/layout.py#L687), [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L439), [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L255), [`test_c_layout_selects_c_prompts`](../../tests/sdlc/test_codegen.py#L451), [`test_cpp_layout_selects_cpp_prompts`](../../tests/sdlc/test_codegen.py#L476), [`test_csharp_layout_selects_csharp_prompts`](../../tests/sdlc/test_codegen.py#L416), [`test_flat_layout_pythonpath`](../../tests/sdlc/test_scaffold.py#L273), [`test_java_layout_selects_java_prompts`](../../tests/sdlc/test_codegen.py#L283), [`test_layout_block_pins_paths_in_every_phase`](../../tests/sdlc/test_codegen.py#L257), [`test_php_dispatch_preserves_brownfield_layout_guidance`](../../tests/sdlc/test_codegen.py#L2154), [`test_php_dispatch_samples_php_conventions`](../../tests/sdlc/test_codegen.py#L2183), [`test_scaffold_sql_coexists_with_app_code`](../../tests/sdlc/test_scaffold.py#L292), [`test_scaffold_sql_creates_migrations_dir`](../../tests/sdlc/test_scaffold.py#L280), [`test_sql_generate_validate_refine_loop`](../../tests/sdlc/test_codegen.py#L343), [`test_sql_layout_selects_sql_migration_prompts`](../../tests/sdlc/test_codegen.py#L317), [`test_the_layout_permits_editing_the_repo_s_own_docs`](../../tests/sdlc/test_codegen.py#L1436), [`test_typescript_layout_selects_typescript_prompts`](../../tests/sdlc/test_codegen.py#L379)
 - **Fields**: `build_tool`, `language`, `mode`, `package_name`, `scaffolded`, `source_dir`, `src_layout`, `target_framework`, `test_bootstrap`, `test_suffix`, `tests_dir`
-- **Documented in**: `docs/specs/java-codegen.md#feature-runner`, `docs/specs/java-codegen.md#first-step`, `docs/specs/java-codegen.md#layout-targetlayout-gains-language-build-tool`, `docs/specs/java-codegen.md#phasing-each-shippable`, `docs/specs/java-codegen.md#whats-python-shaped-today-the-surfaces-to-generalize`, `docs/specs/php-codegen-roadmap.md#31-layout-layoutpy`
+- **Documented in**: `docs/evidence/perl-codegen-c0-php-conventions.txt`, `docs/specs/java-codegen.md#feature-runner`, `docs/specs/java-codegen.md#first-step`, `docs/specs/java-codegen.md#layout-targetlayout-gains-language-build-tool`, `docs/specs/java-codegen.md#phasing-each-shippable`, `docs/specs/java-codegen.md#whats-python-shaped-today-the-surfaces-to-generalize`
 
 ## Functions
 
 ### `_csharp_dirs`
 
-[`src/orchestrator/sdlc/layout.py:304`](../../src/orchestrator/sdlc/layout.py#L304)
+[`src/orchestrator/sdlc/layout.py:295`](../../src/orchestrator/sdlc/layout.py#L295)
 
-- **Called by** (2): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334), [`detect_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L309)
+- **Called by** (2): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L325), [`detect_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L300)
 
 ### `_detect_build_tool`
 
-[`src/orchestrator/sdlc/layout.py:171`](../../src/orchestrator/sdlc/layout.py#L171)
+[`src/orchestrator/sdlc/layout.py:162`](../../src/orchestrator/sdlc/layout.py#L162)
 
-- **Called by** (1): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195)
+- **Called by** (1): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L186)
 
 ### `_detect_c_build_tool`
 
-[`src/orchestrator/sdlc/layout.py:357`](../../src/orchestrator/sdlc/layout.py#L357)
+[`src/orchestrator/sdlc/layout.py:348`](../../src/orchestrator/sdlc/layout.py#L348)
 
-- **Called by** (2): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L372), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L403)
+- **Called by** (2): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L363), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L394)
 
 ### `_detect_native_layout`
 
-[`src/orchestrator/sdlc/layout.py:372`](../../src/orchestrator/sdlc/layout.py#L372)
+[`src/orchestrator/sdlc/layout.py:363`](../../src/orchestrator/sdlc/layout.py#L363)
 
-- **Called by** (2): [`detect_c_layout`](../../src/orchestrator/sdlc/layout.py#L385), [`detect_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L390)
-- **Calls** (3): [`_detect_c_build_tool`](../../src/orchestrator/sdlc/layout.py#L357), [`_read_cmake_project_name`](../../src/orchestrator/sdlc/layout.py#L395), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L109)
+- **Called by** (2): [`detect_c_layout`](../../src/orchestrator/sdlc/layout.py#L376), [`detect_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L381)
+- **Calls** (3): [`_detect_c_build_tool`](../../src/orchestrator/sdlc/layout.py#L348), [`_read_cmake_project_name`](../../src/orchestrator/sdlc/layout.py#L386), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100)
 
 ### `_detect_node_pm`
 
-[`src/orchestrator/sdlc/layout.py:231`](../../src/orchestrator/sdlc/layout.py#L231)
+[`src/orchestrator/sdlc/layout.py:222`](../../src/orchestrator/sdlc/layout.py#L222)
 
-- **Called by** (1): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L264)
+- **Called by** (1): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L255)
 
 ### `_go_package_of_dir`
 
-[`src/orchestrator/sdlc/layout.py:509`](../../src/orchestrator/sdlc/layout.py#L509)
+[`src/orchestrator/sdlc/layout.py:500`](../../src/orchestrator/sdlc/layout.py#L500)
 
-- **Called by** (2): [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L533), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L560)
+- **Called by** (2): [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L524), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L551)
 - **Calls** (1): `search`
 
 ### `_java_dirs`
 
-[`src/orchestrator/sdlc/layout.py:166`](../../src/orchestrator/sdlc/layout.py#L166)
+[`src/orchestrator/sdlc/layout.py:157`](../../src/orchestrator/sdlc/layout.py#L157)
 
-- **Called by** (1): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195)
+- **Called by** (1): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L186)
 
 ### `_nearest_go_module_dir`
 
-[`src/orchestrator/sdlc/layout.py:520`](../../src/orchestrator/sdlc/layout.py#L520)
+[`src/orchestrator/sdlc/layout.py:511`](../../src/orchestrator/sdlc/layout.py#L511)
 
-- **Called by** (1): [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L533)
+- **Called by** (1): [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L524)
 
 ### `_pick_go_source_dir`
 
-[`src/orchestrator/sdlc/layout.py:533`](../../src/orchestrator/sdlc/layout.py#L533)
+[`src/orchestrator/sdlc/layout.py:524`](../../src/orchestrator/sdlc/layout.py#L524)
 
-- **Called by** (1): [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L560)
-- **Calls** (4): [`_go_package_of_dir`](../../src/orchestrator/sdlc/layout.py#L509), [`_nearest_go_module_dir`](../../src/orchestrator/sdlc/layout.py#L520), `pathlib.Path`, `walk`
+- **Called by** (1): [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L551)
+- **Calls** (4): [`_go_package_of_dir`](../../src/orchestrator/sdlc/layout.py#L500), [`_nearest_go_module_dir`](../../src/orchestrator/sdlc/layout.py#L511), `pathlib.Path`, `walk`
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
 ### `_read_cmake_project_name`
 
-[`src/orchestrator/sdlc/layout.py:395`](../../src/orchestrator/sdlc/layout.py#L395)
+[`src/orchestrator/sdlc/layout.py:386`](../../src/orchestrator/sdlc/layout.py#L386)
 
-- **Called by** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L372)
+- **Called by** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L363)
 - **Calls** (1): `search`
 
 ### `_read_go_module`
 
-[`src/orchestrator/sdlc/layout.py:495`](../../src/orchestrator/sdlc/layout.py#L495)
+[`src/orchestrator/sdlc/layout.py:486`](../../src/orchestrator/sdlc/layout.py#L486)
 
-- **Called by** (1): [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L560)
+- **Called by** (1): [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L551)
 - **Calls** (1): `search`
 
 ### `_read_package_json_name`
 
-[`src/orchestrator/sdlc/layout.py:240`](../../src/orchestrator/sdlc/layout.py#L240)
+[`src/orchestrator/sdlc/layout.py:231`](../../src/orchestrator/sdlc/layout.py#L231)
 
-- **Called by** (1): [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L253)
+- **Called by** (1): [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L244)
 - **Calls** (1): `loads`
 
 ### `_resolve_c_layout`
 
-[`src/orchestrator/sdlc/layout.py:433`](../../src/orchestrator/sdlc/layout.py#L433)
+[`src/orchestrator/sdlc/layout.py:424`](../../src/orchestrator/sdlc/layout.py#L424)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (1): [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L403)
+- **Calls** (1): [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L394)
 
 ### `_resolve_cpp_layout`
 
-[`src/orchestrator/sdlc/layout.py:470`](../../src/orchestrator/sdlc/layout.py#L470)
+[`src/orchestrator/sdlc/layout.py:461`](../../src/orchestrator/sdlc/layout.py#L461)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (1): [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L403)
+- **Calls** (1): [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L394)
 
 ### `_resolve_csharp_layout`
 
-[`src/orchestrator/sdlc/layout.py:334`](../../src/orchestrator/sdlc/layout.py#L334)
+[`src/orchestrator/sdlc/layout.py:325`](../../src/orchestrator/sdlc/layout.py#L325)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (4): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`_csharp_dirs`](../../src/orchestrator/sdlc/layout.py#L304), [`derive_csharp_namespace`](../../src/orchestrator/sdlc/layout.py#L286), [`detect_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L309)
+- **Calls** (4): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`_csharp_dirs`](../../src/orchestrator/sdlc/layout.py#L295), [`derive_csharp_namespace`](../../src/orchestrator/sdlc/layout.py#L277), [`detect_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L300)
 
 ### `_resolve_go_layout`
 
-[`src/orchestrator/sdlc/layout.py:578`](../../src/orchestrator/sdlc/layout.py#L578)
+[`src/orchestrator/sdlc/layout.py:569`](../../src/orchestrator/sdlc/layout.py#L569)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`derive_go_module`](../../src/orchestrator/sdlc/layout.py#L476), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L560)
+- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`derive_go_module`](../../src/orchestrator/sdlc/layout.py#L467), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L551)
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
 ### `_resolve_java_layout`
 
-[`src/orchestrator/sdlc/layout.py:195`](../../src/orchestrator/sdlc/layout.py#L195)
+[`src/orchestrator/sdlc/layout.py:186`](../../src/orchestrator/sdlc/layout.py#L186)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (5): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`_detect_build_tool`](../../src/orchestrator/sdlc/layout.py#L171), [`_java_dirs`](../../src/orchestrator/sdlc/layout.py#L166), [`derive_java_package`](../../src/orchestrator/sdlc/layout.py#L153), [`detect_java_layout`](../../src/orchestrator/sdlc/layout.py#L179)
+- **Calls** (5): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`_detect_build_tool`](../../src/orchestrator/sdlc/layout.py#L162), [`_java_dirs`](../../src/orchestrator/sdlc/layout.py#L157), [`derive_java_package`](../../src/orchestrator/sdlc/layout.py#L144), [`detect_java_layout`](../../src/orchestrator/sdlc/layout.py#L170)
 - **Documented in**: `docs/specs/typescript-codegen.md#layout-targetlayout-typescript-branch`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
 
 ### `_resolve_native_layout`
 
-[`src/orchestrator/sdlc/layout.py:403`](../../src/orchestrator/sdlc/layout.py#L403)
+[`src/orchestrator/sdlc/layout.py:394`](../../src/orchestrator/sdlc/layout.py#L394)
 
-- **Called by** (2): [`_resolve_c_layout`](../../src/orchestrator/sdlc/layout.py#L433), [`_resolve_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L470)
-- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`_detect_c_build_tool`](../../src/orchestrator/sdlc/layout.py#L357), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L109)
+- **Called by** (2): [`_resolve_c_layout`](../../src/orchestrator/sdlc/layout.py#L424), [`_resolve_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L461)
+- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`_detect_c_build_tool`](../../src/orchestrator/sdlc/layout.py#L348), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100)
+
+### `_resolve_perl_layout`
+
+[`src/orchestrator/sdlc/layout.py:758`](../../src/orchestrator/sdlc/layout.py#L758)
+
+- **Calls** (4): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100), [`detect_perl_layout`](../../src/orchestrator/sdlc/layout.py#L732), [`package_name`](../../src/orchestrator/sdlc/perl.py#L65)
+- **Documented in**: `docs/specs/perl-codegen-roadmap.md#2-design`
 
 ### `_resolve_php_layout`
 
-[`src/orchestrator/sdlc/layout.py:623`](../../src/orchestrator/sdlc/layout.py#L623)
+[`src/orchestrator/sdlc/layout.py:614`](../../src/orchestrator/sdlc/layout.py#L614)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`detect_php_layout`](../../src/orchestrator/sdlc/layout.py#L601), [`read_phpunit_config`](../../src/orchestrator/sdlc/php.py#L35)
+- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`detect_php_layout`](../../src/orchestrator/sdlc/layout.py#L592), [`read_phpunit_config`](../../src/orchestrator/sdlc/php.py#L36)
 - **Documented in**: `docs/specs/php-codegen-roadmap.md#4-phases`, `docs/specs/php-codegen-roadmap.md#5-files-to-change`
+
+### `_resolve_python_layout`
+
+[`src/orchestrator/sdlc/layout.py:687`](../../src/orchestrator/sdlc/layout.py#L687)
+
+- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100), [`detect_existing_package`](../../src/orchestrator/sdlc/layout.py#L121)
 
 ### `_resolve_sql_layout`
 
-[`src/orchestrator/sdlc/layout.py:448`](../../src/orchestrator/sdlc/layout.py#L448)
+[`src/orchestrator/sdlc/layout.py:439`](../../src/orchestrator/sdlc/layout.py#L439)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L109), [`detect_sql_layout`](../../src/orchestrator/sdlc/layout.py#L439)
+- **Calls** (3): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L100), [`detect_sql_layout`](../../src/orchestrator/sdlc/layout.py#L430)
 - **Documented in**: `docs/specs/sql-support-roadmap.md#phases`
 
 ### `_resolve_typescript_layout`
 
-[`src/orchestrator/sdlc/layout.py:264`](../../src/orchestrator/sdlc/layout.py#L264)
+[`src/orchestrator/sdlc/layout.py:255`](../../src/orchestrator/sdlc/layout.py#L255)
 
-- **Called by** (1): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666)
-- **Calls** (4): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`_detect_node_pm`](../../src/orchestrator/sdlc/layout.py#L231), [`derive_npm_package`](../../src/orchestrator/sdlc/layout.py#L219), [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L253)
+- **Calls** (4): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L69), [`_detect_node_pm`](../../src/orchestrator/sdlc/layout.py#L222), [`derive_npm_package`](../../src/orchestrator/sdlc/layout.py#L210), [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L244)
 - **Documented in**: `docs/specs/typescript-codegen.md#layout-targetlayout-typescript-branch`
 
 ### `derive_csharp_namespace`
 
-[`src/orchestrator/sdlc/layout.py:286`](../../src/orchestrator/sdlc/layout.py#L286)
+[`src/orchestrator/sdlc/layout.py:277`](../../src/orchestrator/sdlc/layout.py#L277)
 
-- **Called by** (1 production · 1 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334), [`test_derive_csharp_namespace`](../../tests/sdlc/test_layout.py#L181)
+- **Called by** (1 production · 1 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L325), [`test_derive_csharp_namespace`](../../tests/sdlc/test_layout.py#L181)
 - **Calls** (1): `split`
 
 ### `derive_go_module`
 
-[`src/orchestrator/sdlc/layout.py:476`](../../src/orchestrator/sdlc/layout.py#L476)
+[`src/orchestrator/sdlc/layout.py:467`](../../src/orchestrator/sdlc/layout.py#L467)
 
-- **Called by** (2 production · 1 test): [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L578), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L560), [`test_derive_go_module`](../../tests/sdlc/test_layout.py#L276)
+- **Called by** (2 production · 1 test): [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L569), [`detect_go_layout`](../../src/orchestrator/sdlc/layout.py#L551), [`test_derive_go_module`](../../tests/sdlc/test_layout.py#L276)
 - **Calls** (1): `sub`
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
 ### `derive_java_package`
 
-[`src/orchestrator/sdlc/layout.py:153`](../../src/orchestrator/sdlc/layout.py#L153)
+[`src/orchestrator/sdlc/layout.py:144`](../../src/orchestrator/sdlc/layout.py#L144)
 
-- **Called by** (1 production · 1 test): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195), [`test_derive_java_package`](../../tests/sdlc/test_layout.py#L107)
+- **Called by** (1 production · 1 test): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L186), [`test_derive_java_package`](../../tests/sdlc/test_layout.py#L107)
 - **Calls** (1): `sub`
 
 ### `derive_npm_package`
 
-[`src/orchestrator/sdlc/layout.py:219`](../../src/orchestrator/sdlc/layout.py#L219)
+[`src/orchestrator/sdlc/layout.py:210`](../../src/orchestrator/sdlc/layout.py#L210)
 
-- **Called by** (2 production · 1 test): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L264), [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L253), [`test_derive_npm_package`](../../tests/sdlc/test_layout.py#L144)
+- **Called by** (2 production · 1 test): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L255), [`detect_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L244), [`test_derive_npm_package`](../../tests/sdlc/test_layout.py#L144)
 - **Calls** (1): `sub`
 - **Documented in**: `docs/specs/typescript-codegen.md#design-multi-language-support-typescript`
 
 ### `derive_package_name`
 
-[`src/orchestrator/sdlc/layout.py:109`](../../src/orchestrator/sdlc/layout.py#L109)
+[`src/orchestrator/sdlc/layout.py:100`](../../src/orchestrator/sdlc/layout.py#L100)
 
-- **Called by** (4 production · 6 test): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L372), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L403), [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L448), [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666), [`test_empty_falls_back`](../../tests/sdlc/test_layout.py#L44), [`test_keyword_is_guarded`](../../tests/sdlc/test_layout.py#L41), [`test_leading_digit_is_guarded`](../../tests/sdlc/test_layout.py#L38), [`test_repo_url_with_trailing_dot`](../../tests/sdlc/test_layout.py#L27), [`test_spaces_and_punctuation`](../../tests/sdlc/test_layout.py#L35), [`test_strips_dot_git`](../../tests/sdlc/test_layout.py#L32)
+- **Called by** (5 production · 6 test): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L363), [`_resolve_native_layout`](../../src/orchestrator/sdlc/layout.py#L394), [`_resolve_perl_layout`](../../src/orchestrator/sdlc/layout.py#L758), [`_resolve_python_layout`](../../src/orchestrator/sdlc/layout.py#L687), [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L439), [`test_empty_falls_back`](../../tests/sdlc/test_layout.py#L44), [`test_keyword_is_guarded`](../../tests/sdlc/test_layout.py#L41), [`test_leading_digit_is_guarded`](../../tests/sdlc/test_layout.py#L38), [`test_repo_url_with_trailing_dot`](../../tests/sdlc/test_layout.py#L27), [`test_spaces_and_punctuation`](../../tests/sdlc/test_layout.py#L35), [`test_strips_dot_git`](../../tests/sdlc/test_layout.py#L32)
 - **Calls** (2): `iskeyword`, `sub`
 
 ### `detect_c_layout`
 
-[`src/orchestrator/sdlc/layout.py:385`](../../src/orchestrator/sdlc/layout.py#L385)
+[`src/orchestrator/sdlc/layout.py:376`](../../src/orchestrator/sdlc/layout.py#L376)
 
 - **Called by** (0 production · 2 test): [`test_detect_existing_cmake_project`](../../tests/sdlc/test_layout.py#L227), [`test_detects_meson_build_tool`](../../tests/sdlc/test_layout.py#L242)
-- **Calls** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L372)
+- **Calls** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L363)
 
 ### `detect_cpp_layout`
 
-[`src/orchestrator/sdlc/layout.py:390`](../../src/orchestrator/sdlc/layout.py#L390)
+[`src/orchestrator/sdlc/layout.py:381`](../../src/orchestrator/sdlc/layout.py#L381)
 
 - **Called by** (0 production · 1 test): [`test_detect_existing_cpp_project`](../../tests/sdlc/test_layout.py#L264)
-- **Calls** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L372)
+- **Calls** (1): [`_detect_native_layout`](../../src/orchestrator/sdlc/layout.py#L363)
 
 ### `detect_csharp_layout`
 
-[`src/orchestrator/sdlc/layout.py:309`](../../src/orchestrator/sdlc/layout.py#L309)
+[`src/orchestrator/sdlc/layout.py:300`](../../src/orchestrator/sdlc/layout.py#L300)
 
-- **Called by** (1 production · 1 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334), [`test_detect_existing_csharp_project`](../../tests/sdlc/test_layout.py#L197)
-- **Calls** (1): [`_csharp_dirs`](../../src/orchestrator/sdlc/layout.py#L304)
+- **Called by** (1 production · 1 test): [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L325), [`test_detect_existing_csharp_project`](../../tests/sdlc/test_layout.py#L197)
+- **Calls** (1): [`_csharp_dirs`](../../src/orchestrator/sdlc/layout.py#L295)
 
 ### `detect_existing_package`
 
-[`src/orchestrator/sdlc/layout.py:130`](../../src/orchestrator/sdlc/layout.py#L130)
+[`src/orchestrator/sdlc/layout.py:121`](../../src/orchestrator/sdlc/layout.py#L121)
 
-- **Called by** (1 production · 4 test): [`resolve_layout`](../../src/orchestrator/sdlc/layout.py#L666), [`test_empty_repo`](../../tests/sdlc/test_layout.py#L65), [`test_flat_layout`](../../tests/sdlc/test_layout.py#L54), [`test_ignores_tests_and_dotdirs`](../../tests/sdlc/test_layout.py#L59), [`test_src_layout`](../../tests/sdlc/test_layout.py#L49)
+- **Called by** (1 production · 4 test): [`_resolve_python_layout`](../../src/orchestrator/sdlc/layout.py#L687), [`test_empty_repo`](../../tests/sdlc/test_layout.py#L65), [`test_flat_layout`](../../tests/sdlc/test_layout.py#L54), [`test_ignores_tests_and_dotdirs`](../../tests/sdlc/test_layout.py#L59), [`test_src_layout`](../../tests/sdlc/test_layout.py#L49)
 - **Documented in**: `docs/specs/java-codegen.md#layout-targetlayout-gains-language-build-tool`
 
 ### `detect_go_layout`
 
-[`src/orchestrator/sdlc/layout.py:560`](../../src/orchestrator/sdlc/layout.py#L560)
+[`src/orchestrator/sdlc/layout.py:551`](../../src/orchestrator/sdlc/layout.py#L551)
 
-- **Called by** (1 production · 3 test): [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L578), [`test_brownfield_placement_prefers_root_module_lib_over_main_and_demo`](../../tests/sdlc/test_layout.py#L311), [`test_detect_existing_go_module_root`](../../tests/sdlc/test_layout.py#L293), [`test_detect_existing_go_module_subdir`](../../tests/sdlc/test_layout.py#L301)
-- **Calls** (4): [`_go_package_of_dir`](../../src/orchestrator/sdlc/layout.py#L509), [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L533), [`_read_go_module`](../../src/orchestrator/sdlc/layout.py#L495), [`derive_go_module`](../../src/orchestrator/sdlc/layout.py#L476)
+- **Called by** (1 production · 3 test): [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L569), [`test_brownfield_placement_prefers_root_module_lib_over_main_and_demo`](../../tests/sdlc/test_layout.py#L311), [`test_detect_existing_go_module_root`](../../tests/sdlc/test_layout.py#L293), [`test_detect_existing_go_module_subdir`](../../tests/sdlc/test_layout.py#L301)
+- **Calls** (4): [`_go_package_of_dir`](../../src/orchestrator/sdlc/layout.py#L500), [`_pick_go_source_dir`](../../src/orchestrator/sdlc/layout.py#L524), [`_read_go_module`](../../src/orchestrator/sdlc/layout.py#L486), [`derive_go_module`](../../src/orchestrator/sdlc/layout.py#L467)
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
 ### `detect_java_layout`
 
-[`src/orchestrator/sdlc/layout.py:179`](../../src/orchestrator/sdlc/layout.py#L179)
+[`src/orchestrator/sdlc/layout.py:170`](../../src/orchestrator/sdlc/layout.py#L170)
 
-- **Called by** (1 production · 1 test): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195), [`test_detect_existing_java_package`](../../tests/sdlc/test_layout.py#L120)
+- **Called by** (1 production · 1 test): [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L186), [`test_detect_existing_java_package`](../../tests/sdlc/test_layout.py#L120)
 - **Calls** (2): `pathlib.Path`, `walk`
+
+### `detect_perl_layout`
+
+[`src/orchestrator/sdlc/layout.py:732`](../../src/orchestrator/sdlc/layout.py#L732)
+
+- **Called by** (1): [`_resolve_perl_layout`](../../src/orchestrator/sdlc/layout.py#L758)
+- **Calls** (3): [`distributions`](../../src/orchestrator/sdlc/perl.py#L58), [`package_in`](../../src/orchestrator/sdlc/perl.py#L36), [`perl_files`](../../src/orchestrator/sdlc/perl.py#L18)
+- **Documented in**: `docs/specs/perl-codegen-roadmap.md#2-design`
 
 ### `detect_php_layout`
 
-[`src/orchestrator/sdlc/layout.py:601`](../../src/orchestrator/sdlc/layout.py#L601)
+[`src/orchestrator/sdlc/layout.py:592`](../../src/orchestrator/sdlc/layout.py#L592)
 
-- **Called by** (1): [`_resolve_php_layout`](../../src/orchestrator/sdlc/layout.py#L623)
-- **Calls** (4): [`php_files`](../../src/orchestrator/sdlc/php.py#L83), [`read_composer`](../../src/orchestrator/sdlc/php.py#L69), [`read_phpunit_config`](../../src/orchestrator/sdlc/php.py#L35), [`safe_relative`](../../src/orchestrator/sdlc/php.py#L16)
+- **Called by** (1): [`_resolve_php_layout`](../../src/orchestrator/sdlc/layout.py#L614)
+- **Calls** (4): [`php_files`](../../src/orchestrator/sdlc/php.py#L84), [`read_composer`](../../src/orchestrator/sdlc/php.py#L70), [`read_phpunit_config`](../../src/orchestrator/sdlc/php.py#L36), [`safe_relative`](../../src/orchestrator/sdlc/php.py#L17)
 - **Documented in**: `docs/specs/php-codegen-roadmap.md#5-files-to-change`
 
 ### `detect_sql_layout`
 
-[`src/orchestrator/sdlc/layout.py:439`](../../src/orchestrator/sdlc/layout.py#L439)
+[`src/orchestrator/sdlc/layout.py:430`](../../src/orchestrator/sdlc/layout.py#L430)
 
-- **Called by** (1): [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L448)
+- **Called by** (1): [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L439)
 
 ### `detect_typescript_layout`
 
-[`src/orchestrator/sdlc/layout.py:253`](../../src/orchestrator/sdlc/layout.py#L253)
+[`src/orchestrator/sdlc/layout.py:244`](../../src/orchestrator/sdlc/layout.py#L244)
 
-- **Called by** (1 production · 1 test): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L264), [`test_detect_existing_typescript_project`](../../tests/sdlc/test_layout.py#L158)
-- **Calls** (2): [`_read_package_json_name`](../../src/orchestrator/sdlc/layout.py#L240), [`derive_npm_package`](../../src/orchestrator/sdlc/layout.py#L219)
+- **Called by** (1 production · 1 test): [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L255), [`test_detect_existing_typescript_project`](../../tests/sdlc/test_layout.py#L158)
+- **Calls** (2): [`_read_package_json_name`](../../src/orchestrator/sdlc/layout.py#L231), [`derive_npm_package`](../../src/orchestrator/sdlc/layout.py#L210)
 - **Documented in**: `docs/specs/typescript-codegen.md#design-multi-language-support-typescript`
 
 ### `is_effectively_empty`
 
-[`src/orchestrator/sdlc/layout.py:653`](../../src/orchestrator/sdlc/layout.py#L653)
+[`src/orchestrator/sdlc/layout.py:644`](../../src/orchestrator/sdlc/layout.py#L644)
 
-- **Called by** (2 production · 2 test): [`analyse`](../../src/orchestrator/knowledge/analysis.py#L50), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L629), [`test_bare_clone_is_empty`](../../tests/sdlc/test_layout.py#L16), [`test_loose_source_is_not_empty`](../../tests/sdlc/test_layout.py#L21)
+- **Called by** (2 production · 2 test): [`analyse`](../../src/orchestrator/knowledge/analysis.py#L50), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`test_bare_clone_is_empty`](../../tests/sdlc/test_layout.py#L16), [`test_loose_source_is_not_empty`](../../tests/sdlc/test_layout.py#L21)
 - **Documented in**: `docs/specs/project-comprehension-memory-bank.md#two-branches-same-output-shape`
 
 ### `resolve_layout`
 
-[`src/orchestrator/sdlc/layout.py:666`](../../src/orchestrator/sdlc/layout.py#L666)
+[`src/orchestrator/sdlc/layout.py:657`](../../src/orchestrator/sdlc/layout.py#L657)
 
-- **Called by** (1 production · 29 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L629), [`_scaffold_and_install`](../../tests/sdlc/test_typescript_integration.py#L29), [`_scaffold_go`](../../tests/sdlc/test_go_integration.py#L22), [`_scaffold_java`](../../tests/sdlc/test_java_integration.py#L23), [`test_auto_detects_existing_migrations_dir`](../../tests/sdlc/test_layout.py#L346), [`test_auto_empty_repo_is_new_with_src_layout`](../../tests/sdlc/test_layout.py#L70), [`test_auto_existing_csharp_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L208), [`test_auto_existing_go_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L331), [`test_auto_existing_java_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L132), [`test_auto_existing_make_project`](../../tests/sdlc/test_layout.py#L237), [`test_auto_existing_package_is_existing`](../../tests/sdlc/test_layout.py#L78), [`test_auto_existing_ts_reads_name_and_pm`](../../tests/sdlc/test_layout.py#L165), [`test_detects_meson_build_tool`](../../tests/sdlc/test_layout.py#L242), [`test_existing_without_package_falls_back_no_scaffold`](../../tests/sdlc/test_layout.py#L91), [`test_invalid_config_is_not_silently_ignored`](../../tests/sdlc/test_php_codegen.py#L110), [`test_layout_shapes`](../../tests/sdlc/test_php_codegen.py#L41), [`test_module_rel_path`](../../tests/sdlc/test_layout.py#L101), [`test_new_c_cmake_layout`](../../tests/sdlc/test_layout.py#L220), [`test_new_cpp_cmake_layout`](../../tests/sdlc/test_layout.py#L257), [`test_new_csharp_layout`](../../tests/sdlc/test_layout.py#L189), [`test_new_forces_scaffold_even_with_existing`](../../tests/sdlc/test_layout.py#L85), [`test_new_go_layout_is_root_package`](../../tests/sdlc/test_layout.py#L285), [`test_new_java_maven_layout`](../../tests/sdlc/test_layout.py#L112), [`test_new_sql_layout_is_migrations_dir`](../../tests/sdlc/test_layout.py#L338), [`test_new_typescript_layout`](../../tests/sdlc/test_layout.py#L151), +5 more
-- **Calls** (12): [`TargetLayout`](../../src/orchestrator/sdlc/layout.py#L80), [`_resolve_c_layout`](../../src/orchestrator/sdlc/layout.py#L433), [`_resolve_cpp_layout`](../../src/orchestrator/sdlc/layout.py#L470), [`_resolve_csharp_layout`](../../src/orchestrator/sdlc/layout.py#L334), [`_resolve_go_layout`](../../src/orchestrator/sdlc/layout.py#L578), [`_resolve_java_layout`](../../src/orchestrator/sdlc/layout.py#L195), [`_resolve_php_layout`](../../src/orchestrator/sdlc/layout.py#L623), [`_resolve_sql_layout`](../../src/orchestrator/sdlc/layout.py#L448), [`_resolve_typescript_layout`](../../src/orchestrator/sdlc/layout.py#L264), [`derive_package_name`](../../src/orchestrator/sdlc/layout.py#L109), [`detect_existing_package`](../../src/orchestrator/sdlc/layout.py#L130), `pathlib.Path`
+- **Called by** (1 production · 38 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`_scaffold_and_install`](../../tests/sdlc/test_typescript_integration.py#L29), [`_scaffold_go`](../../tests/sdlc/test_go_integration.py#L22), [`_scaffold_java`](../../tests/sdlc/test_java_integration.py#L23), [`test_auto_detects_existing_migrations_dir`](../../tests/sdlc/test_layout.py#L346), [`test_auto_empty_repo_is_new_with_src_layout`](../../tests/sdlc/test_layout.py#L70), [`test_auto_existing_csharp_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L208), [`test_auto_existing_go_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L331), [`test_auto_existing_java_is_not_scaffolded`](../../tests/sdlc/test_layout.py#L132), [`test_auto_existing_make_project`](../../tests/sdlc/test_layout.py#L237), [`test_auto_existing_package_is_existing`](../../tests/sdlc/test_layout.py#L78), [`test_auto_existing_ts_reads_name_and_pm`](../../tests/sdlc/test_layout.py#L165), [`test_detects_meson_build_tool`](../../tests/sdlc/test_layout.py#L242), [`test_existing_without_package_falls_back_no_scaffold`](../../tests/sdlc/test_layout.py#L91), [`test_invalid_config_is_not_silently_ignored`](../../tests/sdlc/test_php_codegen.py#L110), [`test_layout_shapes`](../../tests/sdlc/test_php_codegen.py#L41), [`test_module_rel_path`](../../tests/sdlc/test_layout.py#L101), [`test_new_c_cmake_layout`](../../tests/sdlc/test_layout.py#L220), [`test_new_cpp_cmake_layout`](../../tests/sdlc/test_layout.py#L257), [`test_new_csharp_layout`](../../tests/sdlc/test_layout.py#L189), [`test_new_forces_scaffold_even_with_existing`](../../tests/sdlc/test_layout.py#L85), [`test_new_go_layout_is_root_package`](../../tests/sdlc/test_layout.py#L285), [`test_new_java_maven_layout`](../../tests/sdlc/test_layout.py#L112), [`test_new_sql_layout_is_migrations_dir`](../../tests/sdlc/test_layout.py#L338), [`test_new_typescript_layout`](../../tests/sdlc/test_layout.py#L151), +14 more
+- **Calls** (3): [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L381), `pathlib.Path`, `typing.cast`
 - **Documented in**: `docs/specs/sdlc-target-layout-scaffold.md#34-wiring-into-feature-runner`, `docs/specs/sdlc-target-layout-scaffold.md#6-testing-plan`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
 
 ## Imports
 
-`__future__.annotations`, `collections.abc.Callable`, `dataclasses.dataclass`, `json`, `keyword`, [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1), [`orchestrator.sdlc.php`](../../src/orchestrator/sdlc/php.py#L1), `os`, `pathlib.Path`, `re`
+`__future__.annotations`, `collections.abc.Callable`, `dataclasses.dataclass`, `json`, `keyword`, [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1), [`orchestrator.sdlc.perl`](../../src/orchestrator/sdlc/perl.py#L1), [`orchestrator.sdlc.php`](../../src/orchestrator/sdlc/php.py#L1), [`orchestrator.sdlc.toolchains`](orchestrator.sdlc.toolchains.md), `os`, `pathlib.Path`, `re`, `typing.cast`
 
 ## Imported by
 
-[`orchestrator.knowledge.analysis`](../../src/orchestrator/knowledge/analysis.py#L1), [`orchestrator.sdlc.codegen`](orchestrator.sdlc.codegen.md), [`orchestrator.sdlc.conventions`](../../src/orchestrator/sdlc/conventions.py#L1), [`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`orchestrator.sdlc.scaffold`](orchestrator.sdlc.scaffold.md), [`tests.sdlc.test_codegen`](../../tests/sdlc/test_codegen.py#L1), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_layout`](../../tests/sdlc/test_layout.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_scaffold`](../../tests/sdlc/test_scaffold.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)
+[`orchestrator.knowledge.analysis`](../../src/orchestrator/knowledge/analysis.py#L1), [`orchestrator.sdlc.codegen`](orchestrator.sdlc.codegen.md), [`orchestrator.sdlc.conventions`](../../src/orchestrator/sdlc/conventions.py#L1), [`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`orchestrator.sdlc.language_guidance`](../../src/orchestrator/sdlc/language_guidance.py#L1), [`orchestrator.sdlc.scaffold`](orchestrator.sdlc.scaffold.md), [`tests.sdlc.test_codegen`](../../tests/sdlc/test_codegen.py#L1), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_layout`](../../tests/sdlc/test_layout.py#L1), [`tests.sdlc.test_perl_codegen`](../../tests/sdlc/test_perl_codegen.py#L1), [`tests.sdlc.test_perl_integration`](../../tests/sdlc/test_perl_integration.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_scaffold`](../../tests/sdlc/test_scaffold.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)

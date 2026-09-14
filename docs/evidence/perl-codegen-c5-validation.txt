@@ -1,0 +1,285 @@
+C-5 final local validation
+All commands use uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl
+No pytest -x; CI default marker policy retained.
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl ruff check .
+All checks passed!
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl ruff format --check .
+755 files already formatted
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl mypy src tests
+Success: no issues found in 719 source files
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/render_architecture_svg.py --check
+assets/spine-architecture.svg is current
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/render_knowledge_foundation_svg.py --check
+assets/knowledge-foundation.svg is current, and its layout checks pass
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/matrix-count.py --check
+46 capability rows
+21 where Spine stands alone
+3 where Spine is ❌
+3 at 🟡
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/state-numbers.py --check
+[trend] binding: total mentions: doc-binding-walkthrough.md says 9482, the source says 11840
+[trend] binding: one symbol anchor: doc-binding-walkthrough.md says 3168, the source says 3632
+[trend] binding: ambiguous: doc-binding-walkthrough.md says 2030, the source says 2679
+[trend] binding: file only: doc-binding-walkthrough.md says 891, the source says 1140
+[trend] binding: no anchor: doc-binding-walkthrough.md says 3393, the source says 4389
+[trend] binding: edges drawn: doc-binding-walkthrough.md says 3120, the source says 3582
+[trend] binding: drift findings: doc-binding-walkthrough.md says 1556, the source says 2119
+[trend] binding: unbound sections: doc-binding-walkthrough.md says 826, the source says 918
+[trend] binding: Doc nodes: doc-binding-walkthrough.md says 1622, the source says 1789
+state-numbers --check: OK — 11 gated claim(s) match; 9 trended.
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/roadmap-status.py --check
+roadmap-status --check: OK — 2 phase table(s) checked, 7 checks each.
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/docs_audit.py --base develop --head HEAD
+[INFO] registered front-ends (10): python, java, typescript, csharp, c, cpp, go, php, perl, sql
+[INFO] front-end count: README.md:135 says '8', registry has 10: first full run over the tree fixed fifteen stale claims, from "8 front-ends" written before PHP to a
+[INFO] front-end count: README.md:238 says 'four', registry has 10: **3.22.0** — four front-ends were fabricating a `CALLS` edge when a parameter shadowed a
+[INFO] front-end count: BENCHMARK.md:47 says 'six', registry has 10: **C# has no slot.** Five repositories, six front-ends at 3.29.0 (there are nine now) — one
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:104 says '6', registry has 10: | Invention | **0** on this repo and on 11 pinned public repos across 6 front-ends, gated `strict` a
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:183 says 'six', registry has 10: `invention` was the same until 2026-08-24 and now walks six front-ends, naming Java and SQL
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:375 says '8', registry has 10: | `stale_findings` fabricated staleness on 7 of 8 front-ends | ✅ **fixed 2026-08-31** — dispatch is
+[INFO] front-end count: docs/specs/STATE-OF-SPINE.md:385 says '6', registry has 10: | Shadowed-name `CALLS` invention in TypeScript, Go, C++, C# | ✅ **closed 2026-08-24** — oracle wide
+[INFO] front-end count: docs/specs/SPEC-INDEX.md:152 says '8', registry has 10: | [invention-oracle-cross-language](invention-oracle-cross-language.md) | The invention oracle acros
+[INFO] front-end count: docs/specs/SPEC-INDEX.md:152 says 'four', registry has 10: | [invention-oracle-cross-language](invention-oracle-cross-language.md) | The invention oracle acros
+[INFO] enumeration omits SQL: README.md:428: Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl** — each
+[INFO] enumeration omits SQL: FEATURES.md:41: | Multi-language comprehension + codegen — Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl | ✅ |
+[INFO] enumeration omits PHP, Perl, SQL: USER_GUIDE.md:335: > caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, and Go** (Java/TS
+[INFO] enumeration omits Python, Java: USER_GUIDE.md:360: > **TypeScript**, **C#**, **C**, **C++**, **Go**, **PHP**, **Perl**, and **SQL** when the matching p
+[INFO] enumeration omits SQL: CLAUDE_GUIDE.md:7: **brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, PHP, and Perl**.
+[INFO] enumeration omits Python, TypeScript, SQL: CLAUDE_GUIDE.md:834: | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](
+[INFO] enumeration omits SQL: CODEX_GUIDE.md:7: **brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, PHP, and Perl**.
+[INFO] enumeration omits Python, TypeScript, SQL: CODEX_GUIDE.md:740: | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](
+[INFO] enumeration omits TypeScript, Go, PHP, Perl, SQL: CLI_REFERENCE.md:784: gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS).
+[INFO] enumeration omits Python, Java, C#, C++, Go: docs/specs/STATE-OF-SPINE.md:35: | `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.89** (Perl,
+[INFO] enumeration omits Python, Java, C, PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:107: fixed.** When a parameter or local **shadowed** a resolvable name, TypeScript, Go, C++ and C#
+[INFO] enumeration omits PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:371: | Express endpoint extraction (TypeScript) | 🟡 **scoped 2026-09-02, and it is wider than this row sa
+[INFO] enumeration omits Python, Java, C, PHP, Perl, SQL: docs/specs/STATE-OF-SPINE.md:385: | Shadowed-name `CALLS` invention in TypeScript, Go, C++, C# | ✅ **closed 2026-08-24** — oracle wide
+[INFO] MCP tool `doctor` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `ingest_preview` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `pkg_grounding` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_start_run` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_run_status` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_decide_gate` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_run_result` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `understand_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `profile_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `design_change` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_baseline` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_address_review` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_complete` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `sdlc_remediate` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `audit_repo` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_runs` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_approvals` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_decide` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] MCP tool `registry_trace` not named in any plugins/spine/skills/*/SKILL.md
+[INFO] docs touched by the diff (17): .github/pull_request_template.md, CHANGELOG.md, CLAUDE_GUIDE.md, CLI_REFERENCE.md, CODEX_GUIDE.md, CONTRIBUTING.md, FEATURES.md, README.md, SETUP.md, USER_GUIDE.md, docs/evidence/perl-codegen-c3-build.md, docs/evidence/perl-codegen-c4-build.md, docs/reviewing/language-frontend-checklist.md, docs/specs/SPEC-INDEX.md, docs/specs/STATE-OF-SPINE.md, docs/specs/perl-codegen-roadmap.md, docs/specs/perl-support-roadmap.md
+
+docs_audit: 0 STALE/MISSING, 43 INFO
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl orchestrator pkg accuracy --check
+[trend]      doc drift: 1065 -> 1161 (ungated — a tenth of it cannot bind by construction; see GATES)
+
+pkg accuracy --check: OK — 0 gated regression(s), 0 improvement(s).
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python scripts/sdlc_shapes.py
+building 4 shape(s) under /var/folders/2c/q2v76xf106gb1bbhlghqt2_h0000gn/T/sdlc-shapes-s7ccxuw4
+  single     ok    plan deterministic
+  monorepo   ok    plan deterministic
+  multirepo  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+  submodule  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+
+all shapes hold
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl pytest -q
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+...............s........................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+s....................................................................... [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+...s.................................................................... [ 83%]
+........................................................................ [ 85%]
+..........................s............................................. [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+....................                                                     [100%]
+=============================== warnings summary ===============================
+tests/pkg/test_capabilities.py: 1 warning
+tests/pkg/test_default_extractors.py: 1 warning
+tests/pkg/test_perl_extractor.py: 83 warnings
+tests/pkg/test_scoreboard.py: 60 warnings
+tests/pkg/test_verifier.py: 2 warnings
+tests/sdlc/test_perl_codegen.py: 1 warning
+  /private/tmp/spine-perl-codegen/src/orchestrator/pkg/perl_extractor.py:1100: DeprecationWarning: int argument support is deprecated
+    return Language(raw)
+
+tests/plugin/test_auth.py::test_env_static_token_builds_resource_server
+tests/plugin/test_auth.py::test_a_read_only_static_token_is_one_env_value
+tests/plugin/test_server.py::test_http_server_wires_static_auth
+  /private/tmp/spine-perl-codegen/src/orchestrator/plugin/auth.py:187: MCPDeprecationWarning: `AuthSettings.validate_token_resource` is not set, so bearer tokens are not checked against `resource_server_url`; it will default to True in 3.0 when `resource_server_url` is set. Set it to True to have the server refuse tokens issued for another resource, or to False if your TokenVerifier validates the token's audience itself.
+    settings = AuthSettings(
+
+tests/plugin/test_server.py::test_http_server_wires_static_auth
+  /private/tmp/spine-perl-codegen/.venv/lib/python3.12/site-packages/mcp/server/mcpserver/server.py:188: MCPDeprecationWarning: `AuthSettings.validate_token_resource` is not set, so bearer tokens are not checked against `resource_server_url`; it will default to True in 3.0 when `resource_server_url` is set. Set it to True to have the server refuse tokens issued for another resource, or to False if your TokenVerifier validates the token's audience itself.
+    self.settings = Settings(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/gateway/test_run_python_analysis.py:74: E2B_API_KEY not set
+SKIPPED [1] tests/pkg/test_media_extract.py:212: could not import 'pytesseract': No module named 'pytesseract'
+SKIPPED [1] tests/sdlc/test_php_codegen.py:277: PHP/Composer unavailable
+SKIPPED [1] tests/sdlc/test_sql_build.py:149: set RUN_POSTGRES_IT=1 and install the sql-postgres extra (needs Docker)
+3688 passed, 4 skipped, 51 deselected, 152 warnings in 207.39s (0:03:27)
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl orchestrator pkg verify .
+[warning] phantom-module: 7 external module(s) share a first-party module's basename (stdlib shadowing, or an unjoined import): py:codegen_benchmark (vs py:scripts.codegen_benchmark), py:bench_tickets_ontomesh.build (vs py:orchestrator.cli.build), py:opentelemetry.trace (vs py:orchestrator.registry.api.trace), py:coverage (vs py:orchestrator.sdlc.coverage), py:sqlalchemy.case (vs py:orchestrator.sdlc.case), +2 more
+pkg verify: OK — 0 error(s), 1 warning(s).
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl orchestrator understand .
+[understand] brownfield — 15083 grounded nodes
+[understand] wrote 91 files → /private/tmp/spine-perl-codegen/episteme (reaped 1)
+javascript, python · 15,083 grounded of 15,729 nodes
+19,200 call edges · 8,422 imports · 3,586 doc mentions
+
+Start here:
+  README.md          what this codebase is
+  architecture.md    how it fits together
+  symbol-index.md    every symbol, with file:line
+
+91 files in total — `--json` lists them all.
+
+exit=0
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl pytest -q tests/sdlc/test_layout.py tests/sdlc/test_scaffold.py tests/sdlc/test_testenv.py tests/sdlc/test_codegen.py tests/sdlc/test_testrunner.py tests/sdlc/test_feature_runner.py tests/sdlc/test_php_codegen.py tests/sdlc/test_sql_build.py tests/sdlc/test_java_integration.py tests/sdlc/test_typescript_integration.py tests/sdlc/test_go_integration.py tests/sdlc/test_perl_codegen.py tests/sdlc/test_perl_integration.py tests/sdlc/test_toolchains.py
+........................................................................ [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 49%]
+........................................................................ [ 65%]
+........................................................................ [ 82%]
+...............s..........s............................................. [ 98%]
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+tests/sdlc/test_perl_codegen.py::test_perl_phase_prompts_and_grounding
+  /private/tmp/spine-perl-codegen/src/orchestrator/pkg/perl_extractor.py:1100: DeprecationWarning: int argument support is deprecated
+    return Language(raw)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/sdlc/test_php_codegen.py:277: PHP/Composer unavailable
+SKIPPED [1] tests/sdlc/test_sql_build.py:149: set RUN_POSTGRES_IT=1 and install the sql-postgres extra (needs Docker)
+437 passed, 2 skipped, 1 warning in 23.78s
+
+Command: uv run --frozen with all CI extras; Python AST comparison, graphlib and fresh subprocess imports
+testrunner.TestRunResult: moved class AST identical
+testrunner.TestRunner: moved class AST identical
+testenv.TestEnvironment: moved class AST identical
+preflight.Baseline: moved class AST identical
+preflight.PreflightResult: moved class AST identical
+preflight.PreflightRunner: moved class AST identical
+Sanitized subprocess executor: moved function AST identical, including timeout and environment filtering
+Explicit SDLC import graph: acyclic, including TYPE_CHECKING and function-local imports
+Fresh-process imports pass: toolchains, layout, testenv, testrunner, preflight, perl, php
+Fresh-process imports pass: preflight, testrunner, testenv, layout, toolchains, php, perl
+Fresh registry import remains lazy; callable defaults execute without an implicit self argument
+
+$ uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl python -u scripts/mutate-dispatch.py
+8 mutations, each against 7 test modules. A few minutes.
+
+   CAUGHT csharp: lose the target-framework rewrite
+          1 failed, 374 passed, 1 skipped in 13.30s
+   CAUGHT c/cpp: give C++ C's availability probe
+          2 failed, 373 passed, 1 skipped in 16.15s
+   CAUGHT c/cpp: force cmake on a Meson brownfield
+          4 failed, 371 passed, 1 skipped in 13.60s
+   CAUGHT codegen: drop PHP's guidance branch
+          1 failed, 374 passed, 1 skipped in 13.24s
+   CAUGHT layout: TypeScript row falls through
+          3 failed, 372 passed, 1 skipped in 13.39s
+   CAUGHT scaffold: Go row falls through
+          1 failed, 374 passed, 1 skipped in 13.17s
+   CAUGHT codegen: drop SQL's guidance branch
+          1 failed, 374 passed, 1 skipped in 13.11s
+   CAUGHT testenv: PHP test environment falls through
+          1 failed, 374 passed, 1 skipped in 13.02s
+
+caught 8 of 8 applied (0 skipped)
+baseline on 2026-09-13: 4 of 8 — perl-codegen-roadmap.md C-0 exits at 8 of 8
+
+Manual review: mergeable. Six unchanged contract ASTs; unchanged sanitized executor AST; acyclic explicit SDLC imports; fresh imports pass.
+Real-tool proof: model none (deterministic); command above includes tests/sdlc/test_perl_integration.py; green and red committed fixtures independently cloned and run with real prove -l t/; grounding 0 characters.
+Develop fetched unchanged at e8a0da55691b942d3205a801701ed459c08d9560. Generated episteme output restored and excluded.

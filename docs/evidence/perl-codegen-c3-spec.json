@@ -1,0 +1,13 @@
+{
+  "intent_id": "perl-cart-c3",
+  "title": "Shop Cart subtotal and tax total",
+  "summary": "Implement Shop::Cart, a small Perl shopping cart with subtotal and total methods.",
+  "acceptance_criteria": [
+    "Shop::Cart->new(items => [{price => 10, quantity => 2}, {price => 5, quantity => 1}], tax_rate => 0.1) constructs a cart; subtotal returns 25 and total returns 27.5.",
+    "An omitted or empty items array has subtotal and total zero; omitted tax_rate defaults to zero.",
+    "Reject negative item prices, nonpositive or noninteger quantities, and negative tax rates with a useful error.",
+    "Calculating subtotal and total does not mutate the supplied items.",
+    "Executable Test::More tests load Shop::Cart and assert normal, empty, error and immutability cases; use strict and warnings and document public methods with POD."
+  ],
+  "technical_notes": "Greenfield distribution. Use lib/Shop/Cart.pm and t/10-cart.t. Core Perl only; classic bless; no framework, no network, no XS. Keep the generated load smoke test. For the required graph proof, put behavioral assertions inside named test_cart_* subroutines, construct Shop::Cart receivers inside them, and invoke each subroutine from the test file."
+}

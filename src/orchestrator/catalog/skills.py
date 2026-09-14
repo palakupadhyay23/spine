@@ -144,6 +144,13 @@ NATIVE_SKILLS: tuple[Skill, ...] = (
         "directory with its suffix. Add strict_types only in greenfield code.",
     ),
     Skill(
+        "perl-conventions",
+        "Read neighboring Perl packages: use Moo/Moose when observed, otherwise classic bless. "
+        "Always use strict and warnings; use Test::More or observed Test2::V0. Prefix private "
+        "subs with an underscore, document public subs with POD, and preserve lib/ and t/ layout.",
+        phases=("implement", "author_tests", "refine"),
+    ),
+    Skill(
         "go-conventions",
         "Match the repo's Go conventions — package layout, exported API, error returns "
         "(not panics), and co-located table-driven tests.",

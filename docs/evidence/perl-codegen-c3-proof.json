@@ -1,0 +1,98 @@
+{
+  "model": "claude-opus-5",
+  "generated_commit": "f4b10aef3bf15fd060e3eec4a4d8a513e7fff569",
+  "generation_grounding": {
+    "chars": 309,
+    "context": "EXISTING CODEBASE CONTEXT (from the Product Knowledge Graph \u2014 real code, with file:line provenance). Reuse these APIs instead of reinventing them; import them by the module paths shown; match their naming and style conventions:\n\n### Type `perl:Shop.Cart`  @ lib/Shop/Cart.pm:1\n```perl\npackage Shop::Cart;\n```\n"
+  },
+  "after_grounding": {
+    "chars": 5175,
+    "context": "EXISTING CODEBASE CONTEXT (from the Product Knowledge Graph \u2014 real code, with file:line provenance). Reuse these APIs instead of reinventing them; import them by the module paths shown; match their naming and style conventions:\n\n### Function `perl:t/10-cart.t.test_cart_subtotal_and_total`  @ t/10-cart.t:20\n```perl\nsub test_cart_subtotal_and_total {\n    my $cart = Shop::Cart->new(\n        items    => [ { price => 10, quantity => 2 }, { price => 5, quantity => 1 } ],\n        tax_rate => 0.1,\n    );\n\n    isa_ok( $cart, 'Shop::Cart', 'constructor returns a Shop::Cart' );\n    is( $cart->subtotal, 25,   'subtotal sums price * quantity' );\n    is( $cart->total,    27.5, 'total applies the tax rate' );\n    is( $cart->tax_rate, 0.1,  'tax_rate accessor returns the supplied rate' );\n\n    my $items = $cart->items;\n    is( ref $items, 'ARRAY', 'items accessor returns an array reference' );\n    is( scalar @{$items}, 2, 'items accessor returns both items' );\n    is( $items->[0]{price},    10, 'first item price preserved' );\n    is( $items->[0]{quantity}, 2,  'first item quantity preserved' );\n    is( $items->[1]{price},    5,  'second item price preserved' );\n    is( $items->[1]{quantity}, 1,  'second item quantity preserved' );\n\n    my $single = Shop::Cart->new(\n        items    => [ { price => 2.5, quantity => 4 } ],\n        tax_rate => 0.2,\n    );\n    is( $single->subtotal, 10, 'subtotal handles fractional prices' );\n    # \u2026 truncated \u2026\n```\n\n### Type `perl:Shop.Cart`  @ lib/Shop/Cart.pm:1\n```perl\npackage Shop::Cart;\n```\n\n### Function `perl:Shop.Cart.tax_rate`  @ lib/Shop/Cart.pm:102\n```perl\nsub tax_rate {\n    my ($self) = @_;\n    return $self->{tax_rate};\n}\n```\n\n### Function `perl:Shop.Cart.subtotal`  @ lib/Shop/Cart.pm:116\n```perl\nsub subtotal {\n    my ($self) = @_;\n\n    my $subtotal = 0;\n    for my $item ( @{ $self->{items} } ) {\n        $subtotal += $item->{price} * $item->{quantity};\n    }\n\n    return $subtotal;\n}\n```\n\n### Function `perl:Shop.Cart.total`  @ lib/Shop/Cart.pm:136\n```perl\nsub total {\n    my ($self) = @_;\n    return $self->subtotal * ( 1 + $self->{tax_rate} );\n}\n```\n\n### Function `perl:t/10-cart.t._dies_with`  @ t/10-cart.t:9\n```perl\nsub _dies_with {\n    my ( $code, $name ) = @_;\n\n    my $ok = eval { $code->(); 1 };\n    my $error = $@;\n\n    ok( !$ok, $name );\n\n    return defined $error ? \"$error\" : '';\n}\n```\n\n### Function `perl:t/10-cart.t.test_cart_defaults_and_empty`  @ t/10-cart.t:49\n```perl\nsub test_cart_defaults_and_empty {\n    my $empty = Shop::Cart->new();\n    is( $empty->subtotal, 0, 'omitted items give subtotal zero' );\n    is( $empty->total,    0, 'omitted items give total zero' );\n    is( $empty->tax_rate, 0, 'tax_rate defaults to zero' );\n    is_deeply( $empty->items, [], 'items default to an empty array reference' );\n\n    my $explicit = Shop::Cart->new( items => [], tax_rate => 0.25 );\n    is( $explicit->subtotal, 0,    'empty items array gives subtotal zero' );\n    is( $explicit->total,    0,    'empty items array gives total zero' );\n    is( $explicit->tax_rate, 0.25, 'tax rate is still recorded for an empty cart' );\n\n    my $no_tax = Shop::Cart->new( items => [ { price => 3.5, quantity => 4 } ] );\n    is( $no_tax->tax_rate, 0,  'omitted tax_rate defaults to zero' );\n    is( $no_tax->subtotal, 14, 'subtotal computed without a tax rate' );\n    is( $no_tax->total,    14, 'total equals subtotal without a tax rate' );\n\n    my $undef_args = Shop::Cart->new( items => undef, tax_rate => undef );\n    is( $undef_args->subtotal, 0, 'undef items behave like an empty cart' );\n    is( $undef_args->total,    0, 'undef items give total zero' );\n    is( $undef_args->tax_rate, 0, 'undef tax_rate defaults to zero' );\n\n    my $zero_price = Shop::Cart->new( items => [ { price => 0, quantity => 3 } ], tax_rate => 0.5 );\n    is( $zero_price->subtotal, 0, 'zero price items are allowed' );\n    # \u2026 truncated \u2026\n```\n\n### Function `perl:t/10-cart.t.test_cart_rejects_invalid_input`  @ t/10-cart.t:78\n```perl\nsub test_cart_rejects_invalid_input {\n    my $err;\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => -1, quantity => 1 } ] ) },\n        'negative price is rejected' );\n    like( $err, qr/price/, 'negative price error mentions price' );\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 'free', quantity => 1 } ] ) },\n        'non-numeric price is rejected' );\n    like( $err, qr/price/, 'non-numeric price error mentions price' );\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { quantity => 1 } ] ) },\n        'missing price is rejected' );\n    like( $err, qr/price/, 'missing price error mentions price' );\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => 0 } ] ) },\n        'zero quantity is rejected' );\n    like( $err, qr/quantity/, 'zero quantity error mentions quantity' );\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => -2 } ] ) },\n        'negative quantity is rejected' );\n    like( $err, qr/quantity/, 'negative quantity error mentions quantity' );\n\n    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => 1.5 } ] ) },\n    # \u2026 truncated \u2026\n```\n"
+  },
+  "after_blast_radius": {
+    "symbol": "subtotal",
+    "found": true,
+    "matches": [
+      {
+        "id": "perl:Shop.Cart.subtotal",
+        "kind": "Function",
+        "where": "lib/Shop/Cart.pm:116",
+        "caller_count": 12,
+        "callers": [
+          {
+            "id": "perl:Shop.Cart.total",
+            "at": "lib/Shop/Cart.pm:138"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_subtotal_and_total",
+            "at": "t/10-cart.t:43"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_subtotal_and_total",
+            "at": "t/10-cart.t:27"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "at": "t/10-cart.t:72"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "at": "t/10-cart.t:67"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "at": "t/10-cart.t:63"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "at": "t/10-cart.t:57"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "at": "t/10-cart.t:51"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_does_not_mutate_items",
+            "at": "t/10-cart.t:163"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_does_not_mutate_items",
+            "at": "t/10-cart.t:160"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_does_not_mutate_items",
+            "at": "t/10-cart.t:151"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_does_not_mutate_items",
+            "at": "t/10-cart.t:145"
+          }
+        ],
+        "touch_count": 5,
+        "touches": [
+          {
+            "id": "perl:Shop.Cart",
+            "where": "lib/Shop/Cart.pm:1"
+          },
+          {
+            "id": "perl:Shop.Cart.total",
+            "where": "lib/Shop/Cart.pm:136"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_defaults_and_empty",
+            "where": "t/10-cart.t:49"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_does_not_mutate_items",
+            "where": "t/10-cart.t:139"
+          },
+          {
+            "id": "perl:t/10-cart.t.test_cart_subtotal_and_total",
+            "where": "t/10-cart.t:20"
+          }
+        ]
+      }
+    ],
+    "markdown": "### `perl:Shop.Cart.subtotal` \u2014 Function @ lib/Shop/Cart.pm:116\n- **Called by (12):** perl:Shop.Cart.total, perl:t/10-cart.t.test_cart_subtotal_and_total, perl:t/10-cart.t.test_cart_subtotal_and_total, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_does_not_mutate_items, perl:t/10-cart.t.test_cart_does_not_mutate_items\n- **Touches (5):** perl:Shop.Cart, perl:Shop.Cart.total, perl:t/10-cart.t.test_cart_defaults_and_empty, perl:t/10-cart.t.test_cart_does_not_mutate_items, perl:t/10-cart.t.test_cart_subtotal_and_total"
+  }
+}

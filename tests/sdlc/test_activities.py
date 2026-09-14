@@ -21,6 +21,36 @@ from orchestrator.sdlc.deps import SDLCDeps
 from orchestrator.sdlc.workspace import WorkspaceManager
 
 
+async def test_language_payload_preserves_injected_runners(tmp_path: Path) -> None:
+    """Registry migration must not replace worker-injected adapters based on a payload."""
+    from dataclasses import replace
+
+    from orchestrator.sdlc.preflight import Baseline, PreflightResult
+    from orchestrator.sdlc.testrunner import TestRunResult
+
+    paths: list[str] = []
+
+    class Runner:
+        async def run(self, *, path: str) -> TestRunResult:
+            paths.append(path)
+            return TestRunResult(False, 17, "injected tests")
+
+    class Preflight:
+        async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult:
+            paths.append(path)
+            return PreflightResult(False, "injected preflight")
+
+    activities = SDLCActivities(replace(_deps(), tests=Runner(), preflight=Preflight()))
+    payload = {"path": str(tmp_path), "language": "php"}
+    assert await activities.run_tests(payload) == {
+        "passed": False,
+        "returncode": 17,
+        "output": "injected tests",
+    }
+    assert await activities.preflight(payload) == {"passed": False, "output": "injected preflight"}
+    assert paths == [str(tmp_path), str(tmp_path)]
+
+
 class _StubSession:
     async def __aenter__(self) -> _StubSession:
         return self

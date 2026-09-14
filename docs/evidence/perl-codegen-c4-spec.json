@@ -1,0 +1,13 @@
+{
+  "intent_id": "perl-util-c4",
+  "title": "Mojo Util trailing text removal",
+  "summary": "Add strip_suffix to the existing Mojo::Util package in lib/Mojo/Util.pm, with owning tests in t/mojo/util.t.",
+  "acceptance_criteria": [
+    "Mojo::Util::strip_suffix($text, $suffix) returns a copy with exactly one matching literal suffix removed; unmatched or empty suffix leaves text unchanged.",
+    "Matching is case sensitive; regex metacharacters are literal; Unicode character strings work; removing a suffix equal to the entire string returns an empty string.",
+    "Neither input argument is mutated, including when the first argument is a literal or read-only value. Repeated suffixes lose exactly one copy.",
+    "Export strip_suffix through the existing @EXPORT_OK and document it in the existing POD style. Preserve the package clause, existing functions, build configuration and dependencies. POD examples must be accurate: strip_suffix('testbarbar', 'bar') returns 'testbar'.",
+    "Add executable Test::More coverage to t/mojo/util.t for every behavior, inside a named test_strip_suffix subroutine invoked by `test_strip_suffix();` from the test file. Call Mojo::Util::strip_suffix explicitly inside that subroutine so its test caller is visible in the graph. Owning tests and the full existing suite pass."
+  ],
+  "technical_notes": "Brownfield only. Read existing lib/Mojo/Util.pm and t/mojo/util.t before editing. Use anchored edits. No new module, scaffold, framework, dependency, or network behavior. The package uses Mojo::Base -strict, which enables strict and warnings; preserve that convention. Add only the helper, export, POD and focused tests."
+}

@@ -7,7 +7,7 @@
 |---|---|---|
 | `DELETE /v1/connections/servers/{name}` | [`remove_server`](../src/orchestrator/registry/api/connections.py#L221) | [`src/orchestrator/registry/api/connections.py:220`](../src/orchestrator/registry/api/connections.py#L220) |
 | `GET /` | [`index`](../src/orchestrator/intake/web/app.py#L140), [`list_entities`](../src/orchestrator/registry/api/routes.py#L156), [`root`](../src/orchestrator/registry/api/web/home.py#L23) | [`src/orchestrator/intake/web/app.py:139`](../src/orchestrator/intake/web/app.py#L139) |
-| `GET /app` | [`home`](../src/orchestrator/registry/api/web/home.py#L125) | [`src/orchestrator/registry/api/web/home.py:124`](../src/orchestrator/registry/api/web/home.py#L124) |
+| `GET /app` | [`home`](../src/orchestrator/registry/api/web/home.py#L129) | [`src/orchestrator/registry/api/web/home.py:128`](../src/orchestrator/registry/api/web/home.py#L128) |
 | `GET /app/advanced` | [`advanced_page`](../src/orchestrator/registry/api/web/advanced.py#L22) | [`src/orchestrator/registry/api/web/advanced.py:21`](../src/orchestrator/registry/api/web/advanced.py#L21) |
 | `GET /app/audit` | [`audit_page`](../src/orchestrator/registry/api/web/governance.py#L21) | [`src/orchestrator/registry/api/web/governance.py:20`](../src/orchestrator/registry/api/web/governance.py#L20) |
 | `GET /app/backlog` | [`backlog_page`](../src/orchestrator/registry/api/backlog.py#L43) | [`src/orchestrator/registry/api/backlog.py:42`](../src/orchestrator/registry/api/backlog.py#L42) |
@@ -20,7 +20,7 @@
 | `GET /app/intake` | [`intake_studio_page`](../src/orchestrator/registry/api/web/intake_studio.py#L58) | [`src/orchestrator/registry/api/web/intake_studio.py:57`](../src/orchestrator/registry/api/web/intake_studio.py#L57) |
 | `GET /app/memory` | [`memory_page`](../src/orchestrator/registry/api/web/memory.py#L20) | [`src/orchestrator/registry/api/web/memory.py:19`](../src/orchestrator/registry/api/web/memory.py#L19) |
 | `GET /app/memory-bank` | [`memory_bank_page`](../src/orchestrator/registry/api/web/intelligence.py#L103) | [`src/orchestrator/registry/api/web/intelligence.py:102`](../src/orchestrator/registry/api/web/intelligence.py#L102) |
-| `GET /app/personas` | [`personas_page`](../src/orchestrator/registry/api/web/home.py#L138) | [`src/orchestrator/registry/api/web/home.py:137`](../src/orchestrator/registry/api/web/home.py#L137) |
+| `GET /app/personas` | [`personas_page`](../src/orchestrator/registry/api/web/home.py#L142) | [`src/orchestrator/registry/api/web/home.py:141`](../src/orchestrator/registry/api/web/home.py#L141) |
 | `GET /app/registry` | [`registry_page`](../src/orchestrator/registry/api/web/registry.py#L22) | [`src/orchestrator/registry/api/web/registry.py:21`](../src/orchestrator/registry/api/web/registry.py#L21) |
 | `GET /app/state` | [`state_page`](../src/orchestrator/registry/api/web/intelligence.py#L81) | [`src/orchestrator/registry/api/web/intelligence.py:80`](../src/orchestrator/registry/api/web/intelligence.py#L80) |
 | `GET /app/system` | [`system_page`](../src/orchestrator/registry/api/web/system.py#L20) | [`src/orchestrator/registry/api/web/system.py:19`](../src/orchestrator/registry/api/web/system.py#L19) |

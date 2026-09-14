@@ -1,0 +1,37 @@
+C-1 validation, 2026-09-13
+Command prefix: uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl
+Before/after: pytest -q tests/sdlc/{test_layout,test_scaffold,test_testenv,test_codegen,test_testrunner,test_feature_runner,test_php_codegen,test_sql_build,test_java_integration,test_typescript_integration,test_go_integration}.py
+Before: 391 passed, 2 skipped in 22.76s. After: 391 passed, 2 skipped in 27.49s.
+Skips: PHP/Composer unavailable; opt-in PostgreSQL.
+New tests: Temporal injection, auto precedence, capability IDs, preflight interpreter forwarding and direct unknown-language fallback.
+54 layout guidance combinations and 27 phase prompts byte-identical to C-0 (783f1ba).
+Full suite: pytest -q: 3655 passed, 4 skipped, 51 deselected, 151 warnings in 199.77s.
+Skips: E2B key absent; pytesseract absent; PHP/Composer absent; PostgreSQL opt-in absent.
+ruff check .; ruff format --check .: pass. mypy src tests: 714 files pass.
+render_architecture_svg.py --check; render_knowledge_foundation_svg.py --check; matrix-count.py --check; state-numbers.py --check; roadmap-status.py --check; docs_audit.py --base develop --head HEAD: pass.
+pkg accuracy --check: 0 gated regressions. pkg verify .: 0 errors, 1 phantom-module warning. understand .: 91 files, generated episteme excluded.
+sdlc_shapes.py: all 4 pass after rerunning with configured cache access (sandbox denied ~/.cache/orchestrator writes on initial attempt).
+Manual docs-matrix walk: C-1 contribution/checklist, PR template, changelog and all progress surfaces updated; no new language/CLI/MCP surface in this phase.
+
+Official mutation measurement: python scripts/mutate-dispatch.py
+8 mutations, each against 7 test modules. A few minutes.
+
+   CAUGHT csharp: lose the target-framework rewrite
+          1 failed, 372 passed, 1 skipped in 14.30s
+   CAUGHT c/cpp: give C++ C's availability probe
+          2 failed, 371 passed, 1 skipped in 14.76s
+   CAUGHT c/cpp: force cmake on a Meson brownfield
+          4 failed, 369 passed, 1 skipped in 15.10s
+   CAUGHT codegen: drop PHP's guidance branch
+          1 failed, 372 passed, 1 skipped in 14.77s
+   CAUGHT layout: TypeScript row falls through
+          3 failed, 370 passed, 1 skipped in 14.44s
+   CAUGHT scaffold: Go row falls through
+          1 failed, 372 passed, 1 skipped in 14.51s
+   CAUGHT codegen: drop SQL's guidance branch
+          1 failed, 372 passed, 1 skipped in 15.01s
+   CAUGHT testenv: PHP test environment falls through
+          1 failed, 372 passed, 1 skipped in 14.43s
+
+caught 8 of 8 applied (0 skipped)
+baseline on 2026-09-13: 4 of 8 — perl-codegen-roadmap.md C-0 exits at 8 of 8

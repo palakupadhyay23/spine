@@ -855,7 +855,10 @@ def sdlc_feature(
         str,
         typer.Option(
             "--language",
-            help="Target language: auto (detect), python, java, typescript, csharp, c, cpp, go, php, or sql.",
+            help=(
+                "Target language: auto (detect), python, java, typescript, csharp, "
+                "c, cpp, go, php, perl, or sql."
+            ),
         ),
     ] = "auto",
     spec: Annotated[

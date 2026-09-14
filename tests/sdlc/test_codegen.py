@@ -2149,3 +2149,50 @@ def test_the_allowance_table_is_explicit() -> None:
     assert _DEFAULT_CORRECTIONS == 1
     # The loop must be able to spend the largest allowance plus the first try.
     assert max(_CORRECTIONS_PER_KIND.values()) + 1 <= _MAX_GENERATE_ATTEMPTS
+
+
+def test_php_dispatch_preserves_brownfield_layout_guidance() -> None:
+    """Legacy PHP test placement and imports cannot fall through to Python guidance."""
+    from orchestrator.sdlc.layout import TargetLayout
+
+    layout = TargetLayout(
+        package_name="",
+        source_dir="library",
+        tests_dir="Checks/Unit",
+        src_layout=False,
+        mode="existing",
+        language="php",
+        build_tool="phar",
+        test_suffix="Check.php",
+        test_bootstrap="boot.php",
+    )
+    block = LLMCodegenAdapter(_ScriptedLLM([]), layout=layout)._layout_block()
+    for guidance in (
+        "PHP existing project, dependencies via phar",
+        "`library`",
+        "(global; no namespace)",
+        "`Checks/Unit/<Name>Check.php`",
+        "`boot.php`",
+        "require_once",
+        "Use strict_types only in greenfield",
+        "New files end in .php",
+    ):
+        assert guidance in block
+
+
+def test_php_dispatch_samples_php_conventions(tmp_path: Path) -> None:
+    """PHP's separate convention dispatch must sample PHP, even alongside Python files."""
+    from orchestrator.sdlc.layout import TargetLayout
+
+    (tmp_path / "library").mkdir()
+    (tmp_path / "Checks").mkdir()
+    (tmp_path / "library/Widget.class.php").write_text("<?php class Widget {}\n")
+    (tmp_path / "Checks/WidgetCheck.php").write_text("<?php require_once '../library/Widget.class.php';\n")
+    (tmp_path / "other.py").write_text('"""Python sample must not displace PHP."""\n')
+    layout = TargetLayout("", "library", "Checks", False, "existing", language="php", test_suffix="Check.php")
+    adapter = LLMCodegenAdapter(_ScriptedLLM([]), layout=layout)
+    block = adapter._convention_block(tmp_path)
+    assert "PHP CONVENTION EXAMPLES" in block
+    assert "library/Widget.class.php" in block
+    assert "Checks/WidgetCheck.php" in block
+    assert "require_once" in block

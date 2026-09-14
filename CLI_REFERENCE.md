@@ -44,7 +44,7 @@ Set up your environment and run the platform.
 Prints the installed version **and the path it is running from**:
 
 ```
-Spine 3.33.2  (synaptixs-spine)
+Spine 3.34.0  (synaptixs-spine)
   running from /path/to/site-packages/orchestrator
 ```
 
@@ -521,15 +521,24 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 | `--tests` | Test target(s) for `--oracle runtime`; defaults to the repo's own. |
 | `--dialect` | SQL dialect (postgres\|mysql\|tsql\|oracle\|…); default: auto-detect. |
 
-**Current corpus results** (38 fixture cases — 34 single-language, 4 multi-repo — across all 9
-front-ends). Precision is **1.00 on every node kind and every edge kind in all 9 languages**; recall is 1.00 on every kind except `CALLS`:
+**Current corpus results** (47 fixture cases — 43 single-language, 4 multi-repo — across
+all 10 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
+**1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
+kind except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
 | `c` `sql` | 1.00 |
+| `perl` | 0.89 |
 | `python` | 0.73 |
 | `cpp` `csharp` `go` `java` | 0.67 |
 | `typescript` | 0.50 |
+
+Perl's 0.89 is 8 of 9 labelled `CALLS` edges in its own corpus — the one miss is a
+permanent, documented one (`instance_calls`, an untyped parameter with no declared type to
+resolve a method call through); the other predicted P2/P3-boundary miss was resolved in P3
+(a literal same-sub constructor now resolves), and `super_calls` (P5) added 3 more, all
+resolved.
 
 Every remaining loss is the documented instance-dispatch skip — a call whose receiver is a
 variable rather than a name. Invention stands at **0 invented targets across 15,212 call
@@ -554,7 +563,7 @@ is not computable from a trace, and the report says so on every run.
 **Two coverage limits worth knowing before you quote a number:**
 
 - **`--oracle runtime` is Python-only.** It uses `sys.monitoring` (PEP 669), which has no
-  equivalent in the other eight front-ends. "Runtime-verified" means "runtime-verified for
+  equivalent in the other nine front-ends. "Runtime-verified" means "runtime-verified for
   Python".
 - **`--oracle invention` only examines Python.** It resolves caller-scope bindings with
   Python's `ast`, so calls in other languages are counted as *unexaminable* rather than
@@ -772,7 +781,7 @@ Regression coverage: what a change should re-test, from the call graph.
 For a symbol you're about to change (`--symbol`) or a fault site (`--trace`),
 computes the blast radius and splits it into tests that already exercise it
 and production code in the radius with no covering test — the regression
-gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS).
+gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl).
 
 ```
 orchestrator regression [PATH] [OPTIONS]
@@ -1106,7 +1115,13 @@ orchestrator sdlc feature [OPTIONS]
 | `--package-name` | Override the scaffold package name (default: derived from repo). |
 | `--spec` | Implement a hand-written spec (JSON) instead of deriving one from the source — see `sdlc autorun` above for the format. |
 | `--refresh` | Re-extract intents from the source (default: reuse the cached, deterministic backlog). |
-| `--language` | Target language: auto (detect), python, java, typescript, csharp, c, cpp, go, php, or sql. (default: `auto`) |
+| `--language` | Target language: auto (detect), python, java, typescript, csharp, c, cpp, go, php, perl, or sql. (default: `auto`) |
+
+Perl requires `perl` and `prove`; `cpanm` is optional. Greenfield uses `lib/`, `t/`
+and `cpanfile`; existing distributions keep their package layout and packaging files.
+Changed sources pass `perl -c`; `.perlcriticrc` opts into required `perlcritic` checks.
+Then owning tests and the whole suite run with `prove`.
+See [Perl code generation](USER_GUIDE.md#perl-code-generation).
 
 PHP uses Composer when a root `composer.json` exists, otherwise a checksum-pinned
 PHPUnit PHAR outside the checkout. `phpunit.xml[.dist]` supplies the test directory,

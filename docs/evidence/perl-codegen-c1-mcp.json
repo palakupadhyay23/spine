@@ -1,0 +1,992 @@
+{
+  "base": "783f1ba",
+  "transport": "MCP stdio, configured orchestrator-mcp",
+  "blast_radius": {
+    "_resolve_language": {
+      "symbol": "_resolve_language",
+      "found": true,
+      "matches": [
+        {
+          "id": "py:orchestrator.sdlc.feature_runner._resolve_language",
+          "kind": "Function",
+          "where": "src/orchestrator/sdlc/feature_runner.py:601",
+          "caller_count": 4,
+          "callers": [
+            {
+              "id": "py:orchestrator.sdlc.autorun._require_plan",
+              "at": "src/orchestrator/sdlc/autorun.py:525"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "at": "src/orchestrator/sdlc/feature_runner.py:872"
+            },
+            {
+              "id": "py:tests.sdlc.test_feature_runner.test_resolve_language_detects_go",
+              "at": "tests/sdlc/test_feature_runner.py:558"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition",
+              "at": "tests/sdlc/test_php_codegen.py:125"
+            }
+          ],
+          "touch_count": 9,
+          "touches": [
+            {
+              "id": "py:orchestrator.catalog.ProjectProfile.from_repo",
+              "where": null
+            },
+            {
+              "id": "py:orchestrator.sdlc.autorun",
+              "where": "src/orchestrator/sdlc/autorun.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.autorun._require_plan",
+              "where": "src/orchestrator/sdlc/autorun.py:503"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner",
+              "where": "src/orchestrator/sdlc/feature_runner.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "where": "src/orchestrator/sdlc/feature_runner.py:629"
+            },
+            {
+              "id": "py:tests.sdlc.test_feature_runner",
+              "where": "tests/sdlc/test_feature_runner.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_feature_runner.test_resolve_language_detects_go",
+              "where": "tests/sdlc/test_feature_runner.py:553"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen",
+              "where": "tests/sdlc/test_php_codegen.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition",
+              "where": "tests/sdlc/test_php_codegen.py:123"
+            }
+          ]
+        }
+      ],
+      "markdown": "### `py:orchestrator.sdlc.feature_runner._resolve_language` \u2014 Function @ src/orchestrator/sdlc/feature_runner.py:601\n- **Called by (4):** py:orchestrator.sdlc.autorun._require_plan, py:orchestrator.sdlc.feature_runner.run_feature, py:tests.sdlc.test_feature_runner.test_resolve_language_detects_go, py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition\n- **Touches (9):** py:orchestrator.catalog.ProjectProfile.from_repo, py:orchestrator.sdlc.autorun, py:orchestrator.sdlc.autorun._require_plan, py:orchestrator.sdlc.feature_runner, py:orchestrator.sdlc.feature_runner.run_feature, py:tests.sdlc.test_feature_runner, py:tests.sdlc.test_feature_runner.test_resolve_language_detects_go, py:tests.sdlc.test_php_codegen, py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition"
+    },
+    "resolve_layout": {
+      "symbol": "resolve_layout",
+      "found": true,
+      "matches": [
+        {
+          "id": "py:orchestrator.sdlc.layout.resolve_layout",
+          "kind": "Function",
+          "where": "src/orchestrator/sdlc/layout.py:666",
+          "caller_count": 30,
+          "callers": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "at": "src/orchestrator/sdlc/feature_runner.py:873"
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration._scaffold_go",
+              "at": "tests/sdlc/test_go_integration.py:23"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration._scaffold_java",
+              "at": "tests/sdlc/test_java_integration.py:24"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_auto_empty_repo_is_new_with_src_layout",
+              "at": "tests/sdlc/test_layout.py:71"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_auto_existing_package_is_existing",
+              "at": "tests/sdlc/test_layout.py:81"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_new_forces_scaffold_even_with_existing",
+              "at": "tests/sdlc/test_layout.py:88"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_existing_without_package_falls_back_no_scaffold",
+              "at": "tests/sdlc/test_layout.py:92"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_package_name_override_wins",
+              "at": "tests/sdlc/test_layout.py:97"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestResolveLayout.test_module_rel_path",
+              "at": "tests/sdlc/test_layout.py:102"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestJavaLayout.test_new_java_maven_layout",
+              "at": "tests/sdlc/test_layout.py:113"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestJavaLayout.test_auto_existing_java_is_not_scaffolded",
+              "at": "tests/sdlc/test_layout.py:137"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestTypeScriptLayout.test_new_typescript_layout",
+              "at": "tests/sdlc/test_layout.py:152"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestTypeScriptLayout.test_auto_existing_ts_reads_name_and_pm",
+              "at": "tests/sdlc/test_layout.py:169"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestTypeScriptLayout.test_yarn_lockfile_detected",
+              "at": "tests/sdlc/test_layout.py:176"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCSharpLayout.test_new_csharp_layout",
+              "at": "tests/sdlc/test_layout.py:190"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCSharpLayout.test_auto_existing_csharp_is_not_scaffolded",
+              "at": "tests/sdlc/test_layout.py:212"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_new_c_cmake_layout",
+              "at": "tests/sdlc/test_layout.py:221"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_auto_existing_make_project",
+              "at": "tests/sdlc/test_layout.py:239"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_detects_meson_build_tool",
+              "at": "tests/sdlc/test_layout.py:252"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCppLayout.test_new_cpp_cmake_layout",
+              "at": "tests/sdlc/test_layout.py:258"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestGoLayout.test_new_go_layout_is_root_package",
+              "at": "tests/sdlc/test_layout.py:286"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestGoLayout.test_auto_existing_go_is_not_scaffolded",
+              "at": "tests/sdlc/test_layout.py:334"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.test_new_sql_layout_is_migrations_dir",
+              "at": "tests/sdlc/test_layout.py:339"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.test_auto_detects_existing_migrations_dir",
+              "at": "tests/sdlc/test_layout.py:349"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_layout_shapes",
+              "at": "tests/sdlc/test_php_codegen.py:55"
+            }
+          ],
+          "touch_count": 49,
+          "touches": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner",
+              "where": "src/orchestrator/sdlc/feature_runner.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "where": "src/orchestrator/sdlc/feature_runner.py:629"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout",
+              "where": "src/orchestrator/sdlc/layout.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout.TargetLayout",
+              "where": "src/orchestrator/sdlc/layout.py:80"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_c_layout",
+              "where": "src/orchestrator/sdlc/layout.py:433"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_cpp_layout",
+              "where": "src/orchestrator/sdlc/layout.py:470"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_csharp_layout",
+              "where": "src/orchestrator/sdlc/layout.py:334"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_go_layout",
+              "where": "src/orchestrator/sdlc/layout.py:578"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_java_layout",
+              "where": "src/orchestrator/sdlc/layout.py:195"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_php_layout",
+              "where": "src/orchestrator/sdlc/layout.py:623"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_sql_layout",
+              "where": "src/orchestrator/sdlc/layout.py:448"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout._resolve_typescript_layout",
+              "where": "src/orchestrator/sdlc/layout.py:264"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout.derive_package_name",
+              "where": "src/orchestrator/sdlc/layout.py:109"
+            },
+            {
+              "id": "py:orchestrator.sdlc.layout.detect_existing_package",
+              "where": "src/orchestrator/sdlc/layout.py:130"
+            },
+            {
+              "id": "py:pathlib.Path",
+              "where": null
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration",
+              "where": "tests/sdlc/test_go_integration.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration._scaffold_go",
+              "where": "tests/sdlc/test_go_integration.py:22"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration",
+              "where": "tests/sdlc/test_java_integration.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration._scaffold_java",
+              "where": "tests/sdlc/test_java_integration.py:23"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout",
+              "where": "tests/sdlc/test_layout.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_auto_existing_make_project",
+              "where": "tests/sdlc/test_layout.py:237"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_detects_meson_build_tool",
+              "where": "tests/sdlc/test_layout.py:242"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCLayout.test_new_c_cmake_layout",
+              "where": "tests/sdlc/test_layout.py:220"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCSharpLayout.test_auto_existing_csharp_is_not_scaffolded",
+              "where": "tests/sdlc/test_layout.py:208"
+            },
+            {
+              "id": "py:tests.sdlc.test_layout.TestCSharpLayout.test_new_csharp_layout",
+              "where": "tests/sdlc/test_layout.py:189"
+            }
+          ]
+        }
+      ],
+      "markdown": "### `py:orchestrator.sdlc.layout.resolve_layout` \u2014 Function @ src/orchestrator/sdlc/layout.py:666\n- **Called by (30):** py:orchestrator.sdlc.feature_runner.run_feature, py:tests.sdlc.test_go_integration._scaffold_go, py:tests.sdlc.test_java_integration._scaffold_java, py:tests.sdlc.test_layout.TestResolveLayout.test_auto_empty_repo_is_new_with_src_layout, py:tests.sdlc.test_layout.TestResolveLayout.test_auto_existing_package_is_existing, py:tests.sdlc.test_layout.TestResolveLayout.test_new_forces_scaffold_even_with_existing, py:tests.sdlc.test_layout.TestResolveLayout.test_existing_without_package_falls_back_no_scaffold, py:tests.sdlc.test_layout.TestResolveLayout.test_package_name_override_wins, py:tests.sdlc.test_layout.TestResolveLayout.test_module_rel_path, py:tests.sdlc.test_layout.TestJavaLayout.test_new_java_maven_layout\n- **Touches (49):** py:orchestrator.sdlc.feature_runner, py:orchestrator.sdlc.feature_runner.run_feature, py:orchestrator.sdlc.layout, py:orchestrator.sdlc.layout.TargetLayout, py:orchestrator.sdlc.layout._resolve_c_layout, py:orchestrator.sdlc.layout._resolve_cpp_layout, py:orchestrator.sdlc.layout._resolve_csharp_layout, py:orchestrator.sdlc.layout._resolve_go_layout, py:orchestrator.sdlc.layout._resolve_java_layout, py:orchestrator.sdlc.layout._resolve_php_layout"
+    },
+    "scaffold": {
+      "symbol": "scaffold",
+      "found": true,
+      "matches": [
+        {
+          "id": "py:orchestrator.sdlc.scaffold.scaffold",
+          "kind": "Function",
+          "where": "src/orchestrator/sdlc/scaffold.py:72",
+          "caller_count": 37,
+          "callers": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "at": "src/orchestrator/sdlc/feature_runner.py:880"
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration._scaffold_go",
+              "at": "tests/sdlc/test_go_integration.py:24"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration._scaffold_java",
+              "at": "tests/sdlc/test_java_integration.py:25"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_scaffold_idempotent",
+              "at": "tests/sdlc/test_php_codegen.py:72"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_scaffold_idempotent",
+              "at": "tests/sdlc/test_php_codegen.py:79"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_real_composer_and_phar",
+              "at": "tests/sdlc/test_php_codegen.py:286"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_creates_runnable_skeleton",
+              "at": "tests/sdlc/test_scaffold.py:20"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:33"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:35"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_never_clobbers_existing_files",
+              "at": "tests/sdlc/test_scaffold.py:41"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_java_maven_project",
+              "at": "tests/sdlc/test_scaffold.py:58"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_java_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:71"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_java_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:72"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_typescript_vitest_project",
+              "at": "tests/sdlc/test_scaffold.py:89"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_typescript_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:104"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_typescript_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:105"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_solution_project",
+              "at": "tests/sdlc/test_scaffold.py:120"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_guids_are_deterministic",
+              "at": "tests/sdlc/test_scaffold.py:143"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_guids_are_deterministic",
+              "at": "tests/sdlc/test_scaffold.py:144"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:150"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:151"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_csharp_appends_dotnet_ignores_to_existing_gitignore",
+              "at": "tests/sdlc/test_scaffold.py:158"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_c_cmake_project",
+              "at": "tests/sdlc/test_scaffold.py:177"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_c_appends_build_ignore_to_existing_gitignore",
+              "at": "tests/sdlc/test_scaffold.py:192"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_c_is_idempotent",
+              "at": "tests/sdlc/test_scaffold.py:199"
+            }
+          ],
+          "touch_count": 46,
+          "touches": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner",
+              "where": "src/orchestrator/sdlc/feature_runner.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "where": "src/orchestrator/sdlc/feature_runner.py:629"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold",
+              "where": "src/orchestrator/sdlc/scaffold.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._c_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:348"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._cpp_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:414"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._csharp_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:231"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._ensure_build_ignores",
+              "where": "src/orchestrator/sdlc/scaffold.py:115"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._go_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:476"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._java_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:178"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._php_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:576"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._python_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:157"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._sql_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:140"
+            },
+            {
+              "id": "py:orchestrator.sdlc.scaffold._typescript_files",
+              "where": "src/orchestrator/sdlc/scaffold.py:196"
+            },
+            {
+              "id": "py:pathlib.Path",
+              "where": null
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration",
+              "where": "tests/sdlc/test_go_integration.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_go_integration._scaffold_go",
+              "where": "tests/sdlc/test_go_integration.py:22"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration",
+              "where": "tests/sdlc/test_java_integration.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_java_integration._scaffold_java",
+              "where": "tests/sdlc/test_java_integration.py:23"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen",
+              "where": "tests/sdlc/test_php_codegen.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_real_composer_and_phar",
+              "where": "tests/sdlc/test_php_codegen.py:280"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_scaffold_idempotent",
+              "where": "tests/sdlc/test_php_codegen.py:70"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold",
+              "where": "tests/sdlc/test_scaffold.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_flat_layout_pythonpath",
+              "where": "tests/sdlc/test_scaffold.py:273"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_c_appends_build_ignore_to_existing_gitignore",
+              "where": "tests/sdlc/test_scaffold.py:190"
+            },
+            {
+              "id": "py:tests.sdlc.test_scaffold.test_scaffold_c_cmake_project",
+              "where": "tests/sdlc/test_scaffold.py:176"
+            }
+          ]
+        }
+      ],
+      "markdown": "### `py:orchestrator.sdlc.scaffold.scaffold` \u2014 Function @ src/orchestrator/sdlc/scaffold.py:72\n- **Called by (37):** py:orchestrator.sdlc.feature_runner.run_feature, py:tests.sdlc.test_go_integration._scaffold_go, py:tests.sdlc.test_java_integration._scaffold_java, py:tests.sdlc.test_php_codegen.test_scaffold_idempotent, py:tests.sdlc.test_php_codegen.test_scaffold_idempotent, py:tests.sdlc.test_php_codegen.test_real_composer_and_phar, py:tests.sdlc.test_scaffold.test_scaffold_creates_runnable_skeleton, py:tests.sdlc.test_scaffold.test_scaffold_is_idempotent, py:tests.sdlc.test_scaffold.test_scaffold_is_idempotent, py:tests.sdlc.test_scaffold.test_scaffold_never_clobbers_existing_files\n- **Touches (46):** py:orchestrator.sdlc.feature_runner, py:orchestrator.sdlc.feature_runner.run_feature, py:orchestrator.sdlc.scaffold, py:orchestrator.sdlc.scaffold._c_files, py:orchestrator.sdlc.scaffold._cpp_files, py:orchestrator.sdlc.scaffold._csharp_files, py:orchestrator.sdlc.scaffold._ensure_build_ignores, py:orchestrator.sdlc.scaffold._go_files, py:orchestrator.sdlc.scaffold._java_files, py:orchestrator.sdlc.scaffold._php_files"
+    },
+    "make_test_runner": {
+      "symbol": "make_test_runner",
+      "found": true,
+      "matches": [
+        {
+          "id": "py:orchestrator.sdlc.testenv.make_test_runner",
+          "kind": "Function",
+          "where": "src/orchestrator/sdlc/testenv.py:537",
+          "caller_count": 16,
+          "callers": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "at": "src/orchestrator/sdlc/feature_runner.py:1002"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition",
+              "at": "tests/sdlc/test_php_codegen.py:129"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_real_composer_and_phar",
+              "at": "tests/sdlc/test_php_codegen.py:297"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build.test_factories_wire_sql_language",
+              "at": "tests/sdlc/test_sql_build.py:91"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build.test_engine_env_selects_postgres_runner",
+              "at": "tests/sdlc/test_sql_build.py:123"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build.test_engine_env_selects_postgres_runner",
+              "at": "tests/sdlc/test_sql_build.py:125"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_maven_for_java",
+              "at": "tests/sdlc/test_testenv.py:165"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_maven_for_java",
+              "at": "tests/sdlc/test_testenv.py:166"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_node_for_typescript",
+              "at": "tests/sdlc/test_testenv.py:233"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_dotnet_for_csharp",
+              "at": "tests/sdlc/test_testenv.py:310"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_ctest_for_c",
+              "at": "tests/sdlc/test_testenv.py:426"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_meson_when_build_tool_is_meson",
+              "at": "tests/sdlc/test_testenv.py:503"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_meson_when_build_tool_is_meson",
+              "at": "tests/sdlc/test_testenv.py:504"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_environment_and_runner_for_cpp",
+              "at": "tests/sdlc/test_testenv.py:560"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_environment_and_runner_for_cpp",
+              "at": "tests/sdlc/test_testenv.py:561"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_environment_and_runner_for_go",
+              "at": "tests/sdlc/test_testenv.py:584"
+            }
+          ],
+          "touch_count": 28,
+          "touches": [
+            {
+              "id": "py:orchestrator.sdlc.feature_runner",
+              "where": "src/orchestrator/sdlc/feature_runner.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.feature_runner.run_feature",
+              "where": "src/orchestrator/sdlc/feature_runner.py:629"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testenv",
+              "where": "src/orchestrator/sdlc/testenv.py:1"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.CTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:268"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.DotnetTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:189"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.GoTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:382"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.MavenTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:153"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.MesonTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:299"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.NodeTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:234"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.PhpUnitTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:327"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.PostgresSqlTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:519"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.SqlTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:485"
+            },
+            {
+              "id": "py:orchestrator.sdlc.testrunner.SubprocessTestRunner",
+              "where": "src/orchestrator/sdlc/testrunner.py:95"
+            },
+            {
+              "id": "py:os.getenv",
+              "where": null
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen",
+              "where": "tests/sdlc/test_php_codegen.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition",
+              "where": "tests/sdlc/test_php_codegen.py:123"
+            },
+            {
+              "id": "py:tests.sdlc.test_php_codegen.test_real_composer_and_phar",
+              "where": "tests/sdlc/test_php_codegen.py:280"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build",
+              "where": "tests/sdlc/test_sql_build.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build.test_engine_env_selects_postgres_runner",
+              "where": "tests/sdlc/test_sql_build.py:118"
+            },
+            {
+              "id": "py:tests.sdlc.test_sql_build.test_factories_wire_sql_language",
+              "where": "tests/sdlc/test_sql_build.py:88"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv",
+              "where": "tests/sdlc/test_testenv.py:1"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_environment_and_runner_for_cpp",
+              "where": "tests/sdlc/test_testenv.py:555"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_environment_and_runner_for_go",
+              "where": "tests/sdlc/test_testenv.py:579"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_ctest_for_c",
+              "where": "tests/sdlc/test_testenv.py:422"
+            },
+            {
+              "id": "py:tests.sdlc.test_testenv.test_make_test_runner_picks_dotnet_for_csharp",
+              "where": "tests/sdlc/test_testenv.py:306"
+            }
+          ]
+        }
+      ],
+      "markdown": "### `py:orchestrator.sdlc.testenv.make_test_runner` \u2014 Function @ src/orchestrator/sdlc/testenv.py:537\n- **Called by (16):** py:orchestrator.sdlc.feature_runner.run_feature, py:tests.sdlc.test_php_codegen.test_dispatch_and_php_source_recognition, py:tests.sdlc.test_php_codegen.test_real_composer_and_phar, py:tests.sdlc.test_sql_build.test_factories_wire_sql_language, py:tests.sdlc.test_sql_build.test_engine_env_selects_postgres_runner, py:tests.sdlc.test_sql_build.test_engine_env_selects_postgres_runner, py:tests.sdlc.test_testenv.test_make_test_runner_picks_maven_for_java, py:tests.sdlc.test_testenv.test_make_test_runner_picks_maven_for_java, py:tests.sdlc.test_testenv.test_make_test_runner_picks_node_for_typescript, py:tests.sdlc.test_testenv.test_make_test_runner_picks_dotnet_for_csharp\n- **Touches (28):** py:orchestrator.sdlc.feature_runner, py:orchestrator.sdlc.feature_runner.run_feature, py:orchestrator.sdlc.testenv, py:orchestrator.sdlc.testrunner.CTestRunner, py:orchestrator.sdlc.testrunner.DotnetTestRunner, py:orchestrator.sdlc.testrunner.GoTestRunner, py:orchestrator.sdlc.testrunner.MavenTestRunner, py:orchestrator.sdlc.testrunner.MesonTestRunner, py:orchestrator.sdlc.testrunner.NodeTestRunner, py:orchestrator.sdlc.testrunner.PhpUnitTestRunner"
+    },
+    "SUPPORTED_LANGUAGES": {
+      "symbol": "SUPPORTED_LANGUAGES",
+      "found": false,
+      "matches": []
+    },
+    "preflight": {
+      "symbol": "preflight",
+      "found": true,
+      "matches": [
+        {
+          "id": "py:orchestrator.sdlc.activities.SDLCActivities.preflight",
+          "kind": "Function",
+          "where": "src/orchestrator/sdlc/activities.py:641",
+          "caller_count": 0,
+          "callers": [],
+          "touch_count": 1,
+          "touches": [
+            {
+              "id": "py:orchestrator.sdlc.activities.SDLCActivities",
+              "where": "src/orchestrator/sdlc/activities.py:44"
+            }
+          ]
+        },
+        {
+          "id": "py:orchestrator.sdlc.deps.SDLCDeps.preflight",
+          "kind": "Field",
+          "where": "src/orchestrator/sdlc/deps.py:66",
+          "caller_count": 0,
+          "callers": [],
+          "touch_count": 1,
+          "touches": [
+            {
+              "id": "py:orchestrator.sdlc.deps.SDLCDeps",
+              "where": "src/orchestrator/sdlc/deps.py:48"
+            }
+          ]
+        }
+      ],
+      "markdown": "### `py:orchestrator.sdlc.activities.SDLCActivities.preflight` \u2014 Function @ src/orchestrator/sdlc/activities.py:641\n- **Called by (0):** \n- **Touches (1):** py:orchestrator.sdlc.activities.SDLCActivities\n### `py:orchestrator.sdlc.deps.SDLCDeps.preflight` \u2014 Field @ src/orchestrator/sdlc/deps.py:66\n- **Called by (0):** \n- **Touches (1):** py:orchestrator.sdlc.deps.SDLCDeps"
+    }
+  },
+  "design_change": {
+    "title": "C-1: migrate all existing languages to a toolchain registry",
+    "design": {
+      "approach": "Implement 'C-1: migrate all existing languages to a toolchain registry' following the repo's existing structure and conventions.",
+      "files_to_touch": [
+        "src/orchestrator/pkg/php_extractor.py",
+        "src/orchestrator/registry/api/workspace.py",
+        "src/orchestrator/sdlc/layout.py",
+        "src/orchestrator/sdlc/preflight.py",
+        "src/orchestrator/sdlc/testenv.py"
+      ],
+      "interfaces": [],
+      "data_changes": [],
+      "risks": [
+        "Heuristic design (no LLM) \u2014 confirm the affected files before building."
+      ],
+      "test_strategy": "Add tests covering each acceptance criterion: C-0 has detected all eight mutations; all existing codegen tests must pass unchanged before and after migration.; C# SDK TFM rewrite, separate C/C++ probes, Meson brownfield selection and PHP layout guidance are pinned.; One registry owns layout, scaffold, environment, runner, availability, preflight, prompts and conventions; Perl remains unsupported until C-2.",
+      "grounded": true,
+      "llm": false,
+      "blast_radius": {
+        "call_graph_available": true,
+        "grounded": true,
+        "modules": [
+          {
+            "ref": "src/orchestrator/pkg/php_extractor.py",
+            "module": "orchestrator.pkg.php_extractor",
+            "where": "src/orchestrator/pkg/php_extractor.py",
+            "importers": 0,
+            "importer_names": [],
+            "hotspots": [
+              {
+                "name": "PhpExtractor",
+                "where": "src/orchestrator/pkg/php_extractor.py:105",
+                "callers": 7,
+                "transitive": 65,
+                "exposed": 0
+              },
+              {
+                "name": "_strip_sigil",
+                "where": "src/orchestrator/pkg/php_extractor.py:938",
+                "callers": 6,
+                "transitive": 11,
+                "exposed": 0
+              },
+              {
+                "name": "_type_name",
+                "where": "src/orchestrator/pkg/php_extractor.py:879",
+                "callers": 4,
+                "transitive": 8,
+                "exposed": 0
+              },
+              {
+                "name": "_field_text",
+                "where": "src/orchestrator/pkg/php_extractor.py:951",
+                "callers": 4,
+                "transitive": 5,
+                "exposed": 0
+              },
+              {
+                "name": "_property_names",
+                "where": "src/orchestrator/pkg/php_extractor.py:854",
+                "callers": 2,
+                "transitive": 5,
+                "exposed": 0
+              }
+            ]
+          },
+          {
+            "ref": "src/orchestrator/registry/api/workspace.py",
+            "module": "orchestrator.registry.api.workspace",
+            "where": "src/orchestrator/registry/api/workspace.py",
+            "importers": 1,
+            "importer_names": [
+              "tests.registry.test_repo_sources"
+            ],
+            "hotspots": [
+              {
+                "name": "resolve_repo_source",
+                "where": "src/orchestrator/registry/api/workspace.py:166",
+                "callers": 15,
+                "transitive": 104,
+                "exposed": 0
+              },
+              {
+                "name": "materialize_repo_source",
+                "where": "src/orchestrator/registry/api/workspace.py:216",
+                "callers": 11,
+                "transitive": 82,
+                "exposed": 0
+              },
+              {
+                "name": "resolve_repo_path",
+                "where": "src/orchestrator/registry/api/workspace.py:53",
+                "callers": 10,
+                "transitive": 56,
+                "exposed": 0
+              },
+              {
+                "name": "RepoSourceError",
+                "where": "src/orchestrator/registry/api/workspace.py:42",
+                "callers": 6,
+                "transitive": 63,
+                "exposed": 0
+              },
+              {
+                "name": "RepoSource",
+                "where": "src/orchestrator/registry/api/workspace.py:83",
+                "callers": 6,
+                "transitive": 57,
+                "exposed": 0
+              }
+            ]
+          },
+          {
+            "ref": "src/orchestrator/sdlc/layout.py",
+            "module": "orchestrator.sdlc.layout",
+            "where": "src/orchestrator/sdlc/layout.py",
+            "importers": 0,
+            "importer_names": [],
+            "hotspots": [
+              {
+                "name": "TargetLayout",
+                "where": "src/orchestrator/sdlc/layout.py:80",
+                "callers": 35,
+                "transitive": 122,
+                "exposed": 0
+              },
+              {
+                "name": "resolve_layout",
+                "where": "src/orchestrator/sdlc/layout.py:666",
+                "callers": 30,
+                "transitive": 100,
+                "exposed": 0
+              },
+              {
+                "name": "derive_package_name",
+                "where": "src/orchestrator/sdlc/layout.py:109",
+                "callers": 10,
+                "transitive": 114,
+                "exposed": 0
+              },
+              {
+                "name": "derive_go_module",
+                "where": "src/orchestrator/sdlc/layout.py:476",
+                "callers": 7,
+                "transitive": 99,
+                "exposed": 0
+              },
+              {
+                "name": "detect_existing_package",
+                "where": "src/orchestrator/sdlc/layout.py:130",
+                "callers": 5,
+                "transitive": 103,
+                "exposed": 0
+              }
+            ]
+          },
+          {
+            "ref": "src/orchestrator/sdlc/preflight.py",
+            "module": "orchestrator.sdlc.preflight",
+            "where": "src/orchestrator/sdlc/preflight.py",
+            "importers": 1,
+            "importer_names": [
+              "scripts.codegen_benchmark"
+            ],
+            "hotspots": [
+              {
+                "name": "SubprocessPreflightRunner",
+                "where": "src/orchestrator/sdlc/preflight.py:209",
+                "callers": 13,
+                "transitive": 22,
+                "exposed": 0
+              },
+              {
+                "name": "PreflightResult",
+                "where": "src/orchestrator/sdlc/preflight.py:163",
+                "callers": 9,
+                "transitive": 3,
+                "exposed": 0
+              },
+              {
+                "name": "_relative",
+                "where": "src/orchestrator/sdlc/preflight.py:112",
+                "callers": 3,
+                "transitive": 4,
+                "exposed": 0
+              },
+              {
+                "name": "PreflightBaselineError",
+                "where": "src/orchestrator/sdlc/preflight.py:128",
+                "callers": 2,
+                "transitive": 3,
+                "exposed": 0
+              },
+              {
+                "name": "_is_unusable",
+                "where": "src/orchestrator/sdlc/preflight.py:69",
+                "callers": 1,
+                "transitive": 3,
+                "exposed": 0
+              }
+            ]
+          },
+          {
+            "ref": "src/orchestrator/sdlc/testenv.py",
+            "module": "orchestrator.sdlc.testenv",
+            "where": "src/orchestrator/sdlc/testenv.py",
+            "importers": 9,
+            "importer_names": [
+              "tests.sdlc.test_testenv"
+            ],
+            "hotspots": [
+              {
+                "name": "make_test_runner",
+                "where": "src/orchestrator/sdlc/testenv.py:537",
+                "callers": 16,
+                "transitive": 74,
+                "exposed": 0
+              },
+              {
+                "name": "make_test_environment",
+                "where": "src/orchestrator/sdlc/testenv.py:514",
+                "callers": 15,
+                "transitive": 75,
+                "exposed": 0
+              },
+              {
+                "name": "run_with_autoheal",
+                "where": "src/orchestrator/sdlc/testenv.py:594",
+                "callers": 10,
+                "transitive": 72,
+                "exposed": 0
+              },
+              {
+                "name": "CToolEnvironment",
+                "where": "src/orchestrator/sdlc/testenv.py:240",
+                "callers": 7,
+                "transitive": 77,
+                "exposed": 0
+              },
+              {
+                "name": "_project_dependencies",
+                "where": "src/orchestrator/sdlc/testenv.py:690",
+                "callers": 7,
+                "transitive": 7,
+                "exposed": 0
+              }
+            ]
+          }
+        ],
+        "unverified_references": []
+      }
+    },
+    "unverified_references": [],
+    "used_llm": false,
+    "markdown": "# Design \u2014 C-1: migrate all existing languages to a toolchain registry\n\n_heuristic (no LLM), grounded in the knowledge graph: True_\n\n## Approach\nImplement 'C-1: migrate all existing languages to a toolchain registry' following the repo's existing structure and conventions.\n\n## Files to touch\n- src/orchestrator/pkg/php_extractor.py\n- src/orchestrator/registry/api/workspace.py\n- src/orchestrator/sdlc/layout.py\n- src/orchestrator/sdlc/preflight.py\n- src/orchestrator/sdlc/testenv.py\n\n## Risks\n- Heuristic design (no LLM) \u2014 confirm the affected files before building.\n\n## Test strategy\nAdd tests covering each acceptance criterion: C-0 has detected all eight mutations; all existing codegen tests must pass unchanged before and after migration.; C# SDK TFM rewrite, separate C/C++ probes, Meson brownfield selection and PHP layout guidance are pinned.; One registry owns layout, scaffold, environment, runner, availability, preflight, prompts and conventions; Perl remains unsupported until C-2.\n\n## Blast radius\n_Grounded in the knowledge graph \u2014 touching these modules affects their dependents._\n\n- `src/orchestrator/pkg/php_extractor.py` \u2014 imported by 0 module(s)\n    - high fan-in: `PhpExtractor` (7 caller(s), 65 transitive) \u2014 src/orchestrator/pkg/php_extractor.py:105\n    - high fan-in: `_strip_sigil` (6 caller(s), 11 transitive) \u2014 src/orchestrator/pkg/php_extractor.py:938\n    - high fan-in: `_type_name` (4 caller(s), 8 transitive) \u2014 src/orchestrator/pkg/php_extractor.py:879\n    - high fan-in: `_field_text` (4 caller(s), 5 transitive) \u2014 src/orchestrator/pkg/php_extractor.py:951\n    - high fan-in: `_property_names` (2 caller(s), 5 transitive) \u2014 src/orchestrator/pkg/php_extractor.py:854\n- `src/orchestrator/registry/api/workspace.py` \u2014 imported by 1 module(s): tests.registry.test_repo_sources\n    - high fan-in: `resolve_repo_source` (15 caller(s), 104 transitive) \u2014 src/orchestrator/registry/api/workspace.py:166\n    - high fan-in: `materialize_repo_source` (11 caller(s), 82 transitive) \u2014 src/orchestrator/registry/api/workspace.py:216\n    - high fan-in: `resolve_repo_path` (10 caller(s), 56 transitive) \u2014 src/orchestrator/registry/api/workspace.py:53\n    - high fan-in: `RepoSourceError` (6 caller(s), 63 transitive) \u2014 src/orchestrator/registry/api/workspace.py:42\n    - high fan-in: `RepoSource` (6 caller(s), 57 transitive) \u2014 src/orchestrator/registry/api/workspace.py:83\n- `src/orchestrator/sdlc/layout.py` \u2014 imported by 0 module(s)\n    - high fan-in: `TargetLayout` (35 caller(s), 122 transitive) \u2014 src/orchestrator/sdlc/layout.py:80\n    - high fan-in: `resolve_layout` (30 caller(s), 100 transitive) \u2014 src/orchestrator/sdlc/layout.py:666\n    - high fan-in: `derive_package_name` (10 caller(s), 114 transitive) \u2014 src/orchestrator/sdlc/layout.py:109\n    - high fan-in: `derive_go_module` (7 caller(s), 99 transitive) \u2014 src/orchestrator/sdlc/layout.py:476\n    - high fan-in: `detect_existing_package` (5 caller(s), 103 transitive) \u2014 src/orchestrator/sdlc/layout.py:130\n- `src/orchestrator/sdlc/preflight.py` \u2014 imported by 1 module(s): scripts.codegen_benchmark\n    - high fan-in: `SubprocessPreflightRunner` (13 caller(s), 22 transitive) \u2014 src/orchestrator/sdlc/preflight.py:209\n    - high fan-in: `PreflightResult` (9 caller(s)) \u2014 src/orchestrator/sdlc/preflight.py:163\n    - high fan-in: `_relative` (3 caller(s), 4 transitive) \u2014 src/orchestrator/sdlc/preflight.py:112\n    - high fan-in: `PreflightBaselineError` (2 caller(s), 3 transitive) \u2014 src/orchestrator/sdlc/preflight.py:128\n    - high fan-in: `_is_unusable` (1 caller(s), 3 transitive) \u2014 src/orchestrator/sdlc/preflight.py:69\n- `src/orchestrator/sdlc/testenv.py` \u2014 imported by 9 module(s): tests.sdlc.test_testenv\n    - high fan-in: `make_test_runner` (16 caller(s), 74 transitive) \u2014 src/orchestrator/sdlc/testenv.py:537\n    - high fan-in: `make_test_environment` (15 caller(s), 75 transitive) \u2014 src/orchestrator/sdlc/testenv.py:514\n    - high fan-in: `run_with_autoheal` (10 caller(s), 72 transitive) \u2014 src/orchestrator/sdlc/testenv.py:594\n    - high fan-in: `CToolEnvironment` (7 caller(s), 77 transitive) \u2014 src/orchestrator/sdlc/testenv.py:240\n    - high fan-in: `_project_dependencies` (7 caller(s)) \u2014 src/orchestrator/sdlc/testenv.py:690\n"
+  },
+  "maintainer_clarification": "Preserve injected Temporal runners/preflight and worker defaults; centralize existing factories only."
+}

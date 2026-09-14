@@ -38,7 +38,7 @@ radius) and grounds new code in what already exists. Full guide:
 
 | Capability | Status | How to use |
 |---|---|---|
-| Multi-language comprehension + codegen — Python, Java, TypeScript, C#, C, C++, Go, PHP | ✅ | automatic per repo |
+| Multi-language comprehension + codegen — Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl | ✅ | automatic per repo |
 | SQL data-layer comprehension — schema, queries, stored procedures, migration folding | ✅ | `pip install 'synaptixs-spine[sql]'`; `.sql` per repo |
 | SQL Server database projects — **UTF-16** scripts (SSMS's default) and `GO` batch separators are handled, so a scripted `.Database` project reads instead of being skipped | ✅ | automatic; no flag. On one real project this was the difference between **676 of 709 `.sql` files skipped** and none |
 | SQL greenfield codegen — generate a migration, validate on an ephemeral DB | ✅ | `sdlc feature --language sql` (in-memory SQLite; `SDLC_SQL_ENGINE=postgres` for real Postgres) |
@@ -48,6 +48,7 @@ radius) and grounds new code in what already exists. Full guide:
 | C `#include` graph + header/source merge; codegen on **CMake or Meson** | ✅ | `.c`/`.h` per repo; `sdlc feature --language c` |
 | Go — package-per-directory, call graph, **interface satisfaction** (`IMPLEMENTS` by method-set); codegen built + tested with `go build`/`go test`, multi-module aware | ✅ | `pip install 'synaptixs-spine[go]'`; `.go` per repo; `sdlc feature --language go` |
 | PHP — namespace-keyed modules, traits as `IMPLEMENTS` (mixin blast radius), static per-file class-name resolution, a call graph (`$this->`/`self::`/`parent::`/`new`/`X::m()`/same-file or `use function` calls, typed-receiver resolution), Laravel/Slim/Symfony routes (`Endpoint` + `EXPOSES`), and Eloquent/Doctrine entities (`Entity` + `REFERENCES`); codegen with Composer or a pinned PHPUnit PHAR, configured test layout and changed-file lint | ✅ | `pip install 'synaptixs-spine[php]'`; `.php` per repo (`.blade.php` skipped as a template); `sdlc feature --language php` |
+| Perl — every `package`/5.38 `class` is its own type (a package is both namespace and class), inheritance across its five spellings (`use parent`/`use base`, `@ISA`, `extends`, `use Mojo::Base`, `:isa(...)`) resolved literal-only, `has`/`Class::Accessor`/5.38 `field` as `Field`, and a call graph (`$self->`/`SUPER::`/qualified/bare calls, `@EXPORT`-verified default resolution). Routes and data-layer extraction are supported; codegen uses `perl -c`, configured-only `perlcritic`, then `prove`, with optional `cpanm` | ✅ | `pip install 'synaptixs-spine[perl]'`; `.pl`/`.pm`/`.t` per repo; `sdlc feature --language perl` |
 | Doc ingestion — folds Markdown/reST/text docs into the PKG as `Doc` nodes + `MENTIONS` edges (which docs describe a symbol); section-granular, precision-first, no LLM | ✅ | automatic on `orchestrator understand` / `orchestrator state` |
 | HTML ingestion — `<h1..h6>` become sections, inline `<code>` binds like a backtick | ✅ | automatic (stdlib, no extra) |
 | PDF ingestion — same, for `.pdf` docs (scanned/image-only PDFs skipped, no OCR) | ✅ | `pip install 'synaptixs-spine[docs]'` |
@@ -60,8 +61,8 @@ radius) and grounds new code in what already exists. Full guide:
 | Committed `episteme/` for humans + any AI tool, with a CI currency gate | ✅ | `orchestrator understand --out episteme`; `orchestrator understand . --check` writes nothing and exits non-zero when the bank no longer matches the code |
 | Current State report — overview, infrastructure/runtime, code structure, **documentation coverage + doc drift**, architecture diagrams (no LLM) | ✅ | `orchestrator state . --lens developer\|stakeholder` |
 | PKG extraction / export | ✅ | `orchestrator pkg extract`, `orchestrator pkg export` |
-| **Measured graph accuracy** — precision and recall per node/edge kind, for **all 9 front-ends**, against a published hand-labelled corpus. Not "grounded" as an adjective; a number you can check | ✅ | `orchestrator pkg accuracy` |
-| Runtime oracle — `CALLS` recall from **real execution**, by tracing a repo's own test suite. No labelling needed | 🟡 Python only | `orchestrator pkg accuracy --oracle runtime`. Uses `sys.monitoring` (PEP 669); the other eight front-ends have no equivalent, so "runtime-verified" means "for Python" |
+| **Measured graph accuracy** — precision and recall per node/edge kind, for **all 10 front-ends**, against a published hand-labelled corpus. Not "grounded" as an adjective; a number you can check | ✅ | `orchestrator pkg accuracy` |
+| Runtime oracle — `CALLS` recall from **real execution**, by tracing a repo's own test suite. No labelling needed | 🟡 Python only | `orchestrator pkg accuracy --oracle runtime`. Uses `sys.monitoring` (PEP 669); the other nine front-ends have no equivalent, so "runtime-verified" means "for Python" |
 | Per-file route/table parity — where the source declares more than the graph holds, with `file:line` | ✅ | `orchestrator pkg accuracy --oracle parity` |
 | Invention detection — `CALLS` edges targeting a name bound in the caller's own scope. Every other check hunts for absence; this hunts for **fiction** | 🟡 Python only | `orchestrator pkg accuracy --oracle invention`. Resolves bindings with Python's `ast`; on other languages every candidate is reported *unexaminable*, which prints as `0` and means "not measured", not "clean" |
 | Accuracy regression gate — a committed baseline, and CI failing when a gated number drops | ✅ | `orchestrator pkg accuracy --check` (in the quality gate) |

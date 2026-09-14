@@ -827,40 +827,42 @@ _REFINE_SYSTEM_PHP = (
     "Never disable tests, weaken assertions, or rewrite the target's unrelated legacy suite."
 )
 
-# Phase system prompts keyed by language (default: Python). Adding a language is a
-# new column here, not another boolean branch at each call site.
-_IMPLEMENT_SYSTEMS = {
-    "python": _IMPLEMENT_SYSTEM,
-    "java": _IMPLEMENT_SYSTEM_JAVA,
-    "typescript": _IMPLEMENT_SYSTEM_TS,
-    "csharp": _IMPLEMENT_SYSTEM_CSHARP,
-    "c": _IMPLEMENT_SYSTEM_C,
-    "cpp": _IMPLEMENT_SYSTEM_CPP,
-    "go": _IMPLEMENT_SYSTEM_GO,
-    "php": _IMPLEMENT_SYSTEM_PHP,
-    "sql": _IMPLEMENT_SYSTEM_SQL,
-}
-_TESTS_SYSTEMS = {
-    "python": _TESTS_SYSTEM,
-    "java": _TESTS_SYSTEM_JAVA,
-    "typescript": _TESTS_SYSTEM_TS,
-    "csharp": _TESTS_SYSTEM_CSHARP,
-    "c": _TESTS_SYSTEM_C,
-    "cpp": _TESTS_SYSTEM_CPP,
-    "go": _TESTS_SYSTEM_GO,
-    "php": _TESTS_SYSTEM_PHP,
-}
-_REFINE_SYSTEMS = {
-    "python": _REFINE_SYSTEM,
-    "java": _REFINE_SYSTEM_JAVA,
-    "typescript": _REFINE_SYSTEM_TS,
-    "csharp": _REFINE_SYSTEM_CSHARP,
-    "c": _REFINE_SYSTEM_C,
-    "cpp": _REFINE_SYSTEM_CPP,
-    "go": _REFINE_SYSTEM_GO,
-    "php": _REFINE_SYSTEM_PHP,
-    "sql": _REFINE_SYSTEM_SQL,
-}
+
+_IMPLEMENT_SYSTEM_PERL = (
+    "You implement a feature in a Perl distribution. Submit changes with submit_files. "
+    "Output one JSON object, no prose or code fences:\n" + _FILE_FORMS + "\n"
+    "Use content for new files and anchored edits for existing files, including scaffolded modules. "
+    "Implement production code only; the separate author_tests phase writes tests. "
+    "Leave scaffold/config files alone unless the feature needs a specific change. "
+    "Follow the authoritative layout and grounded "
+    "package names: lib/<Package/Path>.pm and t/*.t. Use strict and warnings in every file. "
+    "Match observed Moo/Moose usage, otherwise use classic bless. Follow existing public APIs; "
+    "prefix private subs with an underscore and give each public sub a POD stub. End modules "
+    "with 1;. Declare dependencies in cpanfile; preserve existing packaging and build files. "
+    "No XS compilation. Implement every acceptance criterion without inventing unrelated paths."
+)
+_TESTS_SYSTEM_PERL = (
+    "Write executable Perl tests for the supplied implementation. Submit changes with submit_files. "
+    "Output one JSON object, no prose or code fences:\n" + _FILE_FORMS + "\n"
+    "Use content for new test files and anchored edits for existing tests; write tests only. "
+    "Put tests in the authoritative t/ directory, following existing names "
+    "and numbering. Use strict; use warnings; use Test::More; (or Test2::V0 when observed). "
+    "Load the real package, assert actual behavior, cover acceptance criteria and edge cases, "
+    "and group new behavioral checks in named test_* subroutines invoked by the test file. "
+    "Construct the package receiver inside those subroutines so test-to-production calls "
+    "are visible in the graph. "
+    "Finish with done_testing. Never skip, weaken assertions, or report an empty passing suite. "
+    "Tests must run with prove -l t/. Do not modify unrelated legacy tests."
+)
+_REFINE_SYSTEM_PERL = (
+    "Fix the Perl implementation and tests using the supplied perl -c / prove failure output. "
+    "Submit changes with submit_files. Output one JSON object, no prose or code fences:\n"
+    + _FILE_FORMS
+    + "\n"
+    "Use anchored edits for existing files; content is only for new files. Preserve package clauses and "
+    "the lib/ and t/ layout; use strict and warnings. Keep existing packaging. Never disable "
+    "tests, weaken assertions, add skip_all, or remove failing coverage to obtain green."
+)
 
 
 class LLMCodegenAdapter:
@@ -984,14 +986,9 @@ class LLMCodegenAdapter:
         """The repo's observed conventions as a prompt block (cached, or '')."""
         key = root.resolve()
         if key not in self._conventions:
-            from orchestrator.sdlc.conventions import extract_conventions
+            from orchestrator.sdlc.toolchains import get_toolchain
 
-            if self._layout is not None and self._layout.language == "php":
-                from orchestrator.sdlc.conventions import php_convention_block
-
-                block = php_convention_block(root, self._layout)
-            else:
-                block = extract_conventions(root).prompt_block()
+            block = get_toolchain(self._language()).conventions(root, self._layout)
             self._conventions[key] = f"\n\n{block}" if block else ""
         return self._conventions[key]
 
@@ -1016,153 +1013,30 @@ class LLMCodegenAdapter:
         return self._grounders[key]
 
     def _layout_block(self) -> str:
-        """Authoritative path guidance from the target layout (or '' if unset).
+        """Authoritative path guidance selected by the complete language row."""
+        from orchestrator.sdlc.toolchains import get_toolchain
 
-        Leads every phase prompt so it overrides the base prompt's "top-level
-        import" default and the model's greenfield path-invention — the fix for
-        leaked paths like ``src/orchestrator/pkg/...`` in unrelated repos.
-        """
-        layout = self._layout
-        if layout is None:
+        if self._layout is None:
             return ""
-        if layout.language == "java":
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Java package is `{layout.package_name}`. Put each public class at "
-                f"`{layout.source_dir}/<ClassName>.java`, one public class per file, starting "
-                f"with `package {layout.package_name};`.\n"
-                f"- Put JUnit 5 tests at `{layout.tests_dir}/<ClassName>Test.java` in the same package.\n"
-                "- Declare any new dependency in `pom.xml` (edit it); don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "typescript":
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Put new modules at `{layout.source_dir}/<name>.ts`. Use ES module "
-                "`import`/`export`; import a sibling module by relative path with a `.js` "
-                'extension (NodeNext), e.g. `import { x } from "./<name>.js"`.\n'
-                f"- Put Vitest tests co-located beside the code as `{layout.tests_dir}/<name>.test.ts`.\n"
-                "- Declare any new dependency in `package.json` (edit it); don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "csharp":
-            tfm = layout.target_framework or "net8.0"
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- C# namespace is `{layout.package_name}`. Put each public type at "
-                f"`{layout.source_dir}/<TypeName>.cs`, one public type per file, declaring "
-                f"`namespace {layout.package_name};` (target {tfm}, nullable enabled).\n"
-                f"- Put xUnit tests at `{layout.tests_dir}/<TypeName>Tests.cs` (the test "
-                "project already references the source project).\n"
-                f"- Declare any new dependency as a `<PackageReference>` in the source "
-                "`.csproj` (edit it); don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "c":
-            if layout.build_tool == "meson":
-                build_line = (
-                    "- This project uses **Meson** (`meson.build`), which does NOT glob: "
-                    "register every new file — add new `.c` sources to the library/target "
-                    "source list, and add an `executable(...)` + `test(...)` for each new "
-                    f"`{layout.tests_dir}/test_<name>.c`. Edit `meson.build` to do so. "
-                    "Prefer extending existing files (no `meson.build` change needed) when you can."
-                )
-            else:
-                build_line = (
-                    "- New `src/*.c` and `tests/*.c` are auto-discovered by CMake's glob; "
-                    "edit `CMakeLists.txt` only to add an external dependency."
-                )
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Put implementation at `{layout.source_dir}/<name>.c` and DECLARE its "
-                f"public functions in a header `{layout.source_dir}/<name>.h` (with an "
-                "`#ifndef`/`#define` guard); C11, standard library only.\n"
-                f"- Put tests at `{layout.tests_dir}/test_<name>.c` — each a standalone "
-                "`int main(void)` returning non-zero on failure, `#include`-ing the "
-                f"header from `{layout.source_dir}/`.\n"
-                f"{build_line} Don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "cpp":
-            meson = layout.build_tool == "meson"
-            build_line = (
-                "- Meson (`meson.build`) does NOT glob: register new `.cpp` sources + an "
-                "`executable()`+`test()` per new `tests/*.cpp` in `meson.build`."
-                if meson
-                else "- New `src/*.cpp` and `tests/*.cpp` are auto-discovered by CMake's glob; "
-                "edit `CMakeLists.txt` only to add a dependency."
-            )
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Declare classes/functions in `{layout.source_dir}/<name>.hpp` (include "
-                f"guard or `#pragma once`) and define them in `{layout.source_dir}/<name>.cpp`; "
-                "modern C++17, RAII, standard library only.\n"
-                f"- Put tests at `{layout.tests_dir}/test_<name>.cpp` — each a standalone "
-                "`int main()` returning non-zero on failure, `#include`-ing the header from "
-                f"`{layout.source_dir}/`.\n"
-                f"{build_line} Don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "php":
-            return (
-                "PROJECT LAYOUT (authoritative):\n"
-                f"- PHP {layout.mode} project, dependencies via {layout.build_tool}.\n"
-                f"- Source directory: `{layout.source_dir}`; "
-                f"namespace: `{layout.package_name or '(global; no namespace)'}`.\n"
-                f"- Tests: `{layout.tests_dir}/<Name>{layout.test_suffix}`; class name matches filename.\n"
-                f"- Bootstrap: `{layout.test_bootstrap or '(none; use require_once with __DIR__)'}`.\n"
-                "- Preserve existing namespaces, require_once imports and file naming. "
-                "Use strict_types only in greenfield. New files end in .php.\n\n"
-            )
-        if layout.language == "go":
-            pkg = layout.package_name.rstrip("/").rsplit("/", 1)[-1]
-            loc = "the module root" if layout.source_dir == "." else f"`{layout.source_dir}/`"
-            prefix = "" if layout.source_dir == "." else f"{layout.source_dir}/"
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Put new Go source at `{prefix}<name>.go` in {loc}; every file MUST start "
-                f"with `package {pkg}` (match the other files already in that directory).\n"
-                f"- Put tests co-located beside the code as `{prefix}<name>_test.go` "
-                f"(same `package {pkg}`), using the standard `testing` package.\n"
-                "- Declare any new dependency in `go.mod` (edit it); standard library only "
-                "otherwise. Don't invent unrelated paths.\n\n"
-            )
-        if layout.language == "sql":
-            return (
-                "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-                f"- Target SQL dialect: **{layout.build_tool}**. Write standard DDL for it.\n"
-                f"- Put migration files under `{layout.source_dir}/` named with a zero-padded "
-                f"order prefix, e.g. `{layout.source_dir}/001_<feature>.sql`; they apply in "
-                "filename order (define referenced tables before they are referenced).\n"
-                "- No application code, no test files, no build files — the migration is the "
-                "artifact, validated by applying it to a database. Don't invent unrelated paths.\n\n"
-            )
-        return (
-            "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
-            f"- Source package is `{layout.package_name}` under `{layout.source_dir}/`. "
-            f"Put new modules at `{layout.source_dir}/<module>.py`.\n"
-            f"- Import source as `from {layout.package_name}.<module> import ...` "
-            "(the test runner puts the source root on the path).\n"
-            f"- Put tests under `{layout.tests_dir}/` as `{layout.tests_dir}/test_<name>.py`.\n"
-            f"- Put NEW code and tests under `{layout.source_dir}/` and `{layout.tests_dir}/` "
-            "only, and do NOT invent unrelated top-level paths or parallel package trees.\n"
-            # The ban used to be absolute — "do NOT create files outside src/ and tests/" —
-            # which is right about invented paths and wrong about the repo's own docs. It
-            # made every documentation criterion unsatisfiable: the judge required a
-            # USER_GUIDE note, this line forbade touching USER_GUIDE.md, and the model
-            # obeyed and said so ("outside the allowed src/tests paths so the doc note was
-            # not added"). Editing a file the repo already has is not inventing a path.
-            "- You MAY edit files that already exist elsewhere in the repo — README, "
-            "USER_GUIDE, CHANGELOG, pyproject.toml — when the ticket calls for it. Changing "
-            "an existing file is not inventing a path; creating a new top-level one is.\n\n"
-        )
+        return get_toolchain(self._language()).layout_guidance(self._layout)
 
     def _language(self) -> str:
         return self._layout.language if self._layout is not None else "python"
 
     def _impl_system(self) -> str:
-        return _IMPLEMENT_SYSTEMS.get(self._language(), _IMPLEMENT_SYSTEM)
+        from orchestrator.sdlc.toolchains import get_toolchain
+
+        return get_toolchain(self._language()).prompts.text("implement")
 
     def _tests_system(self) -> str:
-        return _TESTS_SYSTEMS.get(self._language(), _TESTS_SYSTEM)
+        from orchestrator.sdlc.toolchains import get_toolchain
+
+        return get_toolchain(self._language()).prompts.text("tests")
 
     def _refine_system(self) -> str:
-        return _REFINE_SYSTEMS.get(self._language(), _REFINE_SYSTEM)
+        from orchestrator.sdlc.toolchains import get_toolchain
+
+        return get_toolchain(self._language()).prompts.text("refine")
 
     def _design_block(self) -> str:
         """The design an earlier stage produced, or ''.
@@ -1846,6 +1720,8 @@ _TESTABLE_SUFFIXES = frozenset(
         ".java",
         ".go",
         ".php",
+        ".pm",
+        ".pl",
         ".c",
         ".h",
         ".cc",
@@ -1930,7 +1806,7 @@ def _is_test_file(path: Path) -> bool:
     name = path.name
     return (
         name.startswith("test_")
-        or name.endswith(("_test.py", "Test.php"))
+        or name.endswith(("_test.py", "Test.php", ".t"))
         or "tests" in {p.lower() for p in path.parts}
     )
 

@@ -1,0 +1,63 @@
+C-0 validation, 2026-09-13, base e8a0da5
+
+Command prefix: uv run --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl
+Nested commands preserve those installed extras with UV_NO_SYNC=1.
+
+pytest -q
+3640 passed, 4 skipped, 51 deselected, 151 warnings in 208.79s (0:03:28)
+Skipped: E2B_API_KEY absent; pytesseract absent; PHP/Composer unavailable; PostgreSQL Docker integration opt-in absent.
+Deselected: configured integration/real_llm markers.
+
+ruff check .: All checks passed!
+ruff format --check .: 747 files already formatted
+mypy src tests: Success: no issues found in 711 source files
+python scripts/roadmap-status.py --check: OK, 2 phase tables, 7 checks each
+python scripts/docs_audit.py --base develop --head HEAD: 0 STALE/MISSING, 43 INFO
+
+COMMAND ['python', 'scripts/render_architecture_svg.py', '--check']
+assets/spine-architecture.svg is current
+COMMAND ['python', 'scripts/render_knowledge_foundation_svg.py', '--check']
+assets/knowledge-foundation.svg is current, and its layout checks pass
+COMMAND ['python', 'scripts/matrix-count.py', '--check']
+46 capability rows
+21 where Spine stands alone
+3 where Spine is ❌
+3 at 🟡
+COMMAND ['python', 'scripts/state-numbers.py', '--check']
+[trend] binding: total mentions: doc-binding-walkthrough.md says 9482, the source says 11528
+[trend] binding: one symbol anchor: doc-binding-walkthrough.md says 3168, the source says 3530
+[trend] binding: ambiguous: doc-binding-walkthrough.md says 2030, the source says 2664
+[trend] binding: file only: doc-binding-walkthrough.md says 891, the source says 1139
+[trend] binding: no anchor: doc-binding-walkthrough.md says 3393, the source says 4195
+[trend] binding: edges drawn: doc-binding-walkthrough.md says 3120, the source says 3480
+[trend] binding: drift findings: doc-binding-walkthrough.md says 1556, the source says 1987
+[trend] binding: unbound sections: doc-binding-walkthrough.md says 826, the source says 902
+[trend] binding: Doc nodes: doc-binding-walkthrough.md says 1622, the source says 1747
+state-numbers --check: OK — 11 gated claim(s) match; 9 trended.
+COMMAND ['python', 'scripts/sdlc_shapes.py']
+building 4 shape(s) under /var/folders/2c/q2v76xf106gb1bbhlghqt2_h0000gn/T/sdlc-shapes-q4p07ws1
+  single     ok    plan deterministic
+  monorepo   ok    plan deterministic
+  multirepo  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+  submodule  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+
+all shapes hold
+COMMAND ['orchestrator', 'pkg', 'accuracy', '--check']
+[trend]      doc drift: 1065 -> 1076 (ungated — a tenth of it cannot bind by construction; see GATES)
+
+pkg accuracy --check: OK — 0 gated regression(s), 0 improvement(s).
+COMMAND ['orchestrator', 'pkg', 'verify', '.']
+[warning] phantom-module: 7 external module(s) share a first-party module's basename (stdlib shadowing, or an unjoined import): py:codegen_benchmark (vs py:scripts.codegen_benchmark), py:bench_tickets_ontomesh.build (vs py:orchestrator.cli.build), py:opentelemetry.trace (vs py:orchestrator.registry.api.trace), py:coverage (vs py:orchestrator.sdlc.coverage), py:sqlalchemy.case (vs py:orchestrator.sdlc.case), +2 more
+pkg verify: OK — 0 error(s), 1 warning(s).
+COMMAND ['orchestrator', 'understand', '.']
+[understand] brownfield — 14884 grounded nodes
+[understand] wrote 91 files → /private/tmp/spine-perl-codegen/episteme
+javascript, python · 14,884 grounded of 15,520 nodes
+18,992 call edges · 8,312 imports · 3,480 doc mentions
+
+Start here:
+  README.md          what this codebase is
+  architecture.md    how it fits together
+  symbol-index.md    every symbol, with file:line
+
+91 files in total — `--json` lists them all.

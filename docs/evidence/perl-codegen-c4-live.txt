@@ -1,0 +1,43 @@
+[spec] injected (intake skipped): Mojo Util trailing text removal
+======================================================================
+SPEC: Mojo Util trailing text removal
+  intent: perl-util-c4
+  summary: Add strip_suffix to the existing Mojo::Util package in lib/Mojo/Util.pm, with owning tests in t/mojo/util.t.
+    - Mojo::Util::strip_suffix($text, $suffix) returns a copy with exactly one matching literal suffix removed; unmatched or empty suffix leaves text unchanged.
+    - Matching is case sensitive; regex metacharacters are literal; Unicode character strings work; removing a suffix equal to the entire string returns an empty string.
+    - Neither input argument is mutated, including when the first argument is a literal or read-only value. Repeated suffixes lose exactly one copy.
+    - Export strip_suffix through the existing @EXPORT_OK and document it in the existing POD style. Preserve the package clause, existing functions, build configuration and dependencies. POD examples must be accurate: strip_suffix('testbarbar', 'bar') returns 'testbar'.
+    - Add executable Test::More coverage to t/mojo/util.t for every behavior, inside a named test_strip_suffix subroutine invoked by `test_strip_suffix();` from the test file. Call Mojo::Util::strip_suffix explicitly inside that subroutine so its test caller is visible in the graph. Owning tests and the full existing suite pass.
+======================================================================
+[jira] dry-run issue: DRY-1
+[workspace] worktree /tmp/spine-perl-c4-live/0633287e36ac43c8/DRY-1 on feat/0633287e36ac43c8/DRY-1
+[layout] mode=existing package=Mojo::Util src=lib
+[testenv] Perl/prove; .: no cpanfile; using installed dependencies
+[grounding] target-KG context: 938 chars
+[persona] software_engineer · skills: perl-conventions, repo-pkg-grounding
+[implement] ['Util.pm'] - Add strip_suffix helper, export and POD to Mojo::Util
+sdlc.codegen.empty_retry summary='Add t/mojo/strip_suffix.t covering Mojo::Util::strip_suffix behavior'
+[author_tests] ['strip_suffix.t'] - Add t/mojo/strip_suffix.t with test_strip_suffix covering Mojo::Util::strip_suffix behavior and edge cases
+[run_tests #1] passed=False rc=1
+[refine] ['Util.pm'] - Export strip_suffix from Mojo::Util via @EXPORT_OK so it can be imported
+[run_tests #2] passed=True rc=0
+[coverage] every changed file is exercised by a test
+[proof] the tests fail without the change, as they must
+[judge] REQUEST_CHANGES — acceptance criterion unmet: Export strip_suffix through the existing @EXPORT_OK and document it in the existing POD style. Preserve the package clause, existing functions, build configuration and dependencies. POD examples must be accurate: strip_suffix('testbarbar', 'bar') returns 'testbar'. (@EXPORT_OK includes strip_suffix and POD '=head2 strip_suffix' exists, but its second example 'strip_suffix 'test', 'BAR';' is labeled "# "test"" under a comment claiming... actually correct; however POD placement is fine — real failure: none here? See note: example values are accurate, so criterion hinges on build config which is unchanged/not shown.); acceptance criterion unmet: Add executable Test::More coverage to t/mojo/util.t for every behavior, inside a named test_strip_suffix subroutine invoked by `test_strip_suffix();` from the test file. Call Mojo::Util::strip_suffix explicitly inside that subroutine so its test caller is visible in the graph. Owning tests and the full existing suite pass. (Tests were added in a new file t/mojo/strip_suffix.t, not in t/mojo/util.t as required; util.t is unchanged/not present in the diff.)
+sdlc.codegen.edit_failed
+sdlc.codegen.repair_retry
+[revise] ['util.t', 'strip_suffix.t'] - Move strip_suffix coverage into t/mojo/util.t via test_strip_suffix() and import it there
+[run_tests after revise] passed=False rc=5
+[repair] ['strip_suffix.t'] - Replace skip_all placeholder in t/mojo/strip_suffix.t with real strip_suffix coverage
+[run_tests after repair] passed=True rc=0
+[judge] approve — strip_suffix implemented with literal substr comparison, exported, documented accurately, and covered by a named test_strip_suffix sub in t/mojo/util.t; an extra t/mojo/strip_suffix.t exists but does not violate any criterion.
+[commit] committed locally (safe mode — no push/PR)
+
+======================================================================
+VERDICT: PASSED — ready for deployment.
+  issue:  DRY-1
+  branch: feat/0633287e36ac43c8/DRY-1
+  files:  ['lib/Mojo/Util.pm', 't/mojo/strip_suffix.t', 't/mojo/util.t']
+  diff:   git -C /tmp/spine-perl-c4-live/0633287e36ac43c8/DRY-1 show --stat HEAD
+  Re-run with --live to create the Jira issue, push, and open a real PR.
+======================================================================
