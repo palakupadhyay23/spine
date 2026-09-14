@@ -6,6 +6,13 @@ italic line and the bracketed guidance notes as you fill each section in. The sh
 is `perl-support-roadmap.md`'s, the most recent track to land — later tracks (Kotlin, and
 whichever comes after) start here rather than re-deriving the shape from scratch.*
 
+*This is the **language** specialisation of [track-plan.md](track-plan.md), which is the
+skeleton for any other kind of track. Two sections live there and are not repeated here:
+**§5's generic housekeeping block** (G1-G15 — the standing obligations every plan in this
+repository owes, identical across tracks) and **§6.1**, the table assigning each tooling site
+that hard-codes a name you are renaming to the phase that must carry it, in the same commit.
+Copy both into your roadmap from `track-plan.md`.*
+
 **Status:** Proposed — plan for review, no code written. **Date:** `<YYYY-MM-DD>` · spine
 `<vX.Y.Z>`.
 **Branch:** `feat/<lang>-support` off `develop` at `<base-sha>`. **Delivery: one MR** to
@@ -163,10 +170,11 @@ a count that moved is a reason to re-read the callers, not to skip them.
 other tracks rebase onto it and record "reused" in their own evidence column, not a second
 implementation.
 
-### 8.1 `scripts/roadmap-status.py --check` — the roadmap-currency gate *(shared)*
+### 8.1 `scripts/roadmap-status.py --check [path...]` — the roadmap-currency gate *(shared)*
+Scans `docs/specs/*.md`; name a path to also check a plan kept outside the checkout.
 ### 8.2 `scripts/validate-frontend.py <language> <git-url>` — the real-repo smoke test *(shared)*
 ### 8.3 `scripts/parse-census.py <grammar-module> <dir>` — the grammar recall-ceiling measurement *(shared; build it in whichever phase needs the first D1 recall number)*
-### 8.4 This template *(shared)*
+### 8.4 This template, and the generic [track-plan.md](track-plan.md) it specialises *(shared)*
 ### 8.5 The shared whole-repo name-resolution `finalize` helper, `pkg/finalize_names.py` *(shared if this track's `CALLS` needs one — reuse it if a prior track already built it)*
 
 *Add track-specific generic-work items past 8.5, numbered onward, if this track produces

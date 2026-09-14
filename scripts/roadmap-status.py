@@ -9,6 +9,8 @@ This does.
 
     python scripts/roadmap-status.py            # print every phase table found
     python scripts/roadmap-status.py --check     # non-zero if any check fails
+    python scripts/roadmap-status.py --check ~/plans/my-track.md   # ...plus a plan
+                                                 # kept outside the checkout
 
 Checks, each narrow enough to avoid the failure mode below:
 
@@ -58,6 +60,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -65,11 +68,49 @@ ROOT = Path(__file__).resolve().parents[1]
 SPECS = ROOT / "docs" / "specs"
 
 
+#: Roadmaps to check *in addition to* ``docs/specs/*.md`` — see ``set_extra_docs``.
+_EXTRA_DOCS: list[Path] = []
+
+
 def set_root(path: Path | str) -> None:
     """Point every check at ``path`` instead of the checkout this file lives in."""
     global ROOT, SPECS
     ROOT = Path(path).resolve()
     SPECS = ROOT / "docs" / "specs"
+
+
+def set_extra_docs(paths: Iterable[Path | str]) -> None:
+    """Also check these roadmaps, wherever they live.
+
+    Plans for non-language tracks are kept *outside* the checkout (a scratchpad, a notes
+    directory) — a plan is not a design record, and tracking one drags in `SPEC-INDEX.md`,
+    the spec count in `STATE-OF-SPINE.md`, and this gate's own indexing check, for a
+    document no user reads. That left them with nothing checking their currency at all:
+    a DONE row with no evidence, a header contradicting its own table, a Finished date
+    before its Started date. Naming the file on the command line applies the same checks
+    to it.
+
+    ``check_indexed`` is the one check that cannot apply — a file outside ``docs/specs/``
+    has no business in ``SPEC-INDEX.md`` — and it skips them by construction.
+    """
+    global _EXTRA_DOCS
+    _EXTRA_DOCS = [Path(p).expanduser().resolve() for p in paths]
+
+
+def scanned_docs() -> list[Path]:
+    """Every document the gate reads: ``docs/specs/*.md`` plus any extras, deduplicated.
+
+    Non-recursive over ``docs/specs/`` — deliberately, so
+    ``docs/specs/templates/*.md`` (all-placeholder phase rows) is never treated as a
+    real roadmap needing a `SPEC-INDEX.md` entry.
+    """
+    docs = sorted(SPECS.glob("*.md")) if SPECS.is_dir() else []
+    seen = {d.resolve() for d in docs}
+    for extra in _EXTRA_DOCS:
+        if extra.resolve() not in seen and extra.is_file():
+            docs.append(extra)
+            seen.add(extra.resolve())
+    return docs
 
 
 PHASE_HEADER = "| Phase | Work | Effort | Exit criteria | Status | Started | Finished | Evidence |"
@@ -131,9 +172,7 @@ def phase_tables() -> dict[Path, list[PhaseRow]]:
     """
     tables: dict[Path, list[PhaseRow]] = {}
     _LAST_MALFORMED.clear()
-    if not SPECS.is_dir():
-        return tables
-    for doc in sorted(SPECS.glob("*.md")):
+    for doc in scanned_docs():
         lines = doc.read_text(encoding="utf-8").splitlines()
         for i, line in enumerate(lines):
             if line.strip() != PHASE_HEADER:
@@ -257,6 +296,8 @@ def check_indexed(tables: dict[Path, list[PhaseRow]]) -> list[str]:
     for doc in tables:
         if doc == spec_index:
             continue
+        if doc.parent.resolve() != SPECS.resolve():
+            continue  # a plan kept outside the checkout has no SPEC-INDEX.md row
         if f"]({doc.name})" not in index_text:
             problems.append(f"{doc.name}: has a phase table but SPEC-INDEX.md does not link to it")
     return problems
@@ -272,9 +313,16 @@ def check_relative_links(tables: dict[Path, list[PhaseRow]]) -> list[str]:
             path_part = target.split("#", 1)[0]
             if not path_part:
                 continue  # a same-document anchor
-            resolved = (doc.parent / path_part).resolve()
-            if not resolved.is_file():
-                problems.append(f"{doc.name}: link '[{label}]({target})' does not resolve")
+            if (doc.parent / path_part).resolve().is_file():
+                continue
+            # A plan kept outside the checkout still refers to repository files, and it
+            # writes those links the way every in-tree roadmap does. Resolving only
+            # against the plan's own directory made every such link a failure — three of
+            # them on the first out-of-tree plan this gate was pointed at, none of them a
+            # real defect. Fall back to the repository root before reporting.
+            if doc.parent.resolve() != SPECS.resolve() and (ROOT / path_part.lstrip("./")).is_file():
+                continue
+            problems.append(f"{doc.name}: link '[{label}]({target})' does not resolve")
     return problems
 
 
@@ -299,9 +347,7 @@ def check_header_found_but_unparsed(tables: dict[Path, list[PhaseRow]]) -> list[
     ``phase_tables()`` exactly once and reuses the result.
     """
     problems: list[str] = []
-    if not SPECS.is_dir():
-        return problems
-    for doc in sorted(SPECS.glob("*.md")):
+    for doc in scanned_docs():
         text = doc.read_text(encoding="utf-8")
         has_header = any(line.strip() == PHASE_HEADER for line in text.splitlines())
         if not has_header:
@@ -335,11 +381,20 @@ def check() -> list[str]:
     return problems
 
 
+def _display(doc: Path) -> str:
+    """A path to print: repo-relative when it is in the checkout, absolute otherwise."""
+    try:
+        return str(doc.relative_to(ROOT))
+    except ValueError:
+        return str(doc)
+
+
 def main() -> int:
+    set_extra_docs([a for a in sys.argv[1:] if not a.startswith("-")])
     tables = phase_tables()
     if "--check" not in sys.argv:
         for doc, rows in tables.items():
-            print(f"\n{doc.relative_to(ROOT)}")
+            print(f"\n{_display(doc)}")
             for row in rows:
                 started = f"started={row.started or '—':12s}"
                 print(f"  {row.phase_id:10s} {row.status}  {started} finished={row.finished or '—'}")
