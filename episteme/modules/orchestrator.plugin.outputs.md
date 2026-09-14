@@ -35,6 +35,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `findings`, `markdown`, `steps`, `stopped_reason`, `summary`, `unresolved`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `BankCheck`
 
@@ -57,6 +58,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `found`, `markdown`, `matches`, `multi_repo_available`, `standing`, `symbol`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `CallSite`
 
@@ -92,6 +94,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `design`, `markdown`, `title`, `unverified_references`, `used_llm`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `DocMatch`
 
@@ -106,6 +109,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `coverable_symbols`, `coverage_pct`, `docs`, `documented_symbols`, `drift_top`, `drift_total`, `found`, `markdown`, `matches`, `multi_repo_available`, `note`, `repo`, `repos`, `reproducible`, `standing`, `symbol`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `DoctorOut`
 
@@ -113,6 +117,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `all_passed`, `checks`, `server`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `Drift`
 
@@ -127,6 +132,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `found`, `matches`, `multi_repo_available`, `standing`, `symbol`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `Failure`
 
@@ -177,6 +183,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `blocked`, `documents`, `gap_count`, `intent_count`, `intents`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `IntentSummary`
 
@@ -191,6 +198,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `areas`, `has_knowledge`, `knowledge`, `landing`, `markdown`, `multi_repo_available`, `standing`, `title`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `Landing`
 
@@ -205,6 +213,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `ambiguous_frames`, `callers`, `exception`, `fault`, `frames`, `grounded`, `markdown`, `multi_repo_available`, `standing`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `MapRepoOut`
 
@@ -212,6 +221,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `areas`, `call_hotspots`, `counts`, `coverage`, `files`, `has_call_graph`, `languages`, `markdown`, `multi_repo_available`, `recommendations`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `PkgGroundingOut`
 
@@ -219,6 +229,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `chars`, `context`, `summary`, `title`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `PkgJoinsOut`
 
@@ -226,6 +237,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `already_declared`, `candidates`, `config`, `declared`, `examined`, `joined`, `markdown`, `mode`, `note`, `per_join`, `recall`, `standing`, `unjoined`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `ProfileRepoOut`
 
@@ -233,6 +245,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `framework`, `has_db`, `has_migrations`, `languages`, `markdown`, `task_type`, `test_runner`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `ReadMemoryBankOut`
 
@@ -240,6 +253,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `content`, `dir`, `exists`, `index`, `section`, `sections`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `Recommendation`
 
@@ -254,6 +268,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `count`, `items`, `markdown`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RegistryDecideOut`
 
@@ -261,6 +276,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `action`, `approval`, `approval_id`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RegistryRunsOut`
 
@@ -268,6 +284,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `count`, `items`, `markdown`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RegistryTraceOut`
 
@@ -275,6 +292,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `audit`, `markdown`, `replan_budget`, `replan_count`, `sdlc_id`, `task_id`, `tool_invocations`, `truncated`, `verifier_outcome`, `workflow_pattern`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RegressionGapsOut`
 
@@ -282,6 +300,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `call_graph_available`, `covering_tests`, `found`, `impacted_count`, `markdown`, `multi_repo_available`, `standing`, `target`, `target_covered`, `target_repo`, `truncated`, `uncovered`, `uncovered_elsewhere`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RemediationOutcome`
 
@@ -303,6 +322,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `exception`, `fault_site`, `fix_approach`, `hypotheses`, `markdown`, `multi_repo_available`, `problem`, `regression_surface`, `used_llm`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `RunMetricsOut`
 
@@ -317,6 +337,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `addressed`, `branch`, `comments`, `detail`, `green`, `pr`, `refines`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcApproveOut`
 
@@ -324,6 +345,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `decided_at`, `decided_by`, `decision`, `intent_id`, `path`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcBaselineOut`
 
@@ -331,6 +353,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `gate`, `markdown`, `runs`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcCompleteOut`
 
@@ -338,6 +361,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `backlog_done`, `issue`, `merged`, `pr`, `status`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcDecideGateOut`
 
@@ -345,6 +369,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `action`, `approval_id`, `gate`, `sdlc_id`, `state`, `status`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcFeatureOut`
 
@@ -352,6 +377,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `branch`, `files`, `grounding_chars`, `intent_id`, `issue_key`, `iterations`, `live`, `passed`, `pr_url`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcPlanOut`
 
@@ -359,6 +385,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `document`, `intent_id`, `path`, `superseded`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcRemediateOut`
 
@@ -366,6 +393,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `live`, `markdown`, `ok`, `outcomes`, `tasks`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcRunResultOut`
 
@@ -373,6 +401,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `result`, `sdlc_id`, `status`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcRunStatusOut`
 
@@ -380,6 +409,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `awaiting_gate`, `gate_description`, `gate_title`, `sdlc_id`, `status`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `SdlcStartRunOut`
 
@@ -387,6 +417,7 @@
 
 - **Extends** (1): [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `gates`, `sdlc_id`, `status`, `task_queue`, `workflow_id`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `ServerIdentity`
 
@@ -443,6 +474,7 @@
 
 - **Extends** (2): [`BankCheck`](../../src/orchestrator/plugin/outputs.py#L471), [`Failure`](../../src/orchestrator/plugin/outputs.py#L38)
 - **Fields**: `dir`, `entry_pages`, `files_written`, `greenfield`, `markdown`, `profile`
+- **Documented in**: `AGENT_GUIDE.md#6-the-tools-spine-exposes`
 
 ### `UntestedArea`
 
