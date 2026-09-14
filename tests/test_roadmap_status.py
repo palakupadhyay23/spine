@@ -328,3 +328,91 @@ def test_header_found_and_parsed_is_not_reported(status: ModuleType) -> None:
         f"{_HEADER}\n{_SEP}\n| **P1 Thing** | work | 1d | exit | ⬜ |  |  |  |\n",
     )
     assert status.check_header_found_but_unparsed(status.phase_tables()) == []
+
+
+# --- plans kept outside the checkout -------------------------------------------------
+#
+# A plan is not a design record: for non-language tracks it lives outside `docs/specs/`,
+# so nothing was checking its currency at all. `set_extra_docs` applies the same checks
+# to a file named on the command line.
+
+
+def _write_outside(root: Path, name: str, body: str) -> Path:
+    outside = root / "notes"
+    outside.mkdir(exist_ok=True)
+    p = outside / name
+    p.write_text(body, encoding="utf-8")
+    return p
+
+
+def test_an_out_of_tree_plan_is_checked_when_named(status: ModuleType, tmp_path: Path) -> None:
+    plan = _write_outside(
+        tmp_path,
+        "my-track.md",
+        f"{_HEADER}\n{_SEP}\n| **P1 Work** | w | 1d | done | ✅ |  |  |  |\n",
+    )
+    status.set_extra_docs([plan])
+    problems = status.check()
+    assert any("P1 is marked DONE but its Finished/Evidence cell is empty" in p for p in problems)
+
+
+def test_an_out_of_tree_plan_is_ignored_until_it_is_named(status: ModuleType, tmp_path: Path) -> None:
+    _write_outside(
+        tmp_path,
+        "my-track.md",
+        f"{_HEADER}\n{_SEP}\n| **P1 Work** | w | 1d | done | ✅ |  |  |  |\n",
+    )
+    assert status.check() == []
+
+
+def test_an_out_of_tree_plan_is_never_required_to_be_in_spec_index(
+    status: ModuleType, tmp_path: Path
+) -> None:
+    """`check_indexed` cannot apply to a file that has no business in SPEC-INDEX.md."""
+    _write(tmp_path, "SPEC-INDEX.md", "# Index\n")
+    plan = _write_outside(
+        tmp_path,
+        "my-track.md",
+        f"{_HEADER}\n{_SEP}\n| **P1 Work** | w | 1d | done | ✅ | 2026-01-01 | 2026-01-02 | [c](x) |\n",
+    )
+    status.set_extra_docs([plan])
+    assert not [p for p in status.check() if "SPEC-INDEX" in p]
+
+
+def test_an_in_tree_roadmap_still_must_be_indexed(status: ModuleType, tmp_path: Path) -> None:
+    """The exemption above is scoped to out-of-tree files, not handed to everyone."""
+    _write(tmp_path, "SPEC-INDEX.md", "# Index\n")
+    _write(
+        tmp_path,
+        "tracked-roadmap.md",
+        f"{_HEADER}\n{_SEP}\n| **P1 Work** | w | 1d | done | ✅ | 2026-01-01 | 2026-01-02 | [c](x) |\n",
+    )
+    assert any("SPEC-INDEX.md does not link to it" in p for p in status.check())
+
+
+def test_an_out_of_tree_plan_may_link_repository_files_the_way_in_tree_roadmaps_do(
+    status: ModuleType, tmp_path: Path
+) -> None:
+    """Found live: the first out-of-tree plan this gate ran on reported three failures,
+    all of them ordinary `../../CONTRIBUTING.md` references, none a real defect."""
+    (tmp_path / "CONTRIBUTING.md").write_text("# c\n", encoding="utf-8")
+    plan = _write_outside(
+        tmp_path,
+        "my-track.md",
+        f"See [CONTRIBUTING.md](../../CONTRIBUTING.md).\n\n{_HEADER}\n{_SEP}\n"
+        "| **P1 Work** | w | 1d | done | 📋 |  |  |  |\n",
+    )
+    status.set_extra_docs([plan])
+    assert not [p for p in status.check() if "does not resolve" in p]
+
+
+def test_a_genuinely_broken_link_in_an_out_of_tree_plan_still_fails(
+    status: ModuleType, tmp_path: Path
+) -> None:
+    plan = _write_outside(
+        tmp_path,
+        "my-track.md",
+        f"See [gone](../../NOPE.md).\n\n{_HEADER}\n{_SEP}\n| **P1 Work** | w | 1d | done | 📋 |  |  |  |\n",
+    )
+    status.set_extra_docs([plan])
+    assert any("does not resolve" in p for p in status.check())

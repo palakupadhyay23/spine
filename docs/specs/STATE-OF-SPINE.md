@@ -1,6 +1,6 @@
-# State of Spine — 3.34.1
+# State of Spine — 3.34.2
 
-**The one document to read.** Verified against source on **2026-09-14**, at the 3.34.1 release
+**The one document to read.** Verified against source on **2026-09-14**, at the 3.34.2 release
 cut. Every number below was re-measured that day.
 
 > **Why this exists.** `docs/specs/` holds **90** markdown files — **86 specs** plus this
@@ -24,13 +24,13 @@ gates (before building, before merging). The product is **Spine**; it ships as
 
 | | Value | How it is known |
 |---|---|---|
-| Version | **3.34.1** | cutting now; 3.34.0 is the last on PyPI until this ships |
+| Version | **3.34.2** | cutting now; 3.34.1 is the last on PyPI — this release is maintainer tooling, not a wheel change |
 | Languages extracted | **10** front-ends | Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl, SQL — Perl has comprehension + `CALLS` + routes + data layer (all six phases of [perl-support-roadmap.md](perl-support-roadmap.md)) |
 | Perl codegen progress | **C-0 through C-5 DONE** | [Roadmap](perl-codegen-roadmap.md): dispatch mutation detection **4/8 → 8/8**, 0 skipped mutations; `--language perl` enabled with real green/red runner proof; greenfield live proof passes 81 assertions from a clean checkout; brownfield clean-checkout proof passes 4,192 tests, with 116 regression gaps unchanged |
 | PHP delivery | Composer or pinned PHPUnit PHAR | Configured test layout, changed-file lint, modern PHPUnit; [validation roadmap](php-codegen-roadmap.md) |
 | CLI commands | **56** | `grep -c '\.command(' src/orchestrator/cli/*.py`, summed |
 | Source modules | **363** | `find src/orchestrator -name '*.py'` |
-| Test functions | **3,219** across 324 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
+| Test functions | **3,225** across 324 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
 | Graph precision | **1.00** on every node and edge kind, all 10 front-ends | `orchestrator pkg accuracy` against a hand-labelled corpus |
 | `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.89** (Perl, on 9 labelled edges) · **0.50** (PHP, on 8 labelled edges — the misses are P3's typed-receiver rule and the global-namespace fallback, both predicted `known_gaps`, not surprises) | same |
 | Grounding effect, `create` tickets | **29/50 grounded, 0/50 ungrounded** | 200-run controlled A/B, 2 frontier models, 5 passes |
