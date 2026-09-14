@@ -38,7 +38,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 3933 symbols; 
 | `_app_installation_token` | `orchestrator.sdlc.gitauth` | [`_app_installation_token`](../src/orchestrator/sdlc/gitauth.py#L72) |
 | `_app_type` | [`orchestrator.knowledge.current_state`](modules/orchestrator.knowledge.current_state.md#_app_type) | [`_app_type`](../src/orchestrator/knowledge/current_state.py#L606) |
 | `_apply` | [`orchestrator.sdlc.codegen`](modules/orchestrator.sdlc.codegen.md#_apply) | [`_apply`](../src/orchestrator/sdlc/codegen.py#L1648) |
-| `_apply` | `scripts.mutate-dispatch` | [`_apply`](../scripts/mutate-dispatch.py#L167) |
+| `_apply` | `scripts.mutate-dispatch` | [`_apply`](../scripts/mutate-dispatch.py#L172) |
 | `_apply_alter` | `orchestrator.pkg.migrations` | [`_apply_alter`](../src/orchestrator/pkg/migrations.py#L130) |
 | `_apply_clarifications` | `orchestrator.sdlc.workflows` | [`_apply_clarifications`](../src/orchestrator/sdlc/workflows.py#L1046) |
 | `_apply_create` | `orchestrator.pkg.migrations` | [`_apply_create`](../src/orchestrator/pkg/migrations.py#L98) |
@@ -210,7 +210,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 3933 symbols; 
 | `_checkpoint` | `orchestrator.agentic.loop` | [`_checkpoint`](../src/orchestrator/agentic/loop.py#L426) |
 | `_child_main` | `orchestrator.pkg.runtime_oracle` | [`_child_main`](../src/orchestrator/pkg/runtime_oracle.py#L206) |
 | `_Choice` | `orchestrator.planner.v0` | [`_Choice`](../src/orchestrator/planner/v0.py#L42) |
-| `_ci_extras` | `scripts.mutate-dispatch` | [`_ci_extras`](../scripts/mutate-dispatch.py#L158) |
+| `_ci_extras` | `scripts.mutate-dispatch` | [`_ci_extras`](../scripts/mutate-dispatch.py#L163) |
 | `_claims_a_change` | [`orchestrator.sdlc.codegen`](modules/orchestrator.sdlc.codegen.md#_claims_a_change) | [`_claims_a_change`](../src/orchestrator/sdlc/codegen.py#L1782) |
 | `_class_ref_name` | `orchestrator.pkg.php_orm` | [`_class_ref_name`](../src/orchestrator/pkg/php_orm.py#L101) |
 | `_classification_failures` | `orchestrator.runtime.verifiers.policy` | [`_classification_failures`](../src/orchestrator/runtime/verifiers/policy.py#L152) |
