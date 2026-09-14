@@ -114,7 +114,19 @@ the product.** Where it can't know something, it says so and stops.
 
 ## What's new
 
-**3.33.2 (current)** — **the SDLC runs as a pipeline, and PHP builds.** A repository adds a few
+**3.34.0 (current)** — **Perl ships end to end, and one registry owns every language.**
+Perl becomes the tenth front-end *and* the ninth language Spine can build in: comprehension,
+`CALLS`, Mojolicious/Dancer2 routes and a DBIx::Class data layer, then codegen with layout,
+scaffold, observed conventions, `Perl::Critic` and `prove` — greenfield and brownfield each
+proved live on a clean checkout. Underneath, the per-language `if` chains that had spread
+through codegen, layout, scaffolding and the test environment collapse into a single
+toolchain registry, measured by a mutation set that went from catching 4 of 8 dispatch
+behaviours to 8 of 8. The claims about all this are now derived rather than written: the
+plugin pitch and the operator console take their language list from that registry, and the
+corpus language count and `CALLS` recall come from the committed scoreboard, so the eleventh
+front-end fails the gate instead of quietly leaving the documentation two languages behind.
+
+**3.33.2** — **the SDLC runs as a pipeline, and PHP builds.** A repository adds a few
 lines and gets Spine's SDLC stages as GitHub Actions: a `plan` job that writes the build
 document with **no credentials**, then a `build` job whose GitHub Environment reviewers are the
 plan gate — recorded, then honoured by `sdlc autorun`, safe until you say `live`. It plans on a

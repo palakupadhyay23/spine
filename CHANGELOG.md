@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
+## 3.34.0 — 2026-09-13
 
 - docs: triage the documentation audit's INFO lines — the benchmark's "(there are nine now)", the call-graph language list in `USER_GUIDE.md`, and `regression`'s prerequisite in `CLI_REFERENCE.md` all predate Go/PHP/Perl `CALLS` extraction.
 
