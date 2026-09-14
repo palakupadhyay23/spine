@@ -166,7 +166,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 3933 symbols; 
 | `_calls_sidecar` | [`orchestrator.pkg.persistence`](modules/orchestrator.pkg.persistence.md#_calls_sidecar) | [`_calls_sidecar`](../src/orchestrator/pkg/persistence.py#L318) |
 | `_camelize` | [`orchestrator.pkg.perl_routes`](modules/orchestrator.pkg.perl_routes.md#_camelize) | [`_camelize`](../src/orchestrator/pkg/perl_routes.py#L82) |
 | `_can_drift` | `orchestrator.pkg.docs` | [`_can_drift`](../src/orchestrator/pkg/docs.py#L332) |
-| `_capabilities_html` | `orchestrator.registry.api.web.home` | [`_capabilities_html`](../src/orchestrator/registry/api/web/home.py#L87) |
+| `_capabilities_html` | `orchestrator.registry.api.web.home` | [`_capabilities_html`](../src/orchestrator/registry/api/web/home.py#L91) |
 | `_cards_html` | `orchestrator.registry.api.web.home` | [`_cards_html`](../src/orchestrator/registry/api/web/home.py#L54) |
 | `_case_batch` | [`orchestrator.pkg.accuracy`](modules/orchestrator.pkg.accuracy.md#_case_batch) | [`_case_batch`](../src/orchestrator/pkg/accuracy.py#L232) |
 | `_cell` | [`orchestrator.knowledge.renderers`](modules/orchestrator.knowledge.renderers.md#_cell) | [`_cell`](../src/orchestrator/knowledge/renderers.py#L1413) |

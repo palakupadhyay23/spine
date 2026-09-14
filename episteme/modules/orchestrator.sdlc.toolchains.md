@@ -9,7 +9,7 @@
 
 ## Changing this safely
 
-**Tested by** (1): `tests.sdlc.test_toolchains`
+**Tested by** (2): `tests.plugin.test_manifests`, `tests.sdlc.test_toolchains`
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
@@ -196,4 +196,4 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ## Imported by
 
-[`orchestrator.sdlc.codegen`](orchestrator.sdlc.codegen.md), [`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`orchestrator.sdlc.layout`](orchestrator.sdlc.layout.md), [`orchestrator.sdlc.preflight`](../../src/orchestrator/sdlc/preflight.py#L1), [`orchestrator.sdlc.scaffold`](orchestrator.sdlc.scaffold.md), [`orchestrator.sdlc.testenv`](orchestrator.sdlc.testenv.md), [`tests.sdlc.test_toolchains`](../../tests/sdlc/test_toolchains.py#L1)
+[`orchestrator.sdlc.codegen`](orchestrator.sdlc.codegen.md), [`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`orchestrator.sdlc.layout`](orchestrator.sdlc.layout.md), [`orchestrator.sdlc.preflight`](../../src/orchestrator/sdlc/preflight.py#L1), [`orchestrator.sdlc.scaffold`](orchestrator.sdlc.scaffold.md), [`orchestrator.sdlc.testenv`](orchestrator.sdlc.testenv.md), [`tests.plugin.test_manifests`](../../tests/plugin/test_manifests.py#L1), [`tests.sdlc.test_toolchains`](../../tests/sdlc/test_toolchains.py#L1)
