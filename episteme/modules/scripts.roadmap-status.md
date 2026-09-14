@@ -88,7 +88,7 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 [`scripts/roadmap-status.py:290`](../../scripts/roadmap-status.py#L290)
 
-_No relationships extracted — nothing in the graph calls it or extends it._
+- **Documented in**: `CHANGELOG.md`
 
 ### `check_relative_links`
 
