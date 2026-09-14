@@ -72,16 +72,17 @@ the repository keeps the reference documents and the scripts, which need no assi
    ruff format --check .
    python scripts/render_architecture_svg.py --check        # the diagram stamps the version
    python scripts/render_knowledge_foundation_svg.py --check
+   python scripts/mcp-tools.py --check                      # the agent guide tool inventory
    python scripts/matrix-count.py --check
    python scripts/state-numbers.py --check                  # claims re-derived from source
    uv run orchestrator pkg accuracy --check
    python scripts/sdlc_shapes.py                            # the SDLC pipeline on four repo shapes
    ```
-   **The four `--check` scripts are generated-artifact gates and CI runs every one of them.**
+   **The five generated-artifact `--check` scripts are generated-artifact gates and CI runs every one of them.**
    They are listed together because running only the first is how a release PR failed on a
    diagram nobody had re-rendered: `mypy`, `ruff` and the tests were all green, and the version
-   the picture claims comes from `pyproject.toml`. If you bump a version, re-run all four.
-   That last one is the **accuracy gate**: it re-measures the graph and fails if a *gated*
+   the picture claims comes from `pyproject.toml`. If you bump a version, re-run all five.
+   `pkg accuracy --check` is the **accuracy gate**: it re-measures the graph and fails if a *gated*
    number has dropped. Only metrics scored against the committed fixtures in `corpus/` are
    gated strictly, plus per-file parity as a one-way ratchet. The invention count is recorded
    and never gated — it is measured against this repository, so it moves whenever anyone

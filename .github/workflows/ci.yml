@@ -126,6 +126,9 @@ jobs:
       # STATE-OF-SPINE.md said 11, for the same table on the same day; the answer was 22. Both
       # documents were warning, in their own text, about hand-authored matrices being wrong.
       # A number quoted to customers should fail a build when it drifts, not a meeting.
+      - name: MCP tool documentation matches registration metadata
+        run: uv run --frozen python scripts/mcp-tools.py --check
+
       - name: Capability matrix counts match the table
         run: uv run python scripts/matrix-count.py --check
 
