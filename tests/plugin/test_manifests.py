@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from orchestrator.sdlc.toolchains import TOOLCHAINS
+
 _ROOT = Path(__file__).resolve().parents[2]
 _SKILL = _ROOT / "plugins" / "spine" / "skills" / "understand-codebase" / "SKILL.md"
 _MANIFESTS = [
@@ -26,9 +28,23 @@ _COMP_TOOLS = (
     "docs_for",
     "pkg_joins",
 )
-# Every language the PKG has a front-end for. The pitch is what a user reads before
-# installing, so a missing language here is a language they never learn Spine covers.
-_LANGUAGES = ("Python", "Java", "TypeScript", "C#", "C", "C++", "Go", "SQL")
+# How each registered codegen language is written in prose. Keyed off the registry rather
+# than restated, so a new front-end fails here — with a KeyError naming it — instead of
+# quietly shipping a pitch that still advertises the previous count. The eight-language
+# string survived PHP and Perl exactly because this tuple was hand-written.
+_DISPLAY_NAMES = {
+    "python": "Python",
+    "java": "Java",
+    "typescript": "TypeScript",
+    "csharp": "C#",
+    "c": "C",
+    "cpp": "C++",
+    "go": "Go",
+    "php": "PHP",
+    "perl": "Perl",
+    "sql": "SQL",
+}
+_LANGUAGES = tuple(_DISPLAY_NAMES[name] for name in TOOLCHAINS)
 
 
 def test_understand_codebase_skill_has_frontmatter() -> None:
@@ -61,6 +77,17 @@ def test_plugin_pitch_leads_with_comprehension_and_every_language() -> None:
         assert "comprehension" in blob, f"{manifest} pitch should surface the comprehension tools"
         for language in _LANGUAGES:
             assert language in blob, f"{manifest} language list should include {language}"
+
+
+def test_the_operator_home_page_names_every_language() -> None:
+    """The same claim, one surface further on: the console's capability grid sold six
+    languages while ten front-ends shipped. It is hand-written copy that no release step
+    reads, so it goes stale the same way the manifests did."""
+    from orchestrator.registry.api.web.home import _CAPS
+
+    copy = " ".join(f"{headline} {detail}" for _icon, headline, detail in _CAPS)
+    for language in _LANGUAGES:
+        assert language in copy, f"the home page capability grid should name {language}"
 
 
 def _pyproject_version() -> str:
