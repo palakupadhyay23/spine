@@ -272,7 +272,7 @@ CLAIMS: tuple[Claim, ...] = (
     Claim(
         "TypeScript CALLS recall (README)",
         ROOT / "README.md",
-        re.compile(r"down to ([\d.]+) on TypeScript"),
+        re.compile(r"TypeScript `CALLS` recall is \*\*([\d.]+)\*\*"),
         ts_calls_recall,
         numeric=False,
     ),

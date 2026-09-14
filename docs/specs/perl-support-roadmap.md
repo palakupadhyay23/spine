@@ -229,7 +229,7 @@ Updated in the phase that makes each row true, in the same commit as the code;
 | `FEATURES.md` | a Perl capability row; the "all N front-ends" accuracy row count | P1 |
 | `USER_GUIDE.md` | the extras list (`[perl]`), the "Multi-language" blockquote (`.pl`/`.pm`/`.t`, codegen "in its own track"), the corpus-results line | P1 |
 | `KNOWLEDGE_GRAPH.md` | node/edge matrices, language table row, "Parser coverage", a fact-mapping note on D2 (package = namespace **and** class, module = file) | P1, P4 |
-| `CLAUDE_GUIDE.md`, `CODEX_GUIDE.md` | the language sentence and "N front-ends"; the toolchain table gets no Perl row yet and says why | P1 |
+| `AGENT_GUIDE.md` | the language sentence and "N front-ends"; the toolchain table gets no Perl row yet and says why | P1 |
 | `CLI_REFERENCE.md`, `EXAMPLE.md`, `BENCHMARK.md` | corpus-results counts | P2 |
 | `SETUP.md` | the `[perl]` extra | P1 |
 | `corpus/README.md` | the id-vocabulary row (path-keyed module, dotted type) | P2 |

@@ -72,16 +72,17 @@ the repository keeps the reference documents and the scripts, which need no assi
    ruff format --check .
    python scripts/render_architecture_svg.py --check        # the diagram stamps the version
    python scripts/render_knowledge_foundation_svg.py --check
+   python scripts/mcp-tools.py --check                      # the agent guide tool inventory
    python scripts/matrix-count.py --check
    python scripts/state-numbers.py --check                  # claims re-derived from source
    uv run orchestrator pkg accuracy --check
    python scripts/sdlc_shapes.py                            # the SDLC pipeline on four repo shapes
    ```
-   **The four `--check` scripts are generated-artifact gates and CI runs every one of them.**
+   **CI runs all five generated-artifact `--check` gates.**
    They are listed together because running only the first is how a release PR failed on a
    diagram nobody had re-rendered: `mypy`, `ruff` and the tests were all green, and the version
-   the picture claims comes from `pyproject.toml`. If you bump a version, re-run all four.
-   That last one is the **accuracy gate**: it re-measures the graph and fails if a *gated*
+   the picture claims comes from `pyproject.toml`. If you bump a version, re-run all five.
+   `pkg accuracy --check` is the **accuracy gate**: it re-measures the graph and fails if a *gated*
    number has dropped. Only metrics scored against the committed fixtures in `corpus/` are
    gated strictly, plus per-file parity as a one-way ratchet. The invention count is recorded
    and never gated — it is measured against this repository, so it moves whenever anyone
@@ -122,6 +123,16 @@ the repository keeps the reference documents and the scripts, which need no assi
 4. Open the PR **against `develop`** — GitHub pre-selects `main`, the default branch; change
    it — with a clear description of **what** and **why**, linking any issue.
 5. A maintainer reviews; the `security scan` check must pass.
+
+### Release-cut documentation notes
+
+Use the [release row in the docs matrix](docs/reviewing/docs-matrix.md) to check
+the version, plugin manifests and generated artifacts together. Search the previous
+version across tracked Markdown and JSON; verify both digits and number words in
+language counts. The former capability catalog is now README's capability table;
+the agent guide is `AGENT_GUIDE.md`. `CLAUDE_GUIDE.md` and `CODEX_GUIDE.md` are dated
+redirects, not release claim surfaces. Preserve their links and do not stamp a
+version into them. Historical changelog entries retain the names they shipped with.
 
 ### When a check fails on something you didn't change
 

@@ -410,7 +410,7 @@ Do not read these to answer "where do we stand" — read them to act on a specif
 | Question | Document |
 |---|---|
 | How do I install and run it? | [SETUP.md](../../SETUP.md), [USER_GUIDE.md](../../USER_GUIDE.md) |
-| What can it do, exactly? | [FEATURES.md](../../FEATURES.md) |
+| What can it do, exactly? | [README capability table](../../README.md#capabilities) |
 | Every command and flag | [CLI_REFERENCE.md](../../CLI_REFERENCE.md) |
 | What the graph holds, and its limits | [KNOWLEDGE_GRAPH.md](../../KNOWLEDGE_GRAPH.md) |
 | How the parsers work (for engineers) | [parsing-and-the-pkg.md](parsing-and-the-pkg.md) |
