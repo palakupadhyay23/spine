@@ -161,7 +161,7 @@ code down to the **section** — `confirm` is described in `docs/prompts.md#user
 sections now lie about it. That's where the "250 potential drift" in step 2 comes from.
 
 *(From your AI assistant, the same question is the `docs_for` tool — see
-[CLAUDE_GUIDE.md](CLAUDE_GUIDE.md).)*
+[AGENT_GUIDE.md](AGENT_GUIDE.md).)*
 
 ---
 
@@ -258,5 +258,5 @@ because the comprehension layer is deterministic by construction, not by luck.
 - **[USER_GUIDE.md](USER_GUIDE.md)** — the full walkthrough, including `--live` and the web inbox
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — how the pieces above fit together
 - **[KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md)** — what the graph knows and how it's built
-- **[CLAUDE_GUIDE.md](CLAUDE_GUIDE.md)** / **[CODEX_GUIDE.md](CODEX_GUIDE.md)** — ask all of the
+- **[AGENT_GUIDE.md](AGENT_GUIDE.md)** — ask all of the
   above in plain language from your AI assistant, no CLI required

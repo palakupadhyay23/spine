@@ -206,7 +206,7 @@ the usual cause.
 | How the pieces fit | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Running it for others | [OPERATIONS.md](OPERATIONS.md) |
 | Contributing, review, the gate | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Using it from Claude Code or Codex | [CLAUDE_GUIDE.md](CLAUDE_GUIDE.md), [CODEX_GUIDE.md](CODEX_GUIDE.md) |
+| Using it from Claude Code or Codex | [AGENT_GUIDE.md](AGENT_GUIDE.md) |
 | Design records | [docs/specs/README.md](docs/specs/README.md) |
 | Security policy · license | [SECURITY.md](SECURITY.md) · `LICENSE` (MIT) |
 

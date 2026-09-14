@@ -23,8 +23,8 @@ STALE/MISSING):
    `doctor.EXTRA_PROBES`, `persistence._GRAMMAR_MODULES` (grammar extras), and the mypy
    `ignore_missing_imports` override.
 4. CLI commands — every `.command("name")` under `cli/` is mentioned in `CLI_REFERENCE.md`.
-5. MCP tools — every key of `plugin/outputs.py:OUTPUTS` is mentioned in `CLAUDE_GUIDE.md`,
-   `CODEX_GUIDE.md`, and at least one `plugins/spine/skills/*/SKILL.md`.
+5. MCP tools — every key of `plugin/outputs.py:OUTPUTS` is mentioned in `AGENT_GUIDE.md`
+   and at least one `plugins/spine/skills/*/SKILL.md`.
 6. with `--base/--head`: which user documents the diff touched, for the report's table.
 7. links — every relative link in the user documents resolves: the file exists and, when
    there is an anchor, it matches a heading under GitHub's slug rules (an em dash in a
@@ -66,6 +66,7 @@ USER_DOCS = [
     "FEATURES.md",
     "USER_GUIDE.md",
     "KNOWLEDGE_GRAPH.md",
+    "AGENT_GUIDE.md",
     "CLAUDE_GUIDE.md",
     "CODEX_GUIDE.md",
     "CLI_REFERENCE.md",
@@ -282,7 +283,7 @@ def check_mcp() -> list[str]:
     marker = "OUTPUTS: dict[str, type] = {"
     block = outputs.split(marker, 1)[1].split("}", 1)[0] if marker in outputs else ""
     tools = re.findall(r'^\s+"([a-z_]+)":', block, re.M)
-    guides = {g: _read(g) for g in ("CLAUDE_GUIDE.md", "CODEX_GUIDE.md")}
+    guides = {g: _read(g) for g in ("AGENT_GUIDE.md",)}
     skills = "\n".join(p.read_text(encoding="utf-8") for p in ROOT.glob("plugins/spine/skills/*/SKILL.md"))
     for tool in tools:
         for g, text in guides.items():

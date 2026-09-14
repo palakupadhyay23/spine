@@ -139,16 +139,14 @@ def test_every_registered_tool_is_documented_for_a_user() -> None:
     Registration is the source of truth — this reads `_TOOLS` rather than a second list, so a
     new tool fails here until it is documented, instead of shipping invisibly.
 
-    The **guides** are the bar, not the manifests: a marketplace blurb naming twenty tools sells
+    The **shared guide** is the bar, not the manifests: a marketplace blurb naming twenty tools sells
     nothing, and run-control plumbing (`sdlc_run_status` and friends) belongs in a reference, not
     a pitch. What the manifests owe is the *headline* set, which
     `test_plugin_pitch_leads_with_comprehension_and_every_language` covers.
     """
     from orchestrator.plugin.server import _TOOLS
 
-    documented = "\n".join(
-        (_ROOT / doc).read_text(encoding="utf-8") for doc in ("CLAUDE_GUIDE.md", "CODEX_GUIDE.md")
-    )
+    documented = (_ROOT / "AGENT_GUIDE.md").read_text(encoding="utf-8")
     missing = [fn.__name__ for fn in _TOOLS if fn.__name__ not in documented]
 
     assert not missing, f"registered but undocumented: {', '.join(missing)}"

@@ -166,7 +166,7 @@ false-green is the reason the second field is not optional.
 |---|---|---|
 | `FEATURES.md` | a Perl codegen row (`sdlc feature --language perl`; `prove`; `cpanm` optional) | C-2 |
 | `USER_GUIDE.md` | the toolchain passage (Perl codegen needs `perl` and `prove`; `cpanm` optional); the "Multi-language" blockquote's codegen sentence | C-2 |
-| `CLAUDE_GUIDE.md`, `CODEX_GUIDE.md` | a Perl row in the toolchain tables | C-2 |
+| `AGENT_GUIDE.md` | a Perl row in the toolchain tables | C-2 |
 | `SETUP.md` | toolchain prerequisites | C-2 |
 | `CLI_REFERENCE.md` | `--language perl` in the `sdlc feature` reference | C-2 |
 | `docs/specs/STATE-OF-SPINE.md`, `SPEC-INDEX.md`, [perl-support-roadmap.md](perl-support-roadmap.md) D9 | status lines updated to the phase reached | every phase |

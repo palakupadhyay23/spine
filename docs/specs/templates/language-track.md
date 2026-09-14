@@ -137,7 +137,7 @@ is in scope for this track (it usually isn't — see the Perl/Java/TypeScript sp
 | `FEATURES.md` | a capability row; the "all N front-ends" accuracy row count | P1 |
 | `USER_GUIDE.md` | the extras list, the "Multi-language" blockquote, the corpus-results line | P1 |
 | `KNOWLEDGE_GRAPH.md` | node/edge matrices, language table row, a fact-mapping note on D2 | P1, and each phase that adds a node/edge kind |
-| `CLAUDE_GUIDE.md`, `CODEX_GUIDE.md` | the language sentence and "N front-ends" | P1 |
+| `AGENT_GUIDE.md` | the language sentence and "N front-ends" | P1 |
 | `docs/specs/STATE-OF-SPINE.md`, `SPEC-INDEX.md` | front-end count, this spec's row (never ahead of the phase actually reached) | every phase |
 | `CHANGELOG.md` | one entry under Unreleased per phase, house voice | every phase |
 
