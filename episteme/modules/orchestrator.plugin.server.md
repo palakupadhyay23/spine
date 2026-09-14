@@ -265,7 +265,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 3 test): [`test_design_change_is_grounded_and_never_writes`](../../tests/plugin/test_server.py#L491), [`test_design_change_refuses_a_bad_spec_naming_the_valid_fields`](../../tests/plugin/test_server.py#L512), [`test_design_change_with_llm_needs_a_model`](../../tests/plugin/test_server.py#L520)
 - **Calls** (5): [`_open_repo`](../../src/orchestrator/plugin/server.py#L248), [`load_local_env`](../../src/orchestrator/core/env.py#L20), `orchestrator.core.llm.LiteLLMClient`, [`resolve_codegen_model`](../../src/orchestrator/sdlc/codegen.py#L45), [`validate_spec`](../../src/orchestrator/sdlc/spec_file.py#L60)
-- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `README.md#whats-new`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`, `docs/specs/mcp-plugin-surface.md#3-the-gaps`
+- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `README.md#whats-new`, `docs/evidence/perl-codegen-c4-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`
 
 ### `docs_for`
 
@@ -287,7 +287,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 4 test): [`test_every_multi_repo_tool_refuses_both_or_neither_of_repo_path_and_repos`](../../tests/plugin/test_server.py#L1388), [`test_explain_symbol_across_repos_names_the_repo_and_the_reach`](../../tests/plugin/test_server.py#L1311), [`test_explain_symbol_lists_callers`](../../tests/plugin/test_server.py#L116), [`test_the_nudge_reaches_every_comprehension_tool_that_takes_one_repo`](../../tests/plugin/test_server.py#L1508)
 - **Calls** (2): [`_in_repo_store`](../../src/orchestrator/plugin/server.py#L327), [`_in_repos_store`](../../src/orchestrator/plugin/server.py#L366)
-- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#10-language-support-toolchains`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#asking-across-several-repositories`, `CLAUDE_GUIDE.md#sdlc-plan`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`
+- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#asking-across-several-repositories`, `CLAUDE_GUIDE.md#sdlc-plan`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#asking-across-several-repositories`
 
 ### `ingest_preview`
 
@@ -295,7 +295,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 1 test): [`test_ingest_preview_summarizes_a_dry_run`](../../tests/plugin/test_server.py#L231)
 - **Calls** (2): [`build_service_for`](../../src/orchestrator/intake/factory.py#L272), [`parse_source_uri`](../../src/orchestrator/intake/service.py#L40)
-- **Documented in**: `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#ingest-preview`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#ingest-preview`, `USER_GUIDE.md#step-10-call-it-from-claude-codex-or-your-ide-mcp-server`, `docs/specs/codex-plugin-keyless-roadmap.md#phases`
+- **Documented in**: `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#ingest-preview`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#ingest-preview`, `USER_GUIDE.md#step-10-call-it-from-claude-codex-or-your-ide-mcp-server`, `docs/evidence/perl-codegen-c4-validation.txt`
 
 ### `investigate`
 
@@ -340,7 +340,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 1 test): [`test_profile_repo_reads_the_project`](../../tests/plugin/test_server.py#L483)
 - **Calls** (1): [`_in_repo`](../../src/orchestrator/plugin/server.py#L316)
-- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`, `docs/specs/mcp-plugin-surface.md#3-the-gaps`, `docs/specs/mcp-plugin-surface.md#4-proposals`
+- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `docs/evidence/perl-codegen-c4-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`
 
 ### `read_memory_bank`
 
@@ -371,7 +371,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 1 test): [`test_registry_runs_lists_with_a_table`](../../tests/plugin/test_server.py#L728)
 - **Calls** (1): [`_registry`](../../src/orchestrator/plugin/server.py#L1503)
-- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#operating-runs-registry-runs-friends`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`, `docs/specs/mcp-plugin-surface.md#3-the-gaps`
+- **Documented in**: `CHANGELOG.md`, `CLAUDE_GUIDE.md#6-the-tools-spine-exposes`, `CLAUDE_GUIDE.md#operating-runs-registry-runs-friends`, `CODEX_GUIDE.md#6-the-tools-spine-exposes`, `docs/evidence/perl-codegen-c4-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`
 
 ### `registry_trace`
 
@@ -445,7 +445,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/plugin/server.py:148`](../../src/orchestrator/plugin/server.py#L148)
 
 - **Called by** (0 production · 4 test): [`test_sdlc_feature_live_requires_confirm`](../../tests/plugin/test_server.py#L256), [`test_sdlc_feature_maps_run_error`](../../tests/plugin/test_server.py#L321), [`test_sdlc_feature_passes_greenfield_brownfield_params`](../../tests/plugin/test_server.py#L285), [`test_sdlc_feature_safe_maps_result`](../../tests/plugin/test_server.py#L262)
-- **Calls** (2): [`Reporter`](../../src/orchestrator/plugin/progress.py#L68), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L629)
+- **Calls** (2): [`Reporter`](../../src/orchestrator/plugin/progress.py#L68), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616)
 
 ### `sdlc_plan`
 
@@ -467,7 +467,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 1 test): [`test_sdlc_run_status_and_result_delegate`](../../tests/plugin/test_server.py#L369)
 - **Calls** (1): [`run_result`](../../src/orchestrator/sdlc/run_control.py#L181)
-- **Documented in**: `CLAUDE_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `CODEX_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `docs/specs/codex-plugin-keyless-roadmap.md#tools-needing-no-credentials-at-all-17-of-19`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`, `docs/specs/mcp-plugin-surface.md#the-tiers-as-annotations-phase-1`, `docs/specs/perl-codegen-roadmap.md#21-testing-the-phases-with-spine-itself`
+- **Documented in**: `CLAUDE_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `CODEX_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `docs/evidence/perl-codegen-c4-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/codex-plugin-keyless-roadmap.md#tools-needing-no-credentials-at-all-17-of-19`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`
 
 ### `sdlc_run_status`
 
@@ -475,7 +475,7 @@ _7 of the symbols other code depends on here have no test path the graph can see
 
 - **Called by** (0 production · 1 test): [`test_sdlc_run_status_and_result_delegate`](../../tests/plugin/test_server.py#L369)
 - **Calls** (1): [`run_status`](../../src/orchestrator/sdlc/run_control.py#L102)
-- **Documented in**: `CLAUDE_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `CODEX_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `docs/specs/codex-plugin-keyless-roadmap.md#tools-needing-no-credentials-at-all-17-of-19`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`, `docs/specs/mcp-plugin-surface.md#the-tiers-as-annotations-phase-1`
+- **Documented in**: `CLAUDE_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `CODEX_GUIDE.md#the-autonomous-run-sdlc-start-run-friends`, `docs/evidence/perl-codegen-c4-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/codex-plugin-keyless-roadmap.md#tools-needing-no-credentials-at-all-17-of-19`, `docs/specs/mcp-plugin-surface.md#2-the-32-tools-in-three-tiers-plus-an-operator-set`
 
 ### `sdlc_start_run`
 

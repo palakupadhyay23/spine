@@ -26,7 +26,7 @@ _12 of the symbols other code depends on here have no test path the graph can se
 
 ## Documented in
 
-`CHANGELOG.md`, `CONTRIBUTING.md#opening-a-pull-request`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
+`CHANGELOG.md`, `CONTRIBUTING.md#opening-a-pull-request`, `docs/evidence/perl-codegen-c0-validation.txt`, `docs/evidence/perl-codegen-c1-validation.txt`, `docs/evidence/perl-codegen-c2-validation.txt`, `docs/evidence/perl-codegen-c3-validation.txt`
 
 ## Types
 

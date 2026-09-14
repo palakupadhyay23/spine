@@ -107,8 +107,8 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:503`](../../src/orchestrator/sdlc/autorun.py#L503)
 
 - **Called by** (1): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237)
-- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L601), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214)
-- **Documented in**: `docs/specs/perl-codegen-roadmap.md#22-blast-radius-measured-from-the-pkg`, `docs/specs/perl-support-roadmap.md#7-blast-radius-measured-from-the-pkg-per-registration-site`
+- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L603), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214)
+- **Documented in**: `docs/specs/perl-support-roadmap.md#7-blast-radius-measured-from-the-pkg-per-registration-site`
 
 ### `_research_pass`
 
@@ -137,7 +137,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:1031`](../../src/orchestrator/sdlc/autorun.py#L1031)
 
 - **Called by** (1): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237)
-- **Calls** (5): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_spent`](../../src/orchestrator/sdlc/autorun.py#L472), [`design_disagreement`](../../src/orchestrator/sdlc/builddoc.py#L270), `nullcontext`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L629)
+- **Calls** (5): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_spent`](../../src/orchestrator/sdlc/autorun.py#L472), [`design_disagreement`](../../src/orchestrator/sdlc/builddoc.py#L270), `nullcontext`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616)
 - **Documented in**: `docs/specs/recorded-intent-tier.md#41-what-phases-2-and-3-look-like-in-practice`
 
 ### `_stage_intake`

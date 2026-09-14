@@ -26,7 +26,7 @@ _23 of the symbols other code depends on here have no test path the graph can se
 
 ## Documented in
 
-`CHANGELOG.md`, `CONTRIBUTING.md#how-changes-get-reviewed-and-shipped`, `docs/reviewing/docs-matrix.md#user-facing-documentation-matrix-what-a-change-obliges-you-to-update`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`, `docs/specs/perl-support-roadmap.md#61-user-facing-documentation-what-changes-in-which-phase`
+`CHANGELOG.md`, `CONTRIBUTING.md#how-changes-get-reviewed-and-shipped`, `docs/evidence/perl-codegen-c0-validation.txt`, `docs/evidence/perl-codegen-c1-validation.txt`, `docs/evidence/perl-codegen-c2-validation.txt`, `docs/evidence/perl-codegen-c3-validation.txt`
 
 ## Functions
 

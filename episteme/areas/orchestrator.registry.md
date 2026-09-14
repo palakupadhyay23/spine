@@ -54,7 +54,7 @@ _Showing 16 of 31 neighbouring areas._
 - [`orchestrator.registry.api.backlog`](../../src/orchestrator/registry/api/backlog.py#L1)
 - [`orchestrator.registry.api.capabilities`](../modules/orchestrator.registry.api.capabilities.md)
 - [`orchestrator.registry.api.config`](../../src/orchestrator/registry/api/config.py#L1)
-- [`orchestrator.registry.api.connections`](../modules/orchestrator.registry.api.connections.md)
+- [`orchestrator.registry.api.connections`](../../src/orchestrator/registry/api/connections.py#L1)
 - [`orchestrator.registry.api.console`](../../src/orchestrator/registry/api/console.py#L1)
 - [`orchestrator.registry.api.deps`](../../src/orchestrator/registry/api/deps.py#L1)
 - [`orchestrator.registry.api.fs`](../../src/orchestrator/registry/api/fs.py#L1)

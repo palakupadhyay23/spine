@@ -3,7 +3,7 @@
 
 [← Episteme](../README.md) · [Architecture](../architecture.md)
 
-**`orchestrator.sdlc`** is one of 59 areas in this repo, in the `orchestrator` zone. It holds 49 modules — 124 types and 381 functions. It sits in the middle of the graph: 17 areas below it, 15 above. Changes here can reach both ways.
+**`orchestrator.sdlc`** is one of 59 areas in this repo, in the `orchestrator` zone. It holds 54 modules — 131 types and 431 functions. It sits in the middle of the graph: 17 areas below it, 15 above. Changes here can reach both ways.
 
 ```mermaid
 flowchart LR
@@ -55,6 +55,7 @@ _Showing 16 of 32 neighbouring areas._
 - [`orchestrator.sdlc.codegen`](../modules/orchestrator.sdlc.codegen.md)
 - [`orchestrator.sdlc.complete`](../../src/orchestrator/sdlc/complete.py#L1)
 - [`orchestrator.sdlc.comprehension`](../../src/orchestrator/sdlc/comprehension.py#L1)
+- [`orchestrator.sdlc.contracts`](../../src/orchestrator/sdlc/contracts.py#L1)
 - [`orchestrator.sdlc.conventions`](../../src/orchestrator/sdlc/conventions.py#L1)
 - [`orchestrator.sdlc.coverage`](../../src/orchestrator/sdlc/coverage.py#L1)
 - [`orchestrator.sdlc.criteria_binding`](../../src/orchestrator/sdlc/criteria_binding.py#L1)
@@ -71,10 +72,13 @@ _Showing 16 of 32 neighbouring areas._
 - [`orchestrator.sdlc.grounding`](../../src/orchestrator/sdlc/grounding.py#L1)
 - [`orchestrator.sdlc.impact`](../../src/orchestrator/sdlc/impact.py#L1)
 - [`orchestrator.sdlc.investigate`](../../src/orchestrator/sdlc/investigate.py#L1)
+- [`orchestrator.sdlc.language_guidance`](../../src/orchestrator/sdlc/language_guidance.py#L1)
 - [`orchestrator.sdlc.layout`](../modules/orchestrator.sdlc.layout.md)
 - [`orchestrator.sdlc.localize`](../../src/orchestrator/sdlc/localize.py#L1)
+- [`orchestrator.sdlc.perl`](../../src/orchestrator/sdlc/perl.py#L1)
 - [`orchestrator.sdlc.php`](../../src/orchestrator/sdlc/php.py#L1)
 - [`orchestrator.sdlc.preflight`](../../src/orchestrator/sdlc/preflight.py#L1)
+- [`orchestrator.sdlc.process`](../../src/orchestrator/sdlc/process.py#L1)
 - [`orchestrator.sdlc.profile_select`](../../src/orchestrator/sdlc/profile_select.py#L1)
 - [`orchestrator.sdlc.profiles`](../../src/orchestrator/sdlc/profiles/__init__.py#L1)
 - [`orchestrator.sdlc.rca`](../../src/orchestrator/sdlc/rca.py#L1)
@@ -89,6 +93,7 @@ _Showing 16 of 32 neighbouring areas._
 - [`orchestrator.sdlc.telemetry`](../../src/orchestrator/sdlc/telemetry.py#L1)
 - [`orchestrator.sdlc.testenv`](../modules/orchestrator.sdlc.testenv.md)
 - [`orchestrator.sdlc.testrunner`](../modules/orchestrator.sdlc.testrunner.md)
+- [`orchestrator.sdlc.toolchains`](../modules/orchestrator.sdlc.toolchains.md)
 - [`orchestrator.sdlc.types`](../../src/orchestrator/sdlc/types.py#L1)
 - [`orchestrator.sdlc.validity`](../modules/orchestrator.sdlc.validity.md)
 - [`orchestrator.sdlc.worker`](../modules/orchestrator.sdlc.worker.md)
