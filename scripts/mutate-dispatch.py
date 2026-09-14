@@ -33,6 +33,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+BASELINE = (
+    "measured: 4 of 8 on 2026-09-13 (pre-registry), 8 of 8 on the merged result of #365 — "
+    "a run below 8 of 8 means a behaviour lost the test that pinned it"
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 SDLC = ROOT / "src" / "orchestrator" / "sdlc"
 
@@ -66,7 +71,7 @@ class Mutation:
     old: str
     new: str
     anchor: str | None = None
-    was: str = ""  # baseline result (2026-09-13), for comparison after C-0
+    was: str = ""  # PRE-REGISTRY result (2026-09-13); today's result comes from a run
 
 
 LEGACY_MUTATIONS: tuple[Mutation, ...] = (
@@ -221,8 +226,13 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.list:
+        # `was` is the PRE-REGISTRY result (2026-09-13), kept so the original baseline can
+        # be replayed — not what this script reports today. Labelling the column avoids
+        # reading "MISSED" as a live failure when a full run says 8 of 8.
+        print("the set, with each mutation's result when the baseline was taken:\n")
         for i, m in enumerate(MUTATIONS, 1):
-            print(f"{i}. [{m.was}] {m.name}  ({m.path})")
+            print(f"{i}. [pre-registry: {m.was}] {m.name}  ({m.path})")
+        print("\n" + BASELINE)
         return 0
 
     print(f"{len(MUTATIONS)} mutations, each against {len(TESTS)} test modules. A few minutes.\n")
@@ -236,7 +246,7 @@ def main() -> int:
     caught = sum(1 for v, _ in results if v == "CAUGHT")
     applied = sum(1 for v, _ in results if v != "SKIP")
     print(f"\ncaught {caught} of {applied} applied ({len(results) - applied} skipped)")
-    print("baseline on 2026-09-13: 4 of 8 — perl-codegen-roadmap.md C-0 exits at 8 of 8")
+    print(BASELINE)
     # Deliberately always 0: this reports a measurement, it does not gate a build.
     return 0
 
