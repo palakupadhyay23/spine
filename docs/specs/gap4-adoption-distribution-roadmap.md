@@ -97,7 +97,7 @@ instead of bouncing.
 | `plugin/server.py` + `plugins/spine/` + `codex-marketplace/` | Codex plugin, Claude plugin, `understand-codebase` Agent Skill, stdio **and** remote-HTTP transports |
 | 8 read-only comprehension tools | Work with **zero credentials** — the frictionless entry point |
 | `synaptixs-spine` on PyPI + public mirror | Distribution rails already built and proven through 3.8.1 |
-| `CLAUDE_GUIDE.md` / `CODEX_GUIDE.md` / `USER_GUIDE.md` | Install + walkthrough docs already current |
+| `AGENT_GUIDE.md` / `USER_GUIDE.md` | Install + walkthrough docs already current |
 
 **The asset to lead with:** the comprehension tools need **no API key and write nothing**. That is
 the lowest-commitment first touch we have — the equivalent of `/graphify`.
@@ -147,7 +147,7 @@ A calling repository adds **three lines**:
 ```yaml
 jobs:
   spine:
-    uses: synaptixs/spine/.github/workflows/spine-comprehension.yml@v3.33.2
+    uses: synaptixs/spine/.github/workflows/spine-comprehension.yml@v3.34.1
 ```
 
 and gets a pull-request comment saying where its own change lands in its own code, with

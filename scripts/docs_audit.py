@@ -18,13 +18,13 @@ STALE/MISSING):
    INFO only: codegen lists legitimately exclude comprehension-only languages; a reviewer
    decides.
 3. optional extras — every language extra in `pyproject.toml` (a `tree-sitter-<grammar>` or
-   `sqlglot` extra) must appear at all of its registration sites: `USER_GUIDE.md`, the
+   `sqlglot` extra) must appear at all of its registration sites: `SETUP.md`, the
    `languages` meta-extra, `ci.yml`'s sync line (or the `dev` extra CI installs),
    `doctor.EXTRA_PROBES`, `persistence._GRAMMAR_MODULES` (grammar extras), and the mypy
    `ignore_missing_imports` override.
 4. CLI commands — every `.command("name")` under `cli/` is mentioned in `CLI_REFERENCE.md`.
-5. MCP tools — every key of `plugin/outputs.py:OUTPUTS` is mentioned in `CLAUDE_GUIDE.md`,
-   `CODEX_GUIDE.md`, and at least one `plugins/spine/skills/*/SKILL.md`.
+5. MCP tools — every key of `plugin/outputs.py:OUTPUTS` is mentioned in `AGENT_GUIDE.md`
+   and at least one `plugins/spine/skills/*/SKILL.md`.
 6. with `--base/--head`: which user documents the diff touched, for the report's table.
 7. links — every relative link in the user documents resolves: the file exists and, when
    there is an anchor, it matches a heading under GitHub's slug rules (an em dash in a
@@ -63,9 +63,9 @@ def set_root(path: Path | str) -> None:
 
 USER_DOCS = [
     "README.md",
-    "FEATURES.md",
     "USER_GUIDE.md",
     "KNOWLEDGE_GRAPH.md",
+    "AGENT_GUIDE.md",
     "CLAUDE_GUIDE.md",
     "CODEX_GUIDE.md",
     "CLI_REFERENCE.md",
@@ -235,14 +235,14 @@ def check_extras() -> list[str]:
     py = _read("pyproject.toml")
     mypy = re.search(r"\[\[tool\.mypy\.overrides\]\]\nmodule = \[(.*?)\]", py, re.S)
     mypy_mods = mypy.group(1) if mypy else ""
-    guide = _read("USER_GUIDE.md")
+    guide = _read("SETUP.md")
     meta_names = re.findall(r"[a-z-]+", languages_meta.split("[", 1)[-1])
     for extra, body in sorted(lang_extras.items()):
         grammar = re.search(r'"(tree-sitter-[a-z-]+)', body)
         module = grammar.group(1).replace("-", "_") if grammar else None
         packages = re.findall(r'"([a-z-]+)', body)
         if f"[{extra}]" not in guide:
-            out.append(f"[MISSING] extra {extra!r}: not mentioned as `[{extra}]` in USER_GUIDE.md")
+            out.append(f"[MISSING] extra {extra!r}: not mentioned as `[{extra}]` in SETUP.md")
         if extra not in meta_names:
             out.append(f"[MISSING] extra {extra!r}: absent from the `languages` meta-extra in pyproject.toml")
         in_dev = all(f'"{p}' in dev_body for p in packages)
@@ -282,7 +282,7 @@ def check_mcp() -> list[str]:
     marker = "OUTPUTS: dict[str, type] = {"
     block = outputs.split(marker, 1)[1].split("}", 1)[0] if marker in outputs else ""
     tools = re.findall(r'^\s+"([a-z_]+)":', block, re.M)
-    guides = {g: _read(g) for g in ("CLAUDE_GUIDE.md", "CODEX_GUIDE.md")}
+    guides = {g: _read(g) for g in ("AGENT_GUIDE.md",)}
     skills = "\n".join(p.read_text(encoding="utf-8") for p in ROOT.glob("plugins/spine/skills/*/SKILL.md"))
     for tool in tools:
         for g, text in guides.items():

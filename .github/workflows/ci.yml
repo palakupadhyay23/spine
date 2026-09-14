@@ -121,6 +121,9 @@ jobs:
       - name: Knowledge-foundation diagram is current
         run: uv run python scripts/render_knowledge_foundation_svg.py --check
 
+      - name: MCP tool documentation matches registration metadata
+        run: uv run --frozen python scripts/mcp-tools.py --check
+
       # The capability matrix is a claim surface, and its headline count was the one number in
       # it nobody could re-run. On 2026-08-21 the matrix's own summary said 16 rows and
       # STATE-OF-SPINE.md said 11, for the same table on the same day; the answer was 22. Both

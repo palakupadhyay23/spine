@@ -1,9 +1,9 @@
-# SETUP — Spine, from a source checkout
+# Setup — install, configure, and troubleshoot Spine
 
-The contributor's zero-to-running page: clone, sync, pass the gate, see it work. If you
-want to *use* Spine, install it from PyPI and follow [USER_GUIDE.md](USER_GUIDE.md); if you
-run it for others, [OPERATIONS.md](OPERATIONS.md) has the deployment modes and every
-environment variable. This page links to those rather than repeating them.
+This is the authoritative installation, credentials, environment and troubleshooting
+reference for both the published tool and a source checkout. Start with the
+[worked example](EXAMPLE.md), follow [USER_GUIDE.md](USER_GUIDE.md) for everyday
+builds, or use [OPERATIONS.md](OPERATIONS.md) to run the service for a team.
 
 > **Spine** is the product; it installs as the **`synaptixs-spine`** package and its command
 > is **`orchestrator`** — used verbatim below. On a source checkout, prefix CLI calls with
@@ -26,20 +26,81 @@ python3 --version && uv --version && docker compose version
 
 ---
 
+## Install the published tool
+
+Use Python 3.12+ and [uv](https://docs.astral.sh/uv/). For comprehension only:
+
+```bash
+uv tool install synaptixs-spine
+orchestrator --help
+```
+
+For building features, add `[sdlc]`; for the agent plugin and every language:
+
+```bash
+uv tool install --force 'synaptixs-spine[all]'
+```
+
+The `--force` form replaces an existing tool installation with the selected extras.
+In an existing virtual environment, `pip install 'synaptixs-spine[all]'` is the
+equivalent. Both install the `orchestrator` and `orchestrator-mcp` console scripts.
+Host registration and configuration paths are in [AGENT_GUIDE.md](AGENT_GUIDE.md#3-install).
+
+### Optional extras
+
+Optional extras, added when you need them:
+- `[sdlc]` — run the generated tests (the `sdlc feature`/`run` path)
+- `[all]` — the language, MCP, SDLC and document extras together: every language front-end,
+  the MCP server and doc ingestion. This is the right install for the Claude Code / Codex
+  plugin; `[languages]` is the front-ends on their own.
+- `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
+  parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
+  SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or
+  **Meson + Ninja** (matching the target repo's build system); **Go** codegen needs the **`go`
+  toolchain** on PATH (`go build`/`go test`). `[sql]` adds `.sql`
+  comprehension (schema/queries/procedures + migration folding) — no toolchain needed. `[php]`
+  adds `.php` comprehension + a call graph (namespaces, classes/interfaces/traits, `CALLS`,
+  typed-receiver resolution) + Laravel/Slim/Symfony routes + Eloquent/Doctrine entities —
+  codegen uses Composer or a pinned PHPUnit PHAR. `[perl]` adds `.pl`/`.pm`/`.t` comprehension
+  (every package is its own type, inheritance across its five spellings)
+  and codegen: install `perl` and `prove` on PATH; `cpanm` is optional for dependencies.
+- `[docs]` — **PDF** doc ingestion; `[office]` — **Word/Excel** (`.docx`/`.xlsx`) ingestion.
+  Markdown, `.rst`, `.txt` and **HTML** need no extra. Without an extra those files are simply
+  skipped, so a base install still ingests everything it can read.
+- `[media]` — **image OCR** (needs a system `tesseract` binary); `[asr]` — **local audio/video
+  transcription** (Whisper). Only the opt-in `orchestrator media extract` uses these; the
+  deterministic build never does. See [media ingestion](USER_GUIDE.md#bringing-diagrams--recordings-into-the-graph).
+- `[mcp]` (MCP client), `[otel]` (live tracing)
+
+`[all]` excludes `[security]` (Semgrep), `[media]`, `[asr]`, `[sql-postgres]`,
+`[otel]` and `[dev]`; those stay opt-in. `[sql-postgres]` uses Docker for real
+Postgres validation instead of the default in-memory SQLite.
+
+### Updating and uninstalling
+
+For a uv tool installation, use `uv tool upgrade synaptixs-spine` or
+`uv tool uninstall synaptixs-spine`. For pip, use `pip install --upgrade synaptixs-spine` with your original extras, or `pip uninstall synaptixs-spine`.
+In a source checkout, pull the desired branch and repeat the sync command below.
+Verify with `orchestrator --version` and `orchestrator doctor`, which identifies
+the interpreter answering. Host plugin update/removal commands stay in
+[the agent guide](AGENT_GUIDE.md#3-install).
+
+---
+
 ## 2. Install from source
 
 ```bash
 git clone https://github.com/synaptixs/spine
 cd spine
-uv sync --extra dev
+uv sync --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp \
+  --extra c --extra cpp --extra go --extra php --extra perl
 uv run orchestrator --help
 ```
 
-`--extra dev` installs the project plus the parsers CI exercises — every tree-sitter language
-front-end and PDF ingestion — so `understand` / `state` / `pkg accuracy` here measure the same
-languages the committed scoreboard does. A run with fewer front-ends than CI reports fewer
-languages, not zeros. End users add feature extras à la carte; that list lives in
-[USER_GUIDE.md → Step 1](USER_GUIDE.md#step-1--install).
+This is the extras set CI syncs. `[dev]` supplies testing/type tools plus SQL and
+document parsers; the explicit language extras and `[mcp]` exercise the remaining
+front-ends and plugin. Fewer extras mean fewer languages, not zero findings.
+On a checkout, prefix commands in other guides with `uv run --frozen`.
 
 ---
 
@@ -47,7 +108,7 @@ languages, not zeros. End users add feature extras à la carte; that list lives 
 
 Run it before every push. The commands are the single source in
 [CONTRIBUTING.md → Opening a pull request](CONTRIBUTING.md#opening-a-pull-request) — note
-`mypy src tests`, **not** just `src`, and the four `--check` scripts CI also runs. In short:
+`mypy src tests`, **not** just `src`, and the five generated-artifact `--check` scripts CI also runs. In short:
 
 ```bash
 uv run pytest                    # unit tests only; no Docker, no key
@@ -110,11 +171,11 @@ The manual equivalents, for a `--reload` loop or a single process:
 ```bash
 docker compose -f docker-compose.dev.yml up -d && uv run alembic upgrade head
 uv run uvicorn orchestrator.registry.api.app:create_app --factory --reload --port 8000
-uv run python -m orchestrator.temporal.worker
+uv run python -m orchestrator.sdlc.worker
 ```
 
 What to do with a running stack — delegate a run, approve a gate, watch it — is
-[USER_GUIDE.md → Step 7](USER_GUIDE.md#step-7--the-full-pipeline--web-dashboard); every command
+[OPERATIONS.md → Step 7](OPERATIONS.md#step-7--the-full-pipeline--web-dashboard); every command
 is in [CLI_REFERENCE.md](CLI_REFERENCE.md).
 
 ---
@@ -136,6 +197,92 @@ span so it joins the audit log. Design record: `docs/specs/live-observability-ot
 
 ---
 
+## Credentials and model selection
+
+```bash
+orchestrator init      # scaffolds a commented .env, then checks readiness
+# open .env and fill in: your LLM key, your model, and (later) Confluence/Jira + repo
+orchestrator doctor    # readiness report — tells you exactly what's set and what's missing
+```
+
+`doctor` reads `.env` automatically — run it from the folder that has your
+`.env`. Start minimal; you only need the LLM settings for your first run.
+
+| Setting | What it's for | Needed by |
+|---|---|---|
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your LLM provider | Local build |
+| `ORCHESTRATOR_MODEL` | One model for every stage (optional — defaults to `claude-opus-5`) | Local build |
+| `CONFLUENCE_*`, `JIRA_*` | Read requirements / file issues | Live source/PR work |
+| `SDLC_REPO_URL` | The repo it builds **into** | Live source/PR work |
+| `SDLC_PR_BASE` | The branch a run builds **on** and opens its PR into — set this to `develop` if that is where you merge, or runs are written against `main` | Live source/PR work |
+| `GITHUB_TOKEN` *(or `GITHUB_APP_*`)* | Auth for a private target repo | Live source/PR work |
+
+### Choosing a model
+
+Every stage runs on `claude-opus-5` unless you say otherwise. To see what you can
+point it at — with context windows, prices, and which models support the tool
+calling the pipeline requires:
+
+```bash
+orchestrator models                    # everything, plus what each stage uses now
+orchestrator models --provider openai  # just one vendor
+```
+
+Set one knob for everything, or a model per stage:
+
+| Variable | Drives |
+|---|---|
+| `ORCHESTRATOR_MODEL` | every stage |
+| `SDLC_CODEGEN_MODEL` | codegen — implement, refine, revise, author_tests |
+| `SDLC_JUDGE_MODEL` | the acceptance judge |
+| `ORCHESTRATOR_INTAKE_MODEL` | intent extraction and spec writing |
+| `ORCHESTRATOR_REASONING_EFFORT` | reasoning level on tool-calling models (default `high`) |
+
+A stage's own variable wins over `ORCHESTRATOR_MODEL`, which wins over the default.
+Pointing a stage at another vendor needs that vendor's key in the environment.
+
+> **Tool calling is required, not preferred.** Codegen and the judge both force a
+> tool call. On a model without it they fall back to reading prose out of a text
+> reply, which is far less reliable — `orchestrator models` marks those.
+
+For sources, add `CONFLUENCE_*`, `JIRA_*` or `NOTION_API_TOKEN` as needed;
+`file://` needs no source credentials. Live Jira issue creation needs
+`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` and `JIRA_PROJECT_KEY`.
+Live PRs accept `GITHUB_TOKEN` / `GH_TOKEN`, or the GitHub App configuration.
+Match the provider key to the selected model. For a local endpoint, see
+[offline models](USER_GUIDE.md#step-6--run-fully-offline-on-a-local-model-no-api-key).
+
+The MCP server reads `.env` too. If the host starts it from another directory,
+set `ORCHESTRATOR_DOTENV` to the file's **absolute** path in the server environment.
+Read-only comprehension and deterministic planning need no provider credentials.
+See the [host configuration examples](AGENT_GUIDE.md#4-credentials).
+
+---
+
+### Local and mixed model configuration
+
+```bash
+# Local: `ollama pull qwen2.5-coder` then `ollama serve`, then in .env:
+OLLAMA_API_BASE=http://localhost:11434
+ORCHESTRATOR_INTAKE_MODEL=ollama/qwen2.5-coder
+
+# Hosted Ollama / any OpenAI-compatible endpoint:
+OLLAMA_API_BASE=https://your-ollama-host
+```
+
+**Model choice matters more than the provider.** Reading requirements and review
+run fine on modest models, but code generation emits strict JSON and anchored
+edits — use a **coder** model there. You can even mix local and cloud per stage:
+
+```bash
+ORCHESTRATOR_INTAKE_MODEL=ollama/qwen2.5-coder   # cheap stages, local
+SDLC_CODEGEN_MODEL=claude-opus-5                  # codegen, cloud quality
+SDLC_REVIEW_MODEL=ollama/qwen2.5-coder            # the review judge
+```
+
+
+---
+
 ## 7. Environment
 
 `orchestrator init` scaffolds a `.env` from the same groups `doctor` checks. The three a
@@ -147,9 +294,60 @@ developer sets on day one:
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | — | the model provider; LiteLLM routes on whichever is set |
 | `ORCHESTRATOR_DATABASE_URL` | the compose Postgres on 5433 | the application DB |
 
-Everything else — sources, trackers, Temporal, object store, MCP auth — is in
-[`.env.example`](.env.example) with a comment per variable, and explained in
-[OPERATIONS.md → Environment-variable reference](OPERATIONS.md#environment-variable-reference).
+The full variable names and defaults are in [`.env.example`](.env.example).
+Only set the groups your workflow uses; optional capabilities remain off until enabled.
+
+**Core / LLM** — `ORCHESTRATOR_INTAKE_MODEL`, `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`,
+`SDLC_CODEGEN`, `SDLC_CODEGEN_MODEL` / `SDLC_REVIEW_MODEL`.
+
+**Pipeline & governance** — `SDLC_REPO_URL`, `SDLC_RUN_BUDGET_USD` (hard spend cap),
+`SPINE_SDLC_IMPERATIVE` (fall back to the pre-3.20 path),
+`SDLC_AGENTIC_CODEGEN` (ReAct loop, default off), `SDLC_AGENTIC_POLICY`,
+`SDLC_TEST_ISOLATION`, `SDLC_GITHUB_INSTALLATION_ID` (live PR auth).
+
+**Service / storage / identity** — `ORCHESTRATOR_DATABASE_URL`,
+`ORCHESTRATOR_ARTIFACT_STORE`, `ORCHESTRATOR_SESSION_SECRET`, `ORCHESTRATOR_API_URL`
+/ `ORCHESTRATOR_API_KEY`, `ORCHESTRATOR_PRINCIPALS` / `ORCHESTRATOR_TENANT_ID` (RBAC, partial).
+
+**Memory & observability** — `ORCHESTRATOR_SEMANTIC_MEMORY`, `ORCHESTRATOR_MEMORY_BANK_DIR`,
+`OTEL_EXPORTER_OTLP_ENDPOINT`.
+
+**MCP** — `ORCHESTRATOR_MCP_CONFIG` (servers Spine consumes), `ORCHESTRATOR_MCP_HOST`
+/ `_PORT` / `_PATH` (Spine-as-server), `ORCHESTRATOR_MCP_ISSUER_URL` / `_INTROSPECTION_*`
+(remote OAuth).
+
+**Semantic spine** — see [semantic-spine configuration](#semantic-spine-configuration).
+
+### Pipeline stages and gates
+
+| Env var | Default | Effect |
+|---|---|---|
+| `SDLC_COMPREHEND` | on | Comprehend the repo before the intents gate. |
+| `SDLC_DESIGN` | on | Produce a grounded design per issue before codegen. |
+| `SDLC_DESIGN_GATE` | **off** | Add a human **“approve designs”** gate (Gate 1.5, id `sdlc-<id>-2`) after the design wave, before any code is written. |
+
+### Repository and MCP access
+
+| Env var | Default | Effect |
+|---|---|---|
+| `ORCHESTRATOR_WORKSPACE_ROOT` | the cwd `up` ran in | Local repo paths must resolve under this root. |
+| `ORCHESTRATOR_REPO_ALLOWED_HOSTS` | `github.com,bitbucket.org,gitlab.com` | Hosts a repo URL may be cloned from. Add an enterprise/custom host, or `*` for any. `file://` / `http://` / localhost / private IPs are always blocked. |
+| `ORCHESTRATOR_REPO_ALLOW_ANY_LOCAL` | off | Allow any absolute **local** repo path (trusted single-user). |
+| `ORCHESTRATOR_MCP_CONFIG_WRITABLE` | off | Allow adding/editing MCP servers from the Connections page (writes `mcp.json`; a stdio server's `command` is executed on this machine — off by default). |
+
+### Semantic-spine configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `SPINE_ONTOMESH_URL` | ontomesh base URL (Seam 1) | unset → off |
+| `SPINE_ONTOMESH_FLAVOR` | ontology/sensitivity flavor (Seam 1) | unset → off |
+| `SPINE_ONTOMESH_MIN_CONFIDENCE` | drop answers below this confidence | `0.0` |
+| `SPINE_INFODRIFT_URL` | infodrift register endpoint (Seam 2) | unset → off |
+| `SPINE_DEPLOY_TOPOLOGY` | `{component: [[region, interface], …]}` (Seam 2) | unset → off |
+| `SPINE_SHIP_VERSION` | version stamped on shipped units | `1` |
+
+The deployment sequence and the library-versus-service distinction are in
+[Operations](OPERATIONS.md#the-semantic-spine).
 
 ---
 
@@ -174,6 +372,29 @@ records — the *why* — are indexed at [docs/specs/README.md](docs/specs/READM
 ---
 
 ## 10. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `doctor` shows everything missing | Run it from the folder that has your `.env`. |
+| Codegen times out | Set `ORCHESTRATOR_MODEL` to a faster model (see `orchestrator models`). |
+| Private repo clone fails | Set `GITHUB_TOKEN` (PAT) or the GitHub App (`GITHUB_APP_*`). |
+| Console asks for an API key | Paste the `ORCHESTRATOR_API_KEY` you started the server with (`dev-key` by default). |
+| `sdlc run` hangs at a gate | Approve it in the console or via `/v1/approvals/.../approve`. |
+| Worker does nothing | It reads the process env, not `.env` — `set -a; source .env; set +a` before starting it. |
+| `mcp list` shows no servers | Add an `mcpServers` file (`--config`, `$ORCHESTRATOR_MCP_CONFIG`, or `./mcp.json`). |
+| `mcp` commands fail to import | Install the extra: `pip install 'synaptixs-spine[mcp]'` (or `uv sync --extra mcp`). |
+| An MCP tool is "not allow-listed" / write-gated | Add it to the server's `allow`; for mutating tools set `write_enabled: true`. |
+| Agentic loop falls back to single-shot | Use a tool-calling model (see `orchestrator models`) and set `SDLC_CODEGEN=llm`. |
+| `orchestrator-mcp --http` refuses to start | Set `ORCHESTRATOR_MCP_TOKEN` or `…_INTROSPECTION_URL`, bind `127.0.0.1`, or pass `--allow-unauthenticated` on a trusted net. |
+| Remote client gets 401 | Send `Authorization: Bearer <token>`; for introspection confirm the token is active and carries the required scope. |
+| `Nondeterminism error` on replay | An in-flight workflow predates a code change. Terminate the stale run (Temporal UI); new runs are unaffected. |
+| The host does not see Spine's tools | Restart it and follow the checks in [Install](AGENT_GUIDE.md#3-install). |
+| `doctor` says the LLM provider is missing | Your `.env` isn't being found — use the [server configuration](AGENT_GUIDE.md#4-credentials) and set `ORCHESTRATOR_DOTENV` to its **absolute** path. |
+| `orchestrator-mcp: command not found` | The server isn't on PATH. `pip install 'synaptixs-spine[all]'`, or point `command` at the absolute path of the console script. |
+| The server connects and dies ("Connection closed"), or tools are missing | A **stale** `orchestrator-mcp` on PATH — a console script left by an older checkout's venv. Ask your assistant to run `doctor` (or run `orchestrator doctor`): its `server` block names the **version, interpreter and MCP SDK** answering. If they aren't the install you expect: `uv tool install --force 'synaptixs-spine[all]'` (or reinstall into the venv you meant), then restart the host. |
+| "live needs a repo to push to" | Pass `repo=...` or set `SDLC_REPO_URL`; ensure `GITHUB_TOKEN`/`GH_TOKEN` is set. |
+| A `live` call refuses to write | That's the gate — pass `confirm=true` together with `live=true`. |
+| Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](AGENT_GUIDE.md#10-language-support--toolchains). |
 
 **`temporal-test-server` orphaned after a killed pytest** — `pkill -f temporal-test-server`.
 The time-skipping test server does not clean up after `SIGKILL`.
@@ -206,7 +427,7 @@ the usual cause.
 | How the pieces fit | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Running it for others | [OPERATIONS.md](OPERATIONS.md) |
 | Contributing, review, the gate | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Using it from Claude Code or Codex | [CLAUDE_GUIDE.md](CLAUDE_GUIDE.md), [CODEX_GUIDE.md](CODEX_GUIDE.md) |
+| Using it from Claude Code or Codex | [AGENT_GUIDE.md](AGENT_GUIDE.md) |
 | Design records | [docs/specs/README.md](docs/specs/README.md) |
 | Security policy · license | [SECURITY.md](SECURITY.md) · `LICENSE` (MIT) |
 

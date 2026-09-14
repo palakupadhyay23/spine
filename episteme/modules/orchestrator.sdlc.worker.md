@@ -26,7 +26,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ## Documented in
 
-`USER_GUIDE.md#terminal-1-the-worker-that-executes-the-pipeline-stages`, `docs/specs/archive/BLOCK-C-DESIGN.md#10-increment-breakdown-build-order-once-approved`, `docs/specs/archive/LIVE-TESTING.md#2-run-the-sdlc-worker-own-queue-default-sdlc-tasks`, `docs/specs/preflight-baseline-diff.md#2-files-changed`
+`OPERATIONS.md#terminal-1-the-worker-that-executes-the-pipeline-stages`, `SETUP.md#5-the-full-stack`, `docs/specs/archive/BLOCK-C-DESIGN.md#10-increment-breakdown-build-order-once-approved`, `docs/specs/archive/LIVE-TESTING.md#2-run-the-sdlc-worker-own-queue-default-sdlc-tasks`, `docs/specs/preflight-baseline-diff.md#2-files-changed`
 
 ## Functions
 

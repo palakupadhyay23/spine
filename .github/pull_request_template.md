@@ -10,5 +10,5 @@
 - [ ] Quality gate green locally (`mypy src tests`, `ruff format --check .`)
 - [ ] Tests added/updated where it matters
 - [ ] No secrets committed
-- [ ] Docs updated if behavior changed
+- [ ] Docs updated if behavior changed; generated MCP table checked (`python scripts/mcp-tools.py --check`)
 - [ ] Codegen changes follow the registry and runner proof checklist (when applicable)

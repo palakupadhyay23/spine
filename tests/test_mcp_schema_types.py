@@ -72,11 +72,11 @@ def test_labelling_does_not_mutate_the_schema() -> None:
     assert schema == before
 
 
-def test_user_guide_documents_argument_types_in_the_mcp_step() -> None:
+def test_operations_guide_documents_argument_types_in_the_mcp_step() -> None:
     """Acceptance: the choice is documented where MCP server setup lives (step 9)."""
     from pathlib import Path
 
-    guide = Path(__file__).resolve().parents[1] / "USER_GUIDE.md"
+    guide = Path(__file__).resolve().parents[1] / "OPERATIONS.md"
     text = guide.read_text(encoding="utf-8")
     assert "## Step 9 — Connect external tools (MCP)" in text
     start = text.index("## Step 9 — Connect external tools (MCP)")

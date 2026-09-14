@@ -1,7 +1,7 @@
 # Spine — working on this repo
 
 Guidance for agents/humans **building on** this codebase. For *using* Spine from Claude
-Code see [CLAUDE_GUIDE.md](CLAUDE_GUIDE.md); for PR/branch mechanics and the quality gate
+Code see [AGENT_GUIDE.md](AGENT_GUIDE.md); for PR/branch mechanics and the quality gate
 see [CONTRIBUTING.md](CONTRIBUTING.md); for deploy/env see [OPERATIONS.md](OPERATIONS.md).
 
 **Naming:** the product is **Spine**; the package, import, and CLI stay `orchestrator`

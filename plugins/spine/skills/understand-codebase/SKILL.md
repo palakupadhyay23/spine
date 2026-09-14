@@ -98,3 +98,5 @@ dependents it has **in other repositories**:
   actually change the code — spec → grounded codegen → tests → branch/PR — use Spine's gated
   `sdlc_feature`, which requires an explicit `confirm` for any external write. Work *down* the
   tiers: comprehend, then plan and get the plan approved, then build.
+
+The shared [agent guide](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#6-the-tools-spine-exposes) (inventory generated from tool registration metadata) documents the complete tool reference.
