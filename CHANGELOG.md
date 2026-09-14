@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+- docs: triage the documentation audit's INFO lines — the benchmark's "(there are nine now)", the call-graph language list in `USER_GUIDE.md`, and `regression`'s prerequisite in `CLI_REFERENCE.md` all predate Go/PHP/Perl `CALLS` extraction.
+
 - docs(pkg): the accuracy claim in `parsing-and-the-pkg.md` still read "in all eight languages" two front-ends after PHP and Perl were being scored, and its measured table carried a TypeScript `CALLS` recall of 0.50 against a committed 0.86. All three figures now derive from `scoreboard.json` through `scripts/state-numbers.py`, so the eleventh front-end fails `--check` instead of drifting.
 
 - test(plugin): derive the pitch's language list from the codegen registry instead of a hand-written tuple, and name every language on the operator home page — which still advertised six ([#366](https://github.com/synaptixs/spine/pull/366) fixed the manifests; nothing kept them fixed).

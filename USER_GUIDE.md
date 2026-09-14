@@ -332,7 +332,7 @@ orchestrator regression . --trace crash.log          # or use the fault site fro
 ```
 
 > **Call graphs.** `localize`, `rca`, and `regression` (and the design **Blast radius**) trace
-> caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, and Go** (Java/TS
+> caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, Go, PHP, and Perl** (Java/TS
 > call graphs were added alongside these commands). On a language without one, the reports say
 > so and fall back to module-level impact rather than implying zero.
 
