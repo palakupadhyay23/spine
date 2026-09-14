@@ -741,6 +741,10 @@ code and Test::More or Test2::V0 tests.
 
 The runner compiles changed `.pm`/`.pl` files with `perl -c`, tests their owning `t/` paths,
 then runs every distribution suite with `prove -l`; nested suites add `-r`. Empty suites fail.
+When `.perlcriticrc` exists in the owning distribution (or repository root), preflight also
+runs `perlcritic` over changed Perl files before tests. Install `Perl::Critic` for such
+repositories; missing or failing configured critic blocks the run. Without that file,
+critic is never required. Temporal activities retain the worker's injected preflight and test runners.
 `.proverc` include paths and `dist.ini` PERL5LIB settings inform syntax checks. XS builds stop
 with an unsupported-build message. Real model validation is tracked separately in the
 [Perl codegen roadmap](docs/specs/perl-codegen-roadmap.md).

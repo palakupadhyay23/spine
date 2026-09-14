@@ -709,6 +709,7 @@ that language:
 
 Perl codegen uses `perl -c` followed by owning tests and the whole `prove` suite.
 Nested suites run recursively; `cpanm` is optional and its absence is logged.
+A repository with `.perlcriticrc` additionally requires `Perl::Critic` for preflight.
 See [Perl code generation](USER_GUIDE.md#perl-code-generation).
 
 Comprehension front-ends beyond Python install as extras — one at a time

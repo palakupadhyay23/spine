@@ -186,3 +186,117 @@ def test_perl_phase_prompts_and_grounding(tmp_path: Path) -> None:
     )
     assert "```perl" in grounding
     assert "sub subtotal" in grounding
+
+
+@pytest.mark.parametrize("configured, critic_rc", [(False, 0), (True, 0), (True, 1)])
+async def test_perl_preflight_runs_only_configured_critic_after_syntax(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, configured: bool, critic_rc: int
+) -> None:
+    from orchestrator.sdlc.preflight import make_preflight_runner
+
+    source = write(tmp_path, "lib/Example.pm", "package Example; 1;\n")
+    profile = tmp_path / ".perlcriticrc"
+    if configured:
+        profile.write_text("severity = 5\n")
+    monkeypatch.setattr("orchestrator.sdlc.perl.changed_perl_files", AsyncMock(return_value=[source]))
+    which = Mock(return_value="/tools/perlcritic")
+    monkeypatch.setattr("shutil.which", which)
+    run = AsyncMock(side_effect=[(0, "syntax OK"), (critic_rc, "critic result")])
+    monkeypatch.setattr("orchestrator.sdlc.testrunner._exec_capture", run)
+    result = await make_preflight_runner("perl", executable="/tools/perl", capture=run).run(
+        path=str(tmp_path)
+    )
+    assert result.passed is (not configured or critic_rc == 0)
+    assert run.await_args_list[0].args[0] == ("/tools/perl", "-I", "lib", "-c", str(source))
+    if configured:
+        assert run.await_args_list[1].args[0] == ("/tools/perlcritic", "--profile", str(profile), str(source))
+        assert "critic result" in result.output
+    else:
+        which.assert_not_called()
+        assert run.await_count == 1
+
+
+async def test_perl_preflight_configured_missing_critic_fails_actionably(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.sdlc.preflight import make_preflight_runner
+
+    source = write(tmp_path, "lib/Example.pm", "package Example; 1;\n")
+    write(tmp_path, ".perlcriticrc", "severity = 5\n")
+    monkeypatch.setattr("orchestrator.sdlc.perl.changed_perl_files", AsyncMock(return_value=[source]))
+    monkeypatch.setattr("shutil.which", lambda _: None)
+    run = AsyncMock(return_value=(0, "syntax OK"))
+    result = await make_preflight_runner("perl", capture=run).run(path=str(tmp_path))
+    assert not result.passed
+    assert ".perlcriticrc" in result.output and "install Perl::Critic" in result.output
+
+
+async def test_perl_preflight_syntax_failure_stops_before_critic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.sdlc.preflight import make_preflight_runner
+
+    source = write(tmp_path, "lib/Example.pm", "bad syntax\n")
+    write(tmp_path, ".perlcriticrc", "severity = 5\n")
+    monkeypatch.setattr("orchestrator.sdlc.perl.changed_perl_files", AsyncMock(return_value=[source]))
+    which = Mock()
+    monkeypatch.setattr("shutil.which", which)
+    run = AsyncMock(return_value=(1, "syntax error"))
+    monkeypatch.setattr("orchestrator.sdlc.testrunner._exec_capture", run)
+    result = await make_preflight_runner("perl", capture=run).run(path=str(tmp_path))
+    assert not result.passed and "syntax error" in result.output
+    which.assert_not_called()
+    assert run.await_count == 1
+
+
+async def test_perl_preflight_uses_owning_distribution_profile_and_root_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.sdlc.preflight import make_preflight_runner
+
+    source = write(tmp_path, "packages/Example/lib/Example.pm", "package Example; 1;\n")
+    dist = tmp_path / "packages/Example"
+    write(dist, "cpanfile", "")
+    parent = write(tmp_path, ".perlcriticrc", "severity = 5\n")
+    own = write(dist, ".perlcriticrc", "severity = 4\n")
+    monkeypatch.setattr("orchestrator.sdlc.perl.changed_perl_files", AsyncMock(return_value=[source]))
+    monkeypatch.setattr("shutil.which", lambda _: "/tools/perlcritic")
+    run = AsyncMock(return_value=(0, "OK"))
+    monkeypatch.setattr("orchestrator.sdlc.testrunner._exec_capture", run)
+    for profile in (own, parent):
+        assert (await make_preflight_runner("perl", capture=run).run(path=str(tmp_path))).passed
+        assert run.await_args is not None
+        assert run.await_args.args[0] == ("/tools/perlcritic", "--profile", str(profile), str(source))
+        assert run.await_args.kwargs["cwd"] == str(dist)
+        if own.exists():
+            own.unlink()
+
+
+async def test_perl_test_runner_honors_registered_preflight_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.sdlc.preflight import PreflightResult
+
+    preflight = Mock(run=AsyncMock(return_value=PreflightResult(False, "configured critic finding")))
+    factory = Mock(return_value=preflight)
+    monkeypatch.setattr("orchestrator.sdlc.preflight.make_preflight_runner", factory)
+    run = AsyncMock()
+    monkeypatch.setattr("orchestrator.sdlc.testrunner._exec_capture", run)
+    result = await ProveTestRunner(perl="/custom/perl").run(path=str(tmp_path))
+    assert not result.passed and "configured critic finding" in result.output
+    factory.assert_called_once_with("perl", executable="/custom/perl", capture=run)
+    run.assert_not_called()
+
+
+def test_perl_layout_refuses_symlinked_lib_root(tmp_path: Path) -> None:
+    from orchestrator.sdlc.perl import perl_files
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    write(outside, "Foreign.pm", "package Foreign; 1;\n")
+    (repo / "lib").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlink"):
+        resolve_layout(repo, language="perl", mode="existing")
+    assert list(perl_files(repo / "lib")) == []

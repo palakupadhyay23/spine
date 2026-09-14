@@ -11,6 +11,7 @@ from typing import Any
 from xml.etree import ElementTree
 
 from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS
+from orchestrator.sdlc.process import ExecCapture, exec_capture
 
 
 def safe_relative(root: Path, value: str) -> str:
@@ -95,11 +96,11 @@ def php_files(root: Path) -> Iterator[Path]:
                 yield file
 
 
-async def changed_php_files(root: Path) -> list[str]:
+async def changed_php_files(root: Path, *, capture: ExecCapture | None = None) -> list[str]:
     """Include staged, unstaged, renamed, and individual untracked files (NUL-safe)."""
-    from orchestrator.sdlc.testrunner import _exec_capture
+    run_capture = capture or exec_capture
 
-    rc, output = await _exec_capture(
+    rc, output = await run_capture(
         ("git", "status", "--porcelain=v1", "-z", "--untracked-files=all"),
         cwd=str(root),
         timeout=60,

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+- feat(sdlc): run configured Perl::Critic checks after changed-file syntax validation and before prove; preserve Temporal injection, remove registry import cycles, finish SQL registry dispatch, and reject symlinked Perl lib roots ([C-5](docs/specs/perl-codegen-roadmap.md)).
+
 - test(sdlc): independently prove Perl brownfield codegen against an existing distribution; owning and full prove suites pass, with unchanged regression gaps ([C-4](docs/specs/perl-codegen-roadmap.md)).
 
 - fix(sdlc): align Perl prompts with new-file/anchored-edit payloads and recognize TAP .t files as graph-covering tests; greenfield live proof and clean-checkout evidence are recorded in [C-3](docs/specs/perl-codegen-roadmap.md).

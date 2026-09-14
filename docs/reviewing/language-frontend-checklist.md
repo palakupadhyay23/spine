@@ -63,7 +63,8 @@ See `docs-matrix.md`, row "New language front-end".
 Register a complete `Toolchain` row in `sdlc/toolchains.py`: source extension, layout,
 scaffold, environment, runner, availability guard, preflight, phase prompts, layout
 guidance and the existing conventions capability id (or `None`). Preserve the language's
-auto-detection priority and any scaffold preparation or build-ignore rules. Factories
+auto-detection priority, separate test-authoring policy, and any scaffold preparation or
+build-ignore rules. Factories
 resolve implementations lazily; importing the registry must not require installed tools.
 `SUPPORTED_LANGUAGES` derives from this table, so register a language only when its whole
 runner set and prompts exist. A comprehension-only language must remain rejected.
@@ -73,8 +74,8 @@ existing defaults. Moving codegen dispatch into the registry does not authorize 
 workflow payloads or replacing an injected runner.
 
 Use the existing build-then-test template: perform prerequisite checks, return immediately
-on failure, then run tests and clip the output for refinement. `CTestRunner`, `GoTestRunner`
-and `PhpUnitTestRunner` are examples. Require four proofs: real-tool green, deliberately
+on failure, then run tests and clip the output for refinement. `CTestRunner`, `GoTestRunner`,
+`PhpUnitTestRunner` and `ProveTestRunner` are examples. Require four proofs: real-tool green, deliberately
 red, an actionable missing-toolchain error, and an idempotent scaffold. A successful build
 or an empty suite is not evidence that a generated change passed its tests.
 

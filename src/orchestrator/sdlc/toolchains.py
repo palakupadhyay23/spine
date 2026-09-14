@@ -11,16 +11,15 @@ from __future__ import annotations
 import importlib
 import os
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from orchestrator.sdlc.layout import TargetLayout
-    from orchestrator.sdlc.preflight import PreflightRunner
-    from orchestrator.sdlc.testenv import TestEnvironment
-    from orchestrator.sdlc.testrunner import TestRunner
+    from orchestrator.sdlc.contracts import PreflightRunner, TestEnvironment, TestRunner
+    from orchestrator.sdlc.contracts import ToolchainLayout as TargetLayout
+    from orchestrator.sdlc.process import ExecCapture
 
 
 def _load(module: str, name: str) -> Any:
@@ -148,8 +147,10 @@ def _perl_conventions(root: Path, layout: TargetLayout | None) -> str:
 
 
 def _preflight(name: str, *, argument: str = "") -> Callable[..., PreflightRunner]:
-    def create(*, executable: str | None = None) -> PreflightRunner:
-        kwargs = {argument: executable} if argument and executable is not None else {}
+    def create(*, executable: str | None = None, capture: ExecCapture | None = None) -> PreflightRunner:
+        kwargs: dict[str, Any] = {argument: executable} if argument and executable is not None else {}
+        if capture is not None:
+            kwargs["capture"] = capture
         return cast("PreflightRunner", _load("preflight", name)(**kwargs))
 
     return create
@@ -185,16 +186,17 @@ class Toolchain:
     prompts: PromptSet
     guidance: str
     conventions_skill_id: str | None
-    available: Callable[[str], bool] = _always_available
+    available: Callable[[str], bool] = field(default=_always_available)
     preflight: Callable[..., PreflightRunner] = _preflight("StubPreflightRunner")
-    conventions: Callable[[Path, TargetLayout | None], str] = _conventions
-    prepare_layout: Callable[[TargetLayout], TargetLayout] = _identity_layout
+    conventions: Callable[[Path, TargetLayout | None], str] = field(default=_conventions)
+    prepare_layout: Callable[[TargetLayout], TargetLayout] = field(default=_identity_layout)
     build_ignores: tuple[str, ...] = ()
     auto_priority: int | None = None
     missing_hint: str = ""
     native_label: str = ""
     requires_pytest: bool = False
-    module_name: Callable[[str], str] = _identity_name
+    author_tests: bool = True
+    module_name: Callable[[str], str] = field(default=_identity_name)
 
     def layout_guidance(self, layout: TargetLayout) -> str:
         return cast("str", _load("language_guidance", self.guidance)(layout))
@@ -370,6 +372,7 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _prompts("_SQL", tests_suffix=""),
             "sql_guidance",
             None,
+            author_tests=False,
         ),
     }
 )

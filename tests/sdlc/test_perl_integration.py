@@ -37,6 +37,10 @@ async def test_perl_real_green_red_and_clean_checkout(tmp_path: Path) -> None:
         ],
         check=True,
     )
+    module = repo / "lib/Shop/Cart.pm"
+    module.write_text(module.read_text() + "# changed source for real preflight\n")
+    preflight = await PerlPreflightRunner().run(path=str(repo))
+    assert preflight.passed and "syntax OK" in preflight.output
     assert (await ProveTestRunner().run(path=str(repo))).passed
     clean = tmp_path / "clean"
     subprocess.run(["git", "clone", "-q", str(repo), str(clean)], check=True)

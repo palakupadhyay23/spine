@@ -1119,7 +1119,8 @@ orchestrator sdlc feature [OPTIONS]
 
 Perl requires `perl` and `prove`; `cpanm` is optional. Greenfield uses `lib/`, `t/`
 and `cpanfile`; existing distributions keep their package layout and packaging files.
-Changed sources pass `perl -c`, then owning tests and the whole suite run with `prove`.
+Changed sources pass `perl -c`; `.perlcriticrc` opts into required `perlcritic` checks.
+Then owning tests and the whole suite run with `prove`.
 See [Perl code generation](USER_GUIDE.md#perl-code-generation).
 
 PHP uses Composer when a root `composer.json` exists, otherwise a checksum-pinned

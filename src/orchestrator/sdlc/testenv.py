@@ -29,8 +29,8 @@ import shutil
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
+from orchestrator.sdlc.contracts import TestEnvironment as TestEnvironment
 from orchestrator.sdlc.testrunner import TestRunner, TestRunResult
 
 # Import module name (as seen in "No module named 'X'") → PyPI package name when
@@ -79,17 +79,6 @@ _SAFE_PACKAGES = {
 _FRAMEWORK_DEPS = ["pytest>=8", "pytest-asyncio>=0.24"]
 
 _MAX_AUTO_INSTALLS = 3
-
-
-@runtime_checkable
-class TestEnvironment(Protocol):
-    """An interpreter (and its installed deps) to run a worktree's tests with."""
-
-    @property
-    def python(self) -> str: ...
-    async def ensure(self, worktree: Path | str) -> None: ...
-    async def install(self, packages: list[str]) -> bool: ...
-    def describe(self) -> str: ...
 
 
 class LocalTestEnvironment:

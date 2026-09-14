@@ -18,9 +18,12 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+
+from orchestrator.sdlc import process
+from orchestrator.sdlc.contracts import TestRunner as TestRunner
+from orchestrator.sdlc.contracts import TestRunResult as TestRunResult
+from orchestrator.sdlc.process import _SECRET_ENV_PREFIXES as _SECRET_ENV_PREFIXES
 
 # Cap captured output so a chatty test run can't bloat the activity result /
 # the audit row; the tail is the most useful part for the refinement prompt.
@@ -38,25 +41,6 @@ def _timeout_from_env() -> float:
         return DEFAULT_TEST_TIMEOUT
 
 
-# Env prefixes stripped before running the worktree's tests. Two reasons:
-# (1) SECURITY — generated code must never see the orchestrator's live
-# credentials; (2) CORRECTNESS — repo tests assert "unconfigured adapter"
-# behavior, and inherited CONFLUENCE_/JIRA_ vars make adapters look
-# configured (run #7's failure mode).
-_SECRET_ENV_PREFIXES = (
-    "ANTHROPIC_",
-    "OPENAI_",
-    "CONFLUENCE_",
-    "JIRA_",
-    "GITHUB_",
-    "AWS_",
-    "ORCHESTRATOR_",
-    "SDLC_",
-    "MINIO_",
-    "TEMPORAL_",
-)
-
-
 async def pytest_available(python: str | None = None) -> bool:
     """True if ``pytest`` is importable by ``python`` (defaults to the current
     interpreter). The feature runner preflights this before the test/refine loop
@@ -72,24 +56,6 @@ async def pytest_available(python: str | None = None) -> bool:
     )
     await proc.wait()
     return proc.returncode == 0
-
-
-@dataclass(frozen=True)
-class TestRunResult:
-    """Outcome of running a worktree's tests."""
-
-    __test__ = False  # not a pytest test class despite the Test* name
-
-    passed: bool
-    returncode: int
-    output: str = ""
-
-
-@runtime_checkable
-class TestRunner(Protocol):
-    """Runs the tests in a worktree, returning pass/fail + captured output."""
-
-    async def run(self, *, path: str) -> TestRunResult: ...
 
 
 class SubprocessTestRunner:
@@ -339,8 +305,10 @@ class PhpUnitTestRunner:
         try:
             root = Path(path).resolve()
             config = read_phpunit_config(root)
-            changed = await changed_php_files(root)
-            lint = await make_preflight_runner("php", executable=self._php).run(path=path)
+            changed = await changed_php_files(root, capture=_exec_capture)
+            lint = await make_preflight_runner("php", executable=self._php, capture=_exec_capture).run(
+                path=path
+            )
             if not lint.passed:
                 return TestRunResult(False, 1, lint.output)
             tests = [name for name in changed if name.endswith(config.suffix)]
@@ -396,18 +364,26 @@ class ProveTestRunner:
             owning_tests,
             perl_files,
         )
+        from orchestrator.sdlc.preflight import make_preflight_runner
 
         captured: list[str] = []
         try:
             root = Path(path).resolve()
             if next(perl_files(root, (".xs",)), None) is not None:
                 return TestRunResult(False, 2, "Perl XS builds are unsupported; .xs requires compilation.")
-            changed = await changed_perl_files(root)
+            preflight = await make_preflight_runner("perl", executable=self._perl, capture=_exec_capture).run(
+                path=path
+            )
+            captured.append(preflight.output)
+            if not preflight.passed:
+                return TestRunResult(False, 1, _clip("\n".join(captured)))
+            changed = await changed_perl_files(root, capture=_exec_capture)
             # A clean independent checkout still compiles and tests the real distribution.
             sources = changed or list(perl_files(root))
             owners = {distribution_for(file, root) for file in sources}
             suites = sorted(set(distributions(root)) | owners) or [root]
-            for file in sources:
+            # Changed sources were compiled by preflight; clean checkouts still compile all.
+            for file in () if changed else sources:
                 if file.suffix not in {".pm", ".pl"}:
                     continue
                 dist = distribution_for(file, root)
@@ -525,19 +501,8 @@ def _clip(output: str) -> str:
 
 
 async def _exec_capture(argv: tuple[str, ...], *, cwd: str, timeout: float) -> tuple[int, str]:
-    """Run ``argv`` (no shell), returning ``(returncode, combined_output)``."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith(_SECRET_ENV_PREFIXES)}
-    proc = await asyncio.create_subprocess_exec(
-        *argv, cwd=cwd, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
-    )
-    try:
-        stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except TimeoutError:
-        proc.kill()
-        await proc.wait()
-        return -1, f"timed out: {' '.join(argv)}"
-    rc = proc.returncode if proc.returncode is not None else -1
-    return rc, stdout_bytes.decode("utf-8", "replace")
+    """Compatibility seam; adapters receive this callable explicitly."""
+    return await process.exec_capture(argv, cwd=cwd, timeout=timeout)
 
 
 _DOTNET_SKIP_DIRS = {"bin", "obj", "node_modules", ".git", ".vs"}

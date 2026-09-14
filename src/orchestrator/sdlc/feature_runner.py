@@ -23,7 +23,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from orchestrator.sdlc.toolchains import TOOLCHAINS
 
@@ -674,7 +674,7 @@ async def run_feature(
     from orchestrator.sdlc.codegen import LLMCodegenAdapter, resolve_codegen_model
     from orchestrator.sdlc.forge import GhPRAdapter
     from orchestrator.sdlc.grounding import PKGCodegenGrounder
-    from orchestrator.sdlc.layout import is_effectively_empty, resolve_layout
+    from orchestrator.sdlc.layout import TargetLayout, is_effectively_empty, resolve_layout
     from orchestrator.sdlc.scaffold import scaffold
     from orchestrator.sdlc.telemetry import jira_duration, render_worklog
     from orchestrator.sdlc.testenv import (
@@ -852,7 +852,7 @@ async def run_feature(
     from orchestrator.sdlc.toolchains import get_toolchain
 
     toolchain = get_toolchain(lang)
-    layout = toolchain.prepare_layout(layout)
+    layout = cast(TargetLayout, toolchain.prepare_layout(layout))
     if layout.mode == "new":
         was_empty = is_effectively_empty(path)
         created = scaffold(path, layout)
@@ -940,7 +940,7 @@ async def run_feature(
         emit(f"[implement] {[Path(f).name for f in impl.files]} - {impl.summary}")
         # SQL is single-phase: the migration IS the artifact and is validated by applying
         # it to an ephemeral database, so there is no separate test-authoring leg.
-        if lang != "sql":
+        if toolchain.author_tests:
             with llm.stage("author_tests"):
                 tests = await codegen.author_tests(spec=spec, path=str(path), issue_key=issue_key)
             emit(f"[author_tests] {[Path(f).name for f in tests.files]} - {tests.summary}")

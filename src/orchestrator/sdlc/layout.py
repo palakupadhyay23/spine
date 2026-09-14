@@ -22,6 +22,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS
 
@@ -675,8 +676,11 @@ def resolve_layout(
     """
     from orchestrator.sdlc.toolchains import get_toolchain
 
-    return get_toolchain(language).layout(
-        Path(root), mode=mode, package_name=package_name, repo=repo, src_layout=src_layout
+    return cast(
+        TargetLayout,
+        get_toolchain(language).layout(
+            Path(root), mode=mode, package_name=package_name, repo=repo, src_layout=src_layout
+        ),
     )
 
 
@@ -729,6 +733,8 @@ def detect_perl_layout(root: Path, package_name: str | None = None) -> tuple[str
     from orchestrator.sdlc.perl import distributions, package_in, perl_files
 
     candidates = distributions(root)
+    if any((dist / "lib").is_symlink() for dist in candidates):
+        raise ValueError("Perl lib/ roots must not be symlinks; select a distribution with a real lib/ tree.")
     matches = [
         (dist, file, package_in(file)) for dist in candidates for file in perl_files(dist / "lib", (".pm",))
     ]

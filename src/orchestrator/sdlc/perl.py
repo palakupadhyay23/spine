@@ -9,12 +9,15 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS
+from orchestrator.sdlc.process import ExecCapture, exec_capture
 
 MARKERS = ("cpanfile", "Makefile.PL", "Build.PL", "dist.ini")
 _PACKAGE = re.compile(r"^\s*package\s+([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)\b", re.M)
 
 
 def perl_files(root: Path, suffixes: tuple[str, ...] = (".pm", ".pl", ".t")) -> Iterator[Path]:
+    if root.is_symlink():
+        return
     for directory, dirs, files in os.walk(root, followlinks=False):
         dirs[:] = sorted(
             d
@@ -89,10 +92,10 @@ def include_args(dist: Path) -> tuple[str, ...]:
     return tuple(args)
 
 
-async def changed_perl_files(root: Path) -> list[Path]:
-    from orchestrator.sdlc.testrunner import _exec_capture
+async def changed_perl_files(root: Path, *, capture: ExecCapture | None = None) -> list[Path]:
+    run_capture = capture or exec_capture
 
-    rc, output = await _exec_capture(
+    rc, output = await run_capture(
         ("git", "status", "--porcelain=v1", "-z", "--untracked-files=all"), cwd=str(root), timeout=60
     )
     if rc:
