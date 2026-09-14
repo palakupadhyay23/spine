@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Changed
+
+- **Documentation has one home per task.** [AGENT_GUIDE.md](AGENT_GUIDE.md) replaces
+  the two host guides, which remain as redirect stubs; its MCP inventory is generated
+  and checked from tool metadata. [SETUP.md](SETUP.md) owns installation, credentials
+  and troubleshooting, [USER_GUIDE.md](USER_GUIDE.md) covers the everyday build, and
+  [OPERATIONS.md](OPERATIONS.md) holds the pipeline/dashboard/MCP walkthrough. README
+  starts with the worked example and absorbs the former capability catalog. Audits,
+  the reviewer matrix, release notes and CI checks follow the new file set.
+
 ## 3.34.0 — 2026-09-13
 
 - docs: triage the documentation audit's INFO lines — the benchmark's "(there are nine now)", the call-graph language list in `USER_GUIDE.md`, and `regression`'s prerequisite in `CLI_REFERENCE.md` all predate Go/PHP/Perl `CALLS` extraction.

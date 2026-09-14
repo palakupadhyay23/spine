@@ -18,7 +18,7 @@ STALE/MISSING):
    INFO only: codegen lists legitimately exclude comprehension-only languages; a reviewer
    decides.
 3. optional extras — every language extra in `pyproject.toml` (a `tree-sitter-<grammar>` or
-   `sqlglot` extra) must appear at all of its registration sites: `USER_GUIDE.md`, the
+   `sqlglot` extra) must appear at all of its registration sites: `SETUP.md`, the
    `languages` meta-extra, `ci.yml`'s sync line (or the `dev` extra CI installs),
    `doctor.EXTRA_PROBES`, `persistence._GRAMMAR_MODULES` (grammar extras), and the mypy
    `ignore_missing_imports` override.

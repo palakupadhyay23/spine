@@ -78,7 +78,7 @@ the repository keeps the reference documents and the scripts, which need no assi
    uv run orchestrator pkg accuracy --check
    python scripts/sdlc_shapes.py                            # the SDLC pipeline on four repo shapes
    ```
-   **The five generated-artifact `--check` scripts are generated-artifact gates and CI runs every one of them.**
+   **CI runs all five generated-artifact `--check` gates.**
    They are listed together because running only the first is how a release PR failed on a
    diagram nobody had re-rendered: `mypy`, `ruff` and the tests were all green, and the version
    the picture claims comes from `pyproject.toml`. If you bump a version, re-run all five.

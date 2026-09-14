@@ -198,8 +198,9 @@ output schemas. Workflow examples follow the table.
 
 <!-- END GENERATED MCP TOOLS -->
 
-> **The comprehension tools are read‑only, need no credentials, and are deterministic** (only
-> `root_cause`'s and `design_change`'s opt‑in `use_llm` use a model). There is no `state` tool
+> **Graph queries are read-only, credential-free and deterministic** (only
+> `root_cause`'s and `design_change`'s opt-in `use_llm` use a model).
+> `understand_repo` writes the knowledge base; its tier and scope are shown above. There is no `state` tool
 > because `map_repo` *is* `orchestrator state` — same engine, same rendering. They ship with an **`understand-codebase` skill**
 > that tells the assistant *when* to reach for each — so you can just ask in plain language and the assistant picks
 > the tool. Try: *"Map this repo and tell me what's untested,"* or *"What breaks if I change
