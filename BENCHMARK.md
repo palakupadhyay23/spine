@@ -44,7 +44,7 @@ Five repositories, one per language front-end, each pinned to an exact commit.
 tree Spine searches is the **pre-fix** state. We are asking it to find where a fix will go, not
 to notice one that has already happened.
 
-**C# has no slot.** Five repositories, six front-ends at 3.29.0 (there are nine now) — one
+**C# has no slot.** Five repositories, six front-ends at 3.29.0 (there are ten now) — one
 language measured then is unrepresented, and nothing here says anything about it.
 
 ---
