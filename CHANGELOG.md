@@ -6,7 +6,22 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+- feat(sdlc): run configured Perl::Critic checks after changed-file syntax validation and before prove; preserve Temporal injection, remove registry import cycles, finish SQL registry dispatch, and reject symlinked Perl lib roots ([C-5](docs/specs/perl-codegen-roadmap.md)).
+
+- test(sdlc): independently prove Perl brownfield codegen against an existing distribution; owning and full prove suites pass, with unchanged regression gaps ([C-4](docs/specs/perl-codegen-roadmap.md)).
+
+- fix(sdlc): align Perl prompts with new-file/anchored-edit payloads and recognize TAP .t files as graph-covering tests; greenfield live proof and clean-checkout evidence are recorded in [C-3](docs/specs/perl-codegen-roadmap.md).
+
+- feat(sdlc): add Perl codegen layout, scaffold, optional CPAN installation, observed conventions and prompts; compile changed sources and run owning/full prove suites, with real green/red integration proof ([C-2](docs/specs/perl-codegen-roadmap.md)).
+
 ### Added
+
+- **Perl codegen C-1: shared toolchain registry.** Existing language layout, scaffold,
+  environment, runner, availability, preflight and prompt selection now come from one
+  registry. Temporal activities retain their injected adapters and worker defaults.
+  Perl enablement remains reserved for C-2 ([roadmap](docs/specs/perl-codegen-roadmap.md)).
+
+- **Perl codegen C-0: dispatch characterization.** Tests pin C# runtime targeting, separate C/C++ toolchain guards, Meson brownfield selection, and PHP layout/convention guidance. The committed mutation measurement improves from **4/8 to 8/8**. Perl codegen remains disabled until its complete machinery lands ([roadmap](docs/specs/perl-codegen-roadmap.md)).
 
 - **Perl comprehension (P1 of the Perl support track).** The 10th PKG front-end:
   `pkg/perl_extractor.py` maps `.pl`/`.pm`/`.t` source onto `Module` (always path-keyed —

@@ -1,0 +1,49 @@
+C-2 validation, 2026-09-13
+All command invocations used uv run --frozen with CI extras:
+--extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl
+
+pytest -q: 3679 passed, 4 skipped, 51 deselected, 152 warnings in 186.72s.
+Skips: E2B key absent; pytesseract absent; PHP/Composer absent; PostgreSQL opt-in absent.
+pytest -q tests/sdlc/test_perl_codegen.py tests/sdlc/test_perl_integration.py: 23 passed.
+Real tools: Perl 5.34.1; prove TAP::Harness 3.43. The integration test commits and clones
+the green scaffold, reruns real prove -l t/, commits and clones an assertion-red fixture,
+reruns prove and requires nonzero, then proves syntax-red stops before prove.
+Model: none (deterministic proof). Grounding: 0 characters for runner fixtures.
+Separate grounded-snippet test extracts a real package/sub and verifies the Perl fence.
+Missing perl/prove hint: exit 2. Missing cpanm: warning, no hard stop; failed install: warning.
+Nested red tests cannot hide: whole-suite prove adds -r when nested .t files are present.
+
+ruff check . and ruff format --check . pass (753 files formatted).
+mypy src tests passes (717 files).
+render_architecture_svg.py --check; render_knowledge_foundation_svg.py --check;
+matrix-count.py --check; state-numbers.py --check; roadmap-status.py --check;
+docs_audit.py --base develop --head HEAD: pass.
+pkg accuracy --check: 0 gated regressions. pkg verify .: 0 errors, 1 phantom-module warning.
+sdlc_shapes.py: all four shapes pass. understand .: 91 files generated, episteme excluded.
+Fetched develop: e8a0da5 remains an ancestor; no merge needed.
+Docs matrix/checklist walk: CLI reference/help, user/setup and agent toolchain guides,
+feature row/README, changelog, phase status/index/state/sibling updated. No extractor,
+grammar extra, MCP tool, fact kind or corpus change.
+
+python scripts/mutate-dispatch.py:
+8 mutations, each against 7 test modules. A few minutes.
+
+   CAUGHT csharp: lose the target-framework rewrite
+          1 failed, 374 passed, 1 skipped in 12.44s
+   CAUGHT c/cpp: give C++ C's availability probe
+          2 failed, 373 passed, 1 skipped in 12.63s
+   CAUGHT c/cpp: force cmake on a Meson brownfield
+          4 failed, 371 passed, 1 skipped in 12.72s
+   CAUGHT codegen: drop PHP's guidance branch
+          1 failed, 374 passed, 1 skipped in 12.83s
+   CAUGHT layout: TypeScript row falls through
+          3 failed, 372 passed, 1 skipped in 12.89s
+   CAUGHT scaffold: Go row falls through
+          1 failed, 374 passed, 1 skipped in 12.95s
+   CAUGHT codegen: drop SQL's guidance branch
+          1 failed, 374 passed, 1 skipped in 12.95s
+   CAUGHT testenv: PHP test environment falls through
+          1 failed, 374 passed, 1 skipped in 12.93s
+
+caught 8 of 8 applied (0 skipped)
+baseline on 2026-09-13: 4 of 8 — perl-codegen-roadmap.md C-0 exits at 8 of 8

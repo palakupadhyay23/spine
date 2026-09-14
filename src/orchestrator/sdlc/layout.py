@@ -22,6 +22,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS
 
@@ -30,18 +31,6 @@ _NON_PACKAGE_DIRS = {"tests", "test", "docs", "doc", "examples", "scripts", "bui
 
 _FALLBACK_PACKAGE = "app"
 _JAVA_GROUP = "org.example"  # default reverse-DNS group for greenfield Java
-
-# Source-file extension per language (Python is the default).
-_SOURCE_EXT = {
-    "java": "java",
-    "typescript": "ts",
-    "csharp": "cs",
-    "c": "c",
-    "cpp": "cpp",
-    "sql": "sql",
-    "go": "go",
-    "php": "php",
-}
 
 # Go package names can't be a reserved keyword (or `init`); guard the derived slug.
 _GO_KEYWORDS = frozenset(
@@ -102,8 +91,10 @@ class TargetLayout:
 
     def module_rel_path(self, module: str) -> str:
         """Worktree-relative path for a new source module/class (no leading dir)."""
-        ext = _SOURCE_EXT.get(self.language, "py")
-        return f"{self.source_dir}/{module}.{ext}"
+        from orchestrator.sdlc.toolchains import get_toolchain
+
+        toolchain = get_toolchain(self.language)
+        return f"{self.source_dir}/{toolchain.module_name(module)}.{toolchain.source_ext}"
 
 
 def derive_package_name(name: str) -> str:
@@ -683,23 +674,19 @@ def resolve_layout(
     derived name; ``repo`` (clone URL) seeds derivation. Deterministic; the caller
     scaffolds when ``mode == "new"``.
     """
-    root_path = Path(root)
-    if language == "java":
-        return _resolve_java_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "typescript":
-        return _resolve_typescript_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "csharp":
-        return _resolve_csharp_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "c":
-        return _resolve_c_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "cpp":
-        return _resolve_cpp_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "php":
-        return _resolve_php_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "go":
-        return _resolve_go_layout(root_path, mode=mode, package_name=package_name, repo=repo)
-    if language == "sql":
-        return _resolve_sql_layout(root_path, mode=mode, package_name=package_name, repo=repo)
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return cast(
+        TargetLayout,
+        get_toolchain(language).layout(
+            Path(root), mode=mode, package_name=package_name, repo=repo, src_layout=src_layout
+        ),
+    )
+
+
+def _resolve_python_layout(
+    root_path: Path, *, mode: str, package_name: str | None, repo: str | None, src_layout: bool = True
+) -> TargetLayout:
     existing = detect_existing_package(root_path)
     derived = package_name or derive_package_name(repo or str(root_path))
 
@@ -740,3 +727,50 @@ __all__ = [
     "is_effectively_empty",
     "resolve_layout",
 ]
+
+
+def detect_perl_layout(root: Path, package_name: str | None = None) -> tuple[str, str, str] | None:
+    from orchestrator.sdlc.perl import distributions, package_in, perl_files
+
+    candidates = distributions(root)
+    if any((dist / "lib").is_symlink() for dist in candidates):
+        raise ValueError("Perl lib/ roots must not be symlinks; select a distribution with a real lib/ tree.")
+    matches = [
+        (dist, file, package_in(file)) for dist in candidates for file in perl_files(dist / "lib", (".pm",))
+    ]
+    if package_name:
+        selected = [
+            m for m in matches if m[2] == package_name or (m[2] or "").startswith(package_name + "::")
+        ]
+        if selected:
+            matches = selected
+            candidates = sorted({m[0] for m in selected})
+    if len(candidates) > 1:
+        raise ValueError("Several Perl distributions found; select the existing package with --package-name.")
+    if not candidates:
+        return None
+    dist = candidates[0]
+    named = [(file, name) for owner, file, name in matches if owner == dist and name]
+    name = str(min(named, key=lambda item: (len(item[0].parts), str(item[0])))[1]) if named else "App"
+    return name, (dist / "lib").relative_to(root).as_posix(), (dist / "t").relative_to(root).as_posix()
+
+
+def _resolve_perl_layout(
+    root: Path, *, mode: str, package_name: str | None, repo: str | None
+) -> TargetLayout:
+    from orchestrator.sdlc.perl import package_name as validate_name
+
+    if package_name:
+        validate_name(package_name)
+    existing = detect_perl_layout(root, package_name) if mode != "new" else None
+    if mode == "existing" and existing is None:
+        raise ValueError(
+            "No Perl distribution found: expected lib/ or a cpanfile/Makefile.PL/Build.PL/dist.ini marker."
+        )
+    if existing is not None:
+        name, source, tests = existing
+        return TargetLayout(package_name or name, source, tests, False, "existing", language="perl")
+    derived = "::".join(
+        part.capitalize() for part in derive_package_name(repo or str(root)).split("_") if part
+    )
+    return TargetLayout(validate_name(package_name or derived), "lib", "t", False, "new", language="perl")

@@ -1,0 +1,27 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_php_dispatch_samples_php_conventions ___________________
+
+tmp_path = PosixPath('/private/var/folders/2c/q2v76xf106gb1bbhlghqt2_h0000gn/T/pytest-of-falcon/pytest-56/test_php_dispatch_samples_php_0')
+
+    def test_php_dispatch_samples_php_conventions(tmp_path: Path) -> None:
+        """PHP's separate convention dispatch must sample PHP, even alongside Python files."""
+        from orchestrator.sdlc.layout import TargetLayout
+
+        (tmp_path / "library").mkdir()
+        (tmp_path / "Checks").mkdir()
+        (tmp_path / "library/Widget.class.php").write_text("<?php class Widget {}\n")
+        (tmp_path / "Checks/WidgetCheck.php").write_text("<?php require_once '../library/Widget.class.php';\n")
+        (tmp_path / "other.py").write_text('"""Python sample must not displace PHP."""\n')
+        layout = TargetLayout(
+            "", "library", "Checks", False, "existing", language="php", test_suffix="Check.php"
+        )
+        adapter = LLMCodegenAdapter(_ScriptedLLM([]), layout=layout)
+        block = adapter._convention_block(tmp_path)
+>       assert "PHP CONVENTION EXAMPLES" in block
+E       AssertionError: assert 'PHP CONVENTION EXAMPLES' in '\n\nREPO CONVENTIONS (observed in this codebase — match them so the change reads as team-written):\n- give every module a one-line-plus triple-quoted docstring\n- keep lines within 88 characters\n'
+
+tests/sdlc/test_codegen.py:2197: AssertionError
+=========================== short test summary info ============================
+FAILED tests/sdlc/test_codegen.py::test_php_dispatch_samples_php_conventions
+1 failed in 0.33s

@@ -1,0 +1,3493 @@
+{
+  "model": "claude-opus-5",
+  "baseline_commit": "93f591742a7dbc0cee36875ab80a38f0666e32ae",
+  "independent_rerun": {
+    "model": "claude-opus-5",
+    "generated_commit": "fc010fd1149fe483127065d5f23cd4e82594eb39",
+    "clean_checkout": "/tmp/spine-perl-c4-independent",
+    "environment": "NO_COLOR removed; other repository test defaults preserved",
+    "runs": [
+      {
+        "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl perl -I lib -c lib/Mojo/Util.pm",
+        "returncode": 0,
+        "elapsed_seconds": 0.07,
+        "output": "Name \"IO::Uncompress::Gunzip::GzipError\" used only once: possible typo at lib/Mojo/Util.pm line 198.\nlib/Mojo/Util.pm syntax OK\n"
+      },
+      {
+        "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl prove -l t/mojo/util.t",
+        "returncode": 0,
+        "elapsed_seconds": 0.16,
+        "output": "t/mojo/util.t .. ok\nAll tests successful.\nFiles=1, Tests=73,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.09 cusr  0.01 csys =  0.12 CPU)\nResult: PASS\n"
+      },
+      {
+        "command": "uv run --frozen --project /tmp/spine-perl-codegen --extra dev --extra mcp --extra typescript --extra java --extra csharp --extra c --extra cpp --extra go --extra php --extra perl prove -l -r t/",
+        "returncode": 0,
+        "elapsed_seconds": 27.32,
+        "output": "t/mojo/asset.t ............................. ok\nt/mojo/base.t .............................. ok\nt/mojo/base_util.t ......................... ok\nt/mojo/bytestream.t ........................ ok\nt/mojo/cache.t ............................. ok\nt/mojo/cgi.t ............................... ok\nt/mojo/collection.t ........................ ok\nt/mojo/content.t ........................... ok\nt/mojo/cookie.t ............................ ok\nt/mojo/cookiejar.t ......................... ok\nt/mojo/daemon.t ............................ ok\nt/mojo/daemon_ipv6_tls.t ................... skipped: set TEST_IPV6 to enable this test (developer only!)\nt/mojo/date.t .............................. ok\nt/mojo/dom.t ............................... ok\nt/mojo/dynamic_methods.t ................... ok\nt/mojo/eventemitter.t ...................... ok\nt/mojo/exception.t ......................... ok\nt/mojo/file.t .............................. ok\nt/mojo/file_download.t ..................... ok\nt/mojo/headers.t ........................... ok\nt/mojo/home.t .............................. ok\nt/mojo/hypnotoad.t ......................... skipped: set TEST_HYPNOTOAD to enable this test (developer only!)\nt/mojo/ioloop.t ............................ ok\nt/mojo/ioloop_ipv6.t ....................... skipped: set TEST_IPV6 to enable this test (developer only!)\nt/mojo/ioloop_tls.t ........................ skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/json.t .............................. ok\nt/mojo/json_pointer.t ...................... ok\nt/mojo/json_xs.t ........................... skipped: Cpanel::JSON::XS 4.20+ required for this test!\nt/mojo/loader.t ............................ ok\nt/mojo/log.t ............................... ok\nt/mojo/morbo.t ............................. skipped: set TEST_MORBO to enable this test (developer only!)\nt/mojo/parameters.t ........................ ok\nt/mojo/path.t .............................. ok\nt/mojo/prefork.t ........................... skipped: set TEST_PREFORK to enable this test (developer only!)\nt/mojo/promise.t ........................... ok\nt/mojo/promise_async_await.t ............... skipped: set TEST_ASYNC_AWAIT to enable this test (developer only!)\nt/mojo/proxy.t ............................. ok\nt/mojo/psgi.t .............................. ok\nt/mojo/reactor_detect.t .................... ok\nt/mojo/reactor_ev.t ........................ skipped: set TEST_EV to enable this test (developer only!)\nt/mojo/reactor_poll.t ...................... ok\nt/mojo/request.t ........................... ok\nt/mojo/request_cgi.t ....................... ok\nt/mojo/response.t .......................... ok\nt/mojo/roles.t ............................. ok\nt/mojo/signatures.t ........................ ok\nt/mojo/sse.t ............................... ok\nt/mojo/strip_suffix.t ...................... ok\nt/mojo/subprocess.t ........................ skipped: set TEST_SUBPROCESS to enable this test (developer only!)\nt/mojo/subprocess_ev.t ..................... skipped: set TEST_SUBPROCESS to enable this test (developer only!)\nt/mojo/template.t .......................... ok\nt/mojo/tls.t ............................... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/transactor.t ........................ ok\nt/mojo/url.t ............................... ok\nt/mojo/user_agent.t ........................ ok\nt/mojo/user_agent_online.t ................. skipped: set TEST_ONLINE to enable this test (developer only!)\nt/mojo/user_agent_socks.t .................. skipped: set TEST_SOCKS to enable this test (developer only!)\nt/mojo/user_agent_tls.t .................... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojo/user_agent_unix.t ................... skipped: set TEST_UNIX to enable this test (developer only!)\nt/mojo/util.t .............................. ok\nt/mojo/websocket.t ......................... ok\nt/mojo/websocket_frames.t .................. ok\nt/mojo/websocket_proxy.t ................... ok\nt/mojo/websocket_proxy_tls.t ............... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojolicious/app.t ........................ ok\nt/mojolicious/charset_lite_app.t ........... ok\nt/mojolicious/command.t .................... ok\nt/mojolicious/commands.t ................... ok\nt/mojolicious/dispatch.t ................... ok\nt/mojolicious/dispatcher_lite_app.t ........ ok\nt/mojolicious/embedded_app.t ............... ok\nt/mojolicious/embedded_lite_app.t .......... ok\nt/mojolicious/exception_lite_app.t ......... ok\nt/mojolicious/external_app.t ............... ok\nt/mojolicious/external_lite_app.t .......... ok\nt/mojolicious/group_lite_app.t ............. ok\nt/mojolicious/json_config_lite_app.t ....... ok\nt/mojolicious/json_config_mode_lite_app.t .. ok\nt/mojolicious/layouted_lite_app.t .......... ok\nt/mojolicious/lite_app.t ................... ok\nt/mojolicious/log_lite_app.t ............... ok\nt/mojolicious/longpolling_lite_app.t ....... ok\nt/mojolicious/multipath_lite_app.t ......... ok\nt/mojolicious/ojo.t ........................ ok\nt/mojolicious/ojo_signatures.t ............. ok\nt/mojolicious/pattern.t .................... ok\nt/mojolicious/production_app.t ............. ok\nt/mojolicious/proxy_app.t .................. ok\nt/mojolicious/rebased_lite_app.t ........... ok\nt/mojolicious/renderer.t ................... ok\nt/mojolicious/restful_lite_app.t ........... ok\nt/mojolicious/routes.t ..................... ok\nt/mojolicious/session_lite_app.t ........... ok\nt/mojolicious/signatures_lite_app.t ........ ok\nt/mojolicious/sse_lite_app.t ............... ok\nt/mojolicious/static_lite_app.t ............ ok\nt/mojolicious/static_prefix_lite_app.t ..... ok\nt/mojolicious/tag_helper_lite_app.t ........ ok\nt/mojolicious/testing_app.t ................ ok\nt/mojolicious/tls_lite_app.t ............... skipped: set TEST_TLS to enable this test (developer only!)\nt/mojolicious/twinkle_lite_app.t ........... ok\nt/mojolicious/types.t ...................... ok\nt/mojolicious/upload_lite_app.t ............ ok\nt/mojolicious/upload_stream_lite_app.t ..... ok\nt/mojolicious/validation_lite_app.t ........ ok\nt/mojolicious/websocket_lite_app.t ......... ok\nt/mojolicious/yaml_config_lite_app.t ....... ok\nt/pod.t .................................... skipped: set TEST_POD to enable this test (developer only!)\nt/pod_coverage.t ........................... skipped: set TEST_POD to enable this test (developer only!)\nt/test/mojo.t .............................. ok\nAll tests successful.\nFiles=110, Tests=4192, 28 wallclock secs ( 0.36 usr  0.15 sys + 14.92 cusr  2.06 csys = 17.49 CPU)\nResult: PASS\n"
+      }
+    ]
+  },
+  "before_pkg_grounding": {
+    "chars": 938,
+    "context": "EXISTING CODEBASE CONTEXT (from the Product Knowledge Graph \u2014 real code, with file:line provenance). Reuse these APIs instead of reinventing them; import them by the module paths shown; match their naming and style conventions:\n\n### Type `perl:Mojo.BaseUtil`  @ lib/Mojo/BaseUtil.pm:1\n```perl\npackage Mojo::BaseUtil;\n```\n\n### Type `perl:Mojo.BaseTest`  @ t/mojo/base.t:8\n```perl\npackage Mojo::BaseTest;\n```\n\n### Type `perl:Mojo.BaseTestTest`  @ t/mojo/base.t:18\n```perl\npackage Mojo::BaseTestTest;\n```\n\n### Type `perl:Mojo.BaseTestTestTest`  @ t/mojo/base.t:21\n```perl\npackage Mojo::BaseTestTestTest;\n```\n\n### Type `perl:MojoTest.X.Bar`  @ t/mojo/exception.t:10\n```perl\npackage MojoTest::X::Bar;\n```\n\n### Type `perl:Mojo.BaseTest.Base1`  @ t/mojo/lib/Mojo/BaseTest/Base1.pm:1\n```perl\npackage Mojo::BaseTest::Base1;\n```\n\n### Type `perl:Mojo.BaseTest.Base2`  @ t/mojo/lib/Mojo/BaseTest/Base2.pm:1\n```perl\npackage Mojo::BaseTest::Base2;\n```\n"
+  },
+  "before_regression_gaps": {
+    "target": "trim at lib/Mojo/Util.pm:430",
+    "found": true,
+    "target_covered": false,
+    "call_graph_available": true,
+    "impacted_count": 10,
+    "uncovered": [
+      {
+        "name": "slugify",
+        "where": "lib/Mojo/Util.pm:387"
+      },
+      {
+        "name": "_compile",
+        "where": "lib/Mojo/DOM/CSS.pm:61"
+      },
+      {
+        "name": "with_protocols",
+        "where": "lib/Mojo/Transaction/WebSocket.pm:153"
+      },
+      {
+        "name": "is_fresh",
+        "where": "lib/Mojolicious/Static.pm:81"
+      },
+      {
+        "name": "matches",
+        "where": "lib/Mojo/DOM/CSS.pm:23"
+      },
+      {
+        "name": "select",
+        "where": "lib/Mojo/DOM/CSS.pm:29"
+      },
+      {
+        "name": "select_one",
+        "where": "lib/Mojo/DOM/CSS.pm:30"
+      },
+      {
+        "name": "serve_asset",
+        "where": "lib/Mojolicious/Static.pm:117"
+      },
+      {
+        "name": "serve",
+        "where": "lib/Mojolicious/Static.pm:103"
+      },
+      {
+        "name": "dispatch",
+        "where": "lib/Mojolicious/Static.pm:28"
+      }
+    ],
+    "covering_tests": [],
+    "truncated": false,
+    "markdown": "# Regression coverage\n\n**Change target:** `trim at lib/Mojo/Util.pm:430`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `slugify` \u2014 lib/Mojo/Util.pm:387\n- `_compile` \u2014 lib/Mojo/DOM/CSS.pm:61\n- `with_protocols` \u2014 lib/Mojo/Transaction/WebSocket.pm:153\n- `is_fresh` \u2014 lib/Mojolicious/Static.pm:81\n- `matches` \u2014 lib/Mojo/DOM/CSS.pm:23\n- `select` \u2014 lib/Mojo/DOM/CSS.pm:29\n- `select_one` \u2014 lib/Mojo/DOM/CSS.pm:30\n- `serve_asset` \u2014 lib/Mojolicious/Static.pm:117\n- `serve` \u2014 lib/Mojolicious/Static.pm:103\n- `dispatch` \u2014 lib/Mojolicious/Static.pm:28\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+  },
+  "before_blast_radius": {
+    "symbol": "trim",
+    "found": true,
+    "matches": [
+      {
+        "id": "perl:Mojo.Util.trim",
+        "kind": "Function",
+        "where": "lib/Mojo/Util.pm:430",
+        "caller_count": 4,
+        "callers": [
+          {
+            "id": "perl:Mojo.Util.slugify",
+            "at": "lib/Mojo/Util.pm:400"
+          },
+          {
+            "id": "perl:Mojo.DOM.CSS._compile",
+            "at": "lib/Mojo/DOM/CSS.pm:62"
+          },
+          {
+            "id": "perl:Mojo.Transaction.WebSocket.with_protocols",
+            "at": "lib/Mojo/Transaction/WebSocket.pm:156"
+          },
+          {
+            "id": "perl:Mojolicious.Static.is_fresh",
+            "at": "lib/Mojolicious/Static.pm:96"
+          }
+        ],
+        "touch_count": 5,
+        "touches": [
+          {
+            "id": "perl:Mojo.DOM.CSS._compile",
+            "where": "lib/Mojo/DOM/CSS.pm:61"
+          },
+          {
+            "id": "perl:Mojo.Transaction.WebSocket.with_protocols",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:153"
+          },
+          {
+            "id": "perl:Mojo.Util",
+            "where": "lib/Mojo/Util.pm:1"
+          },
+          {
+            "id": "perl:Mojo.Util.slugify",
+            "where": "lib/Mojo/Util.pm:387"
+          },
+          {
+            "id": "perl:Mojolicious.Static.is_fresh",
+            "where": "lib/Mojolicious/Static.pm:81"
+          }
+        ]
+      }
+    ],
+    "markdown": "### `perl:Mojo.Util.trim` \u2014 Function @ lib/Mojo/Util.pm:430\n- **Called by (4):** perl:Mojo.Util.slugify, perl:Mojo.DOM.CSS._compile, perl:Mojo.Transaction.WebSocket.with_protocols, perl:Mojolicious.Static.is_fresh\n- **Touches (5):** perl:Mojo.DOM.CSS._compile, perl:Mojo.Transaction.WebSocket.with_protocols, perl:Mojo.Util, perl:Mojo.Util.slugify, perl:Mojolicious.Static.is_fresh"
+  },
+  "before_all-gaps": {
+    "query_note": "synthetic source-location frames select exact symbols; these are not runtime failures",
+    "scope": "every named subroutine in existing Mojo::Util package, excluding nested _Guard package",
+    "symbol_count": 47,
+    "unique_uncovered_count": 116,
+    "unique_uncovered": [
+      [
+        "BUILD_DYNAMIC",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "DESTROY",
+        "lib/Mojolicious/Plugin/EPRenderer.pm"
+      ],
+      [
+        "DESTROY",
+        "lib/Mojolicious/Renderer.pm"
+      ],
+      [
+        "_append",
+        "lib/Mojo/Exception.pm"
+      ],
+      [
+        "_compile",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "_context",
+        "lib/Mojo/Exception.pm"
+      ],
+      [
+        "_csrf_token",
+        "lib/Mojolicious/Plugin/DefaultHelpers.pm"
+      ],
+      [
+        "_decode",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_encode",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_favicon",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_form_for",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_hidden_field",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_javascript",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_json",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_link_to",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_manage",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "_message",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "_option",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_parse",
+        "lib/Mojo/Path.pm"
+      ],
+      [
+        "_parse_formdata",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "_render",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "_render",
+        "lib/Mojolicious/Plugin/EPLRenderer.pm"
+      ],
+      [
+        "_say",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_select",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_select_field",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_serialize",
+        "lib/Mojolicious/Sessions.pm"
+      ],
+      [
+        "_string",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_stylesheet",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_submit_button",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_tag",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_tag_with_error",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_validation",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_wait",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "append",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "append",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "body_params",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "build_controller",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "build_event",
+        "lib/Mojo/SSE.pm"
+      ],
+      [
+        "build_frame",
+        "lib/Mojo/WebSocket.pm"
+      ],
+      [
+        "build_message",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "capture",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "class_to_file",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "client_read",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "clone",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "config",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "decode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "defaults",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "dispatch",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "dom",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "encrypted_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_encrypted_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_param",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "every_param",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_signed_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "extract_usage",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "extract_usage",
+        "lib/Mojolicious/Command.pm"
+      ],
+      [
+        "finish",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "finish",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "from_json",
+        "lib/Mojo/JSON.pm"
+      ],
+      [
+        "generate_secret",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "handler",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "header_params",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "html_attr_unescape",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "html_unescape",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "humanize_bytes",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "is_fresh",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "is_readable",
+        "lib/Mojo/IOLoop/Stream.pm"
+      ],
+      [
+        "load",
+        "lib/Mojolicious/Plugin/Config.pm"
+      ],
+      [
+        "matches",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "new",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "on",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "pairs",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "param",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "parse",
+        "lib/Mojolicious/Plugin/NotYAMLConfig.pm"
+      ],
+      [
+        "parse_frame",
+        "lib/Mojo/WebSocket.pm"
+      ],
+      [
+        "parse_message",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "path_for",
+        "lib/Mojolicious/Routes/Match.pm"
+      ],
+      [
+        "punycode_decode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "punycode_encode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "register",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "remote_address",
+        "lib/Mojo/Transaction.pm"
+      ],
+      [
+        "render",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "render",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render",
+        "lib/Mojolicious/Renderer.pm"
+      ],
+      [
+        "render_later",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render_maybe",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render_to_string",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "rendered",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "run",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "run",
+        "lib/Mojolicious/Command/routes.pm"
+      ],
+      [
+        "run",
+        "lib/Mojolicious/Commands.pm"
+      ],
+      [
+        "select",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "select_one",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "send",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "send",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "serve",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "serve_asset",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "server_read",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "session",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "signed_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "slugify",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "slurp",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "spew",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "split_cookie_header",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "split_header",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "spurt",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "stash",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "tag_to_html",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "text",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "to",
+        "lib/Mojolicious/Routes/Route.pm"
+      ],
+      [
+        "uploads",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "url_for",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "with_protocols",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "write",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "write_chunk",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "write_sse",
+        "lib/Mojo/Content.pm"
+      ]
+    ],
+    "plans": {
+      "camelize": {
+        "target": "camelize at lib/Mojo/Util.pm:104",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `camelize at lib/Mojo/Util.pm:104`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "class_to_file": {
+        "target": "class_to_file at lib/Mojo/Util.pm:114",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `class_to_file at lib/Mojo/Util.pm:114`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decamelize": {
+        "target": "decamelize at lib/Mojo/Util.pm:121",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "class_to_file",
+            "where": "lib/Mojo/Util.pm:114"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `decamelize at lib/Mojo/Util.pm:121`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `class_to_file` \u2014 lib/Mojo/Util.pm:114\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decrypt_cookie": {
+        "target": "decrypt_cookie at lib/Mojo/Util.pm:131",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "every_encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:67"
+          },
+          {
+            "name": "encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:52"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `decrypt_cookie at lib/Mojo/Util.pm:131`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `every_encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:67\n- `encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:52\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decode": {
+        "target": "decode at lib/Mojo/Util.pm:143",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "_append",
+            "where": "lib/Mojo/Exception.pm:117"
+          },
+          {
+            "name": "slurp",
+            "where": "lib/Mojo/File.pm:137"
+          },
+          {
+            "name": "text",
+            "where": "lib/Mojo/Message.pm:184"
+          },
+          {
+            "name": "_parse_formdata",
+            "where": "lib/Mojo/Message.pm:249"
+          },
+          {
+            "name": "pairs",
+            "where": "lib/Mojo/Parameters.pm:65"
+          },
+          {
+            "name": "_parse",
+            "where": "lib/Mojo/Path.pm:101"
+          },
+          {
+            "name": "_decode",
+            "where": "lib/Mojo/URL.pm:157"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          },
+          {
+            "name": "load",
+            "where": "lib/Mojolicious/Plugin/Config.pm:7"
+          },
+          {
+            "name": "_context",
+            "where": "lib/Mojo/Exception.pm:124"
+          },
+          {
+            "name": "from_json",
+            "where": "lib/Mojo/JSON.pm:61"
+          },
+          {
+            "name": "dom",
+            "where": "lib/Mojo/Message.pm:65"
+          },
+          {
+            "name": "body_params",
+            "where": "lib/Mojo/Message.pm:34"
+          },
+          {
+            "name": "uploads",
+            "where": "lib/Mojo/Message.pm:198"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Parameters.pm:9"
+          },
+          {
+            "name": "clone",
+            "where": "lib/Mojo/Parameters.pm:26"
+          },
+          {
+            "name": "every_param",
+            "where": "lib/Mojo/Parameters.pm:37"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `decode at lib/Mojo/Util.pm:143`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `_append` \u2014 lib/Mojo/Exception.pm:117\n- `slurp` \u2014 lib/Mojo/File.pm:137\n- `text` \u2014 lib/Mojo/Message.pm:184\n- `_parse_formdata` \u2014 lib/Mojo/Message.pm:249\n- `pairs` \u2014 lib/Mojo/Parameters.pm:65\n- `_parse` \u2014 lib/Mojo/Path.pm:101\n- `_decode` \u2014 lib/Mojo/URL.pm:157\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n- `load` \u2014 lib/Mojolicious/Plugin/Config.pm:7\n- `_context` \u2014 lib/Mojo/Exception.pm:124\n- `from_json` \u2014 lib/Mojo/JSON.pm:61\n- `dom` \u2014 lib/Mojo/Message.pm:65\n- `body_params` \u2014 lib/Mojo/Message.pm:34\n- `uploads` \u2014 lib/Mojo/Message.pm:198\n- `append` \u2014 lib/Mojo/Parameters.pm:9\n- `clone` \u2014 lib/Mojo/Parameters.pm:26\n- `every_param` \u2014 lib/Mojo/Parameters.pm:37\n\n## Already covered (in the blast radius)\n- `_decode` \u2014 lib/Mojo/JSON.pm:75\n- `decode_json` \u2014 lib/Mojo/JSON.pm:52\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "deprecated": {
+        "target": "deprecated at lib/Mojo/Util.pm:149",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `deprecated at lib/Mojo/Util.pm:149`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "dumper": {
+        "target": "dumper at lib/Mojo/Util.pm:154",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `dumper at lib/Mojo/Util.pm:154`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "encode": {
+        "target": "encode at lib/Mojo/Util.pm:156",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "spew",
+            "where": "lib/Mojo/File.pm:148"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Log.pm:36"
+          },
+          {
+            "name": "build_event",
+            "where": "lib/Mojo/SSE.pm:12"
+          },
+          {
+            "name": "_encode",
+            "where": "lib/Mojo/URL.pm:159"
+          },
+          {
+            "name": "build_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:13"
+          },
+          {
+            "name": "_say",
+            "where": "lib/Mojolicious/Command/get.pm:98"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Command/routes.pm:10"
+          },
+          {
+            "name": "_render",
+            "where": "lib/Mojolicious/Plugin/EPLRenderer.pm:12"
+          },
+          {
+            "name": "parse",
+            "where": "lib/Mojolicious/Plugin/NotYAMLConfig.pm:7"
+          },
+          {
+            "name": "spurt",
+            "where": "lib/Mojo/File.pm:156"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojolicious/Renderer.pm:83"
+          },
+          {
+            "name": "_serialize",
+            "where": "lib/Mojolicious/Sessions.pm:70"
+          },
+          {
+            "name": "_message",
+            "where": "lib/Mojo/Log.pm:112"
+          },
+          {
+            "name": "write_sse",
+            "where": "lib/Mojo/Content.pm:167"
+          },
+          {
+            "name": "_string",
+            "where": "lib/Mojo/URL.pm:161"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:117"
+          },
+          {
+            "name": "_json",
+            "where": "lib/Mojolicious/Command/get.pm:92"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426",
+          "json_message_has @ lib/Test/Mojo.pm:193",
+          "json_message_hasnt @ lib/Test/Mojo.pm:198",
+          "json_message_is @ lib/Test/Mojo.pm:203",
+          "json_message_like @ lib/Test/Mojo.pm:209",
+          "json_message_unlike @ lib/Test/Mojo.pm:214"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `encode at lib/Mojo/Util.pm:156`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n- json_message_has @ lib/Test/Mojo.pm:193\n- json_message_hasnt @ lib/Test/Mojo.pm:198\n- json_message_is @ lib/Test/Mojo.pm:203\n- json_message_like @ lib/Test/Mojo.pm:209\n- json_message_unlike @ lib/Test/Mojo.pm:214\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `spew` \u2014 lib/Mojo/File.pm:148\n- `append` \u2014 lib/Mojo/Log.pm:36\n- `build_event` \u2014 lib/Mojo/SSE.pm:12\n- `_encode` \u2014 lib/Mojo/URL.pm:159\n- `build_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:13\n- `_say` \u2014 lib/Mojolicious/Command/get.pm:98\n- `run` \u2014 lib/Mojolicious/Command/routes.pm:10\n- `_render` \u2014 lib/Mojolicious/Plugin/EPLRenderer.pm:12\n- `parse` \u2014 lib/Mojolicious/Plugin/NotYAMLConfig.pm:7\n- `spurt` \u2014 lib/Mojo/File.pm:156\n- `render` \u2014 lib/Mojolicious/Renderer.pm:83\n- `_serialize` \u2014 lib/Mojolicious/Sessions.pm:70\n- `_message` \u2014 lib/Mojo/Log.pm:112\n- `write_sse` \u2014 lib/Mojo/Content.pm:167\n- `_string` \u2014 lib/Mojo/URL.pm:161\n- `send` \u2014 lib/Mojo/Transaction/WebSocket.pm:117\n- `_json` \u2014 lib/Mojolicious/Command/get.pm:92\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n\n## Already covered (in the blast radius)\n- `encode_json` \u2014 lib/Mojo/JSON.pm:57\n- `j` \u2014 lib/Mojo/JSON.pm:66\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "encrypt_cookie": {
+        "target": "encrypt_cookie at lib/Mojo/Util.pm:158",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:52"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `encrypt_cookie at lib/Mojo/Util.pm:158`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:52\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "extract_usage": {
+        "target": "extract_usage at lib/Mojo/Util.pm:169",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojolicious/Command.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `extract_usage at lib/Mojo/Util.pm:169`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `extract_usage` \u2014 lib/Mojolicious/Command.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "generate_secret": {
+        "target": "generate_secret at lib/Mojo/Util.pm:180",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `generate_secret at lib/Mojo/Util.pm:180`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "getopt": {
+        "target": "getopt at lib/Mojo/Util.pm:184",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `getopt at lib/Mojo/Util.pm:184`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "gunzip": {
+        "target": "gunzip at lib/Mojo/Util.pm:194",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `gunzip at lib/Mojo/Util.pm:194`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "gzip": {
+        "target": "gzip at lib/Mojo/Util.pm:201",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `gzip at lib/Mojo/Util.pm:201`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "header_params": {
+        "target": "header_params at lib/Mojo/Util.pm:207",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `header_params at lib/Mojo/Util.pm:207`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "html_attr_unescape": {
+        "target": "html_attr_unescape at lib/Mojo/Util.pm:224",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `html_attr_unescape at lib/Mojo/Util.pm:224`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "html_unescape": {
+        "target": "html_unescape at lib/Mojo/Util.pm:225",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `html_unescape at lib/Mojo/Util.pm:225`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "humanize_bytes": {
+        "target": "humanize_bytes at lib/Mojo/Util.pm:227",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `humanize_bytes at lib/Mojo/Util.pm:227`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "network_contains": {
+        "target": "network_contains at lib/Mojo/Util.pm:239",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "remote_address",
+            "where": "lib/Mojo/Transaction.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `network_contains at lib/Mojo/Util.pm:239`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `remote_address` \u2014 lib/Mojo/Transaction.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "punycode_decode": {
+        "target": "punycode_decode at lib/Mojo/Util.pm:261",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `punycode_decode at lib/Mojo/Util.pm:261`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "punycode_encode": {
+        "target": "punycode_encode at lib/Mojo/Util.pm:294",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `punycode_encode at lib/Mojo/Util.pm:294`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "quote": {
+        "target": "quote at lib/Mojo/Util.pm:341",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `quote at lib/Mojo/Util.pm:341`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "random_bytes": {
+        "target": "random_bytes at lib/Mojo/Util.pm:347",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "generate_secret",
+            "where": "lib/Mojo/Util.pm:180"
+          },
+          {
+            "name": "_csrf_token",
+            "where": "lib/Mojolicious/Plugin/DefaultHelpers.pm:98"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `random_bytes at lib/Mojo/Util.pm:347`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `generate_secret` \u2014 lib/Mojo/Util.pm:180\n- `_csrf_token` \u2014 lib/Mojolicious/Plugin/DefaultHelpers.pm:98\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "scope_guard": {
+        "target": "scope_guard at lib/Mojo/Util.pm:377",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "new",
+            "where": "lib/Mojo/Log.pm:139"
+          },
+          {
+            "name": "capture",
+            "where": "lib/Mojo/Log.pm:45"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `scope_guard at lib/Mojo/Util.pm:377`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `new` \u2014 lib/Mojo/Log.pm:139\n- `capture` \u2014 lib/Mojo/Log.pm:45\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "secure_compare": {
+        "target": "secure_compare at lib/Mojo/Util.pm:379",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "every_signed_cookie",
+            "where": "lib/Mojolicious/Controller.pm:103"
+          },
+          {
+            "name": "signed_cookie",
+            "where": "lib/Mojolicious/Controller.pm:259"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `secure_compare at lib/Mojo/Util.pm:379`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `every_signed_cookie` \u2014 lib/Mojolicious/Controller.pm:103\n- `signed_cookie` \u2014 lib/Mojolicious/Controller.pm:259\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "slugify": {
+        "target": "slugify at lib/Mojo/Util.pm:387",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `slugify at lib/Mojo/Util.pm:387`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "split_cookie_header": {
+        "target": "split_cookie_header at lib/Mojo/Util.pm:405",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `split_cookie_header at lib/Mojo/Util.pm:405`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "split_header": {
+        "target": "split_header at lib/Mojo/Util.pm:406",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `split_header at lib/Mojo/Util.pm:406`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "tablify": {
+        "target": "tablify at lib/Mojo/Util.pm:408",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Commands.pm:27"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Command/routes.pm:10"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `tablify at lib/Mojo/Util.pm:408`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `run` \u2014 lib/Mojolicious/Commands.pm:27\n- `run` \u2014 lib/Mojolicious/Command/routes.pm:10\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "term_escape": {
+        "target": "term_escape at lib/Mojo/Util.pm:424",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `term_escape at lib/Mojo/Util.pm:424`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "trim": {
+        "target": "trim at lib/Mojo/Util.pm:430",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 10,
+        "uncovered": [
+          {
+            "name": "slugify",
+            "where": "lib/Mojo/Util.pm:387"
+          },
+          {
+            "name": "_compile",
+            "where": "lib/Mojo/DOM/CSS.pm:61"
+          },
+          {
+            "name": "with_protocols",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:153"
+          },
+          {
+            "name": "is_fresh",
+            "where": "lib/Mojolicious/Static.pm:81"
+          },
+          {
+            "name": "matches",
+            "where": "lib/Mojo/DOM/CSS.pm:23"
+          },
+          {
+            "name": "select",
+            "where": "lib/Mojo/DOM/CSS.pm:29"
+          },
+          {
+            "name": "select_one",
+            "where": "lib/Mojo/DOM/CSS.pm:30"
+          },
+          {
+            "name": "serve_asset",
+            "where": "lib/Mojolicious/Static.pm:117"
+          },
+          {
+            "name": "serve",
+            "where": "lib/Mojolicious/Static.pm:103"
+          },
+          {
+            "name": "dispatch",
+            "where": "lib/Mojolicious/Static.pm:28"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `trim at lib/Mojo/Util.pm:430`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `slugify` \u2014 lib/Mojo/Util.pm:387\n- `_compile` \u2014 lib/Mojo/DOM/CSS.pm:61\n- `with_protocols` \u2014 lib/Mojo/Transaction/WebSocket.pm:153\n- `is_fresh` \u2014 lib/Mojolicious/Static.pm:81\n- `matches` \u2014 lib/Mojo/DOM/CSS.pm:23\n- `select` \u2014 lib/Mojo/DOM/CSS.pm:29\n- `select_one` \u2014 lib/Mojo/DOM/CSS.pm:30\n- `serve_asset` \u2014 lib/Mojolicious/Static.pm:117\n- `serve` \u2014 lib/Mojolicious/Static.pm:103\n- `dispatch` \u2014 lib/Mojolicious/Static.pm:28\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "unindent": {
+        "target": "unindent at lib/Mojo/Util.pm:437",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojo/Util.pm:169"
+          },
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojolicious/Command.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `unindent at lib/Mojo/Util.pm:437`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `extract_usage` \u2014 lib/Mojo/Util.pm:169\n- `extract_usage` \u2014 lib/Mojolicious/Command.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "unquote": {
+        "target": "unquote at lib/Mojo/Util.pm:444",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "header_params",
+            "where": "lib/Mojo/Util.pm:207"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `unquote at lib/Mojo/Util.pm:444`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `header_params` \u2014 lib/Mojo/Util.pm:207\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "url_escape": {
+        "target": "url_escape at lib/Mojo/Util.pm:452",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `url_escape at lib/Mojo/Util.pm:452`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "url_unescape": {
+        "target": "url_unescape at lib/Mojo/Util.pm:467",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `url_unescape at lib/Mojo/Util.pm:467`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "xml_escape": {
+        "target": "xml_escape at lib/Mojo/Util.pm:473",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 16,
+        "uncovered": [
+          {
+            "name": "_render",
+            "where": "lib/Mojo/DOM/HTML.pm:214"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojo/DOM/HTML.pm:180"
+          },
+          {
+            "name": "tag_to_html",
+            "where": "lib/Mojo/DOM/HTML.pm:184"
+          },
+          {
+            "name": "_tag",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:188"
+          },
+          {
+            "name": "register",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:8"
+          },
+          {
+            "name": "_favicon",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:64"
+          },
+          {
+            "name": "_form_for",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:74"
+          },
+          {
+            "name": "_hidden_field",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:88"
+          },
+          {
+            "name": "_javascript",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:114"
+          },
+          {
+            "name": "_link_to",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:127"
+          },
+          {
+            "name": "_option",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:143"
+          },
+          {
+            "name": "_select_field",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:154"
+          },
+          {
+            "name": "_stylesheet",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:176"
+          },
+          {
+            "name": "_submit_button",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:183"
+          },
+          {
+            "name": "_tag_with_error",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:190"
+          },
+          {
+            "name": "_validation",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:207"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `xml_escape at lib/Mojo/Util.pm:473`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `_render` \u2014 lib/Mojo/DOM/HTML.pm:214\n- `render` \u2014 lib/Mojo/DOM/HTML.pm:180\n- `tag_to_html` \u2014 lib/Mojo/DOM/HTML.pm:184\n- `_tag` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:188\n- `register` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:8\n- `_favicon` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:64\n- `_form_for` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:74\n- `_hidden_field` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:88\n- `_javascript` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:114\n- `_link_to` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:127\n- `_option` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:143\n- `_select_field` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:154\n- `_stylesheet` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:176\n- `_submit_button` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:183\n- `_tag_with_error` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:190\n- `_validation` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:207\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "xor_encode": {
+        "target": "xor_encode at lib/Mojo/Util.pm:480",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 7,
+        "uncovered": [
+          {
+            "name": "build_frame",
+            "where": "lib/Mojo/WebSocket.pm:25"
+          },
+          {
+            "name": "parse_frame",
+            "where": "lib/Mojo/WebSocket.pm:90"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:117"
+          },
+          {
+            "name": "server_read",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:125"
+          },
+          {
+            "name": "finish",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:49"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "client_read",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:38"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `xor_encode at lib/Mojo/Util.pm:480`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `build_frame` \u2014 lib/Mojo/WebSocket.pm:25\n- `parse_frame` \u2014 lib/Mojo/WebSocket.pm:90\n- `send` \u2014 lib/Mojo/Transaction/WebSocket.pm:117\n- `server_read` \u2014 lib/Mojo/Transaction/WebSocket.pm:125\n- `finish` \u2014 lib/Mojo/Transaction/WebSocket.pm:49\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `client_read` \u2014 lib/Mojo/Transaction/WebSocket.pm:38\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_adapt": {
+        "target": "_adapt at lib/Mojo/Util.pm:490",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "punycode_decode",
+            "where": "lib/Mojo/Util.pm:261"
+          },
+          {
+            "name": "punycode_encode",
+            "where": "lib/Mojo/Util.pm:294"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_adapt at lib/Mojo/Util.pm:490`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `punycode_decode` \u2014 lib/Mojo/Util.pm:261\n- `punycode_encode` \u2014 lib/Mojo/Util.pm:294\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_encoding": {
+        "target": "_encoding at lib/Mojo/Util.pm:505",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "decode",
+            "where": "lib/Mojo/Util.pm:143"
+          },
+          {
+            "name": "_append",
+            "where": "lib/Mojo/Exception.pm:117"
+          },
+          {
+            "name": "slurp",
+            "where": "lib/Mojo/File.pm:137"
+          },
+          {
+            "name": "text",
+            "where": "lib/Mojo/Message.pm:184"
+          },
+          {
+            "name": "_parse_formdata",
+            "where": "lib/Mojo/Message.pm:249"
+          },
+          {
+            "name": "pairs",
+            "where": "lib/Mojo/Parameters.pm:65"
+          },
+          {
+            "name": "_parse",
+            "where": "lib/Mojo/Path.pm:101"
+          },
+          {
+            "name": "_decode",
+            "where": "lib/Mojo/URL.pm:157"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          },
+          {
+            "name": "load",
+            "where": "lib/Mojolicious/Plugin/Config.pm:7"
+          },
+          {
+            "name": "spew",
+            "where": "lib/Mojo/File.pm:148"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Log.pm:36"
+          },
+          {
+            "name": "build_event",
+            "where": "lib/Mojo/SSE.pm:12"
+          },
+          {
+            "name": "_encode",
+            "where": "lib/Mojo/URL.pm:159"
+          },
+          {
+            "name": "build_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:13"
+          },
+          {
+            "name": "_say",
+            "where": "lib/Mojolicious/Command/get.pm:98"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `_encoding at lib/Mojo/Util.pm:505`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `decode` \u2014 lib/Mojo/Util.pm:143\n- `_append` \u2014 lib/Mojo/Exception.pm:117\n- `slurp` \u2014 lib/Mojo/File.pm:137\n- `text` \u2014 lib/Mojo/Message.pm:184\n- `_parse_formdata` \u2014 lib/Mojo/Message.pm:249\n- `pairs` \u2014 lib/Mojo/Parameters.pm:65\n- `_parse` \u2014 lib/Mojo/Path.pm:101\n- `_decode` \u2014 lib/Mojo/URL.pm:157\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n- `load` \u2014 lib/Mojolicious/Plugin/Config.pm:7\n- `spew` \u2014 lib/Mojo/File.pm:148\n- `append` \u2014 lib/Mojo/Log.pm:36\n- `build_event` \u2014 lib/Mojo/SSE.pm:12\n- `_encode` \u2014 lib/Mojo/URL.pm:159\n- `build_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:13\n- `_say` \u2014 lib/Mojolicious/Command/get.pm:98\n\n## Already covered (in the blast radius)\n- `encode` \u2014 lib/Mojo/Util.pm:156\n- `_decode` \u2014 lib/Mojo/JSON.pm:75\n- `encode_json` \u2014 lib/Mojo/JSON.pm:57\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_entity": {
+        "target": "_entity at lib/Mojo/Util.pm:507",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_entity at lib/Mojo/Util.pm:507`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_header": {
+        "target": "_header at lib/Mojo/Util.pm:523",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "split_cookie_header",
+            "where": "lib/Mojo/Util.pm:405"
+          },
+          {
+            "name": "split_header",
+            "where": "lib/Mojo/Util.pm:406"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_header at lib/Mojo/Util.pm:523`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `split_cookie_header` \u2014 lib/Mojo/Util.pm:405\n- `split_header` \u2014 lib/Mojo/Util.pm:406\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_html": {
+        "target": "_html at lib/Mojo/Util.pm:550",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "html_attr_unescape",
+            "where": "lib/Mojo/Util.pm:224"
+          },
+          {
+            "name": "html_unescape",
+            "where": "lib/Mojo/Util.pm:225"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_html at lib/Mojo/Util.pm:550`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `html_attr_unescape` \u2014 lib/Mojo/Util.pm:224\n- `html_unescape` \u2014 lib/Mojo/Util.pm:225\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_options": {
+        "target": "_options at lib/Mojo/Util.pm:556",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "path_for",
+            "where": "lib/Mojolicious/Routes/Match.pm:12"
+          },
+          {
+            "name": "to",
+            "where": "lib/Mojolicious/Routes/Route.pm:131"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_options at lib/Mojo/Util.pm:556`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `path_for` \u2014 lib/Mojolicious/Routes/Match.pm:12\n- `to` \u2014 lib/Mojolicious/Routes/Route.pm:131\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_readable": {
+        "target": "_readable at lib/Mojo/Util.pm:569",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 4,
+        "uncovered": [
+          {
+            "name": "is_readable",
+            "where": "lib/Mojo/IOLoop/Stream.pm:34"
+          },
+          {
+            "name": "_wait",
+            "where": "lib/Mojo/Server/Prefork.pm:171"
+          },
+          {
+            "name": "_manage",
+            "where": "lib/Mojo/Server/Prefork.pm:84"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojo/Server/Prefork.pm:53"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_readable at lib/Mojo/Util.pm:569`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `is_readable` \u2014 lib/Mojo/IOLoop/Stream.pm:34\n- `_wait` \u2014 lib/Mojo/Server/Prefork.pm:171\n- `_manage` \u2014 lib/Mojo/Server/Prefork.pm:84\n- `run` \u2014 lib/Mojo/Server/Prefork.pm:53\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_round": {
+        "target": "_round at lib/Mojo/Util.pm:571",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "humanize_bytes",
+            "where": "lib/Mojo/Util.pm:227"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_round at lib/Mojo/Util.pm:571`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `humanize_bytes` \u2014 lib/Mojo/Util.pm:227\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_stash": {
+        "target": "_stash at lib/Mojo/Util.pm:573",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "config",
+            "where": "lib/Mojolicious.pm:101"
+          },
+          {
+            "name": "defaults",
+            "where": "lib/Mojolicious.pm:102"
+          },
+          {
+            "name": "stash",
+            "where": "lib/Mojolicious/Controller.pm:270"
+          },
+          {
+            "name": "build_controller",
+            "where": "lib/Mojolicious.pm:74"
+          },
+          {
+            "name": "every_param",
+            "where": "lib/Mojolicious/Controller.pm:87"
+          },
+          {
+            "name": "param",
+            "where": "lib/Mojolicious/Controller.pm:153"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojolicious/Controller.pm:160"
+          },
+          {
+            "name": "render_later",
+            "where": "lib/Mojolicious/Controller.pm:192"
+          },
+          {
+            "name": "rendered",
+            "where": "lib/Mojolicious/Controller.pm:198"
+          },
+          {
+            "name": "session",
+            "where": "lib/Mojolicious/Controller.pm:239"
+          },
+          {
+            "name": "url_for",
+            "where": "lib/Mojolicious/Controller.pm:272"
+          },
+          {
+            "name": "BUILD_DYNAMIC",
+            "where": "lib/Mojolicious.pm:62"
+          },
+          {
+            "name": "handler",
+            "where": "lib/Mojolicious.pm:130"
+          },
+          {
+            "name": "render_maybe",
+            "where": "lib/Mojolicious/Controller.pm:194"
+          },
+          {
+            "name": "render_to_string",
+            "where": "lib/Mojolicious/Controller.pm:196"
+          },
+          {
+            "name": "finish",
+            "where": "lib/Mojolicious/Controller.pm:130"
+          },
+          {
+            "name": "on",
+            "where": "lib/Mojolicious/Controller.pm:146"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojolicious/Controller.pm:231"
+          },
+          {
+            "name": "write",
+            "where": "lib/Mojolicious/Controller.pm:320"
+          },
+          {
+            "name": "write_chunk",
+            "where": "lib/Mojolicious/Controller.pm:326"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `_stash at lib/Mojo/Util.pm:573`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `config` \u2014 lib/Mojolicious.pm:101\n- `defaults` \u2014 lib/Mojolicious.pm:102\n- `stash` \u2014 lib/Mojolicious/Controller.pm:270\n- `build_controller` \u2014 lib/Mojolicious.pm:74\n- `every_param` \u2014 lib/Mojolicious/Controller.pm:87\n- `param` \u2014 lib/Mojolicious/Controller.pm:153\n- `render` \u2014 lib/Mojolicious/Controller.pm:160\n- `render_later` \u2014 lib/Mojolicious/Controller.pm:192\n- `rendered` \u2014 lib/Mojolicious/Controller.pm:198\n- `session` \u2014 lib/Mojolicious/Controller.pm:239\n- `url_for` \u2014 lib/Mojolicious/Controller.pm:272\n- `BUILD_DYNAMIC` \u2014 lib/Mojolicious.pm:62\n- `handler` \u2014 lib/Mojolicious.pm:130\n- `render_maybe` \u2014 lib/Mojolicious/Controller.pm:194\n- `render_to_string` \u2014 lib/Mojolicious/Controller.pm:196\n- `finish` \u2014 lib/Mojolicious/Controller.pm:130\n- `on` \u2014 lib/Mojolicious/Controller.pm:146\n- `send` \u2014 lib/Mojolicious/Controller.pm:231\n- `write` \u2014 lib/Mojolicious/Controller.pm:320\n- `write_chunk` \u2014 lib/Mojolicious/Controller.pm:326\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_teardown": {
+        "target": "_teardown at lib/Mojo/Util.pm:589",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "DESTROY",
+            "where": "lib/Mojolicious/Renderer.pm:25"
+          },
+          {
+            "name": "DESTROY",
+            "where": "lib/Mojolicious/Plugin/EPRenderer.pm:7"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_teardown at lib/Mojo/Util.pm:589`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `DESTROY` \u2014 lib/Mojolicious/Renderer.pm:25\n- `DESTROY` \u2014 lib/Mojolicious/Plugin/EPRenderer.pm:7\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      }
+    }
+  },
+  "after_pkg_grounding": {
+    "chars": 2446,
+    "context": "EXISTING CODEBASE CONTEXT (from the Product Knowledge Graph \u2014 real code, with file:line provenance). Reuse these APIs instead of reinventing them; import them by the module paths shown; match their naming and style conventions:\n\n### Type `perl:Mojo.BaseUtil`  @ lib/Mojo/BaseUtil.pm:1\n```perl\npackage Mojo::BaseUtil;\n```\n\n### Type `perl:Mojo.BaseTest`  @ t/mojo/base.t:8\n```perl\npackage Mojo::BaseTest;\n```\n\n### Type `perl:Mojo.BaseTestTest`  @ t/mojo/base.t:18\n```perl\npackage Mojo::BaseTestTest;\n```\n\n### Type `perl:Mojo.BaseTestTestTest`  @ t/mojo/base.t:21\n```perl\npackage Mojo::BaseTestTestTest;\n```\n\n### Type `perl:MojoTest.X.Bar`  @ t/mojo/exception.t:10\n```perl\npackage MojoTest::X::Bar;\n```\n\n### Function `perl:t/mojo/util.t.test_strip_suffix`  @ t/mojo/util.t:17\n```perl\nsub test_strip_suffix {\n  subtest 'strip_suffix (basic)' => sub {\n    is Mojo::Util::strip_suffix('testbar',     'bar'), 'test',     'suffix removed';\n    is Mojo::Util::strip_suffix('testbarbar',  'bar'), 'testbar',  'exactly one suffix removed';\n    is Mojo::Util::strip_suffix('test.tar.gz', '.gz'), 'test.tar', 'extension removed';\n    is strip_suffix('testbarbar', 'bar'), 'testbar', 'exported function works';\n    ok scalar(grep { $_ eq 'strip_suffix' } @Mojo::Util::EXPORT_OK), 'strip_suffix in @EXPORT_OK';\n  };\n\n  subtest 'strip_suffix (unmatched and empty)' => sub {\n    is Mojo::Util::strip_suffix('test',      'bar'),    'test',      'unmatched suffix leaves text unchanged';\n    is Mojo::Util::strip_suffix('test',      ''),       'test',      'empty suffix leaves text unchanged';\n    is Mojo::Util::strip_suffix('',          'bar'),    '',          'empty text stays empty';\n    is Mojo::Util::strip_suffix('bar',       'barbar'), 'bar',       'suffix longer than text';\n    is Mojo::Util::strip_suffix('bartest',   'bar'),    'bartest',   'prefix match is not removed';\n    is Mojo::Util::strip_suffix('foobarbaz', 'bar'),    'foobarbaz', 'middle match is not removed';\n  };\n\n  subtest 'strip_suffix (case sensitive)' => sub {\n    is Mojo::Util::strip_suffix('testbar', 'BAR'), 'testbar', 'case sensitive mismatch';\n    is Mojo::Util::strip_suffix('testBAR', 'bar'), 'testBAR', 'case sensitive mismatch reversed';\n    is Mojo::Util::strip_suffix('testBAR', 'BAR'), 'test',    'case sensitive match';\n  };\n\n    # \u2026 truncated \u2026\n```\n\n### Type `perl:Mojo.BaseTest.Base1`  @ t/mojo/lib/Mojo/BaseTest/Base1.pm:1\n```perl\npackage Mojo::BaseTest::Base1;\n```\n"
+  },
+  "after_regression_gaps": {
+    "target": "trim at lib/Mojo/Util.pm:443",
+    "found": true,
+    "target_covered": false,
+    "call_graph_available": true,
+    "impacted_count": 10,
+    "uncovered": [
+      {
+        "name": "slugify",
+        "where": "lib/Mojo/Util.pm:400"
+      },
+      {
+        "name": "_compile",
+        "where": "lib/Mojo/DOM/CSS.pm:61"
+      },
+      {
+        "name": "with_protocols",
+        "where": "lib/Mojo/Transaction/WebSocket.pm:153"
+      },
+      {
+        "name": "is_fresh",
+        "where": "lib/Mojolicious/Static.pm:81"
+      },
+      {
+        "name": "matches",
+        "where": "lib/Mojo/DOM/CSS.pm:23"
+      },
+      {
+        "name": "select",
+        "where": "lib/Mojo/DOM/CSS.pm:29"
+      },
+      {
+        "name": "select_one",
+        "where": "lib/Mojo/DOM/CSS.pm:30"
+      },
+      {
+        "name": "serve_asset",
+        "where": "lib/Mojolicious/Static.pm:117"
+      },
+      {
+        "name": "serve",
+        "where": "lib/Mojolicious/Static.pm:103"
+      },
+      {
+        "name": "dispatch",
+        "where": "lib/Mojolicious/Static.pm:28"
+      }
+    ],
+    "covering_tests": [],
+    "truncated": false,
+    "markdown": "# Regression coverage\n\n**Change target:** `trim at lib/Mojo/Util.pm:443`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `slugify` \u2014 lib/Mojo/Util.pm:400\n- `_compile` \u2014 lib/Mojo/DOM/CSS.pm:61\n- `with_protocols` \u2014 lib/Mojo/Transaction/WebSocket.pm:153\n- `is_fresh` \u2014 lib/Mojolicious/Static.pm:81\n- `matches` \u2014 lib/Mojo/DOM/CSS.pm:23\n- `select` \u2014 lib/Mojo/DOM/CSS.pm:29\n- `select_one` \u2014 lib/Mojo/DOM/CSS.pm:30\n- `serve_asset` \u2014 lib/Mojolicious/Static.pm:117\n- `serve` \u2014 lib/Mojolicious/Static.pm:103\n- `dispatch` \u2014 lib/Mojolicious/Static.pm:28\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+  },
+  "after_blast_radius": {
+    "symbol": "strip_suffix",
+    "found": true,
+    "matches": [
+      {
+        "id": "perl:Mojo.Util.strip_suffix",
+        "kind": "Function",
+        "where": "lib/Mojo/Util.pm:388",
+        "caller_count": 30,
+        "callers": [
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:81"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:77"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:72"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:68"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:62"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:61"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:60"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:59"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:55"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:53"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:52"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:51"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:47"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:46"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:45"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:44"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:43"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:42"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:38"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:37"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:36"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:32"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:31"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:30"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "at": "t/mojo/util.t:29"
+          }
+        ],
+        "touch_count": 2,
+        "touches": [
+          {
+            "id": "perl:Mojo.Util",
+            "where": "lib/Mojo/Util.pm:1"
+          },
+          {
+            "id": "perl:t/mojo/util.t.test_strip_suffix",
+            "where": "t/mojo/util.t:17"
+          }
+        ]
+      }
+    ],
+    "markdown": "### `perl:Mojo.Util.strip_suffix` \u2014 Function @ lib/Mojo/Util.pm:388\n- **Called by (30):** perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix, perl:t/mojo/util.t.test_strip_suffix\n- **Touches (2):** perl:Mojo.Util, perl:t/mojo/util.t.test_strip_suffix"
+  },
+  "after_all-gaps": {
+    "query_note": "synthetic source-location frames select exact symbols; these are not runtime failures",
+    "scope": "every named subroutine in existing Mojo::Util package, excluding nested _Guard package",
+    "symbol_count": 48,
+    "unique_uncovered_count": 116,
+    "unique_uncovered": [
+      [
+        "BUILD_DYNAMIC",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "DESTROY",
+        "lib/Mojolicious/Plugin/EPRenderer.pm"
+      ],
+      [
+        "DESTROY",
+        "lib/Mojolicious/Renderer.pm"
+      ],
+      [
+        "_append",
+        "lib/Mojo/Exception.pm"
+      ],
+      [
+        "_compile",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "_context",
+        "lib/Mojo/Exception.pm"
+      ],
+      [
+        "_csrf_token",
+        "lib/Mojolicious/Plugin/DefaultHelpers.pm"
+      ],
+      [
+        "_decode",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_encode",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_favicon",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_form_for",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_hidden_field",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_javascript",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_json",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_link_to",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_manage",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "_message",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "_option",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_parse",
+        "lib/Mojo/Path.pm"
+      ],
+      [
+        "_parse_formdata",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "_render",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "_render",
+        "lib/Mojolicious/Plugin/EPLRenderer.pm"
+      ],
+      [
+        "_say",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_select",
+        "lib/Mojolicious/Command/get.pm"
+      ],
+      [
+        "_select_field",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_serialize",
+        "lib/Mojolicious/Sessions.pm"
+      ],
+      [
+        "_string",
+        "lib/Mojo/URL.pm"
+      ],
+      [
+        "_stylesheet",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_submit_button",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_tag",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_tag_with_error",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_validation",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "_wait",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "append",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "append",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "body_params",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "build_controller",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "build_event",
+        "lib/Mojo/SSE.pm"
+      ],
+      [
+        "build_frame",
+        "lib/Mojo/WebSocket.pm"
+      ],
+      [
+        "build_message",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "capture",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "class_to_file",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "client_read",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "clone",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "config",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "decode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "defaults",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "dispatch",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "dom",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "encrypted_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_encrypted_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_param",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "every_param",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "every_signed_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "extract_usage",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "extract_usage",
+        "lib/Mojolicious/Command.pm"
+      ],
+      [
+        "finish",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "finish",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "from_json",
+        "lib/Mojo/JSON.pm"
+      ],
+      [
+        "generate_secret",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "handler",
+        "lib/Mojolicious.pm"
+      ],
+      [
+        "header_params",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "html_attr_unescape",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "html_unescape",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "humanize_bytes",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "is_fresh",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "is_readable",
+        "lib/Mojo/IOLoop/Stream.pm"
+      ],
+      [
+        "load",
+        "lib/Mojolicious/Plugin/Config.pm"
+      ],
+      [
+        "matches",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "new",
+        "lib/Mojo/Log.pm"
+      ],
+      [
+        "on",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "pairs",
+        "lib/Mojo/Parameters.pm"
+      ],
+      [
+        "param",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "parse",
+        "lib/Mojolicious/Plugin/NotYAMLConfig.pm"
+      ],
+      [
+        "parse_frame",
+        "lib/Mojo/WebSocket.pm"
+      ],
+      [
+        "parse_message",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "path_for",
+        "lib/Mojolicious/Routes/Match.pm"
+      ],
+      [
+        "punycode_decode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "punycode_encode",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "register",
+        "lib/Mojolicious/Plugin/TagHelpers.pm"
+      ],
+      [
+        "remote_address",
+        "lib/Mojo/Transaction.pm"
+      ],
+      [
+        "render",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "render",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render",
+        "lib/Mojolicious/Renderer.pm"
+      ],
+      [
+        "render_later",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render_maybe",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "render_to_string",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "rendered",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "run",
+        "lib/Mojo/Server/Prefork.pm"
+      ],
+      [
+        "run",
+        "lib/Mojolicious/Command/routes.pm"
+      ],
+      [
+        "run",
+        "lib/Mojolicious/Commands.pm"
+      ],
+      [
+        "select",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "select_one",
+        "lib/Mojo/DOM/CSS.pm"
+      ],
+      [
+        "send",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "send",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "serve",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "serve_asset",
+        "lib/Mojolicious/Static.pm"
+      ],
+      [
+        "server_read",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "session",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "signed_cookie",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "slugify",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "slurp",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "spew",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "split_cookie_header",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "split_header",
+        "lib/Mojo/Util.pm"
+      ],
+      [
+        "spurt",
+        "lib/Mojo/File.pm"
+      ],
+      [
+        "stash",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "tag_to_html",
+        "lib/Mojo/DOM/HTML.pm"
+      ],
+      [
+        "text",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "to",
+        "lib/Mojolicious/Routes/Route.pm"
+      ],
+      [
+        "uploads",
+        "lib/Mojo/Message.pm"
+      ],
+      [
+        "url_for",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "with_protocols",
+        "lib/Mojo/Transaction/WebSocket.pm"
+      ],
+      [
+        "write",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "write_chunk",
+        "lib/Mojolicious/Controller.pm"
+      ],
+      [
+        "write_sse",
+        "lib/Mojo/Content.pm"
+      ]
+    ],
+    "plans": {
+      "camelize": {
+        "target": "camelize at lib/Mojo/Util.pm:105",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `camelize at lib/Mojo/Util.pm:105`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "class_to_file": {
+        "target": "class_to_file at lib/Mojo/Util.pm:115",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `class_to_file at lib/Mojo/Util.pm:115`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decamelize": {
+        "target": "decamelize at lib/Mojo/Util.pm:122",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "class_to_file",
+            "where": "lib/Mojo/Util.pm:115"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `decamelize at lib/Mojo/Util.pm:122`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `class_to_file` \u2014 lib/Mojo/Util.pm:115\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decrypt_cookie": {
+        "target": "decrypt_cookie at lib/Mojo/Util.pm:132",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "every_encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:67"
+          },
+          {
+            "name": "encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:52"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `decrypt_cookie at lib/Mojo/Util.pm:132`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `every_encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:67\n- `encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:52\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "decode": {
+        "target": "decode at lib/Mojo/Util.pm:144",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "_append",
+            "where": "lib/Mojo/Exception.pm:117"
+          },
+          {
+            "name": "slurp",
+            "where": "lib/Mojo/File.pm:137"
+          },
+          {
+            "name": "text",
+            "where": "lib/Mojo/Message.pm:184"
+          },
+          {
+            "name": "_parse_formdata",
+            "where": "lib/Mojo/Message.pm:249"
+          },
+          {
+            "name": "pairs",
+            "where": "lib/Mojo/Parameters.pm:65"
+          },
+          {
+            "name": "_parse",
+            "where": "lib/Mojo/Path.pm:101"
+          },
+          {
+            "name": "_decode",
+            "where": "lib/Mojo/URL.pm:157"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          },
+          {
+            "name": "load",
+            "where": "lib/Mojolicious/Plugin/Config.pm:7"
+          },
+          {
+            "name": "_context",
+            "where": "lib/Mojo/Exception.pm:124"
+          },
+          {
+            "name": "from_json",
+            "where": "lib/Mojo/JSON.pm:61"
+          },
+          {
+            "name": "dom",
+            "where": "lib/Mojo/Message.pm:65"
+          },
+          {
+            "name": "body_params",
+            "where": "lib/Mojo/Message.pm:34"
+          },
+          {
+            "name": "uploads",
+            "where": "lib/Mojo/Message.pm:198"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Parameters.pm:9"
+          },
+          {
+            "name": "clone",
+            "where": "lib/Mojo/Parameters.pm:26"
+          },
+          {
+            "name": "every_param",
+            "where": "lib/Mojo/Parameters.pm:37"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `decode at lib/Mojo/Util.pm:144`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `_append` \u2014 lib/Mojo/Exception.pm:117\n- `slurp` \u2014 lib/Mojo/File.pm:137\n- `text` \u2014 lib/Mojo/Message.pm:184\n- `_parse_formdata` \u2014 lib/Mojo/Message.pm:249\n- `pairs` \u2014 lib/Mojo/Parameters.pm:65\n- `_parse` \u2014 lib/Mojo/Path.pm:101\n- `_decode` \u2014 lib/Mojo/URL.pm:157\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n- `load` \u2014 lib/Mojolicious/Plugin/Config.pm:7\n- `_context` \u2014 lib/Mojo/Exception.pm:124\n- `from_json` \u2014 lib/Mojo/JSON.pm:61\n- `dom` \u2014 lib/Mojo/Message.pm:65\n- `body_params` \u2014 lib/Mojo/Message.pm:34\n- `uploads` \u2014 lib/Mojo/Message.pm:198\n- `append` \u2014 lib/Mojo/Parameters.pm:9\n- `clone` \u2014 lib/Mojo/Parameters.pm:26\n- `every_param` \u2014 lib/Mojo/Parameters.pm:37\n\n## Already covered (in the blast radius)\n- `_decode` \u2014 lib/Mojo/JSON.pm:75\n- `decode_json` \u2014 lib/Mojo/JSON.pm:52\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "deprecated": {
+        "target": "deprecated at lib/Mojo/Util.pm:150",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `deprecated at lib/Mojo/Util.pm:150`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "dumper": {
+        "target": "dumper at lib/Mojo/Util.pm:155",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `dumper at lib/Mojo/Util.pm:155`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "encode": {
+        "target": "encode at lib/Mojo/Util.pm:157",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "spew",
+            "where": "lib/Mojo/File.pm:148"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Log.pm:36"
+          },
+          {
+            "name": "build_event",
+            "where": "lib/Mojo/SSE.pm:12"
+          },
+          {
+            "name": "_encode",
+            "where": "lib/Mojo/URL.pm:159"
+          },
+          {
+            "name": "build_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:13"
+          },
+          {
+            "name": "_say",
+            "where": "lib/Mojolicious/Command/get.pm:98"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Command/routes.pm:10"
+          },
+          {
+            "name": "_render",
+            "where": "lib/Mojolicious/Plugin/EPLRenderer.pm:12"
+          },
+          {
+            "name": "parse",
+            "where": "lib/Mojolicious/Plugin/NotYAMLConfig.pm:7"
+          },
+          {
+            "name": "spurt",
+            "where": "lib/Mojo/File.pm:156"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojolicious/Renderer.pm:83"
+          },
+          {
+            "name": "_serialize",
+            "where": "lib/Mojolicious/Sessions.pm:70"
+          },
+          {
+            "name": "_message",
+            "where": "lib/Mojo/Log.pm:112"
+          },
+          {
+            "name": "write_sse",
+            "where": "lib/Mojo/Content.pm:167"
+          },
+          {
+            "name": "_string",
+            "where": "lib/Mojo/URL.pm:161"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:117"
+          },
+          {
+            "name": "_json",
+            "where": "lib/Mojolicious/Command/get.pm:92"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426",
+          "json_message_has @ lib/Test/Mojo.pm:193",
+          "json_message_hasnt @ lib/Test/Mojo.pm:198",
+          "json_message_is @ lib/Test/Mojo.pm:203",
+          "json_message_like @ lib/Test/Mojo.pm:209",
+          "json_message_unlike @ lib/Test/Mojo.pm:214"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `encode at lib/Mojo/Util.pm:157`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n- json_message_has @ lib/Test/Mojo.pm:193\n- json_message_hasnt @ lib/Test/Mojo.pm:198\n- json_message_is @ lib/Test/Mojo.pm:203\n- json_message_like @ lib/Test/Mojo.pm:209\n- json_message_unlike @ lib/Test/Mojo.pm:214\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `spew` \u2014 lib/Mojo/File.pm:148\n- `append` \u2014 lib/Mojo/Log.pm:36\n- `build_event` \u2014 lib/Mojo/SSE.pm:12\n- `_encode` \u2014 lib/Mojo/URL.pm:159\n- `build_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:13\n- `_say` \u2014 lib/Mojolicious/Command/get.pm:98\n- `run` \u2014 lib/Mojolicious/Command/routes.pm:10\n- `_render` \u2014 lib/Mojolicious/Plugin/EPLRenderer.pm:12\n- `parse` \u2014 lib/Mojolicious/Plugin/NotYAMLConfig.pm:7\n- `spurt` \u2014 lib/Mojo/File.pm:156\n- `render` \u2014 lib/Mojolicious/Renderer.pm:83\n- `_serialize` \u2014 lib/Mojolicious/Sessions.pm:70\n- `_message` \u2014 lib/Mojo/Log.pm:112\n- `write_sse` \u2014 lib/Mojo/Content.pm:167\n- `_string` \u2014 lib/Mojo/URL.pm:161\n- `send` \u2014 lib/Mojo/Transaction/WebSocket.pm:117\n- `_json` \u2014 lib/Mojolicious/Command/get.pm:92\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n\n## Already covered (in the blast radius)\n- `encode_json` \u2014 lib/Mojo/JSON.pm:57\n- `j` \u2014 lib/Mojo/JSON.pm:66\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "encrypt_cookie": {
+        "target": "encrypt_cookie at lib/Mojo/Util.pm:159",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "encrypted_cookie",
+            "where": "lib/Mojolicious/Controller.pm:52"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `encrypt_cookie at lib/Mojo/Util.pm:159`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `encrypted_cookie` \u2014 lib/Mojolicious/Controller.pm:52\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "extract_usage": {
+        "target": "extract_usage at lib/Mojo/Util.pm:170",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojolicious/Command.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `extract_usage at lib/Mojo/Util.pm:170`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `extract_usage` \u2014 lib/Mojolicious/Command.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "generate_secret": {
+        "target": "generate_secret at lib/Mojo/Util.pm:181",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `generate_secret at lib/Mojo/Util.pm:181`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "getopt": {
+        "target": "getopt at lib/Mojo/Util.pm:185",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `getopt at lib/Mojo/Util.pm:185`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "gunzip": {
+        "target": "gunzip at lib/Mojo/Util.pm:195",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `gunzip at lib/Mojo/Util.pm:195`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "gzip": {
+        "target": "gzip at lib/Mojo/Util.pm:202",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `gzip at lib/Mojo/Util.pm:202`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "header_params": {
+        "target": "header_params at lib/Mojo/Util.pm:208",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `header_params at lib/Mojo/Util.pm:208`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "html_attr_unescape": {
+        "target": "html_attr_unescape at lib/Mojo/Util.pm:225",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `html_attr_unescape at lib/Mojo/Util.pm:225`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "html_unescape": {
+        "target": "html_unescape at lib/Mojo/Util.pm:226",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `html_unescape at lib/Mojo/Util.pm:226`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "humanize_bytes": {
+        "target": "humanize_bytes at lib/Mojo/Util.pm:228",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `humanize_bytes at lib/Mojo/Util.pm:228`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "network_contains": {
+        "target": "network_contains at lib/Mojo/Util.pm:240",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "remote_address",
+            "where": "lib/Mojo/Transaction.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `network_contains at lib/Mojo/Util.pm:240`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `remote_address` \u2014 lib/Mojo/Transaction.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "punycode_decode": {
+        "target": "punycode_decode at lib/Mojo/Util.pm:262",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `punycode_decode at lib/Mojo/Util.pm:262`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "punycode_encode": {
+        "target": "punycode_encode at lib/Mojo/Util.pm:295",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `punycode_encode at lib/Mojo/Util.pm:295`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "quote": {
+        "target": "quote at lib/Mojo/Util.pm:342",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `quote at lib/Mojo/Util.pm:342`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "random_bytes": {
+        "target": "random_bytes at lib/Mojo/Util.pm:348",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "generate_secret",
+            "where": "lib/Mojo/Util.pm:181"
+          },
+          {
+            "name": "_csrf_token",
+            "where": "lib/Mojolicious/Plugin/DefaultHelpers.pm:98"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `random_bytes at lib/Mojo/Util.pm:348`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `generate_secret` \u2014 lib/Mojo/Util.pm:181\n- `_csrf_token` \u2014 lib/Mojolicious/Plugin/DefaultHelpers.pm:98\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "scope_guard": {
+        "target": "scope_guard at lib/Mojo/Util.pm:378",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "new",
+            "where": "lib/Mojo/Log.pm:139"
+          },
+          {
+            "name": "capture",
+            "where": "lib/Mojo/Log.pm:45"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `scope_guard at lib/Mojo/Util.pm:378`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `new` \u2014 lib/Mojo/Log.pm:139\n- `capture` \u2014 lib/Mojo/Log.pm:45\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "secure_compare": {
+        "target": "secure_compare at lib/Mojo/Util.pm:380",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "every_signed_cookie",
+            "where": "lib/Mojolicious/Controller.pm:103"
+          },
+          {
+            "name": "signed_cookie",
+            "where": "lib/Mojolicious/Controller.pm:259"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `secure_compare at lib/Mojo/Util.pm:380`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `every_signed_cookie` \u2014 lib/Mojolicious/Controller.pm:103\n- `signed_cookie` \u2014 lib/Mojolicious/Controller.pm:259\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "strip_suffix": {
+        "target": "strip_suffix at lib/Mojo/Util.pm:388",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [
+          "test_strip_suffix @ t/mojo/util.t:17"
+        ],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `strip_suffix at lib/Mojo/Util.pm:388`\n\n**Target coverage:** \u2713 exercised by tests\n- test_strip_suffix @ t/mojo/util.t:17\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "slugify": {
+        "target": "slugify at lib/Mojo/Util.pm:400",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `slugify at lib/Mojo/Util.pm:400`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "split_cookie_header": {
+        "target": "split_cookie_header at lib/Mojo/Util.pm:418",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `split_cookie_header at lib/Mojo/Util.pm:418`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "split_header": {
+        "target": "split_header at lib/Mojo/Util.pm:419",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `split_header at lib/Mojo/Util.pm:419`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "tablify": {
+        "target": "tablify at lib/Mojo/Util.pm:421",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Commands.pm:27"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojolicious/Command/routes.pm:10"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `tablify at lib/Mojo/Util.pm:421`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `run` \u2014 lib/Mojolicious/Commands.pm:27\n- `run` \u2014 lib/Mojolicious/Command/routes.pm:10\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "term_escape": {
+        "target": "term_escape at lib/Mojo/Util.pm:437",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `term_escape at lib/Mojo/Util.pm:437`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "trim": {
+        "target": "trim at lib/Mojo/Util.pm:443",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 10,
+        "uncovered": [
+          {
+            "name": "slugify",
+            "where": "lib/Mojo/Util.pm:400"
+          },
+          {
+            "name": "_compile",
+            "where": "lib/Mojo/DOM/CSS.pm:61"
+          },
+          {
+            "name": "with_protocols",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:153"
+          },
+          {
+            "name": "is_fresh",
+            "where": "lib/Mojolicious/Static.pm:81"
+          },
+          {
+            "name": "matches",
+            "where": "lib/Mojo/DOM/CSS.pm:23"
+          },
+          {
+            "name": "select",
+            "where": "lib/Mojo/DOM/CSS.pm:29"
+          },
+          {
+            "name": "select_one",
+            "where": "lib/Mojo/DOM/CSS.pm:30"
+          },
+          {
+            "name": "serve_asset",
+            "where": "lib/Mojolicious/Static.pm:117"
+          },
+          {
+            "name": "serve",
+            "where": "lib/Mojolicious/Static.pm:103"
+          },
+          {
+            "name": "dispatch",
+            "where": "lib/Mojolicious/Static.pm:28"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `trim at lib/Mojo/Util.pm:443`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `slugify` \u2014 lib/Mojo/Util.pm:400\n- `_compile` \u2014 lib/Mojo/DOM/CSS.pm:61\n- `with_protocols` \u2014 lib/Mojo/Transaction/WebSocket.pm:153\n- `is_fresh` \u2014 lib/Mojolicious/Static.pm:81\n- `matches` \u2014 lib/Mojo/DOM/CSS.pm:23\n- `select` \u2014 lib/Mojo/DOM/CSS.pm:29\n- `select_one` \u2014 lib/Mojo/DOM/CSS.pm:30\n- `serve_asset` \u2014 lib/Mojolicious/Static.pm:117\n- `serve` \u2014 lib/Mojolicious/Static.pm:103\n- `dispatch` \u2014 lib/Mojolicious/Static.pm:28\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "unindent": {
+        "target": "unindent at lib/Mojo/Util.pm:450",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojo/Util.pm:170"
+          },
+          {
+            "name": "extract_usage",
+            "where": "lib/Mojolicious/Command.pm:33"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `unindent at lib/Mojo/Util.pm:450`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `extract_usage` \u2014 lib/Mojo/Util.pm:170\n- `extract_usage` \u2014 lib/Mojolicious/Command.pm:33\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "unquote": {
+        "target": "unquote at lib/Mojo/Util.pm:457",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "header_params",
+            "where": "lib/Mojo/Util.pm:208"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `unquote at lib/Mojo/Util.pm:457`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `header_params` \u2014 lib/Mojo/Util.pm:208\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "url_escape": {
+        "target": "url_escape at lib/Mojo/Util.pm:465",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `url_escape at lib/Mojo/Util.pm:465`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "url_unescape": {
+        "target": "url_unescape at lib/Mojo/Util.pm:480",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `url_unescape at lib/Mojo/Util.pm:480`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "xml_escape": {
+        "target": "xml_escape at lib/Mojo/Util.pm:486",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 16,
+        "uncovered": [
+          {
+            "name": "_render",
+            "where": "lib/Mojo/DOM/HTML.pm:214"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojo/DOM/HTML.pm:180"
+          },
+          {
+            "name": "tag_to_html",
+            "where": "lib/Mojo/DOM/HTML.pm:184"
+          },
+          {
+            "name": "_tag",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:188"
+          },
+          {
+            "name": "register",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:8"
+          },
+          {
+            "name": "_favicon",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:64"
+          },
+          {
+            "name": "_form_for",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:74"
+          },
+          {
+            "name": "_hidden_field",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:88"
+          },
+          {
+            "name": "_javascript",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:114"
+          },
+          {
+            "name": "_link_to",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:127"
+          },
+          {
+            "name": "_option",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:143"
+          },
+          {
+            "name": "_select_field",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:154"
+          },
+          {
+            "name": "_stylesheet",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:176"
+          },
+          {
+            "name": "_submit_button",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:183"
+          },
+          {
+            "name": "_tag_with_error",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:190"
+          },
+          {
+            "name": "_validation",
+            "where": "lib/Mojolicious/Plugin/TagHelpers.pm:207"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `xml_escape at lib/Mojo/Util.pm:486`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `_render` \u2014 lib/Mojo/DOM/HTML.pm:214\n- `render` \u2014 lib/Mojo/DOM/HTML.pm:180\n- `tag_to_html` \u2014 lib/Mojo/DOM/HTML.pm:184\n- `_tag` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:188\n- `register` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:8\n- `_favicon` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:64\n- `_form_for` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:74\n- `_hidden_field` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:88\n- `_javascript` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:114\n- `_link_to` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:127\n- `_option` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:143\n- `_select_field` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:154\n- `_stylesheet` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:176\n- `_submit_button` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:183\n- `_tag_with_error` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:190\n- `_validation` \u2014 lib/Mojolicious/Plugin/TagHelpers.pm:207\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "xor_encode": {
+        "target": "xor_encode at lib/Mojo/Util.pm:493",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 7,
+        "uncovered": [
+          {
+            "name": "build_frame",
+            "where": "lib/Mojo/WebSocket.pm:25"
+          },
+          {
+            "name": "parse_frame",
+            "where": "lib/Mojo/WebSocket.pm:90"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:117"
+          },
+          {
+            "name": "server_read",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:125"
+          },
+          {
+            "name": "finish",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:49"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "client_read",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:38"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `xor_encode at lib/Mojo/Util.pm:493`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `build_frame` \u2014 lib/Mojo/WebSocket.pm:25\n- `parse_frame` \u2014 lib/Mojo/WebSocket.pm:90\n- `send` \u2014 lib/Mojo/Transaction/WebSocket.pm:117\n- `server_read` \u2014 lib/Mojo/Transaction/WebSocket.pm:125\n- `finish` \u2014 lib/Mojo/Transaction/WebSocket.pm:49\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `client_read` \u2014 lib/Mojo/Transaction/WebSocket.pm:38\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_adapt": {
+        "target": "_adapt at lib/Mojo/Util.pm:503",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "punycode_decode",
+            "where": "lib/Mojo/Util.pm:262"
+          },
+          {
+            "name": "punycode_encode",
+            "where": "lib/Mojo/Util.pm:295"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_adapt at lib/Mojo/Util.pm:503`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `punycode_decode` \u2014 lib/Mojo/Util.pm:262\n- `punycode_encode` \u2014 lib/Mojo/Util.pm:295\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_encoding": {
+        "target": "_encoding at lib/Mojo/Util.pm:518",
+        "found": true,
+        "target_covered": true,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "decode",
+            "where": "lib/Mojo/Util.pm:144"
+          },
+          {
+            "name": "_append",
+            "where": "lib/Mojo/Exception.pm:117"
+          },
+          {
+            "name": "slurp",
+            "where": "lib/Mojo/File.pm:137"
+          },
+          {
+            "name": "text",
+            "where": "lib/Mojo/Message.pm:184"
+          },
+          {
+            "name": "_parse_formdata",
+            "where": "lib/Mojo/Message.pm:249"
+          },
+          {
+            "name": "pairs",
+            "where": "lib/Mojo/Parameters.pm:65"
+          },
+          {
+            "name": "_parse",
+            "where": "lib/Mojo/Path.pm:101"
+          },
+          {
+            "name": "_decode",
+            "where": "lib/Mojo/URL.pm:157"
+          },
+          {
+            "name": "parse_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:67"
+          },
+          {
+            "name": "_select",
+            "where": "lib/Mojolicious/Command/get.pm:100"
+          },
+          {
+            "name": "load",
+            "where": "lib/Mojolicious/Plugin/Config.pm:7"
+          },
+          {
+            "name": "spew",
+            "where": "lib/Mojo/File.pm:148"
+          },
+          {
+            "name": "append",
+            "where": "lib/Mojo/Log.pm:36"
+          },
+          {
+            "name": "build_event",
+            "where": "lib/Mojo/SSE.pm:12"
+          },
+          {
+            "name": "_encode",
+            "where": "lib/Mojo/URL.pm:159"
+          },
+          {
+            "name": "build_message",
+            "where": "lib/Mojo/Transaction/WebSocket.pm:13"
+          },
+          {
+            "name": "_say",
+            "where": "lib/Mojolicious/Command/get.pm:98"
+          }
+        ],
+        "covering_tests": [
+          "_json @ lib/Test/Mojo.pm:426"
+        ],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `_encoding at lib/Mojo/Util.pm:518`\n\n**Target coverage:** \u2713 exercised by tests\n- _json @ lib/Test/Mojo.pm:426\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `decode` \u2014 lib/Mojo/Util.pm:144\n- `_append` \u2014 lib/Mojo/Exception.pm:117\n- `slurp` \u2014 lib/Mojo/File.pm:137\n- `text` \u2014 lib/Mojo/Message.pm:184\n- `_parse_formdata` \u2014 lib/Mojo/Message.pm:249\n- `pairs` \u2014 lib/Mojo/Parameters.pm:65\n- `_parse` \u2014 lib/Mojo/Path.pm:101\n- `_decode` \u2014 lib/Mojo/URL.pm:157\n- `parse_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:67\n- `_select` \u2014 lib/Mojolicious/Command/get.pm:100\n- `load` \u2014 lib/Mojolicious/Plugin/Config.pm:7\n- `spew` \u2014 lib/Mojo/File.pm:148\n- `append` \u2014 lib/Mojo/Log.pm:36\n- `build_event` \u2014 lib/Mojo/SSE.pm:12\n- `_encode` \u2014 lib/Mojo/URL.pm:159\n- `build_message` \u2014 lib/Mojo/Transaction/WebSocket.pm:13\n- `_say` \u2014 lib/Mojolicious/Command/get.pm:98\n\n## Already covered (in the blast radius)\n- `encode` \u2014 lib/Mojo/Util.pm:157\n- `_decode` \u2014 lib/Mojo/JSON.pm:75\n- `encode_json` \u2014 lib/Mojo/JSON.pm:57\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_entity": {
+        "target": "_entity at lib/Mojo/Util.pm:520",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 0,
+        "uncovered": [],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_entity at lib/Mojo/Util.pm:520`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_Every impacted symbol is reached by some test._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_header": {
+        "target": "_header at lib/Mojo/Util.pm:536",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "split_cookie_header",
+            "where": "lib/Mojo/Util.pm:418"
+          },
+          {
+            "name": "split_header",
+            "where": "lib/Mojo/Util.pm:419"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_header at lib/Mojo/Util.pm:536`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `split_cookie_header` \u2014 lib/Mojo/Util.pm:418\n- `split_header` \u2014 lib/Mojo/Util.pm:419\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_html": {
+        "target": "_html at lib/Mojo/Util.pm:563",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "html_attr_unescape",
+            "where": "lib/Mojo/Util.pm:225"
+          },
+          {
+            "name": "html_unescape",
+            "where": "lib/Mojo/Util.pm:226"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_html at lib/Mojo/Util.pm:563`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `html_attr_unescape` \u2014 lib/Mojo/Util.pm:225\n- `html_unescape` \u2014 lib/Mojo/Util.pm:226\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_options": {
+        "target": "_options at lib/Mojo/Util.pm:569",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "path_for",
+            "where": "lib/Mojolicious/Routes/Match.pm:12"
+          },
+          {
+            "name": "to",
+            "where": "lib/Mojolicious/Routes/Route.pm:131"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_options at lib/Mojo/Util.pm:569`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `path_for` \u2014 lib/Mojolicious/Routes/Match.pm:12\n- `to` \u2014 lib/Mojolicious/Routes/Route.pm:131\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_readable": {
+        "target": "_readable at lib/Mojo/Util.pm:582",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 4,
+        "uncovered": [
+          {
+            "name": "is_readable",
+            "where": "lib/Mojo/IOLoop/Stream.pm:34"
+          },
+          {
+            "name": "_wait",
+            "where": "lib/Mojo/Server/Prefork.pm:171"
+          },
+          {
+            "name": "_manage",
+            "where": "lib/Mojo/Server/Prefork.pm:84"
+          },
+          {
+            "name": "run",
+            "where": "lib/Mojo/Server/Prefork.pm:53"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_readable at lib/Mojo/Util.pm:582`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `is_readable` \u2014 lib/Mojo/IOLoop/Stream.pm:34\n- `_wait` \u2014 lib/Mojo/Server/Prefork.pm:171\n- `_manage` \u2014 lib/Mojo/Server/Prefork.pm:84\n- `run` \u2014 lib/Mojo/Server/Prefork.pm:53\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_round": {
+        "target": "_round at lib/Mojo/Util.pm:584",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 1,
+        "uncovered": [
+          {
+            "name": "humanize_bytes",
+            "where": "lib/Mojo/Util.pm:228"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_round at lib/Mojo/Util.pm:584`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `humanize_bytes` \u2014 lib/Mojo/Util.pm:228\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_stash": {
+        "target": "_stash at lib/Mojo/Util.pm:586",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 20,
+        "uncovered": [
+          {
+            "name": "config",
+            "where": "lib/Mojolicious.pm:101"
+          },
+          {
+            "name": "defaults",
+            "where": "lib/Mojolicious.pm:102"
+          },
+          {
+            "name": "stash",
+            "where": "lib/Mojolicious/Controller.pm:270"
+          },
+          {
+            "name": "build_controller",
+            "where": "lib/Mojolicious.pm:74"
+          },
+          {
+            "name": "every_param",
+            "where": "lib/Mojolicious/Controller.pm:87"
+          },
+          {
+            "name": "param",
+            "where": "lib/Mojolicious/Controller.pm:153"
+          },
+          {
+            "name": "render",
+            "where": "lib/Mojolicious/Controller.pm:160"
+          },
+          {
+            "name": "render_later",
+            "where": "lib/Mojolicious/Controller.pm:192"
+          },
+          {
+            "name": "rendered",
+            "where": "lib/Mojolicious/Controller.pm:198"
+          },
+          {
+            "name": "session",
+            "where": "lib/Mojolicious/Controller.pm:239"
+          },
+          {
+            "name": "url_for",
+            "where": "lib/Mojolicious/Controller.pm:272"
+          },
+          {
+            "name": "BUILD_DYNAMIC",
+            "where": "lib/Mojolicious.pm:62"
+          },
+          {
+            "name": "handler",
+            "where": "lib/Mojolicious.pm:130"
+          },
+          {
+            "name": "render_maybe",
+            "where": "lib/Mojolicious/Controller.pm:194"
+          },
+          {
+            "name": "render_to_string",
+            "where": "lib/Mojolicious/Controller.pm:196"
+          },
+          {
+            "name": "finish",
+            "where": "lib/Mojolicious/Controller.pm:130"
+          },
+          {
+            "name": "on",
+            "where": "lib/Mojolicious/Controller.pm:146"
+          },
+          {
+            "name": "send",
+            "where": "lib/Mojolicious/Controller.pm:231"
+          },
+          {
+            "name": "write",
+            "where": "lib/Mojolicious/Controller.pm:320"
+          },
+          {
+            "name": "write_chunk",
+            "where": "lib/Mojolicious/Controller.pm:326"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": true,
+        "markdown": "# Regression coverage\n\n**Change target:** `_stash at lib/Mojo/Util.pm:586`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `config` \u2014 lib/Mojolicious.pm:101\n- `defaults` \u2014 lib/Mojolicious.pm:102\n- `stash` \u2014 lib/Mojolicious/Controller.pm:270\n- `build_controller` \u2014 lib/Mojolicious.pm:74\n- `every_param` \u2014 lib/Mojolicious/Controller.pm:87\n- `param` \u2014 lib/Mojolicious/Controller.pm:153\n- `render` \u2014 lib/Mojolicious/Controller.pm:160\n- `render_later` \u2014 lib/Mojolicious/Controller.pm:192\n- `rendered` \u2014 lib/Mojolicious/Controller.pm:198\n- `session` \u2014 lib/Mojolicious/Controller.pm:239\n- `url_for` \u2014 lib/Mojolicious/Controller.pm:272\n- `BUILD_DYNAMIC` \u2014 lib/Mojolicious.pm:62\n- `handler` \u2014 lib/Mojolicious.pm:130\n- `render_maybe` \u2014 lib/Mojolicious/Controller.pm:194\n- `render_to_string` \u2014 lib/Mojolicious/Controller.pm:196\n- `finish` \u2014 lib/Mojolicious/Controller.pm:130\n- `on` \u2014 lib/Mojolicious/Controller.pm:146\n- `send` \u2014 lib/Mojolicious/Controller.pm:231\n- `write` \u2014 lib/Mojolicious/Controller.pm:320\n- `write_chunk` \u2014 lib/Mojolicious/Controller.pm:326\n\n_Blast radius clipped \u2014 showing the top impacted symbols only._\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      },
+      "_teardown": {
+        "target": "_teardown at lib/Mojo/Util.pm:602",
+        "found": true,
+        "target_covered": false,
+        "call_graph_available": true,
+        "impacted_count": 2,
+        "uncovered": [
+          {
+            "name": "DESTROY",
+            "where": "lib/Mojolicious/Renderer.pm:25"
+          },
+          {
+            "name": "DESTROY",
+            "where": "lib/Mojolicious/Plugin/EPRenderer.pm:7"
+          }
+        ],
+        "covering_tests": [],
+        "truncated": false,
+        "markdown": "# Regression coverage\n\n**Change target:** `_teardown at lib/Mojo/Util.pm:602`\n\n**Target coverage:** \u26a0 no test exercises it directly\n\n## Regression gaps \u2014 add tests here\n_In the blast radius and NOT reached by any test \u2014 a change here could break these silently:_\n\n- `DESTROY` \u2014 lib/Mojolicious/Renderer.pm:25\n- `DESTROY` \u2014 lib/Mojolicious/Plugin/EPRenderer.pm:7\n\n## Next step\nBefore changing the target, add/verify regression tests for the gaps above, then re-run the suite over the impacted set.\n"
+      }
+    }
+  }
+}

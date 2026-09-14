@@ -11,3 +11,4 @@
 - [ ] Tests added/updated where it matters
 - [ ] No secrets committed
 - [ ] Docs updated if behavior changed
+- [ ] Codegen changes follow the registry and runner proof checklist (when applicable)

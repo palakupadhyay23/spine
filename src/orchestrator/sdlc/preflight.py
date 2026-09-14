@@ -24,12 +24,12 @@ import os
 import re
 import sys
 from collections import Counter
-from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
-from orchestrator.sdlc.testrunner import _SECRET_ENV_PREFIXES
+from orchestrator.sdlc.contracts import Baseline as Baseline
+from orchestrator.sdlc.contracts import PreflightResult as PreflightResult
+from orchestrator.sdlc.contracts import PreflightRunner as PreflightRunner
+from orchestrator.sdlc.process import _SECRET_ENV_PREFIXES, ExecCapture, exec_capture
 
 _MAX_OUTPUT_CHARS = 4000
 _TOOL_TIMEOUT = 180.0
@@ -134,46 +134,6 @@ class PreflightBaselineError(RuntimeError):
     """
 
 
-@dataclass(frozen=True)
-class Baseline:
-    """What a repository's quality tools already report, before any change.
-
-    `findings` counts `(tool, path, code)` triples. Line numbers are deliberately excluded
-    from the key: inserting a function shifts every line beneath it, so a line-keyed baseline
-    would report an untouched file as entirely new on any insertion. Counting `(path, code)`
-    catches "this file gained another `attr-defined`" while ignoring "the same finding moved
-    down twelve lines".
-    """
-
-    findings: Mapping[tuple[str, str, str], int]
-    skipped: tuple[str, ...] = ()
-
-    @property
-    def total(self) -> int:
-        return sum(self.findings.values())
-
-    def describe(self) -> str:
-        parts = [f"{self.total} pre-existing finding(s)"]
-        if self.skipped:
-            parts.append(f"tools excluded (no config in target repo): {', '.join(self.skipped)}")
-        return " · ".join(parts)
-
-
-@dataclass(frozen=True)
-class PreflightResult:
-    """Outcome of the local CI-parity checks."""
-
-    passed: bool
-    output: str = ""
-
-
-@runtime_checkable
-class PreflightRunner(Protocol):
-    """Runs the repo's quality bar in a worktree."""
-
-    async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult: ...
-
-
 class StubPreflightRunner:
     """Always-pass preflight — unit tests and scratch-worktree mode."""
 
@@ -182,21 +142,76 @@ class StubPreflightRunner:
         return PreflightResult(passed=True, output="stub preflight")
 
 
+class PerlPreflightRunner:
+    """Changed-file syntax checks and perlcritic only when the owning repo configures it."""
+
+    def __init__(self, perl: str = "perl", *, capture: ExecCapture | None = None) -> None:
+        self._perl = perl
+        self._capture = capture or exec_capture
+
+    async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult:
+        import shutil
+
+        from orchestrator.sdlc.perl import changed_perl_files, distribution_for, include_args
+
+        captured: list[str] = []
+        try:
+            root = Path(path).resolve()
+            changed = await changed_perl_files(root, capture=self._capture)
+            for file in changed:
+                if file.suffix not in {".pm", ".pl"}:
+                    continue
+                dist = distribution_for(file, root)
+                rc, output = await self._capture(
+                    (self._perl, *include_args(dist), "-c", str(file)), cwd=str(dist), timeout=_TOOL_TIMEOUT
+                )
+                captured.append(f"{file.relative_to(root)}: {output}")
+                if rc:
+                    return PreflightResult(False, "\n".join(captured)[-_MAX_OUTPUT_CHARS:])
+            for file in changed:
+                dist = distribution_for(file, root)
+                profile = dist / ".perlcriticrc"
+                if not profile.is_file():
+                    profile = root / ".perlcriticrc"
+                if not profile.is_file():
+                    continue
+                critic = shutil.which("perlcritic")
+                if critic is None:
+                    return PreflightResult(
+                        False,
+                        f"{profile.relative_to(root)} configures perlcritic, but perlcritic is unavailable; "
+                        "install Perl::Critic to run the repository's configured preflight.",
+                    )
+                rc, output = await self._capture(
+                    (critic, "--profile", str(profile), str(file)),
+                    cwd=str(dist),
+                    timeout=_TOOL_TIMEOUT,
+                )
+                captured.append(f"perlcritic {file.relative_to(root)}: {output}")
+                if rc:
+                    return PreflightResult(False, "\n".join(captured)[-_MAX_OUTPUT_CHARS:])
+            return PreflightResult(
+                True, ("Perl preflight green\n" + "\n".join(captured))[-_MAX_OUTPUT_CHARS:]
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            return PreflightResult(False, str(exc))
+
+
 class PhpPreflightRunner:
     """Changed-file syntax validation, independent of the repository's existing suite."""
 
-    def __init__(self, php: str = "php") -> None:
+    def __init__(self, php: str = "php", *, capture: ExecCapture | None = None) -> None:
         self._php = php
+        self._capture = capture or exec_capture
 
     async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult:
         from orchestrator.sdlc.php import changed_php_files
-        from orchestrator.sdlc.testrunner import _exec_capture
 
         try:
             root = Path(path).resolve()
-            files = await changed_php_files(root)
+            files = await changed_php_files(root, capture=self._capture)
             for name in files:
-                rc, out = await _exec_capture(
+                rc, out = await self._capture(
                     (self._php, "-l", str(root / name)), cwd=str(root), timeout=_TOOL_TIMEOUT
                 )
                 if rc:
@@ -304,10 +319,21 @@ class SubprocessPreflightRunner:
         return rc, stdout_bytes.decode("utf-8", "replace")
 
 
+def make_preflight_runner(
+    language: str = "python", *, executable: str | None = None, capture: ExecCapture | None = None
+) -> PreflightRunner:
+    """Select a registered preflight without changing the caller's invocation policy."""
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return get_toolchain(language).preflight(executable=executable, capture=capture)
+
+
 __all__ = [
+    "PerlPreflightRunner",
     "PhpPreflightRunner",
     "PreflightResult",
     "PreflightRunner",
     "StubPreflightRunner",
     "SubprocessPreflightRunner",
+    "make_preflight_runner",
 ]

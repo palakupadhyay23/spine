@@ -153,6 +153,15 @@ messages (e.g. `fix(planner): handle empty claims list`).
 
 ## Development setup
 
+**Codegen language changes:** add the complete row to `sdlc/toolchains.py` together with
+its implementations; this table controls `SUPPORTED_LANGUAGES`. Preserve Temporal's
+injected runners and worker defaults. Follow the [codegen checklist](docs/reviewing/language-frontend-checklist.md#codegen-registration-and-runner-proof)
+for real green/red runner proof, missing-toolchain errors and scaffold idempotency. For
+dispatch migrations, run the existing language tests before and after (including
+`tests/sdlc/test_php_codegen.py` by name), then `uv run --frozen python
+scripts/mutate-dispatch.py`; all eight mutations must be caught without skips. Its child
+pytest commands install exactly the extras named by CI's sync step.
+
 See [SETUP.md](SETUP.md) for the full local stack and [USER_GUIDE.md](USER_GUIDE.md)
 for the everyday workflow. In short: Python 3.12+, [`uv`](https://docs.astral.sh/uv/),
 then `uv sync`.

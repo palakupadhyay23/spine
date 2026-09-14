@@ -69,6 +69,23 @@ dist/
 """
 
 
+def _perl_files(layout: TargetLayout) -> dict[str, str]:
+    name = layout.package_name
+    module = name.replace("::", "/")
+    return {
+        "cpanfile": "requires 'perl', '5.016';\non 'test' => sub { requires 'Test::More'; };\n",
+        f"{layout.source_dir}/{module}.pm": f"package {name};\nuse strict;\nuse warnings;\n\n1;\n",
+        f"{layout.tests_dir}/00-load.t": (
+            f"use strict;\nuse warnings;\nuse Test::More;\nuse_ok('{name}');\ndone_testing;\n"
+        ),
+        "README.md": (
+            f"# {name}\n\nRun tests with `prove -l t/`.\n"
+            "Install dependencies with `cpanm --installdeps . --notest` when available.\n"
+        ),
+        ".gitignore": "/blib/\n/local/\n/.prove\n",
+    }
+
+
 def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile | None = None) -> list[str]:
     """Write the project skeleton for ``layout`` into ``root``, idempotently.
 
@@ -78,24 +95,10 @@ def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile 
     """
     root_path = Path(root)
     _ = profile  # reserved: future template selection beyond language
-    if layout.language == "java":
-        files = _java_files(layout)
-    elif layout.language == "typescript":
-        files = _typescript_files(layout)
-    elif layout.language == "csharp":
-        files = _csharp_files(layout)
-    elif layout.language == "c":
-        files = _c_files(layout)
-    elif layout.language == "cpp":
-        files = _cpp_files(layout)
-    elif layout.language == "php":
-        files = _php_files(layout)
-    elif layout.language == "go":
-        files = _go_files(layout)
-    elif layout.language == "sql":
-        files = _sql_files(layout)
-    else:
-        files = _python_files(layout)
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    toolchain = get_toolchain(layout.language)
+    files = toolchain.scaffold(layout)
 
     created: list[str] = []
     for rel, content in files.items():
@@ -105,10 +108,8 @@ def scaffold(root: Path | str, layout: TargetLayout, *, profile: ProjectProfile 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         created.append(rel)
-    if layout.language == "csharp":
-        created += _ensure_build_ignores(root_path, ("bin", "obj"))
-    elif layout.language in ("c", "cpp"):
-        created += _ensure_build_ignores(root_path, ("build",))
+    if toolchain.build_ignores:
+        created += _ensure_build_ignores(root_path, toolchain.build_ignores)
     return created
 
 

@@ -146,7 +146,8 @@ class PKGCodegenGrounder:
         prov = symbol.provenance
         header = f"### {symbol.kind.value} `{symbol.id}`" + (f"  @ {prov}" if prov else "")
         snippet = self._read_span(symbol)
-        body = f"{header}\n```python\n{snippet}\n```\n" if snippet else f"{header}\n"
+        language = "perl" if symbol.id.startswith("perl:") else "python"
+        body = f"{header}\n```{language}\n{snippet}\n```\n" if snippet else f"{header}\n"
         return body + self._doc_block(symbol)
 
     def _doc_block(self, symbol: Node) -> str:

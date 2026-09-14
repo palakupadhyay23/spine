@@ -25,7 +25,7 @@ from orchestrator.pkg import FactStore
 from orchestrator.pkg.facts import EdgeKind, Node, NodeKind
 
 _TEST_PATH_RE = re.compile(
-    r"(^|/)tests?/|(^|/)__tests__/|(^|/)test_|_test\.|\.test\.|\.spec\.|Test\.\w+$", re.IGNORECASE
+    r"(^|/)tests?/|(^|/)__tests__/|(^|/)test_|_test\.|\.test\.|\.spec\.|Test\.\w+$|\.t$", re.IGNORECASE
 )
 
 

@@ -29,8 +29,8 @@ import shutil
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
+from orchestrator.sdlc.contracts import TestEnvironment as TestEnvironment
 from orchestrator.sdlc.testrunner import TestRunner, TestRunResult
 
 # Import module name (as seen in "No module named 'X'") → PyPI package name when
@@ -79,17 +79,6 @@ _SAFE_PACKAGES = {
 _FRAMEWORK_DEPS = ["pytest>=8", "pytest-asyncio>=0.24"]
 
 _MAX_AUTO_INSTALLS = 3
-
-
-@runtime_checkable
-class TestEnvironment(Protocol):
-    """An interpreter (and its installed deps) to run a worktree's tests with."""
-
-    @property
-    def python(self) -> str: ...
-    async def ensure(self, worktree: Path | str) -> None: ...
-    async def install(self, packages: list[str]) -> bool: ...
-    def describe(self) -> str: ...
 
 
 class LocalTestEnvironment:
@@ -381,6 +370,68 @@ def php_toolchain_available() -> bool:
     return shutil.which("php") is not None
 
 
+class PerlToolEnvironment:
+    """Core Perl/prove are required; installing declared CPAN dependencies is best effort."""
+
+    declared: set[str] = set()
+
+    def __init__(self) -> None:
+        self.setup_note = "dependencies not checked"
+
+    @property
+    def python(self) -> str:
+        raise RuntimeError("PerlToolEnvironment has no Python interpreter")
+
+    async def ensure(self, worktree: Path | str) -> None:
+        import logging
+
+        from orchestrator.sdlc.perl import distributions, perl_files
+        from orchestrator.sdlc.testrunner import _exec_capture
+
+        root = Path(worktree).resolve()
+        if not perl_toolchain_available():
+            raise RuntimeError("Perl codegen needs `perl` and `prove` on PATH (install both, then retry).")
+        if next(perl_files(root, (".xs",)), None) is not None:
+            raise RuntimeError("Perl XS builds are unsupported: this runner does not compile .xs sources.")
+        notes: list[str] = []
+        cpanm = shutil.which("cpanm")
+        if cpanm is None:
+            warning = "WARNING: cpanm is unavailable; using installed dependencies"
+            logging.getLogger(__name__).warning(warning)
+            notes.append(warning)
+        for dist in distributions(root) or [root]:
+            if not (dist / "cpanfile").is_file():
+                note = f"{dist.relative_to(root)}: no cpanfile; using installed dependencies"
+            elif cpanm is None:
+                note = "cpanfile present; dependency installation skipped because cpanm is unavailable"
+            else:
+                try:
+                    rc, output = await _exec_capture(
+                        (cpanm, "--installdeps", ".", "--notest"), cwd=str(dist), timeout=600
+                    )
+                    note = (
+                        f"{dist.relative_to(root)}: CPAN dependencies installed"
+                        if rc == 0
+                        else f"WARNING: cpanm exited {rc}; using installed dependencies: {output[-1000:]}"
+                    )
+                except OSError as exc:
+                    note = f"WARNING: cpanm could not run; using installed dependencies: {exc}"
+            if note.startswith("WARNING"):
+                logging.getLogger(__name__).warning(note)
+            notes.append(note)
+        self.setup_note = "; ".join(notes)
+
+    async def install(self, packages: list[str]) -> bool:
+        return False
+
+    def describe(self) -> str:
+        return f"Perl/prove; {self.setup_note}"
+
+
+def perl_toolchain_available() -> bool:
+    return shutil.which("perl") is not None and shutil.which("prove") is not None
+
+
 class GoToolEnvironment:
     """Go build toolchain. Dependencies are resolved from ``go.mod`` (not pip), so
     ``install`` (auto-heal) is a no-op; ``ensure`` runs ``go mod download`` best-effort
@@ -515,64 +566,17 @@ def make_test_environment(language: str = "python", *, build_tool: str = "") -> 
     """The test environment for ``language``: Java toolchain, Node toolchain
     (``build_tool`` selects the package manager), or a Python venv
     (``VenvTestEnvironment`` unless ``SDLC_TEST_ISOLATION=local``)."""
-    if language == "java":
-        return JavaToolEnvironment()
-    if language == "typescript":
-        return NodeToolEnvironment(build_tool or "npm")
-    if language == "csharp":
-        return DotnetToolEnvironment()
-    if language in ("c", "cpp"):
-        return CToolEnvironment(build_tool or "cmake")
-    if language == "php":
-        return PhpToolEnvironment()
-    if language == "go":
-        return GoToolEnvironment()
-    if language == "sql":
-        return SqlToolEnvironment(build_tool or "postgres")
-    if os.getenv("SDLC_TEST_ISOLATION", "venv").lower() == "local":
-        return LocalTestEnvironment()
-    return VenvTestEnvironment()
+    from orchestrator.sdlc.toolchains import get_toolchain
+
+    return get_toolchain(language).environment(build_tool)
 
 
 def make_test_runner(language: str, env: TestEnvironment) -> TestRunner:
     """The runner for ``language``: Maven for Java, the package manager's ``test``
     script for TypeScript, pytest (on the env's interpreter) for Python."""
-    from orchestrator.sdlc.testrunner import (
-        CTestRunner,
-        DotnetTestRunner,
-        GoTestRunner,
-        MavenTestRunner,
-        MesonTestRunner,
-        NodeTestRunner,
-        PhpUnitTestRunner,
-        SubprocessTestRunner,
-    )
+    from orchestrator.sdlc.toolchains import get_toolchain
 
-    if language == "java":
-        return MavenTestRunner()
-    if language == "typescript":
-        return NodeTestRunner(package_manager=getattr(env, "package_manager", "npm"))
-    if language == "csharp":
-        return DotnetTestRunner()
-    if language in ("c", "cpp"):
-        # The build tool (cmake/meson) is carried on the C/C++ tool environment.
-        return MesonTestRunner() if getattr(env, "build_tool", "cmake") == "meson" else CTestRunner()
-    if language == "php":
-        return PhpUnitTestRunner(php=getattr(env, "php", "php"), phpunit=getattr(env, "phpunit", None))
-    if language == "go":
-        return GoTestRunner()
-    if language == "sql":
-        dialect = getattr(env, "dialect", "postgres")
-        # Default: fast, zero-dependency SQLite. Opt into real Postgres (Docker +
-        # the sql-postgres extra) for dialect fidelity via SDLC_SQL_ENGINE=postgres.
-        if os.getenv("SDLC_SQL_ENGINE", "sqlite").lower() == "postgres":
-            from orchestrator.sdlc.testrunner import PostgresSqlTestRunner
-
-            return PostgresSqlTestRunner(dialect=dialect)
-        from orchestrator.sdlc.testrunner import SqlTestRunner
-
-        return SqlTestRunner(dialect=dialect)
-    return SubprocessTestRunner(python=env.python)
+    return get_toolchain(language).runner(env)
 
 
 _MISSING_RE = re.compile(r"No module named ['\"]([\w.]+)['\"]")

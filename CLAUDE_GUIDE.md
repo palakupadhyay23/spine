@@ -4,7 +4,7 @@
 engineer you delegate tickets to. From inside **Claude Code** you can ask it to read a
 requirement, ground new code in your repo's real structure, generate and test that code,
 and — when you say so — open a pull request. It works for **greenfield** (fresh) and
-**brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, and PHP**.
+**brownfield** (existing) repos across **Python, Java, TypeScript, C#, C, C++, Go, PHP, and Perl**.
 
 This guide takes you from zero to a delivered feature, entirely through Claude Code.
 
@@ -776,7 +776,7 @@ approval — Spine refuses a live write without it. `live=true` needs a reachabl
 
 ## 10. Language support & toolchains
 
-Comprehension covers **ten front-ends** (Perl is comprehension-only so far — see below).
+Comprehension covers **ten front-ends**.
 Spine only needs a language's toolchain when it **builds/tests** generated code in that
 language:
 
@@ -790,6 +790,7 @@ language:
 | C++ | **CMake** (or **Meson + Ninja**) + a C++ compiler |
 | Go | the **`go`** toolchain (`go build` / `go test`); multi-module aware |
 | PHP | **PHP** (8.3 recommended); **Composer** when `composer.json` exists, otherwise a verified PHPUnit PHAR is downloaded outside the worktree |
+| Perl | **perl** + **prove**; **cpanm** optional for `cpanfile` dependencies |
 | SQL | nothing extra — schema, queries, stored procedures, ordered-migration folding |
 
 Comprehension front-ends beyond Python install as extras — one at a time
@@ -801,11 +802,10 @@ endpoints and EF Core entities into the graph; for C/C++ it builds the `#include
 merges header declarations with their definitions; for Go it computes **interface
 satisfaction** (`IMPLEMENTS`) by matching method sets.
 
-**Perl has no row above on purpose.** It's the tenth front-end and comprehends a codebase
-(`understand`/`state`/`design`/`investigate`/`blast_radius`/`explain_symbol` all work on
-one), but `sdlc feature --language perl` still exits 2 — codegen (`cpanm --installdeps .` →
-`prove -l t/`) is a separate, not-yet-started track, so `perl` deliberately stays out of
-`SUPPORTED_LANGUAGES` until that track's first commit adds the whole machinery.
+Perl codegen uses `perl -c` followed by owning tests and the whole `prove` suite.
+Nested suites run recursively; `cpanm` is optional and its absence is logged.
+A repository with `.perlcriticrc` additionally requires `Perl::Critic` for preflight.
+See [Perl code generation](USER_GUIDE.md#perl-code-generation).
 
 **How accurate is the graph these tools read?** Measured against a committed corpus covering
 all 10 of Spine's front-ends: **precision 1.00 on every node and edge kind, in every
@@ -831,7 +831,7 @@ yourself.
 | Codegen times out | Set a faster model: `ORCHESTRATOR_INTAKE_MODEL=...` (or `SDLC_CODEGEN_MODEL`). |
 | "live needs a repo to push to" | Pass `repo=...` or set `SDLC_REPO_URL`; ensure `GITHUB_TOKEN`/`GH_TOKEN` is set. |
 | A `live` call refuses to write | That's the gate — pass `confirm=true` together with `live=true`. |
-| Build fails for Java/TS/C#/C/C++/Go/PHP | The language toolchain isn't installed — see [§10](#10-language-support--toolchains). |
+| Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](#10-language-support--toolchains). |
 | Private repo clone fails | Set `GITHUB_TOKEN` (PAT) or configure the GitHub App. |
 
 For deeper diagnostics, ask Claude to run `doctor`, or run `orchestrator doctor` in a shell

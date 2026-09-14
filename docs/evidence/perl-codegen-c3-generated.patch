@@ -1,0 +1,480 @@
+commit f4b10aef3bf15fd060e3eec4a4d8a513e7fff569
+Author:     SDLC Orchestrator <sdlc@orchestrator.local>
+AuthorDate: Sun Sep 13 19:33:45 2026 -0400
+Commit:     SDLC Orchestrator <sdlc@orchestrator.local>
+CommitDate: Sun Sep 13 19:33:45 2026 -0400
+
+    DRY-1: Shop Cart subtotal and tax total
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f3f7521
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,8 @@
++blib/
++local/
++.prove
++Makefile
++Makefile.old
++MYMETA.json
++MYMETA.yml
++pm_to_blib
+diff --git a/cpanfile b/cpanfile
+new file mode 100644
+index 0000000..e85b38c
+--- /dev/null
++++ b/cpanfile
+@@ -0,0 +1,6 @@
++requires 'Carp';
++requires 'Test::More';
++
++on 'test' => sub {
++    requires 'Test::More';
++};
+diff --git a/lib/Shop/Cart.pm b/lib/Shop/Cart.pm
+new file mode 100644
+index 0000000..91388b1
+--- /dev/null
++++ b/lib/Shop/Cart.pm
+@@ -0,0 +1,160 @@
++package Shop::Cart;
++use strict;
++use warnings;
++
++use Carp qw(croak);
++
++our $VERSION = '0.01';
++
++=head1 NAME
++
++Shop::Cart - a small shopping cart with subtotal and tax total
++
++=head1 SYNOPSIS
++
++    use Shop::Cart;
++
++    my $cart = Shop::Cart->new(
++        items    => [ { price => 10, quantity => 2 }, { price => 5, quantity => 1 } ],
++        tax_rate => 0.1,
++    );
++
++    my $subtotal = $cart->subtotal;    # 25
++    my $total    = $cart->total;       # 27.5
++
++=head1 METHODS
++
++=head2 new
++
++    my $cart = Shop::Cart->new(%args);
++
++Constructs a cart. Accepts C<items> (an array reference of hash references
++with C<price> and C<quantity> keys) and C<tax_rate> (a non-negative number).
++Both are optional and default to an empty list and C<0> respectively.
++
++Croaks when the items are malformed, when a price is negative, when a
++quantity is not a positive integer, or when the tax rate is negative.
++
++=cut
++
++sub new {
++    my ( $class, %args ) = @_;
++
++    my $items = exists $args{items} && defined $args{items} ? $args{items} : [];
++    croak 'items must be an array reference'
++        unless ref $items eq 'ARRAY';
++
++    my @items;
++    my $index = 0;
++    for my $item ( @{$items} ) {
++        croak "item at index $index must be a hash reference"
++            unless ref $item eq 'HASH';
++
++        my $price    = $item->{price};
++        my $quantity = $item->{quantity};
++
++        croak "item at index $index has an invalid price: price must be a non-negative number"
++            unless _is_number($price) && $price >= 0;
++
++        croak "item at index $index has an invalid quantity: quantity must be a positive integer"
++            unless _is_number($quantity)
++            && $quantity > 0
++            && $quantity == int $quantity;
++
++        push @items, { %{$item} };
++        $index++;
++    }
++
++    my $tax_rate = exists $args{tax_rate} && defined $args{tax_rate} ? $args{tax_rate} : 0;
++    croak 'tax_rate must be a non-negative number'
++        unless _is_number($tax_rate) && $tax_rate >= 0;
++
++    my $self = {
++        items    => \@items,
++        tax_rate => $tax_rate + 0,
++    };
++
++    return bless $self, $class;
++}
++
++=head2 items
++
++    my @items = @{ $cart->items };
++
++Returns an array reference holding copies of the cart items. The returned
++structure is a copy, so mutating it does not affect the cart.
++
++=cut
++
++sub items {
++    my ($self) = @_;
++    return [ map { { %{$_} } } @{ $self->{items} } ];
++}
++
++=head2 tax_rate
++
++    my $rate = $cart->tax_rate;
++
++Returns the tax rate of the cart.
++
++=cut
++
++sub tax_rate {
++    my ($self) = @_;
++    return $self->{tax_rate};
++}
++
++=head2 subtotal
++
++    my $subtotal = $cart->subtotal;
++
++Returns the sum of C<price * quantity> over all items, without tax. Returns
++C<0> for an empty cart. Does not mutate the supplied items.
++
++=cut
++
++sub subtotal {
++    my ($self) = @_;
++
++    my $subtotal = 0;
++    for my $item ( @{ $self->{items} } ) {
++        $subtotal += $item->{price} * $item->{quantity};
++    }
++
++    return $subtotal;
++}
++
++=head2 total
++
++    my $total = $cart->total;
++
++Returns the subtotal increased by the tax rate. Returns C<0> for an empty
++cart. Does not mutate the supplied items.
++
++=cut
++
++sub total {
++    my ($self) = @_;
++    return $self->subtotal * ( 1 + $self->{tax_rate} );
++}
++
++# Returns true when the given value looks like a plain number.
++sub _is_number {
++    my ($value) = @_;
++
++    return 0 unless defined $value;
++    return 0 if ref $value;
++    return $value =~ /\A \s* [-+]? (?: \d+ (?: \.\d* )? | \.\d+ ) (?: [eE] [-+]? \d+ )? \s* \z/x
++        ? 1
++        : 0;
++}
++
++1;
++
++__END__
++
++=head1 AUTHOR
++
++Shop::Cart contributors
++
++=cut
+diff --git a/t/00-load.t b/t/00-load.t
+new file mode 100644
+index 0000000..d3b8e47
+--- /dev/null
++++ b/t/00-load.t
+@@ -0,0 +1,5 @@
++use strict;
++use warnings;
++use Test::More;
++use_ok('Shop::Cart');
++done_testing;
+diff --git a/t/10-cart.t b/t/10-cart.t
+new file mode 100644
+index 0000000..a92e643
+--- /dev/null
++++ b/t/10-cart.t
+@@ -0,0 +1,174 @@
++use strict;
++use warnings;
++
++use Test::More;
++
++use Shop::Cart;
++
++# Runs the given code reference, asserts it died, and returns the error string.
++sub _dies_with {
++    my ( $code, $name ) = @_;
++
++    my $ok = eval { $code->(); 1 };
++    my $error = $@;
++
++    ok( !$ok, $name );
++
++    return defined $error ? "$error" : '';
++}
++
++sub test_cart_subtotal_and_total {
++    my $cart = Shop::Cart->new(
++        items    => [ { price => 10, quantity => 2 }, { price => 5, quantity => 1 } ],
++        tax_rate => 0.1,
++    );
++
++    isa_ok( $cart, 'Shop::Cart', 'constructor returns a Shop::Cart' );
++    is( $cart->subtotal, 25,   'subtotal sums price * quantity' );
++    is( $cart->total,    27.5, 'total applies the tax rate' );
++    is( $cart->tax_rate, 0.1,  'tax_rate accessor returns the supplied rate' );
++
++    my $items = $cart->items;
++    is( ref $items, 'ARRAY', 'items accessor returns an array reference' );
++    is( scalar @{$items}, 2, 'items accessor returns both items' );
++    is( $items->[0]{price},    10, 'first item price preserved' );
++    is( $items->[0]{quantity}, 2,  'first item quantity preserved' );
++    is( $items->[1]{price},    5,  'second item price preserved' );
++    is( $items->[1]{quantity}, 1,  'second item quantity preserved' );
++
++    my $single = Shop::Cart->new(
++        items    => [ { price => 2.5, quantity => 4 } ],
++        tax_rate => 0.2,
++    );
++    is( $single->subtotal, 10, 'subtotal handles fractional prices' );
++    is( $single->total,    12, 'total handles fractional prices' );
++
++    return;
++}
++
++sub test_cart_defaults_and_empty {
++    my $empty = Shop::Cart->new();
++    is( $empty->subtotal, 0, 'omitted items give subtotal zero' );
++    is( $empty->total,    0, 'omitted items give total zero' );
++    is( $empty->tax_rate, 0, 'tax_rate defaults to zero' );
++    is_deeply( $empty->items, [], 'items default to an empty array reference' );
++
++    my $explicit = Shop::Cart->new( items => [], tax_rate => 0.25 );
++    is( $explicit->subtotal, 0,    'empty items array gives subtotal zero' );
++    is( $explicit->total,    0,    'empty items array gives total zero' );
++    is( $explicit->tax_rate, 0.25, 'tax rate is still recorded for an empty cart' );
++
++    my $no_tax = Shop::Cart->new( items => [ { price => 3.5, quantity => 4 } ] );
++    is( $no_tax->tax_rate, 0,  'omitted tax_rate defaults to zero' );
++    is( $no_tax->subtotal, 14, 'subtotal computed without a tax rate' );
++    is( $no_tax->total,    14, 'total equals subtotal without a tax rate' );
++
++    my $undef_args = Shop::Cart->new( items => undef, tax_rate => undef );
++    is( $undef_args->subtotal, 0, 'undef items behave like an empty cart' );
++    is( $undef_args->total,    0, 'undef items give total zero' );
++    is( $undef_args->tax_rate, 0, 'undef tax_rate defaults to zero' );
++
++    my $zero_price = Shop::Cart->new( items => [ { price => 0, quantity => 3 } ], tax_rate => 0.5 );
++    is( $zero_price->subtotal, 0, 'zero price items are allowed' );
++    is( $zero_price->total,    0, 'zero price items give a zero total' );
++
++    return;
++}
++
++sub test_cart_rejects_invalid_input {
++    my $err;
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => -1, quantity => 1 } ] ) },
++        'negative price is rejected' );
++    like( $err, qr/price/, 'negative price error mentions price' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 'free', quantity => 1 } ] ) },
++        'non-numeric price is rejected' );
++    like( $err, qr/price/, 'non-numeric price error mentions price' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { quantity => 1 } ] ) },
++        'missing price is rejected' );
++    like( $err, qr/price/, 'missing price error mentions price' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => 0 } ] ) },
++        'zero quantity is rejected' );
++    like( $err, qr/quantity/, 'zero quantity error mentions quantity' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => -2 } ] ) },
++        'negative quantity is rejected' );
++    like( $err, qr/quantity/, 'negative quantity error mentions quantity' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => 1.5 } ] ) },
++        'non-integer quantity is rejected' );
++    like( $err, qr/quantity/, 'non-integer quantity error mentions quantity' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => [ { price => 5, quantity => 'two' } ] ) },
++        'non-numeric quantity is rejected' );
++    like( $err, qr/quantity/, 'non-numeric quantity error mentions quantity' );
++
++    $err = _dies_with(
++        sub {
++            Shop::Cart->new(
++                items => [ { price => 1, quantity => 1 }, { price => 1, quantity => 0 } ] );
++        },
++        'invalid item after a valid one is rejected'
++    );
++    like( $err, qr/index 1/, 'error reports the offending item index' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => { price => 1, quantity => 1 } ) },
++        'non-array items are rejected' );
++    like( $err, qr/array reference/, 'items error mentions array reference' );
++
++    $err = _dies_with( sub { Shop::Cart->new( items => ['not a hash'] ) },
++        'non-hash item is rejected' );
++    like( $err, qr/hash reference/, 'item error mentions hash reference' );
++
++    $err = _dies_with(
++        sub { Shop::Cart->new( items => [ { price => 5, quantity => 1 } ], tax_rate => -0.2 ) },
++        'negative tax rate is rejected'
++    );
++    like( $err, qr/tax_rate/, 'tax rate error mentions tax_rate' );
++
++    $err = _dies_with( sub { Shop::Cart->new( tax_rate => 'lots' ) },
++        'non-numeric tax rate is rejected' );
++    like( $err, qr/tax_rate/, 'non-numeric tax rate error mentions tax_rate' );
++
++    return;
++}
++
++sub test_cart_does_not_mutate_items {
++    my @items = ( { price => 10, quantity => 2 }, { price => 5, quantity => 1 } );
++    my $snapshot = [ map { { %{$_} } } @items ];
++
++    my $cart = Shop::Cart->new( items => \@items, tax_rate => 0.1 );
++
++    is( $cart->subtotal, 25,   'subtotal computed from supplied items' );
++    is( $cart->total,    27.5, 'total computed from supplied items' );
++
++    is_deeply( \@items, $snapshot, 'supplied items are unchanged after calculations' );
++
++    $items[0]{price} = 1000;
++    is( $cart->subtotal, 25,   'mutating the caller items does not change the cart subtotal' );
++    is( $cart->total,    27.5, 'mutating the caller items does not change the cart total' );
++
++    push @items, { price => 99, quantity => 1 };
++    is( scalar @{ $cart->items }, 2, 'appending to the caller array does not change the cart' );
++
++    my $returned = $cart->items;
++    $returned->[0]{quantity} = 99;
++    push @{$returned}, { price => 1, quantity => 1 };
++    is( $cart->subtotal,          25, 'mutating the returned items does not change the cart' );
++    is( scalar @{ $cart->items }, 2,  'cart still holds two items' );
++
++    is( $cart->subtotal, $cart->subtotal, 'subtotal is repeatable' );
++    is( $cart->total,    $cart->total,    'total is repeatable' );
++
++    return;
++}
++
++test_cart_subtotal_and_total();
++test_cart_defaults_and_empty();
++test_cart_rejects_invalid_input();
++test_cart_does_not_mutate_items();
++
++done_testing;
+diff --git a/t/20-dist-metadata.t b/t/20-dist-metadata.t
+new file mode 100644
+index 0000000..7b73c8c
+--- /dev/null
++++ b/t/20-dist-metadata.t
+@@ -0,0 +1,83 @@
++use strict;
++use warnings;
++
++use Test::More;
++
++use Shop::Cart;
++
++# Slurps a file from the distribution root, returning its contents.
++sub _slurp {
++    my ($path) = @_;
++
++    open my $fh, '<', $path or return undef;
++    local $/ = undef;
++    my $content = <$fh>;
++    close $fh;
++
++    return defined $content ? $content : '';
++}
++
++sub test_cart_distribution_declares_prereqs {
++    ok( -f 'cpanfile', 'cpanfile exists in the distribution root' );
++
++    my $cpanfile = _slurp('cpanfile');
++    ok( defined $cpanfile && length $cpanfile, 'cpanfile is readable and non-empty' );
++
++    $cpanfile = '' unless defined $cpanfile;
++
++    like( $cpanfile, qr/\brequires\b/, 'cpanfile declares runtime requirements' );
++    like( $cpanfile, qr/\btest\b/,     'cpanfile has a test phase block' );
++    like(
++        $cpanfile,
++        qr/requires\s+['"]Test::More['"]/,
++        'cpanfile requires Test::More, the framework t/ uses'
++    );
++    like(
++        $cpanfile,
++        qr/requires\s+['"]Carp['"]/,
++        'cpanfile requires Carp, which Shop::Cart uses for croak'
++    );
++
++    # The declared prerequisites must actually be loadable, otherwise the
++    # distribution metadata is lying about what Shop::Cart needs.
++    for my $module ( $cpanfile =~ /requires\s+['"]([\w:]+)['"]/g ) {
++        my $ok = eval "require $module; 1";    ## no critic (StringyEval)
++        ok( $ok, "declared prerequisite $module is installed" );
++    }
++
++    ok( Shop::Cart->can('subtotal'), 'Shop::Cart loads with the declared prereqs available' );
++
++    return;
++}
++
++sub test_cart_distribution_ignores_build_artifacts {
++    ok( -f '.gitignore', '.gitignore exists in the distribution root' );
++
++    my $gitignore = _slurp('.gitignore');
++    ok( defined $gitignore && length $gitignore, '.gitignore is readable and non-empty' );
++
++    my @patterns = grep { length && !/\A\s*#/ }
++        map { my $line = $_; $line =~ s/\s+\z//; $line =~ s/\A\s+//; $line }
++        split /\n/, ( defined $gitignore ? $gitignore : '' );
++
++    ok( scalar @patterns, '.gitignore lists at least one ignore pattern' );
++
++    my %pattern = map { $_ => 1 } @patterns;
++
++    ok( $pattern{'blib/'} || $pattern{'blib'}, '.gitignore ignores the blib build directory' );
++    ok( $pattern{'Makefile'} || $pattern{'Makefile.old'} || $pattern{'*.old'},
++        '.gitignore ignores generated Makefiles' );
++    ok( $pattern{'MYMETA.json'} || $pattern{'MYMETA.*'} || $pattern{'MYMETA.yml'},
++        '.gitignore ignores MYMETA files' );
++
++    ok( !$pattern{'lib/'},  '.gitignore does not ignore lib/, which holds Shop::Cart' );
++    ok( !$pattern{'t/'},    '.gitignore does not ignore t/, which holds the tests' );
++    ok( !$pattern{'cpanfile'}, '.gitignore does not ignore the cpanfile' );
++
++    return;
++}
++
++test_cart_distribution_declares_prereqs();
++test_cart_distribution_ignores_build_artifacts();
++
++done_testing;
