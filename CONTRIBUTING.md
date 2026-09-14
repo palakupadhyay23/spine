@@ -53,10 +53,27 @@ top unresolved import targets, so this no longer needs re-deriving by hand each 
 the documentation audit above walked against
 [docs/reviewing/docs-matrix.md](docs/reviewing/docs-matrix.md) (plus
 [docs/reviewing/language-frontend-checklist.md](docs/reviewing/language-frontend-checklist.md)
-when a front-end changed). A language-track roadmap's own phase table is checked by
+when a front-end changed). A roadmap's own phase table is checked by
 `python scripts/roadmap-status.py --check` — a DONE phase with no Evidence, a stale
 top-of-document Status line, or a codegen phase started before its comprehension
-dependency landed. Maintainers who use Claude Code carry it as a local `/review-pr`
+dependency landed. It scans `docs/specs/*.md`; name a path to also check a plan kept
+outside the checkout, which is where plans for non-language tracks live:
+
+```bash
+python scripts/roadmap-status.py --check ~/plans/my-track.md
+```
+
+**Starting a plan.** Copy [`docs/specs/templates/track-plan.md`](docs/specs/templates/track-plan.md)
+— the skeleton every development plan here starts from, whatever the subject. Its §5 is a
+generic housekeeping block (branch off `develop`, the gate, the docs audit, `episteme/`,
+rebase-never-re-run, one MR) that is identical across tracks and refilled only in its Evidence
+column, and its §6.1 is the table that assigns every tooling site hard-coding a name you are
+renaming to the phase that must carry it — in the same commit, because a rename landing ahead
+of its catch-up breaks the gate for everyone. A new language front-end has a more specific
+skeleton, [`language-track.md`](docs/specs/templates/language-track.md), which specialises it.
+Copy the template out of the checkout: a plan is not a design record, and tracking one adds a
+`SPEC-INDEX.md` row, two counts beside it, and this gate's indexing check for a document no
+user reads. Maintainers who use Claude Code carry it as a local `/review-pr`
 skill and a `pr-reviewer` subagent under `.claude/`, which this repository does not track;
 the repository keeps the reference documents and the scripts, which need no assistant.
 
