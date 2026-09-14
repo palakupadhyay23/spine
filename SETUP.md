@@ -171,11 +171,11 @@ The manual equivalents, for a `--reload` loop or a single process:
 ```bash
 docker compose -f docker-compose.dev.yml up -d && uv run alembic upgrade head
 uv run uvicorn orchestrator.registry.api.app:create_app --factory --reload --port 8000
-uv run python -m orchestrator.temporal.worker
+uv run python -m orchestrator.sdlc.worker
 ```
 
 What to do with a running stack — delegate a run, approve a gate, watch it — is
-[USER_GUIDE.md → Step 7](USER_GUIDE.md#step-7--the-full-pipeline--web-dashboard); every command
+[OPERATIONS.md → Step 7](OPERATIONS.md#step-7--the-full-pipeline--web-dashboard); every command
 is in [CLI_REFERENCE.md](CLI_REFERENCE.md).
 
 ---
@@ -259,6 +259,30 @@ See the [host configuration examples](AGENT_GUIDE.md#4-credentials).
 
 ---
 
+### Local and mixed model configuration
+
+```bash
+# Local: `ollama pull qwen2.5-coder` then `ollama serve`, then in .env:
+OLLAMA_API_BASE=http://localhost:11434
+ORCHESTRATOR_INTAKE_MODEL=ollama/qwen2.5-coder
+
+# Hosted Ollama / any OpenAI-compatible endpoint:
+OLLAMA_API_BASE=https://your-ollama-host
+```
+
+**Model choice matters more than the provider.** Reading requirements and review
+run fine on modest models, but code generation emits strict JSON and anchored
+edits — use a **coder** model there. You can even mix local and cloud per stage:
+
+```bash
+ORCHESTRATOR_INTAKE_MODEL=ollama/qwen2.5-coder   # cheap stages, local
+SDLC_CODEGEN_MODEL=claude-opus-5                  # codegen, cloud quality
+SDLC_REVIEW_MODEL=ollama/qwen2.5-coder            # the review judge
+```
+
+
+---
+
 ## 7. Environment
 
 `orchestrator init` scaffolds a `.env` from the same groups `doctor` checks. The three a
@@ -277,7 +301,7 @@ Only set the groups your workflow uses; optional capabilities remain off until e
 `SDLC_CODEGEN`, `SDLC_CODEGEN_MODEL` / `SDLC_REVIEW_MODEL`.
 
 **Pipeline & governance** — `SDLC_REPO_URL`, `SDLC_RUN_BUDGET_USD` (hard spend cap),
-`SPINE_SDLC_IMPERATIVE` (fall back to the pre-3.20 path; see below),
+`SPINE_SDLC_IMPERATIVE` (fall back to the pre-3.20 path),
 `SDLC_AGENTIC_CODEGEN` (ReAct loop, default off), `SDLC_AGENTIC_POLICY`,
 `SDLC_TEST_ISOLATION`, `SDLC_GITHUB_INSTALLATION_ID` (live PR auth).
 
@@ -293,6 +317,23 @@ Only set the groups your workflow uses; optional capabilities remain off until e
 (remote OAuth).
 
 **Semantic spine** — see [semantic-spine configuration](#semantic-spine-configuration).
+
+### Pipeline stages and gates
+
+| Env var | Default | Effect |
+|---|---|---|
+| `SDLC_COMPREHEND` | on | Comprehend the repo before the intents gate. |
+| `SDLC_DESIGN` | on | Produce a grounded design per issue before codegen. |
+| `SDLC_DESIGN_GATE` | **off** | Add a human **“approve designs”** gate (Gate 1.5, id `sdlc-<id>-2`) after the design wave, before any code is written. |
+
+### Repository and MCP access
+
+| Env var | Default | Effect |
+|---|---|---|
+| `ORCHESTRATOR_WORKSPACE_ROOT` | the cwd `up` ran in | Local repo paths must resolve under this root. |
+| `ORCHESTRATOR_REPO_ALLOWED_HOSTS` | `github.com,bitbucket.org,gitlab.com` | Hosts a repo URL may be cloned from. Add an enterprise/custom host, or `*` for any. `file://` / `http://` / localhost / private IPs are always blocked. |
+| `ORCHESTRATOR_REPO_ALLOW_ANY_LOCAL` | off | Allow any absolute **local** repo path (trusted single-user). |
+| `ORCHESTRATOR_MCP_CONFIG_WRITABLE` | off | Allow adding/editing MCP servers from the Connections page (writes `mcp.json`; a stdio server's `command` is executed on this machine — off by default). |
 
 ### Semantic-spine configuration
 
