@@ -61,7 +61,13 @@ for the models, commands, counts and limits.
 
 ## What's new
 
-**3.34.0 (current)** — Perl ships comprehension and codegen: packages, inheritance,
+**3.34.1 (current)** — documentation has one home per task: [AGENT_GUIDE.md](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md) replaces the two
+host guides (its MCP tool inventory is generated and gated), [SETUP.md](https://github.com/synaptixs/spine/blob/main/SETUP.md) owns installation and
+credentials, [USER_GUIDE.md](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md) the
+everyday build, and [OPERATIONS.md](https://github.com/synaptixs/spine/blob/main/OPERATIONS.md)
+the pipeline and dashboard walkthrough. No engine changes — the wheel is identical to 3.34.0.
+
+**3.34.0** — Perl ships comprehension and codegen: packages, inheritance,
 calls, Mojolicious/Dancer2 routes and DBIx::Class entities; builds use `perl -c`,
 configured `Perl::Critic`, then `prove`, with optional `cpanm`. A single toolchain
 registry now owns language dispatch, protected by **8 of 8** caught mutations.
