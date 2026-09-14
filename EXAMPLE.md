@@ -21,8 +21,10 @@ A normal day: a bug report in someone else's 78-file codebase, and no idea where
 
 ## Setup — 30 seconds
 
+Installation options and prerequisites: [SETUP.md](SETUP.md#install-the-published-tool).
+
 ```bash
-pip install synaptixs-spine
+uv tool install synaptixs-spine
 git clone --depth 1 https://github.com/pallets/click.git
 cd click
 ```

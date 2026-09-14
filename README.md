@@ -45,7 +45,7 @@ flowchart LR
 nothing — `state` reads your code and prints what it found:
 
 ```bash
-pip install synaptixs-spine
+uv tool install synaptixs-spine
 orchestrator state /path/to/your/repo
 ```
 
@@ -159,7 +159,7 @@ so a PHP service can be the provider in a cross-repository join; Eloquent and Do
 `Entity`s. It arrived from a contributor and went through the first run of a maintainer review
 (the `/review-pr` skill, tracked in the repository until 3.33.1) — which found, and this release fixes, five
 ways the front-end asserted facts the source did not contain, and a cache key that could not tell
-whether the PHP grammar was installed. `pip install 'synaptixs-spine[php]'`.
+whether the PHP grammar was installed. [install the PHP extra](https://github.com/synaptixs/spine/blob/main/SETUP.md#optional-extras).
 
 **3.32.0** — **the plugin speaks the whole protocol.** Spine's MCP server now carries
 more than tools. Five **prompts** hand Codex, Claude Desktop and claude.ai the same "which tool, in
@@ -469,7 +469,7 @@ MCP server so Claude Code / Codex / your IDE can call the pipeline (with the sam
 
 **We'd genuinely like the help, and the codebase is unusually easy to be useful in.**
 
-It's plain Python. `pip install -e ".[dev]"`, and the test suite runs in about three
+It's plain Python. [install from source](https://github.com/synaptixs/spine/blob/main/SETUP.md#2-install-from-source), and the test suite runs in about three
 minutes with no services, no API key and no network. There's no build step anywhere —
 the web UI is vanilla JS on purpose. Most of the interesting work is a pure function
 over a graph, which means you can hold a change in your head and prove it with a

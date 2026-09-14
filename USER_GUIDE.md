@@ -51,56 +51,13 @@ You do **not** need Docker, a database, or any servers for Steps 1–6.
 
 ## Step 1 — Install
 
-The published package is `synaptixs-spine`; the command it gives you is
-`orchestrator`.
-
-### From PyPI (just the tool)
-
 ```bash
-pip install synaptixs-spine
-orchestrator --help
+uv tool install 'synaptixs-spine[sdlc]'
 ```
 
-Optional extras, added when you need them:
-- `pip install 'synaptixs-spine[sdlc]'` — run the generated tests (the `sdlc feature`/`run` path)
-- `pip install 'synaptixs-spine[all]'` — everything below at once: every language front-end,
-  the MCP server and doc ingestion. This is the right install for the Claude Code / Codex
-  plugin; `[languages]` is the front-ends on their own.
-- `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
-  parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
-  SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or
-  **Meson + Ninja** (matching the target repo's build system); **Go** codegen needs the **`go`
-  toolchain** on PATH (`go build`/`go test`). `[sql]` adds `.sql`
-  comprehension (schema/queries/procedures + migration folding) — no toolchain needed. `[php]`
-  adds `.php` comprehension + a call graph (namespaces, classes/interfaces/traits, `CALLS`,
-  typed-receiver resolution) + Laravel/Slim/Symfony routes + Eloquent/Doctrine entities —
-  codegen uses Composer or a pinned PHPUnit PHAR. `[perl]` adds `.pl`/`.pm`/`.t` comprehension
-  (every package is its own type, inheritance across its five spellings)
-  and codegen: install `perl` and `prove` on PATH; `cpanm` is optional for dependencies.
-- `[docs]` — **PDF** doc ingestion; `[office]` — **Word/Excel** (`.docx`/`.xlsx`) ingestion.
-  Markdown, `.rst`, `.txt` and **HTML** need no extra. Without an extra those files are simply
-  skipped, so a base install still ingests everything it can read.
-- `[media]` — **image OCR** (needs a system `tesseract` binary); `[asr]` — **local audio/video
-  transcription** (Whisper). Only the opt-in `orchestrator media extract` uses these; the
-  deterministic build never does. See *Bringing diagrams & recordings into the graph* below.
-- `[mcp]` (MCP client), `[otel]` (live tracing)
-
-### Upgrading
-
-- **PyPI install:** `pip install --upgrade synaptixs-spine` (verify with `pip show synaptixs-spine`).
-- **Source checkout:** `git pull && uv sync --extra dev`.
-
-### From source (needed for Step 7's pipeline, or to develop)
-
-```bash
-git clone https://github.com/synaptixs/spine
-cd spine
-uv sync --extra dev            # installs the project + dev tools
-uv run orchestrator --help     # in this layout, prefix CLI calls with `uv run`
-```
-
-> The rest of the guide writes plain `orchestrator …`. On a source checkout,
-> read that as `uv run orchestrator …`.
+See [SETUP.md](SETUP.md#install-the-published-tool) for all extras, upgrades,
+uninstalling, and [source checkouts](SETUP.md#2-install-from-source). The rest of
+this guide writes `orchestrator …`; on a checkout use `uv run --frozen orchestrator …`.
 
 ---
 
@@ -128,51 +85,10 @@ Configure when you want Spine to *write* code, which is Step 2 onward.
 
 ## Step 2 — Configure
 
-```bash
-orchestrator init      # scaffolds a commented .env, then checks readiness
-# open .env and fill in: your LLM key, your model, and (later) Confluence/Jira + repo
-orchestrator doctor    # readiness report — tells you exactly what's set and what's missing
-```
-
-`doctor` reads `.env` automatically — run it from the folder that has your
-`.env`. Start minimal; you only need the LLM settings for your first run.
-
-| Setting | What it's for | Needed by |
-|---|---|---|
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your LLM provider | Step 3 |
-| `ORCHESTRATOR_MODEL` | One model for every stage (optional — defaults to `claude-opus-5`) | Step 3 |
-| `CONFLUENCE_*`, `JIRA_*` | Read requirements / file issues | Step 4 |
-| `SDLC_REPO_URL` | The repo it builds **into** | Step 4 |
-| `SDLC_PR_BASE` | The branch a run builds **on** and opens its PR into — set this to `develop` if that is where you merge, or runs are written against `main` | Step 4 |
-| `GITHUB_TOKEN` *(or `GITHUB_APP_*`)* | Auth for a private target repo | Step 4 |
-
-### Choosing a model
-
-Every stage runs on `claude-opus-5` unless you say otherwise. To see what you can
-point it at — with context windows, prices, and which models support the tool
-calling the pipeline requires:
-
-```bash
-orchestrator models                    # everything, plus what each stage uses now
-orchestrator models --provider openai  # just one vendor
-```
-
-Set one knob for everything, or a model per stage:
-
-| Variable | Drives |
-|---|---|
-| `ORCHESTRATOR_MODEL` | every stage |
-| `SDLC_CODEGEN_MODEL` | codegen — implement, refine, revise, author_tests |
-| `SDLC_JUDGE_MODEL` | the acceptance judge |
-| `ORCHESTRATOR_INTAKE_MODEL` | intent extraction and spec writing |
-| `ORCHESTRATOR_REASONING_EFFORT` | reasoning level on tool-calling models (default `high`) |
-
-A stage's own variable wins over `ORCHESTRATOR_MODEL`, which wins over the default.
-Pointing a stage at another vendor needs that vendor's key in the environment.
-
-> **Tool calling is required, not preferred.** Codegen and the judge both force a
-> tool call. On a model without it they fall back to reading prose out of a text
-> reply, which is far less reliable — `orchestrator models` marks those.
+Run `orchestrator init` to scaffold `.env`, then `orchestrator doctor` from that
+directory to check readiness. [Credentials and model selection](SETUP.md#credentials-and-model-selection)
+lists the settings for a first build, real sources, and live PRs. Read-only
+comprehension needs no model key.
 
 ---
 
@@ -358,7 +274,7 @@ is: `orchestrator understand .` → commit `episteme/`, then re-run whenever the
 
 > **Multi-language.** Comprehension covers **Python** out of the box and **Java**,
 > **TypeScript**, **C#**, **C**, **C++**, **Go**, **PHP**, **Perl**, and **SQL** when the matching parser
-> extra is installed (`pip install 'synaptixs-spine[java]'` / `[typescript]` / `[csharp]` / `[c]`
+> extra is installed ([SETUP extras](SETUP.md#optional-extras): `[java]` / `[typescript]` / `[csharp]` / `[c]`
 > / `[cpp]` / `[go]` / `[php]` / `[perl]` / `[sql]`). `understand`, codegen grounding, and `pkg extract` then
 > process `.java` / `.ts` / `.cs` / `.c` / `.h` / `.cpp` / `.hpp` / `.go` / `.php` / `.pl` / `.pm` / `.t` / `.sql` too
 > (`.blade.php` is skipped as a template, not PHP source). PHP also builds and tests code with Composer or a pinned PHPUnit PHAR.
@@ -1091,9 +1007,7 @@ database, and more — reusing the same `mcpServers` config you already use with
 Claude or Codex.
 
 **9.1 — Install + point at a config:**
-```bash
-pip install 'synaptixs-spine[mcp]'        # or from source: uv sync --extra mcp
-```
+Install `[mcp]` using the [SETUP extras](SETUP.md#optional-extras).
 > **Install the extra first, or the failure is silent.** Without it, `mcp list` prints an
 > empty tool list rather than an error — a missing dependency currently looks identical to an
 > unreachable server. If you see zero tools, check this before debugging the server.
@@ -1228,9 +1142,7 @@ The reverse of Step 9: Spine can **become** an MCP server, so any host
 — Claude Code, the Codex app, Claude Desktop, claude.ai — can call your
 "intent → reviewed PR" pipeline as tools, with the **same human gates**.
 
-```bash
-pip install 'synaptixs-spine[all]'        # or from source: uv sync --extra all
-```
+Install `[all]` using the [SETUP extras](SETUP.md#optional-extras).
 > `[mcp]` alone serves the tools but a **Python-only** graph — a Java or Go repo yields zero
 > nodes rather than an error. `[all]` is `[languages]` + `[mcp]` + doc ingestion, which is what
 > the comprehension tools are worth installing for.
@@ -1269,7 +1181,6 @@ deliver into a fresh **or** an existing repo from the host.
 [`codex-marketplace/`](codex-marketplace/). The MCP-server config above and the plugin
 are two layers of the same thing — the plugin *bundles* that server plus branding.
 ```bash
-pip install 'synaptixs-spine[all]'            # puts `orchestrator-mcp` on PATH
 codex plugin marketplace add synaptixs/spine  # or a local path to codex-marketplace/
 codex plugin add spine@spine
 ```
@@ -1300,21 +1211,7 @@ Destructive tools stay gated regardless of auth: `sdlc_feature(live=true)` and
 
 ## Step 11 — Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| `doctor` shows everything missing | Run it from the folder that has your `.env`. |
-| Codegen times out | Set `ORCHESTRATOR_MODEL` to a faster model (see `orchestrator models`). |
-| Private repo clone fails | Set `GITHUB_TOKEN` (PAT) or the GitHub App (`GITHUB_APP_*`). |
-| Console asks for an API key | Paste the `ORCHESTRATOR_API_KEY` you started the server with (`dev-key` above). |
-| `sdlc run` hangs at a gate | Approve it in the console or via `/v1/approvals/.../approve`. |
-| Worker does nothing | It reads the process env, not `.env` — `set -a; source .env; set +a` before starting it. |
-| `mcp list` shows no servers | Add an `mcpServers` file (`--config`, `$ORCHESTRATOR_MCP_CONFIG`, or `./mcp.json`). |
-| `mcp` commands fail to import | Install the extra: `pip install 'synaptixs-spine[mcp]'` (or `uv sync --extra mcp`). |
-| An MCP tool is "not allow-listed" / write-gated | Add it to the server's `allow`; for mutating tools set `write_enabled: true`. |
-| Agentic loop falls back to single-shot | Use a tool-calling model (see `orchestrator models`) and set `SDLC_CODEGEN=llm`. |
-| `orchestrator-mcp --http` refuses to start | Set `ORCHESTRATOR_MCP_TOKEN` or `…_INTROSPECTION_URL`, bind `127.0.0.1`, or pass `--allow-unauthenticated` on a trusted net. |
-| Remote client gets 401 | Send `Authorization: Bearer <token>`; for introspection confirm the token is active and carries the required scope. |
-| `Nondeterminism error` on replay | An in-flight workflow predates a code change. Terminate the stale run (Temporal UI); new runs are unaffected. |
+Use the shared [troubleshooting reference](SETUP.md#10-troubleshooting).
 
 ---
 

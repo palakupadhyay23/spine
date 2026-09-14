@@ -635,7 +635,7 @@ orchestrator media extract talk.mp3 --asr api \
   --api-endpoint https://api.openai.com/v1/audio/transcriptions --allow-remote
 ```
 
-> Requires `pip install 'synaptixs-spine[media]'` (image OCR) and/or `'[asr]'` (local audio/video).
+> Requires the [SETUP extras](SETUP.md#optional-extras) `[media]` (image OCR) and/or `[asr]` (local audio/video).
 > The remote API backend reads its key from `$OPENAI_API_KEY` — never a flag.
 
 ---

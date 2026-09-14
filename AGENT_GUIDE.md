@@ -46,7 +46,7 @@ entry for direct control over its command, environment and paths. Both expose th
 Install the engine once so `orchestrator-mcp` is on PATH:
 
 ```bash
-pip install 'synaptixs-spine[all]'
+uv tool install 'synaptixs-spine[all]'
 ```
 
 `[all]` includes language front-ends, document ingestion and the MCP server. `[mcp]`
@@ -99,32 +99,10 @@ For a raw MCP setup instead of a plugin, use your host's configuration below.
 
 ## 4. Credentials
 
-Spine reads provider/source/tracker creds from a **`.env`** file (same format the CLI
-uses — copy [`.env.example`](.env.example) and fill in what you need). The *minimum* for
-generating + testing code is **one LLM key**:
-
-```bash
-# .env  (the bare minimum)
-OPENAI_API_KEY=sk-...                  # or ANTHROPIC_API_KEY=sk-ant-... (or an Ollama endpoint)
-ORCHESTRATOR_MODEL=claude-opus-5       # one model for every stage (this is the default)
-```
-
-Use any LiteLLM‑supported model string here (run `orchestrator models` to list
-them with prices and tool-calling support; e.g. an Anthropic
-`claude-*` id, or `ollama/<model>` with `OLLAMA_API_BASE`) — match it to the key you set.
-
-Add more only for what you do:
-
-| You want to… | Add to `.env` |
-|---|---|
-| Read a spec from a file | *(nothing — `file://` needs no creds)* |
-| Read from Confluence / Jira / Notion | `CONFLUENCE_*` / `JIRA_*` / `NOTION_API_TOKEN` |
-| Open a **live** PR | `GITHUB_TOKEN` (or `GH_TOKEN`), and `SDLC_REPO_URL` for the default repo |
-| Create a **live** Jira issue | `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` / `JIRA_PROJECT_KEY` |
-
-Set `ORCHESTRATOR_DOTENV` to an absolute path in the server environment when the
-host's working directory is not the project containing your `.env`. Read-only tools
-such as `doctor` and `pkg_grounding` need no provider credentials.
+Follow [SETUP → Credentials and model selection](SETUP.md#credentials-and-model-selection)
+for `.env` values. When the host starts from another directory, set
+`ORCHESTRATOR_DOTENV` to the **absolute** `.env` path as shown below.
+Read-only comprehension and deterministic planning need no provider key.
 
 ### Claude Code configuration
 
@@ -783,7 +761,7 @@ language:
 | SQL | nothing extra — schema, queries, stored procedures, ordered-migration folding |
 
 Comprehension front-ends beyond Python install as extras — one at a time
-(`pip install 'synaptixs-spine[go]'`) or all at once with `[languages]`, which `[all]`
+([SETUP extras](SETUP.md#optional-extras)) or all at once with `[languages]`, which `[all]`
 already includes.
 
 `language=auto` detects from the repo. For C#, Spine additionally lifts ASP.NET Core
@@ -807,26 +785,15 @@ For measured graph precision and recall, see [BENCHMARK.md](BENCHMARK.md) or run
 
 ## 11. Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| The host does not see Spine's tools | Restart it and follow the checks in [Install](#3-install). |
-| `doctor` says the LLM provider is missing | Your `.env` isn't being found — use the [server configuration](#4-credentials) and set `ORCHESTRATOR_DOTENV` to its **absolute** path. |
-| `orchestrator-mcp: command not found` | The server isn't on PATH. `pip install 'synaptixs-spine[all]'`, or point `command` at the absolute path of the console script. |
-| The server connects and dies ("Connection closed"), or tools are missing | A **stale** `orchestrator-mcp` on PATH — a console script left by an older checkout's venv. Ask your assistant to run `doctor` (or run `orchestrator doctor`): its `server` block names the **version, interpreter and MCP SDK** answering. If they aren't the install you expect: `uv tool install --force 'synaptixs-spine[all]'` (or reinstall into the venv you meant), then restart the host. |
-| Codegen times out | Set a faster model: `ORCHESTRATOR_INTAKE_MODEL=...` (or `SDLC_CODEGEN_MODEL`). |
-| "live needs a repo to push to" | Pass `repo=...` or set `SDLC_REPO_URL`; ensure `GITHUB_TOKEN`/`GH_TOKEN` is set. |
-| A `live` call refuses to write | That's the gate — pass `confirm=true` together with `live=true`. |
-| Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](#10-language-support--toolchains). |
-| Private repo clone fails | Set `GITHUB_TOKEN` (PAT) or configure the GitHub App. |
-
-For deeper diagnostics, ask your assistant to run `doctor`, or run `orchestrator doctor` in a shell
-from the folder with your `.env`.
+See [SETUP → Troubleshooting](SETUP.md#10-troubleshooting), then run
+`orchestrator doctor` from the folder containing `.env`. For host discovery and
+configuration paths, use [Install](#3-install) and [Credentials](#4-credentials).
 
 ---
 
 ## 12. Updating & uninstalling
 
-Update the engine with `pip install -U 'synaptixs-spine[all]'`. Refresh or remove the
+Use [SETUP](SETUP.md#updating-and-uninstalling) to update or uninstall the engine. Refresh or remove the
 plugin using your host's commands in [Install](#3-install); remove a raw server using
 [its configuration entry](#4-credentials). Restart the host after either change.
 

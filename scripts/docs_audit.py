@@ -236,14 +236,14 @@ def check_extras() -> list[str]:
     py = _read("pyproject.toml")
     mypy = re.search(r"\[\[tool\.mypy\.overrides\]\]\nmodule = \[(.*?)\]", py, re.S)
     mypy_mods = mypy.group(1) if mypy else ""
-    guide = _read("USER_GUIDE.md")
+    guide = _read("SETUP.md")
     meta_names = re.findall(r"[a-z-]+", languages_meta.split("[", 1)[-1])
     for extra, body in sorted(lang_extras.items()):
         grammar = re.search(r'"(tree-sitter-[a-z-]+)', body)
         module = grammar.group(1).replace("-", "_") if grammar else None
         packages = re.findall(r'"([a-z-]+)', body)
         if f"[{extra}]" not in guide:
-            out.append(f"[MISSING] extra {extra!r}: not mentioned as `[{extra}]` in USER_GUIDE.md")
+            out.append(f"[MISSING] extra {extra!r}: not mentioned as `[{extra}]` in SETUP.md")
         if extra not in meta_names:
             out.append(f"[MISSING] extra {extra!r}: absent from the `languages` meta-extra in pyproject.toml")
         in_dev = all(f'"{p}' in dev_body for p in packages)
