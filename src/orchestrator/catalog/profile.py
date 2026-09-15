@@ -15,7 +15,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS
+from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS, is_nested_repo
 
 _LANG_BY_SUFFIX = {
     ".py": "python",
@@ -102,9 +102,14 @@ class ProjectProfile:
 def _detect_languages(root: Path) -> frozenset[str]:
     found: set[str] = set()
     paths: list[Path] = []
-    for _dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".")]
-        paths.extend(Path(_dirpath) / name for name in sorted(filenames))
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".") and not is_nested_repo(here, d)
+        )
+        paths.extend(here / name for name in sorted(filenames))
     cpp_headers: frozenset[str] = frozenset()
     if importlib.util.find_spec("tree_sitter") and importlib.util.find_spec("tree_sitter_cpp"):
         from orchestrator.pkg.c_extractor import cpp_header_paths

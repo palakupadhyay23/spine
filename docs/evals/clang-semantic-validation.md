@@ -387,3 +387,25 @@ change, so the scoreboard was not regenerated.
 
 All four validation clone/copy directories and the scratch CST probe were removed.
 The roadmap remains excluded and untracked; `episteme/` is not part of this revision.
+
+
+## P6 — authorized before returning to P5
+
+The user requested P6 completion before revisiting P5. Documentation now explains
+installation, header routing, grounded-only enrichment, bounded reports and the
+measured limits. The [manual review record](clang-semantic-review.md) walks the
+full documentation matrix and relevant implementation/checklist sites.
+
+The review fixed a mismatch in profiling: a C++ TU inside a nested checkout could
+reclassify its parent repository's header. Profiling now observes the same `.git`
+file/directory boundary as extraction. The regression test failed before the fix
+and passes afterwards. No semantic graph identities or compile rules changed.
+
+All four pipeline shapes hold, Spine verification reports 0 errors/1 warning,
+and `understand .` builds 91 files. Physical libclang absent/present environments
+produce identical nodes across all 53 corpus roots, preserve every existing edge,
+and add edges only between grounded endpoints. The final release decision remains
+separate from completing these checks; the MR is prepared as a draft while P5's
+large-repository state smoke is revisited.
+
+P6 full suite: `3754 passed, 4 skipped, 51 deselected, 182 warnings in 211.56s (0:03:31)`. Phase gates and MCP inventory pass; accuracy reports zero gated regressions.

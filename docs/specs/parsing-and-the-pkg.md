@@ -228,6 +228,36 @@ reason.
 
 ---
 
+### Optional clang semantic pass
+
+C/C++ nodes still come from tree-sitter. After the CST front-ends finalize their
+facts, `pkg/clang_link.py` can add `CALLS` between already-grounded functions.
+It runs before `link_imports`; `FRONT_ENDS` and graph IDs remain unchanged.
+Headers ending in `.h` reached by literal C++ includes are routed to the C++ CST,
+independently of whether clang is installed.
+
+The `[clang]` extra supplies a bundled libclang library; `[all]` includes it and
+`[languages]` does not. The cache fingerprint includes availability and wheel
+version. Flags are synthesized from repository header directories, a fixed target
+and C11/C++17 modes, with system includes disabled. Compilation databases and host
+SDKs are never consulted.
+
+The CST side channel identifies pending calls by file and full byte range. Only
+source TUs with pending sites in their reachable headers/source are parsed. Clang
+must resolve an eligible declaration in an admitted repository file, whose USR
+maps to an existing grounded function ID; the caller must also be grounded.
+Ordinary parameter and method qualifiers collapse to the existing name-based
+identity. Template/local/anonymous declaration identities and operators remain
+refused. Virtual calls use the static declaration; conflicting candidates are
+refused. The pass never changes the node set.
+
+The report states recovered sites, total pending sites, parsed/total TUs,
+diagnostic/failed TUs, and a partition of unresolved sites by the furthest stage
+observed. These are coverage observations, not proof of complete resolution or
+attribution of every miss to missing headers. Latest measured recovery is 0.70%
+in the OpenCV fork and 31.47% in TinyXML-2, with the full denominators and runtime
+in the [validation record](../evals/clang-semantic-validation.md).
+
 ## 6. What this buys, measured
 
 The parser choice is not an aesthetic preference. It is what makes the accuracy claim possible:
@@ -236,7 +266,7 @@ The parser choice is not an aesthetic preference. It is what makes the accuracy 
 |---|---|
 | Precision | **1.00** on every node kind and every edge kind, all 10 languages — on the corpus, which now includes the shadowed-callee shape (§3) |
 | Recall | 1.00 on every kind except `CALLS` |
-| `CALLS` recall | 1.00 (c, sql) · 0.89 (perl) · 0.86 (typescript) · 0.75 (cpp, csharp, go, php) · 0.73 (python) · 0.67 (java) |
+| `CALLS` recall | 1.00 (c, sql) · 0.89 (perl) · 0.86 (typescript) · 1.00 (cpp with clang) · 0.75 (csharp, go, php) · 0.73 (python) · 0.67 (java) |
 | Invention | **0** on this repo, and **0** across 11 pinned public repos in 6 front-ends (2026-08-24). Java and SQL are recorded *not-applicable* with reasons rather than scored 0 |
 | Invention gate | **`strict`, zero per language** — the one metric gated on an absolute value rather than against the baseline, because it is the one with a correct value |
 

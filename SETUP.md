@@ -57,6 +57,11 @@ Optional extras, added when you need them:
   Adds edges between existing grounded symbols; no system LLVM or Xcode is needed.
   The native library is approximately 72 MB on macOS. Standard-library types are
   not resolved; missing headers reduce coverage. Included in `[all]`, not `[languages]`.
+  Install the C/C++ grammars alongside it, for example
+  `pip install 'synaptixs-spine[c,cpp,clang]'`. No compilation database or host SDK
+  is consulted. Inspect the `resolved N of M ... in K of T TUs` summary before
+  relying on coverage: [measured recovery](docs/evals/clang-semantic-validation.md)
+  ranges from 0.70% to 31.47% on the two validation repositories.
 - `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or

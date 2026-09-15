@@ -309,10 +309,13 @@ orchestrator catalog plan [PATH] [OPTIONS]
 
 ### `orchestrator pkg extract`
 
-For C/C++ repositories, text output includes `clang: resolved N of M unresolved call
+For single-repository C/C++ extraction, text output includes `clang: resolved N of M unresolved call
 sites in K of T TUs`, with diagnostic and failure counts. The optional `clang` extra
 adds only grounded CALLS edges; unavailable headers and unsupported symbols remain
-unresolved. `pkg verify` prints the same bounded extraction summary.
+unresolved. `pkg verify` prints the same bounded extraction summary. Counts refer
+to distinct call sites (including nested calls), not unique graph edges. No new
+command flag is needed; install the language parsers plus `[clang]`. See the
+[measured coverage limits](docs/evals/clang-semantic-validation.md).
 
 Extract grounded code facts from a repo and print a summary (read-only).
 

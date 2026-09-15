@@ -271,6 +271,18 @@ flowchart LR
   declaration with an out-of-line `Class::method` definition, templates emit their
   `Type`/`Function`, and `CALLS`/`REFERENCES` carry over.
 
+  Headers ending in `.h` reached by literal includes from C++ translation units
+  use the C++ CST parser, transitively; other `.h` files remain C. The optional
+  `[clang]` post-pass adds `CALLS` only between functions the CST already grounded.
+  It matches full source ranges, resolves ordinary argument/qualifier signatures
+  to existing name-based IDs, and keeps static virtual targets. It creates no
+  nodes and does not distinguish overloads or instantiate templates.
+  Only TUs with reachable unresolved sites are parsed, using synthesized
+  repository flags with no compilation database or host SDK. Missing system
+  headers constrain coverage. [Validation](docs/evals/clang-semantic-validation.md)
+  recovered 0.70% of pending sites in the OpenCV fork and 31.47% in TinyXML-2;
+  these fractions are not whole-repository call-graph recall.
+
   Go's module unit is the **package (its directory)** — every `.go` file in a dir merges
   onto one `Module`. Structs/interfaces/aliases become `Type` nodes, funcs and receiver
   methods become `Function`s, and struct fields become `Field`s. Its distinctive edge is

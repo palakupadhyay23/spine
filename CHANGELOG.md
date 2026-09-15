@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Added
+
+- Optional C/C++ semantic `CALLS` enrichment with `[clang]`, included in `[all]`.
+  Wheel-bundled libclang adds edges only between existing grounded symbols and
+  reports recovered call sites and parsed translation units. Ordinary overloads
+  retain the graph's existing name-based IDs. Synthesized repository flags ignore
+  compilation databases and system SDKs; standard-library resolution remains
+  unavailable. See the [parser design](docs/specs/parsing-and-the-pkg.md#optional-clang-semantic-pass)
+  and [validation results](docs/evals/clang-semantic-validation.md).
+
+### Changed
+
+- Headers ending in `.h` reached through literal C++ includes use the C++ CST
+  parser, including transitive includes. Other `.h` files retain C routing.
+- Semantic validation reports why pending calls remain unresolved. Full source
+  ranges keep nested calls with the same starting offset distinct.
+
 ## 3.34.2 — 2026-09-14
 
 ### Added
