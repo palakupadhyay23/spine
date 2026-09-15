@@ -52,7 +52,11 @@ Optional extras, added when you need them:
 - `[sdlc]` — run the generated tests (the `sdlc feature`/`run` path)
 - `[all]` — the language, MCP, SDLC and document extras together: every language front-end,
   the MCP server and doc ingestion. This is the right install for the Claude Code / Codex
-  plugin; `[languages]` is the front-ends on their own.
+  plugin; `[languages]` is the front-ends on their own. `[all]` also includes `[clang]`.
+- `[clang]` — optional C/C++ member-call resolution using wheel-bundled libclang.
+  Adds edges between existing grounded symbols; no system LLVM or Xcode is needed.
+  The native library is approximately 72 MB on macOS. Standard-library types are
+  not resolved; missing headers reduce coverage. Included in `[all]`, not `[languages]`.
 - `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or
