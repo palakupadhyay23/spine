@@ -4,11 +4,13 @@
 file extensions for languages, a handful of marker files for framework / DB /
 test runner — and folds in the task type derived from the intent. It is
 deliberately small (the v1 signal set); grow it only when a real project shows a
-gap. No AST parsing, no network, same input → same profile.
+gap. Literal C++ include routing uses the optional CST grammar; no network, same input
+and installed grammars → same profile.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,12 +101,20 @@ class ProjectProfile:
 
 def _detect_languages(root: Path) -> frozenset[str]:
     found: set[str] = set()
+    paths: list[Path] = []
     for _dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".")]
-        for name in filenames:
-            lang = _LANG_BY_SUFFIX.get(Path(name).suffix)
-            if lang:
-                found.add(lang)
+        paths.extend(Path(_dirpath) / name for name in sorted(filenames))
+    cpp_headers: frozenset[str] = frozenset()
+    if importlib.util.find_spec("tree_sitter") and importlib.util.find_spec("tree_sitter_cpp"):
+        from orchestrator.pkg.c_extractor import cpp_header_paths
+
+        cpp_headers = cpp_header_paths(root, paths)
+    for path in paths:
+        rel = path.relative_to(root).as_posix()
+        lang = "cpp" if rel in cpp_headers else _LANG_BY_SUFFIX.get(path.suffix)
+        if lang:
+            found.add(lang)
     return frozenset(found)
 
 

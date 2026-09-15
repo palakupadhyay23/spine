@@ -111,3 +111,14 @@ def test_profile_is_deterministic(tmp_path: Path) -> None:
     _write(tmp_path, "a.py")
     _write(tmp_path, "b.ts")
     assert ProjectProfile.from_repo(tmp_path) == ProjectProfile.from_repo(tmp_path)
+
+
+def test_cpp_reached_headers_do_not_falsely_report_c(tmp_path: Path) -> None:
+    import pytest
+
+    pytest.importorskip("tree_sitter_cpp")
+    _write(tmp_path, "main.cpp", '#include "api.h"\n')
+    _write(tmp_path, "api.h", "class Widget {};")
+    assert ProjectProfile.from_repo(tmp_path).languages == frozenset({"cpp"})
+    _write(tmp_path, "unused.h", "struct CRecord { int value; };")
+    assert ProjectProfile.from_repo(tmp_path).languages == frozenset({"c", "cpp"})

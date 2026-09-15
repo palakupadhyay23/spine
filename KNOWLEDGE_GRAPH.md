@@ -594,7 +594,7 @@ reviews honest.
 ## 10. How right is it? — measured, not asserted
 
 "Grounded" is an adjective; this is a number. `orchestrator pkg accuracy` scores the graph
-against a committed corpus of **47 hand-labelled fixture cases across all 10
+against a committed corpus of **49 hand-labelled fixture cases across all 10
 front-ends**, and the baseline lives in `src/orchestrator/pkg/scoreboard.json`.
 
 **Precision is 1.00 on every node kind and every edge kind, in all 10 languages.** Recall is

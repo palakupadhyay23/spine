@@ -106,3 +106,19 @@ clang: resolved 1 of 1 unresolved call sites in 1 of 1 TUs; 0 with diagnostics, 
 All phase quality gates pass. Impact API check before the routing phase:
 extract 0 callers / 0 impact nodes (existing instance-call limitation);
 fingerprint 11 / 44; resolve-or-drop 5 / 8.
+
+## P4 — header routing
+
+Routing tests plus the C, C++, profile and semantic tests:
+`79 passed, 30 warnings in 0.46s`. Both new corpus cases have empty `missing` and
+`unlabelled` lists and precision/recall 1.00 on all their populated cells:
+`cpp/header_classes` and `c/header_unaffected`. Aggregate C++ CALLS becomes 5/5/5
+because the new header fixture adds one independently labelled call.
+
+Routing follows CST literal includes from `.cpp`, `.cc` and `.cxx`, transitively,
+including uniquely resolved in-repo angle includes. Cycles terminate; ambiguous
+header basenames are refused. Headers not reached remain C. Tests prove routing
+works without clang, does not enter nested repositories/hidden fixture directories,
+and keeps a C-only header's original ids. Both new fixture roots are `.repo/`.
+
+P4's mypy, lint, format, four artifact checks and roadmap checks all pass.

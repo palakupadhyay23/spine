@@ -670,8 +670,16 @@ class RepoCodeExtractor:
                 state.clear()
         batch = FactBatch()
         used: list[LanguageExtractor] = []
-        for path in self._iter_files(root_path):
-            extractor = self._by_suffix.get(path.suffix)
+        paths = list(self._iter_files(root_path))
+        cpp = self._by_suffix.get(".cpp")
+        cpp_headers: frozenset[str] = frozenset()
+        if cpp is not None:
+            from orchestrator.pkg.c_extractor import cpp_header_paths
+
+            cpp_headers = cpp_header_paths(root_path, paths)
+        for path in paths:
+            rel = path.resolve().relative_to(root_path.resolve()).as_posix()
+            extractor = cpp if rel in cpp_headers else self._by_suffix.get(path.suffix)
             if extractor is None:
                 continue
             if extractor not in used:

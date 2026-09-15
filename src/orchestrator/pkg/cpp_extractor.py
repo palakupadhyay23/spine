@@ -23,9 +23,10 @@ Emitted (precision-first):
   calls on other objects need type inference and are not resolved (documented).
 - ``REFERENCES`` — a data member whose type is another class/struct (the data edge).
 
-``.h`` headers stay with the C front-end (most are C-compatible); a C++ project that
-uses ``.h`` for class headers will have those parsed as C — classes there are not
-captured. Preprocessor caveat carries over: parsing is pre-expansion.
+``.h`` headers reached by literal includes from C++ translation units are routed
+here by RepoCodeExtractor, transitively. Other ``.h`` files remain C. Preprocessor
+branches are all visited; parsing is pre-expansion. The optional clang semantic
+post-pass can resolve additional member calls between already-grounded nodes.
 """
 
 from __future__ import annotations
