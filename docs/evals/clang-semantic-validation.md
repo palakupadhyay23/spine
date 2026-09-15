@@ -603,3 +603,7 @@ pending. Current repeated timing, graph invariants and regression receipts are
 in the recovery report and its linked machine-readable evidence.
 
 Step 3 final local suite: `3769 passed, 4 skipped, 51 deselected, 182 warnings in 220.58s (0:03:40)`. Phase gates, zero-regression accuracy, all four shapes and self-verification (0 errors, 1 warning) passed.
+
+## Confidence step 3b — planned
+
+The [Step 3b plan](../specs/parsing-and-the-pkg.md#step-3b--repository-include-roots-and-representative-validation) documents scope, D1–D6 boundaries, work order, regression cases, measurements and exit criteria. Execution has started with the frozen [evaluation manifest](clang-semantic-step3b-manifest.json); candidate results are pending. The existing Step 3 results remain the implementation baseline.

@@ -264,6 +264,136 @@ attribution of every miss to missing headers. Latest measured recovery is 0.51%
 in the OpenCV fork and 30.17% in TinyXML-2, with the full denominators and runtime
 in the [validation record](../evals/clang-semantic-validation.md).
 
+#### Step 3b — repository include roots and representative validation
+
+**Status: in progress; evaluation inputs frozen.** Documented 2026-09-15 at the
+user's request. This is a follow-up to confidence Step 3, not a replacement for
+P0–P6 or a claim that additional recovery has been implemented. The implementation
+baseline is `4950899`; [Step 3 evidence](../evals/clang-semantic-recovery.md) remains
+historical. Execution authorized by the user; the evaluation manifest is frozen before candidate implementation.
+
+**Objective:** determine whether better repository-local include resolution adds
+correct, useful semantic relationships at an acceptable cost, and describe which
+repository profiles benefit from the optional extra.
+
+**Hypothesis:** the current flags add directories containing headers, which can
+miss the root required by a prefixed include. For example, an admitted header at
+`modules/core/include/opencv2/core.hpp` and an include of `<opencv2/core.hpp>`
+require `-I modules/core/include`. Adding `modules/core/include/opencv2` alone
+does not supply that root. This is a testable gap in synthesized flags; it does
+not establish the cause of every unresolved expression. Missing standard or
+generated headers may continue to limit recovery after this change.
+
+##### Boundaries — preserve D1–D6
+
+- **D1:** clang remains an optional post-pass beside import linking; CST suffix
+  ownership and frontend registration stay unchanged.
+- **D2:** derive candidate include roots only from admitted repository files and
+  literal includes. Keep fixed target/language modes, wheel-bundled libclang and
+  disabled system includes. Do not read compilation databases, use host SDKs,
+  infer build-specific defines, or synthesize missing headers/types.
+- **D3:** add only edges between existing grounded functions. Preserve nodes,
+  IDs, kinds, caller identity/source checks and target validation. CST macro/scope
+  repair, new identities and broader USR support are outside this follow-up.
+- **D4:** preserve existing `.h` routing; improve only the semantic pass's inputs.
+- **D5:** keep `[clang]` in `[all]` and outside `[languages]`.
+- **D6:** retain the existing selection of source translation units with reachable
+  pending sites. Diagnostic header-only parses do not count as recovered sites or
+  production TUs. Report distinct sites and TUs honestly.
+
+##### Work sequence and deliverables
+
+| Work item | Planned action | Completion evidence |
+|---|---|---|
+| **3b.1 — Freeze evaluation inputs** | Record the baseline implementation hash, environment and repository pins. Retain OpenCV and TinyXML-2; select three additional repositories covering self-contained C++, template/STL-heavy code and macro/generated-header-heavy code. Record names, commit hashes, selection reasons and input manifests before observing candidate results. | Committed evaluation manifest; all five repositories selected before tuning. Selection and pins are recorded in [the manifest](../evals/clang-semantic-step3b-manifest.json). |
+| **3b.2 — Prove the include-root gap** | Add minimal failing fixtures under pytest temporary directories or `.repo/`. Cover prefixed angle/quoted includes, transitive includes and headers whose parent directory is insufficient. Record the current failure before changing production flags. | A reproducible supported call that baseline clang misses despite both function nodes already being grounded. |
+| **3b.3 — Implement bounded root synthesis** | Derive roots from exact literal include suffixes matched to admitted repository header paths. Define deterministic precedence and ambiguity handling; verify the complete search-path list cannot silently shadow another header. Preserve existing successful relative-include behavior and repository boundaries. | Focused positive/negative tests and a reviewable flag derivation. Record the chosen algorithm and any deviation from this plan before broad evaluation. |
+| **3b.4 — Measure contribution and cost** | Run the three configurations below on each pinned repository, in fresh processes, with three runs per configuration and a recorded interleaved order. Keep fixtures, environment and source inputs fixed; separate diagnostic collection from timing. | Machine-readable per-repository measurements, graph differences, flags, source hashes and repeatability assertions. |
+| **3b.5 — Review correctness** | Recheck the fixed Step 2 audit and Step 3 additions; inspect every removed/retargeted semantic edge. Review new additions from source using the bounded audit rule below. | Per-edge verdicts with caller, receiver and target evidence; all demonstrated regressions resolved. |
+| **3b.6 — Define supported use cases** | Complete applicable repository gates and summarize results by repository profile. State limitations and the cost/benefit of opt-in support separately from any future default-enablement proposal. | Evaluation report, passing gates and an explicit support/release recommendation; no automatic release or merge. |
+
+Required regression coverage for 3b.3:
+
+- Correct nested include roots and transitive resolution; existing local includes
+  retain precedence.
+- Duplicate basenames, duplicate full include suffixes and interacting added
+  roots cannot select an arbitrary declaration. Alphabetical order alone is not
+  evidence that a header is correct; unresolved ambiguity must retain a refusal.
+- Ignored files, nested checkouts and symlinks escaping the repository cannot
+  supply inferred roots or grounded targets.
+- Different checkout locations and file enumeration order yield identical
+  repository-relative roots and graph facts.
+- Existing caller guards, grounded-target checks, corpus additivity and bounded
+  TU selection remain intact.
+
+##### Measurement and audit contract
+
+Compare **A: baseline clang off**, **B: baseline clang on** and **C: candidate
+clang on**. B versus A measures the existing contribution; C versus B isolates
+the include-root change. Rerun these current comparisons, not the original
+roadmap's already-recorded probes or baseline. Use the existing A/B harness as
+the starting point and record the extension for the third configuration.
+
+For each repository report:
+
+- Recovered sites / the **unchanged original pending denominator**, plus the
+  unresolved-stage partition. Preserve casts and inactive sites in the historical
+  denominator for comparability; explain them separately rather than improving
+  the percentage by filtering them away.
+- Added, removed and retargeted CALLS edges; node equality; grounded endpoints;
+  parsed/total TUs; diagnostic/failed TUs; complete verification findings.
+- Median, minimum and maximum extraction times, absolute added seconds and time
+  ratios. A large ratio on a subsecond repository has a different practical cost
+  from tens of additional seconds on a large repository.
+- A preselected, source-labelled sample of 50 supported calls per repository
+  (all eligible calls if fewer), spread across available source/header and
+  receiver shapes. Record expected caller and target identities before inspecting
+  candidate answers, with sample shortfalls and selection rules stated. Use it to
+  measure supported-case correctness/coverage; never define eligibility by
+  whether clang happened to resolve the call.
+
+Retain the Step 2 fixed 200-edge sample and all 27 Step 3 increment verdicts.
+All 31 incorrect and one ambiguous Step 2 relationship must remain absent.
+Account explicitly for any loss among the 166 retained correct sample edges or
+27 Step 3 additions; an explained source-level correction is preferable to
+preserving a demonstrated error. D3 requires preservation of the CST baseline
+edges; it does not require retaining every previous semantic addition blindly.
+
+Audit every new edge when a repository has at most 200 additions. Above that,
+select 200 by a recorded fixed hash within source/header, macro/template and
+receiver-shape strata; supplement with newly affected high-risk shapes and report
+those checks separately. Record the full population, selection rule, reviewed
+count and correct/incorrect/ambiguous verdicts. Do not refill a failed sample or
+claim population-wide precision from a sample. Any discovered incorrect or
+ambiguous addition requires a fix/refusal and re-evaluation before acceptance.
+
+##### Exit criteria and decision
+
+Step 3b implementation is complete when:
+
+1. The demonstrated include-root fixture recovers the expected call, and the
+   ambiguity, boundary and determinism regressions pass.
+2. All five preselected repository comparisons finish with reproducible graph
+   and report results, identical nodes/routing/pending inputs, preserved CST
+   edges and grounded semantic additions. Verification changes and every lost
+   semantic edge are explained; introduced defects are fixed.
+3. The existing negative audit cases remain refused and the new-edge audit has
+   no unresolved incorrect or ambiguous reviewed additions.
+4. Required phase checks, focused tests, full pytest, accuracy gate, repository
+   shapes, self-verification and documentation review pass. Keep workspace files
+   frozen during full pytest; exclude `episteme/` and the working root roadmap
+   from commits; use the existing draft MR #379.
+5. The report states where opt-in clang provides useful correct relationships,
+   its runtime cost and its remaining limits, including profiles with little or
+   no benefit. Keep implementation completion separate from release approval.
+
+There is no universal recovery-percentage threshold and no OpenCV-only release
+veto. No real-repository gain is also a valid measurement outcome: record it and
+recommend whether the added complexity is justified. Do not relax correctness
+checks, alter denominators, or cross D1–D6 to force an improvement. If repository
+include roots do not materially address the observed misses, use the evidence to
+scope the next decision rather than expanding this implementation silently.
+
 ## 6. What this buys, measured
 
 The parser choice is not an aesthetic preference. It is what makes the accuracy claim possible:

@@ -144,3 +144,7 @@ improvements. All four SDLC repository shapes pass; Spine self-verification repo
 zero errors and one warning. The retained diagnostic harness was rerun on
 TinyXML-2 and reproduced the recorded baseline graph/report. Workspace files were
 frozen throughout the full suite. No release or merge is authorized by these checks.
+
+## Planned follow-up — Step 3b
+
+The [Step 3b plan](../specs/parsing-and-the-pkg.md#step-3b--repository-include-roots-and-representative-validation) defines repository include-root improvements, a five-repository evaluation, source audits and acceptance criteria. Status: **in progress; evaluation inputs frozen**. The measurements above remain Step 3 results. The follow-up evaluates opt-in usefulness by repository profile; OpenCV recovery alone is not a release veto.
