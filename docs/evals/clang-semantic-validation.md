@@ -469,3 +469,98 @@ absolute-link requirement exposed three new relative links; commit `f5a3004`
 corrects them without changing application behavior. P5 validation and P6 review
 are complete; the draft MR retains the measured recovery/verification limits for
 the release decision.
+
+
+## Confidence step 1 — isolate the current clang contribution
+
+**Result: passed.** On Spine `5d3b2fdb20a0083c54f3dd81f112719218ccf40a`,
+three clang-off and three clang-on extractions per repository preserved identical
+nodes, every existing edge, identical header routing and identical pending-site
+inputs. Every added edge is a CALLS edge between two previously grounded Function
+nodes. The **complete verification issue records are identical** with clang off
+and on, across all six runs on each repository. The observed verification
+failures therefore pre-exist the clang pass in this revision; this comparison
+does not attribute them between header routing and other extraction stages.
+
+This is a comparison of the **current revision against itself**, with D4 enabled
+in both modes. It is not a rerun of the original roadmap baseline.
+
+### Graph and verification results
+
+| Measurement | OpenCV | TinyXML-2 |
+|---|---:|---:|
+| Nodes, off = on | 87,181 | 425 |
+| Edges, off → on | 397,174 → 398,001 | 1,585 → 2,013 |
+| Added CALLS edges | 827 | 428 |
+| Removed edges | 0 | 0 |
+| Recovered pending sites | 949 / 135,633 (0.6997%) | 434 / 1,379 (31.4721%) |
+| Verification, off = on | 3 errors / 2 warnings | 1 error / 1 warning |
+
+OpenCV's existing findings are dangling edges, Java/Python orphan rates, phantom
+modules and scope-bound-call warnings. TinyXML-2's are dangling edges and phantom
+modules. No new finding or changed finding message appears with clang enabled.
+Node and edge records repeat exactly within each mode across all three runs;
+clang reports also repeat exactly. Nodes additionally retain the same order.
+The precise header-routing set (421 OpenCV headers) and pending-site records have
+identical hashes across modes and repetitions. Input-file manifests match before
+and after the experiment for both repositories.
+
+### Repeated extraction timing
+
+| Repository | Off: three runs (seconds) | On: three runs (seconds) | Median off → on | Added median time | Ratio |
+|---|---|---|---|---|---|
+| OpenCV | 32.676, 31.785, 31.235 | 62.051, 62.750, 61.338 | 31.785 → 62.051 s | +30.267 s | 1.95× |
+| TinyXML-2 | 0.129, 0.104, 0.109 | 0.411, 0.307, 0.295 | 0.109 → 0.307 s | +0.197 s | 2.81× |
+
+Each extraction uses a fresh Python process, on the same machine and same source
+root, in the order **off, on, on, off, off, on**. The middle pair reverses order.
+Clang-off forces only `clang_available()` to return false; the installed wheel,
+CST front-ends, `.h` routing and remaining passes are unchanged. The on-path uses
+the real installed `libclang 18.1.1` wheel. Both modes call the normal extraction
+pipeline directly, without a saved extraction cache. This isolates the optional
+pass; it is not a physical wheel-uninstallation test (P6 recorded that separately).
+
+The timer covers extractor construction and `extract()`. Hashing, graph
+comparison, serialization and `verify_batch()` are outside the timer. Source
+manifest hashing reads every input before the first run, so these are repeated
+runs with pre-read source files, not a cold-disk benchmark. Library loading remains
+part of extraction. No other benchmark or test suite was launched concurrently.
+The host is macOS 26.6.2 arm64, Python 3.12.7. These are three observations per
+mode on one machine, not cross-platform performance guarantees. The first small
+repository on-run is slower; all observations are retained.
+
+The paired measurements isolate roughly 30 seconds of added OpenCV extraction
+cost from clang while retaining D4 in the off-path. They replace comparisons to
+the original 33-second baseline when discussing **clang-only overhead**. They do
+not measure the state renderer or change the earlier end-to-end completion receipt.
+
+### Reproduction and evidence
+
+- [Machine-readable results](clang-semantic-ab-results.json): environment, exact
+  commit pins, input hashes, every timing, graph hashes, full verification issues,
+  clang reports and acceptance checks.
+- [All 1,255 added edges](clang-semantic-ab-added-edges.jsonl): caller/target IDs,
+  call-site provenance and both declaration locations, grouped by repository.
+- [Captured output](clang-semantic-ab-output.txt).
+- [Executed harness](clang-semantic-ab-harness.txt): executable Python retained as
+  text so Spine does not ingest measurement code as product source.
+
+At the recorded Spine commit and with its CI extras including clang installed,
+prepare `.git`-less archives of OpenCV `b4c5ec4042f097e2a5b386b9d413ec7333d0a184`
+and TinyXML-2 `8224e427b655b83dae5e2298f1e6919523a78737` at
+`/tmp/spine-clang-ab-opencv` and `/tmp/spine-clang-ab-tinyxml2`, respectively. Then:
+
+```sh
+.venv/bin/python -u docs/evals/clang-semantic-ab-harness.txt all /tmp/spine-clang-ab-repeat
+```
+
+The output directory must be new; the harness creates one subdirectory per repo.
+Run from the Spine checkout. Only trusted, locally generated graph snapshots are
+loaded by the comparator. Raw snapshots and validation archives are temporary;
+the committed receipts preserve the reproducible measurements and added edges.
+
+**Step 1 is complete.** Structural safety and reproducibility passed on these
+inputs. Grounded endpoints and invariant checks do not prove that a recovered
+call points to the semantically correct target. That remains the independent
+source-level correctness audit in step 2. The draft MR and release decision are
+unchanged; no production code or D1–D6 decision changed for this experiment.
