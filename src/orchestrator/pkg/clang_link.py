@@ -15,9 +15,13 @@ import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
-from orchestrator.pkg.facts import EdgeKind, FactBatch, Provenance
+from orchestrator.pkg.facts import EdgeKind, FactBatch, Node, Provenance
 from orchestrator.pkg.finalize_names import declared_ids, resolve_or_drop
+
+if TYPE_CHECKING:
+    from clang.cindex import Cursor
 
 _IDENTIFIER = r"[A-Za-z_][A-Za-z_0-9]*"
 _CPP_FUNCTION = re.compile(rf"c:((?:@(?:N|S)@{_IDENTIFIER})*)@F@({_IDENTIFIER})")
@@ -123,6 +127,34 @@ def _tu_files(batch: FactBatch) -> tuple[dict[str, str], dict[str, set[str]], se
     return tus, includes, set(files)
 
 
+def _caller_matches(
+    caller: Cursor | None, site: PendingMemberCall, node: Node, language: str, root: Path
+) -> bool:
+    """Require the actual enclosing function to agree with the grounded CST caller.
+
+    Existence alone admits destructors collapsed onto constructors, macro test
+    bodies collapsed onto a macro name, and headers whose CST lost class scope.
+    A name also cannot move a call onto a different program's main. Keep the
+    existing name-based overload identity when an out-of-line member's class
+    contains the grounded overload in a header.
+    """
+    if caller is None or not caller.location.file or node.provenance is None:
+        return False
+    rel = _repo_file(caller.location.file.name, root)
+    if usr_to_id(caller.get_usr(), language=language, rel=rel or "") != site.caller:
+        return False
+    if node.provenance.file == rel:
+        return True
+    parent = caller.semantic_parent
+    return bool(
+        parent
+        and parent.kind.name in {"CLASS_DECL", "STRUCT_DECL"}
+        and parent.location.file
+        and _repo_file(parent.location.file.name, root) == node.provenance.file
+        and parent.extent.start.line <= node.provenance.line <= parent.extent.end.line
+    )
+
+
 def link_clang(
     batch: FactBatch,
     root: Path,
@@ -189,9 +221,24 @@ def link_clang(
         "outside_repository",
         "unsupported_usr",
         "ungrounded_caller",
+        "caller_identity_mismatch",
         "ungrounded_target",
     )
     progress = dict.fromkeys(sites, 0)
+    function_kinds = {
+        cindex.CursorKind.FUNCTION_DECL,
+        cindex.CursorKind.CXX_METHOD,
+        cindex.CursorKind.CONSTRUCTOR,
+        cindex.CursorKind.DESTRUCTOR,
+        cindex.CursorKind.FUNCTION_TEMPLATE,
+        cindex.CursorKind.CONVERSION_FUNCTION,
+    }
+    record_kinds = {
+        cindex.CursorKind.CLASS_DECL,
+        cindex.CursorKind.STRUCT_DECL,
+        cindex.CursorKind.CLASS_TEMPLATE,
+        cindex.CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION,
+    }
     for file, language in sorted(tus.items()):
         reachable: set[str] = set()
         stack = [file]
@@ -220,11 +267,15 @@ def link_clang(
             report.failed_tus += 1
             continue
         report.diagnostic_tus += bool(list(tu.diagnostics))
-        cursors = [tu.cursor]
+        cursors: list[tuple[Cursor, Cursor | None]] = [(tu.cursor, None)]
         while cursors:
-            cursor = cursors.pop()
+            cursor, caller = cursors.pop()
             if cursor.kind == cindex.CursorKind.LAMBDA_EXPR:
                 continue
+            if cursor.kind in function_kinds:
+                caller = cursor
+            elif cursor.kind in record_kinds:
+                caller = None
             if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.location.file:
                 rel = _repo_file(cursor.location.file.name, root)
                 key = (rel or "", cursor.extent.start.offset, cursor.extent.end.offset)
@@ -246,9 +297,11 @@ def link_clang(
                                 site = sites[key]
                                 if site.caller in grounded:
                                     progress[key] = max(progress[key], 5)
-                                    if target_id in grounded:
-                                        candidates.setdefault(key, set()).add(target_id)
-            cursors.extend(cursor.get_children())
+                                    if _caller_matches(caller, site, grounded[site.caller], language, root):
+                                        progress[key] = max(progress[key], 6)
+                                        if target_id in grounded:
+                                            candidates.setdefault(key, set()).add(target_id)
+            cursors.extend((child, caller) for child in cursor.get_children())
     for key, targets in sorted(candidates.items()):
         if len(targets) != 1:
             continue

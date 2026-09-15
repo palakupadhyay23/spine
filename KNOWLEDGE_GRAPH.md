@@ -280,7 +280,7 @@ flowchart LR
   Only TUs with reachable unresolved sites are parsed, using synthesized
   repository flags with no compilation database or host SDK. Missing system
   headers constrain coverage. [Validation](docs/evals/clang-semantic-validation.md)
-  recovered 0.70% of pending sites in the OpenCV fork and 31.47% in TinyXML-2;
+  recovered 0.49% of pending sites in the OpenCV fork and 30.09% in TinyXML-2;
   these fractions are not whole-repository call-graph recall.
 
   Go's module unit is the **package (its directory)** — every `.go` file in a dir merges

@@ -61,7 +61,7 @@ Optional extras, added when you need them:
   `pip install 'synaptixs-spine[c,cpp,clang]'`. No compilation database or host SDK
   is consulted. Inspect the `resolved N of M ... in K of T TUs` summary before
   relying on coverage: [measured recovery](docs/evals/clang-semantic-validation.md)
-  ranges from 0.70% to 31.47% on the two validation repositories.
+  ranges from 0.49% to 30.09% on the two validation repositories.
 - `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or

@@ -18,6 +18,9 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Changed
 
+- Clang verifies the enclosing function against the grounded caller before adding
+  a call. Mismatched scope, macro bodies and unrelated entrypoints are refused;
+  nodes and IDs remain unchanged. See the [source audit](docs/evals/clang-semantic-correctness-audit.md).
 - `state` graph statistics count incoming calls in one edge pass, preserving
   existing counts while avoiding a full edge scan per function on large repos.
 - Headers ending in `.h` reached through literal C++ includes use the C++ CST

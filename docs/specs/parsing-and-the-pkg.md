@@ -245,7 +245,12 @@ SDKs are never consulted.
 The CST side channel identifies pending calls by file and full byte range. Only
 source TUs with pending sites in their reachable headers/source are parsed. Clang
 must resolve an eligible declaration in an admitted repository file, whose USR
-maps to an existing grounded function ID; the caller must also be grounded.
+maps to an existing grounded function ID. The enclosing clang function must also
+map to the CST caller ID. Its source file must agree with the grounded caller,
+or the grounded overload must lie within its class declaration in a header.
+This refuses scope-stripped callers, macro test bodies, destructor/constructor
+collisions and unrelated program entrypoints without changing nodes or IDs.
+Caller identities outside the supported USR shapes are conservatively refused.
 Ordinary parameter and method qualifiers collapse to the existing name-based
 identity. Template/local/anonymous declaration identities and operators remain
 refused. Virtual calls use the static declaration; conflicting candidates are
@@ -254,8 +259,8 @@ refused. The pass never changes the node set.
 The report states recovered sites, total pending sites, parsed/total TUs,
 diagnostic/failed TUs, and a partition of unresolved sites by the furthest stage
 observed. These are coverage observations, not proof of complete resolution or
-attribution of every miss to missing headers. Latest measured recovery is 0.70%
-in the OpenCV fork and 31.47% in TinyXML-2, with the full denominators and runtime
+attribution of every miss to missing headers. Latest measured recovery is 0.49%
+in the OpenCV fork and 30.09% in TinyXML-2, with the full denominators and runtime
 in the [validation record](../evals/clang-semantic-validation.md).
 
 ## 6. What this buys, measured

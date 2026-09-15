@@ -105,3 +105,17 @@ and verifies unchanged nodes/edges. Full validation now completes both state
 stages; see the final output in the validation record. README's three new links
 were converted to absolute URLs after CI reported its PyPI-link check.
 Final full suite: `3755 passed, 4 skipped, 51 deselected, 182 warnings in 198.13s (0:03:18)`.
+
+
+Confidence step 2 review: caller existence alone was insufficient. The walk now
+checks the actual enclosing function's mapped identity and source provenance,
+with an explicit class/header overload exception. The five negative cases fail
+on the old implementation; the positive overload case and existing semantic
+suite pass. The source audit records 200 fixed judgments and retains their
+failures instead of replacing them with easier examples. Current recovery claims
+in README, SETUP, KNOWLEDGE_GRAPH, STATE and parser design were updated; the
+Unreleased changelog names the guard. No extra/CLI/MCP/schema/registry surface or
+new specification is introduced. Full findings and limitations are in
+[the correctness audit](clang-semantic-correctness-audit.md).
+
+Step 2 final full suite: `3761 passed, 4 skipped, 51 deselected, 182 warnings in 221.76s (0:03:41)`. Accuracy: zero regressions. All four shapes pass; Spine verification: zero errors, one warning.

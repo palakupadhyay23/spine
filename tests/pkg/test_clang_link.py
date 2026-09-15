@@ -272,3 +272,105 @@ def test_nested_member_calls_with_same_start_have_separate_sites(tmp_path: Path,
     assert ex.clang_report.pending == ex.clang_report.resolved == 2
     assert _calls(batch) == {("cpp:use", "cpp:A::first"), ("cpp:use", "cpp:A::second")}
     assert not ex.clang_report.unresolved_reasons
+
+
+def test_destructor_calls_do_not_attach_to_constructor(
+    tmp_path: Path, clang_ready: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.pkg import clang_link
+
+    (tmp_path / "guard.cpp").write_text(
+        "struct Mutex { void lock() {} void unlock() {} };\n"
+        "struct Guard { Mutex* m;\n"
+        "Guard(Mutex* p): m(p) { m->lock(); }\n"
+        "~Guard() { m->unlock(); } };\n"
+    )
+    monkeypatch.setattr(clang_link, "clang_available", lambda: False)
+    before = RepoCodeExtractor().extract(tmp_path)
+    monkeypatch.setattr(clang_link, "clang_available", lambda: True)
+    ex = RepoCodeExtractor()
+    after = ex.extract(tmp_path)
+    assert after.nodes == before.nodes
+    assert set(before.edges) <= set(after.edges)
+    assert ("cpp:Guard::Guard", "cpp:Mutex::lock") in _calls(after)
+    assert ("cpp:Guard::Guard", "cpp:Mutex::unlock") not in _calls(after)
+    assert ex.clang_report.resolved == 1
+    assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 1}
+
+
+def test_macro_callers_must_match_the_enclosing_function(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "cases.cpp").write_text(
+        "#define TEST(a,b) void a ## _ ## b()\n"
+        "struct Worker { void run() {} };\n"
+        "TEST(Suite, First) { Worker w; w.run(); }\n"
+        "TEST(Suite, Second) { Worker w; w.run(); }\n"
+    )
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:TEST", "cpp:Worker::run") not in _calls(batch)
+    assert ex.clang_report.pending == 2
+    assert ex.clang_report.resolved == 0
+    assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 2}
+
+
+def test_separate_program_entrypoints_do_not_share_semantic_edges(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.cpp").write_text("struct A { void run() {} }; int main() { A a; a.run(); }\n")
+    (tmp_path / "b.cpp").write_text("struct B { void run() {} }; int main() { B b; b.run(); }\n")
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:main", "cpp:A::run") in _calls(batch)
+    assert ("cpp:main", "cpp:B::run") not in _calls(batch)
+    assert ex.clang_report.resolved == 1
+    assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 1}
+
+
+def test_lost_caller_scope_is_refused_without_repairing_nodes(tmp_path: Path, clang_ready: None) -> None:
+    from orchestrator.pkg.clang_link import ClangReport, PendingMemberCall, link_clang
+    from orchestrator.pkg.facts import Node, NodeKind, Provenance
+
+    source = (
+        "namespace api { struct Worker { void run() {} };\n"
+        "struct Service { void use(Worker& w) { w.run(); } }; }\n"
+    )
+    (tmp_path / "a.cpp").write_text(source)
+    # A grounded but scope-stripped CST caller, as observed with export macros.
+    batch = FactBatch()
+    batch.add_node(Node("cpp:a.cpp", NodeKind.MODULE, "a.cpp", "cpp", Provenance("a.cpp", 1)))
+    batch.add_node(Node("cpp:use", NodeKind.FUNCTION, "use", "cpp", Provenance("a.cpp", 2)))
+    batch.add_node(Node("cpp:api::Worker::run", NodeKind.FUNCTION, "run", "cpp", Provenance("a.cpp", 1)))
+    before = batch.nodes
+    offset = source.index("w.run()")
+    report = ClangReport()
+    result = link_clang(
+        batch,
+        tmp_path,
+        pending=[PendingMemberCall("cpp:use", "a.cpp", offset, 2, offset + len("w.run()"))],
+        report=report,
+    )
+    assert result.nodes == before
+    assert not result.edges
+    assert report.unresolved_reasons == {"caller_identity_mismatch": 1}
+
+
+def test_out_of_line_constructor_keeps_header_grounded_overload(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.hpp").write_text(
+        "struct Worker { void run() {} };\nstruct Service { Service() {} Service(Worker& w); };\n"
+    )
+    (tmp_path / "a.cpp").write_text('#include "a.hpp"\nService::Service(Worker& w) { w.run(); }\n')
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:Service::Service", "cpp:Worker::run") in _calls(batch)
+    assert ex.clang_report.resolved == 1
+
+
+def test_local_class_calls_do_not_attach_to_outer_function(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.cpp").write_text(
+        "struct Worker { void run() {} };\n"
+        "int main() { struct Local { void use() { Worker w; w.run(); } }; return 0; }\n"
+    )
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:main", "cpp:Worker::run") not in _calls(batch)
+    assert ex.clang_report.pending == 1
+    assert ex.clang_report.resolved == 0
+    assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 1}

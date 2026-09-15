@@ -564,3 +564,22 @@ inputs. Grounded endpoints and invariant checks do not prove that a recovered
 call points to the semantically correct target. That remains the independent
 source-level correctness audit in step 2. The draft MR and release decision are
 unchanged; no production code or D1–D6 decision changed for this experiment.
+
+
+## Confidence step 2 — independent source audit and caller guard
+
+The [200-edge source audit](clang-semantic-correctness-audit.md) found 31 incorrect
+caller assignments and one ambiguous assignment in the original added-edge sample.
+The enclosing-function guard now refuses all 32, retaining 157 reviewed-correct
+edges and conservatively refusing 11 additional reviewed-correct edges. The
+sample was fixed before the fix and was not refilled after removals. No new edge
+outside the previous clang-on graph is introduced by the fix.
+
+Post-fix extraction recovers **670/135,633 sites (0.4940%)** and adds **660 edges**
+on OpenCV; TinyXML-2 recovers **415/1,379 (30.0943%)** and adds **409 edges**.
+Nodes, header routing, pending sites, existing CST edges and verification issue
+records are unchanged. The prior measurements above are historical; current
+recovery is lower because unsafe or unsupported caller identities are refused.
+The independent source audit does not establish population-wide precision.
+Full evidence, acceptance checks, tradeoffs and regression receipts are in the
+audit report. Release remains pending in draft MR #379.
