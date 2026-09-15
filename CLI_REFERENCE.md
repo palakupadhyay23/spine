@@ -309,6 +309,11 @@ orchestrator catalog plan [PATH] [OPTIONS]
 
 ### `orchestrator pkg extract`
 
+For C/C++ repositories, text output includes `clang: resolved N of M unresolved call
+sites in K of T TUs`, with diagnostic and failure counts. The optional `clang` extra
+adds only grounded CALLS edges; unavailable headers and unsupported symbols remain
+unresolved. `pkg verify` prints the same bounded extraction summary.
+
 Extract grounded code facts from a repo and print a summary (read-only).
 
 SQL extraction handles UTF-16 scripts and SQL Server `GO` batch separators, including

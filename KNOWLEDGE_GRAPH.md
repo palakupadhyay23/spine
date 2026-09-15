@@ -156,10 +156,11 @@ has none*. A front-end that can emit `Endpoint` still emits none for a repo with
 routes; `pkg verify`'s `source-parity` check is what answers that question.
 
 `Doc` is empty down the whole column because no *language* produces it. These passes
-do, for every language, and they are why the matrix is not the full picture:
+extend the graph under the conditions shown below:
 
 | Pass | Runs for | Emits |
 |---|---|---|
+| `pkg/clang_link.py` | C/C++ TUs with unresolved calls, only with the `clang` extra | `CALLS` |
 | `pkg/doc_link.py` | documentation ingestion — runs for every language | `Doc`, `MENTIONS` |
 | `pkg/import_link.py` | the whole-repo import join | `Module`, `IMPORTS` |
 | `pkg/data_layer_link.py` | a live database, via `mcp ingest-db` | `Entity`, `CONTAINS`, `REFERENCES` |

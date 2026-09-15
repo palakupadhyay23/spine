@@ -40,6 +40,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from orchestrator.pkg.clang_link import PendingMemberCall
 from orchestrator.pkg.extractor import rel_module_name
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
 
@@ -65,6 +66,9 @@ class CExtractor:
 
     language: str = "c"
     suffixes: tuple[str, ...] = (".c", ".h")
+
+    def __init__(self) -> None:
+        self.unresolved_member_calls: list[PendingMemberCall] = []
 
     def module_name(self, path: Path, root: Path) -> str:
         # The translation unit is the file; its name is the repo-relative path.
@@ -274,12 +278,19 @@ class CExtractor:
         # translation unit, which is the normal case and must keep its `c:name` id. So the
         # test is "did this function bind the name", not "can we resolve it".
         bound = _bound_names(fdeclr, body, source)
-        for callee, line in _calls_in(body, source):
-            if callee in bound:
-                continue
-            # A local static callee keeps its file-scoped id; everything else is global.
-            target = local_funcs.get(callee, f"c:{callee}")
-            batch.add_edge(Edge(caller, target, EdgeKind.CALLS, Provenance(rel, line)))
+        stack = list(body.named_children)
+        while stack:
+            n = stack.pop()
+            if n.type == "call_expression":
+                fn = n.child_by_field_name("function")
+                line = n.start_point[0] + 1
+                callee = _text(fn, source) if fn is not None and fn.type == "identifier" else ""
+                if not callee or callee in bound:
+                    self.unresolved_member_calls.append(PendingMemberCall(caller, rel, n.start_byte, line))
+                else:
+                    target = local_funcs.get(callee, f"c:{callee}")
+                    batch.add_edge(Edge(caller, target, EdgeKind.CALLS, Provenance(rel, line)))
+            stack.extend(n.named_children)
 
 
 # --- helpers ---------------------------------------------------------------
