@@ -121,6 +121,7 @@ def validate_one(language: str, url: str) -> bool:
                     "total_tus": extractor.clang_report.total_tus,
                     "diagnostic_tus": extractor.clang_report.diagnostic_tus,
                     "failed_tus": extractor.clang_report.failed_tus,
+                    "unresolved_reasons": extractor.clang_report.unresolved_reasons,
                 }
                 print("  semantic metrics: " + json.dumps(metrics, sort_keys=True))
             per_kind = {k[len("edges_") :]: v for k, v in summary.items() if k.startswith("edges_")}

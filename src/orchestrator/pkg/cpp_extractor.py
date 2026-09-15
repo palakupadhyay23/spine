@@ -309,7 +309,7 @@ class CppExtractor:
                     # the callee is whatever the caller passed in. 46 of the 47 edges the
                     # cross-language invention oracle found were this shape.
                     self.unresolved_member_calls.append(
-                        PendingMemberCall(caller, ctx.rel, n.start_byte, line)
+                        PendingMemberCall(caller, ctx.rel, n.start_byte, line, n.end_byte)
                     )
                     stack.extend(n.named_children)
                     continue
@@ -320,7 +320,7 @@ class CppExtractor:
                     )
                 else:
                     self.unresolved_member_calls.append(
-                        PendingMemberCall(caller, ctx.rel, n.start_byte, line)
+                        PendingMemberCall(caller, ctx.rel, n.start_byte, line, n.end_byte)
                     )
             stack.extend(n.named_children)
 

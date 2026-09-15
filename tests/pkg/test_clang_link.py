@@ -22,6 +22,13 @@ from orchestrator.pkg.facts import EdgeKind, FactBatch
         ("c:@N@one@N@two@F@call#", "cpp", "a.cpp", "cpp:one::two::call"),
         ("c:@F@plain#", "cpp", "a.cpp", "cpp:plain"),
         ("c:@F@extern_c", "cpp", "a.cpp", "cpp:extern_c"),
+        ("c:@F@run#I#", "cpp", "a.cpp", "cpp:run"),
+        ("c:@S@Handler@F@run#d#", "cpp", "a.cpp", "cpp:Handler::run"),
+        ("c:@S@Handler@F@run#1", "cpp", "a.cpp", "cpp:Handler::run"),
+        ("c:@S@Handler@F@run#*1C#S", "cpp", "a.cpp", "cpp:Handler::run"),
+        ("c:@S@Handler@F@run#I#3&", "cpp", "a.cpp", "cpp:Handler::run"),
+        ("c:@S@Handler@F@run#&&", "cpp", "a.cpp", "cpp:Handler::run"),
+        ("c:@S@Handler@F@run#*$@N@api@S@Arg#", "cpp", "a.cpp", "cpp:Handler::run"),
     ],
 )
 def test_usr_maps_supported_functions(usr: str, language: str, rel: str, expected: str) -> None:
@@ -36,8 +43,6 @@ def test_usr_maps_supported_functions(usr: str, language: str, rel: str, expecte
         "c:@S@Handler@FI@field",
         "c:@ST>1#T@Box@F@get#",
         "c:@F@run<#I>#I#",
-        "c:@F@run#I#",
-        "c:@S@Handler@F@run#d#",
         "c:@aN@F@hidden#",
         "c:a.cpp@aN@F@hidden#",
         "c:a.cpp@12@F@f#@Sa@F@operator()#1",
@@ -45,6 +50,11 @@ def test_usr_maps_supported_functions(usr: str, language: str, rel: str, expecte
         "c:@S@Handler@F@~Handler#",
         "c:@S@Handler@F@run#garbage",
         "c:@F@run#\n",
+        "c:@S@Handler@F@run#8",
+        "c:@S@Handler@F@run#&&&",
+        "c:@S@Handler@FT@>1#Trun#t0.0#v#",
+        "c:@S@Box>#I@F@run#",
+        "c:a.cpp@99@F@outer#@S@Local@F@run#",
         "c:@N@@F@run#",
         "c:@N@a@T@Alias@F@run#",
     ],
@@ -145,6 +155,7 @@ def test_unavailable_clang_and_failed_parse_preserve_batch(
     ex = RepoCodeExtractor()
     before = ex.extract(tmp_path)
     assert not ex.clang_report.available and ex.clang_report.pending == 1
+    assert ex.clang_report.unresolved_reasons == {"extra_unavailable": 1}
     monkeypatch.setattr(clang_link, "clang_available", lambda: True)
 
     def fail(*args: Any, **kwargs: Any) -> Any:
@@ -154,6 +165,7 @@ def test_unavailable_clang_and_failed_parse_preserve_batch(
     after = ex.extract(tmp_path)
     assert after.nodes == before.nodes and after.edges == before.edges
     assert ex.clang_report.failed_tus == 1
+    assert ex.clang_report.unresolved_reasons == {"no_matching_call": 1}
 
 
 def test_header_sites_select_including_tu(tmp_path: Path, clang_ready: None) -> None:
@@ -199,3 +211,64 @@ def test_corpus_is_additive_only(tmp_path: Path, clang_ready: None, monkeypatch:
             assert set(before.edges) <= set(after.edges), str(spec_path)
             grounded = {n.id for n in before.nodes if n.grounded}
             assert all(e.src in grounded and e.dst in grounded for e in set(after.edges) - set(before.edges))
+
+
+def test_signature_qualified_methods_preserve_name_keyed_overloads(
+    tmp_path: Path, clang_ready: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orchestrator.pkg import clang_link
+
+    (tmp_path / "a.cpp").write_text(
+        "namespace api { struct Arg {}; struct A {\n"
+        "int run(int) const { return 1; } int run(double) const { return 2; }\n"
+        "int withArg(Arg*) & { return 3; } static int staticCall(int) { return 4; }\n"
+        "template<class T> int templated(T) { return 5; } }; }\n"
+        "int use(api::A& a, api::Arg* arg) {\n"
+        "return a.run(1) + a.run(2.0) + a.withArg(arg) + a.staticCall(3) + a.templated(4); }"
+    )
+    monkeypatch.setattr(clang_link, "clang_available", lambda: False)
+    before = RepoCodeExtractor().extract(tmp_path)
+    monkeypatch.setattr(clang_link, "clang_available", lambda: True)
+    ex = RepoCodeExtractor()
+    after = ex.extract(tmp_path)
+    assert after.nodes == before.nodes
+    assert set(before.edges) <= set(after.edges)
+    added = set(after.edges) - set(before.edges)
+    assert {(e.src, e.dst) for e in added} == {
+        ("cpp:use", "cpp:api::A::run"),
+        ("cpp:use", "cpp:api::A::withArg"),
+        ("cpp:use", "cpp:api::A::staticCall"),
+    }
+    assert ex.clang_report.resolved == 4
+    assert ex.clang_report.pending == 5
+    assert ex.clang_report.unresolved_reasons == {"unsupported_usr": 1}
+
+
+def test_miss_reasons_count_distinct_sites_across_header_tus(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "api.hpp").write_text(
+        "struct A { int external(int); };\n"
+        "inline int use(A& a, int (*cb)(int)) { return a.external(1) + cb(2); }\n"
+    )
+    for name in ("a.cpp", "b.cpp"):
+        (tmp_path / name).write_text('#include "api.hpp"\n')
+    ex = RepoCodeExtractor()
+    ex.extract(tmp_path)
+    assert ex.clang_report.pending == 2
+    assert ex.clang_report.parsed_tus == 2
+    assert ex.clang_report.resolved == 0
+    assert ex.clang_report.unresolved_reasons == {
+        "indirect_or_unsupported_target": 1,
+        "ungrounded_target": 1,
+    }
+
+
+def test_nested_member_calls_with_same_start_have_separate_sites(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.cpp").write_text(
+        "struct A { A first(int) { return *this; } int second(int) { return 2; } };\n"
+        "int use(A& a) { return a.first(1).second(2); }\n"
+    )
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ex.clang_report.pending == ex.clang_report.resolved == 2
+    assert _calls(batch) == {("cpp:use", "cpp:A::first"), ("cpp:use", "cpp:A::second")}
+    assert not ex.clang_report.unresolved_reasons

@@ -110,5 +110,6 @@ def test_semantic_metrics_keep_site_and_tu_denominators(
     line = next(line for line in out.splitlines() if "semantic metrics:" in line)
     metrics = json.loads(line.split("semantic metrics: ", 1)[1])
     assert metrics["resolved_sites"] == metrics["pending_sites"] == 1
+    assert metrics["unresolved_reasons"] == {}
     assert metrics["parsed_tus"] == 1 and metrics["total_tus"] == 2
     assert metrics["unsupported_source_nodes"] == metrics["dangling_edges"] == 0

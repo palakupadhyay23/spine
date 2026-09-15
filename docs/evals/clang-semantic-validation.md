@@ -123,13 +123,14 @@ and keeps a C-only header's original ids. Both new fixture roots are `.repo/`.
 
 P4's mypy, lint, format, four artifact checks and roadmap checks all pass.
 
-## P5 — shipping decision required
+## P5 — initial shipping stop
 
 **Do not treat the optional extra as ready to ship.** On the requested OpenCV fork,
 the pass recovered **121 of 130,001 pending call sites (0.0931%)**. TinyXML-2
 recovered **13 of 1,178 (1.1036%)**. The execution request explicitly requires a
 user decision when the measured result is too weak to justify the extra; no
-resolution changes have been made after measuring these results.
+resolution changes were made before that stop. The authorized revision below supersedes
+this result for the shipping decision.
 
 These are **recovery fractions of CST-unresolved sites**, not independently labelled
 whole-repository recall. The real repositories have no gold call graph. Missing
@@ -219,3 +220,170 @@ Failures include denied writes to the Spine and Go caches and a Jira DNS lookup.
 This run used the ordinary sandbox, unlike the approved phase gates. It does not
 establish a code regression, and it is not a green full-suite receipt. A complete
 run with appropriate test-environment permissions remains required before an MR.
+
+
+## P5 revision — authorized diagnosis and fixes (2026-09-15)
+
+The user authorized diagnosis, mapper-policy revision and re-measurement while
+preserving D1–D6. The original §10 baseline and §1 probes were not re-run.
+
+### Diagnosis and fixes
+
+The original mapper rejected ordinary argument encodings and `const`, static and
+reference qualifiers. Those are valid identities for functions the CST already
+keys by qualified name, including overloads. The revised mapper validates the
+namespace/class/function prefix separately and projects the signature onto that
+existing identity. Signature types remain opaque; this consumes clang-generated
+USRs, not arbitrary user strings. Template declarations/instantiations, local and
+anonymous declarations, operators and destructors remain refused. The encoding
+boundary follows LLVM 18's
+[USR generator](https://github.com/llvm/llvm-project/blob/llvmorg-18.1.1/clang/lib/Index/USRGeneration.cpp#L209-L276).
+
+Before the fix, 676 TinyXML-2 sites and 2,951 OpenCV sites stopped at the mapper.
+OpenCV additionally had 99,204 sites without a matching clang `CALL_EXPR`, 27,388
+with an indirect/unsupported target and 337 with an ungrounded target. These
+categories partition distinct sites by the furthest stage reached across TUs.
+They do **not** identify the cause of missing AST expressions: preprocessing,
+unavailable headers and parse recovery can all contribute.
+
+A second bug appeared when the mapper admitted more targets: nested calls such as
+`a.first(1).second(2)` share a start offset. Indexing only that offset collapsed two
+pending sites into one and could conflate their targets. The side channel now
+records the full byte range, and matches both range endpoints. No graph IDs or
+nodes change. `test_nested_member_calls_with_same_start_have_separate_sites`
+failed before the fix and now passes. The corrected denominator therefore counts
+more sites; neither old nor new recovery is a labelled whole-repository recall.
+
+Pending sites are also indexed by file so selecting a TU's reachable pending
+sites no longer scans the entire repository's pending list for every TU. The set
+of selected TUs and the synthesized flags are unchanged.
+
+`ClangReport.unresolved_reasons`, printed in the validation script's semantic
+metrics, accounts for every unresolved distinct site. `no_matching_call` includes
+unparsed/failed TUs; `indirect_or_unsupported_target` includes call cursors without
+an eligible function/method declaration; `outside_repository` includes targets
+outside the admitted CST files. Later stages distinguish refused identities,
+ungrounded callers/targets and conflicts between candidate IDs. Repeated header
+observations count once, and resolved sites do not appear in the miss buckets.
+
+The diagnosis also reproduced a pre-existing CST limitation: an inline method
+returning `A&` was absent from the grounded function set, whereas its `A` and `A*`
+variants were present. This revision leaves that node-production behavior intact;
+such targets remain in the ungrounded bucket under D3.
+
+
+### Validation environment
+
+The earlier Jira failure was reproduced as a test-isolation error:
+`test_unconfigured_adapter_raises` constructed `JiraConfig()` and therefore read
+`.env`, even though the shared fixture had removed process credentials. Its
+configuration now passes `_env_file=None`, consistent with other unconfigured
+adapter tests. Application behavior and the user's `.env` are unchanged.
+The full-suite rerun uses approved cache access. It also exposed a second
+isolation gap: `test_sdlc_feature_accepts_go_language` let `run_feature` reload
+`.env` and wait for a live source fetch. That fetch was interrupted; `CliRunner`
+caught the interrupt, so the run's eventual passing summary was not accepted as
+an uninterrupted receipt. The test now runs in an empty temporary directory and
+also asserts the expected unconfigured-source exit code. Both isolation cases
+pass together (`2 passed in 0.25s`); a fresh full run follows those fixes.
+
+
+### Final re-measurement and shipping recommendation
+
+| Measure | Initial P5 | Revised P5 |
+|---|---|---|
+| OpenCV recovered sites | 121 / 130,001 (0.0931%) | **949 / 135,633 (0.6997%)** |
+| TinyXML-2 recovered sites | 13 / 1,178 (1.1036%) | **434 / 1,379 (31.4721%)** |
+| OpenCV extraction time | 71.716 s (concurrent suite) | **63.160 s** |
+| TinyXML-2 extraction time | 0.405 s | **0.300 s** |
+| OpenCV total nodes / edges | 87,181 / 397,290 | **87,181 / 398,001** |
+| TinyXML-2 total nodes / edges | 425 / 1,598 | **425 / 2,013** |
+| OpenCV C/C++ nodes / grounded / edges | 77,682 / 72,101 / 374,747 | **77,682 / 72,101 / 375,458** |
+| OpenCV C/C++ ungrounded CALLS / all CALLS | 177,532 / 243,181 | **177,532 / 243,892 (72.79%)** |
+| TinyXML-2 C/C++ ungrounded CALLS / all CALLS | 412 / 1,068 | **412 / 1,483** |
+
+The full-range fix adds 5,632 previously collapsed OpenCV sites and 201 TinyXML-2
+sites to the denominator. The intermediate mapper-only run recovered 944/130,001
+and 383/1,178 respectively; the final numbers above include **both** fixes.
+
+The final OpenCV miss partition is **104,040 no matching call**, **28,426
+indirect/unsupported targets**, **145 refused USRs**, **1 ungrounded caller**, and
+**2,072 ungrounded targets**. These sum with 949 recovered sites to 135,633. Thus
+further relaxing the USR mapper alone cannot address most misses. TinyXML-2 has
+413 no matching calls, 168 indirect/unsupported targets, 14 refused USRs and 350
+ungrounded targets; those plus 434 recovered sum to 1,379. Neither final run has
+conflicting target IDs.
+
+OpenCV still parses **1,981 / 2,468 TUs** (487 skipped), with **1,950 diagnostic
+TUs and zero failed TUs**. TinyXML-2 still parses 3/3, all with diagnostics and zero
+failures. Header Type counts stay 1,517 and 6 respectively; `.cu`/`.mm` still
+contribute zero C/C++ nodes. OpenCV has 19,982 missing IDs and 190,485 dangling
+edges; TinyXML-2 has 91 and 581. Real-repo verification still reports the same
+categories/counts as initial P5: OpenCV three errors/two warnings, TinyXML-2 one
+error/one warning. These fixes do not manufacture nodes to repair those errors.
+
+Both final runs assert identical node sequences around the semantic
+pass, preservation of every existing edge, and grounded endpoints for every added
+edge: **827 OpenCV edges and 428 TinyXML-2 edges**. Edge counts differ from recovered
+site counts because graph edges coalesce repeated relationships/provenance.
+
+Measurement uses the same pinned commits documented above, copied without `.git`.
+It runs `RepoCodeExtractor.extract` followed by `verify_batch`, with diagnostic counters and assertions
+around `link_clang`; their overhead is included in the
+reported extraction time. No full suite or other benchmark ran concurrently with
+final extraction. The downstream `state` stage was deliberately not part of this
+diagnostic run; it has not gained a successful completion receipt. These are
+single-run observations, not statistically controlled performance estimates.
+Relative to the supplied 33-second original baseline, final OpenCV extraction is
+30.16 seconds longer (1.91×); that includes header routing as well as the pass.
+
+[Machine-readable measurements](clang-semantic-p5-revision.json) preserve the
+before-mapper, mapper-only and final runs.
+[Final captured output](clang-semantic-p5-revision-output.txt) includes both D3
+assertions and verification findings. The saved
+[measurement harness](clang-semantic-p5-harness.txt) is executable Python kept as a
+text receipt so the repository's own source walker does not ingest diagnostic
+code as product code. Reproduce each final run with:
+
+```sh
+.venv/bin/python -u docs/evals/clang-semantic-p5-harness.txt /path/to/gitless-copy result-label
+```
+
+The root must contain the recorded commit, with the project's CI extras and
+`clang` installed in `.venv`; the harness writes metrics under `/tmp` and prints
+verification findings. It does not run the downstream state summarizer.
+
+**Recommendation: hold shipment for the OpenCV target.** The mapper defect is fixed
+and the smaller repository benefits, but 0.70% pending-site recovery with roughly
+double the supplied extraction time remains weak evidence for the proposed extra.
+P6 and the MR remain paused under the user's explicit P5 shipping stop rule.
+D1–D6 are preserved; changing the compile environment or adding node-producing
+fallbacks has not been attempted.
+
+
+### Final checks for this revision
+
+```text
+98 passed, 30 warnings in 0.67s (semantic, C/C++, header routing, profile and validation tests)
+2 passed in 0.25s (both local-environment isolation cases)
+3753 passed, 4 skipped, 51 deselected, 182 warnings in 195.27s (0:03:15)
+pkg accuracy --check: OK — 0 gated regression(s), 0 improvement(s).
+Success: no issues found in 721 source files
+All checks passed!
+758 files already formatted
+state-numbers --check: OK — 14 gated claim(s) match; 9 trended.
+46 capability rows; 21 alone; 3 no; 3 partial
+Both generated SVG checks pass.
+roadmap-status --check: OK — 3 phase table(s) checked, 7 checks each.
+```
+
+The full pytest receipt is from the uninterrupted rerun after both isolation
+fixes. The four skips require E2B credentials, pytesseract, PHP/Composer or the
+opt-in PostgreSQL integration environment. The repository's default pytest
+selection deselects integration/real-LLM tests; it was not narrowed for this run.
+The corpus comparison still checks identical nodes, additive edges and grounded
+new endpoints with the optional pass disabled/enabled. Corpus scores did not
+change, so the scoreboard was not regenerated.
+
+All four validation clone/copy directories and the scratch CST probe were removed.
+The roadmap remains excluded and untracked; `episteme/` is not part of this revision.

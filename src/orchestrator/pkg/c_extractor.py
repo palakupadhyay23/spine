@@ -286,7 +286,9 @@ class CExtractor:
                 line = n.start_point[0] + 1
                 callee = _text(fn, source) if fn is not None and fn.type == "identifier" else ""
                 if not callee or callee in bound:
-                    self.unresolved_member_calls.append(PendingMemberCall(caller, rel, n.start_byte, line))
+                    self.unresolved_member_calls.append(
+                        PendingMemberCall(caller, rel, n.start_byte, line, n.end_byte)
+                    )
                 else:
                     target = local_funcs.get(callee, f"c:{callee}")
                     batch.add_edge(Edge(caller, target, EdgeKind.CALLS, Provenance(rel, line)))

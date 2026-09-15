@@ -2,8 +2,8 @@
 
 A second parser may contribute edges only between nodes the primary parser already
 grounded. USRs are identities to check, never authority to invent PKG nodes. This
-module deliberately declines templates, anonymous scopes and signature-qualified
-identities that the existing name-keyed graph cannot distinguish.
+module deliberately declines template and anonymous declaration identities. Ordinary
+parameter and method qualifiers collapse to the existing name-keyed graph identity.
 """
 
 from __future__ import annotations
@@ -12,14 +12,19 @@ import importlib.metadata
 import importlib.util
 import re
 import sys
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from orchestrator.pkg.facts import EdgeKind, FactBatch, Provenance
 from orchestrator.pkg.finalize_names import declared_ids, resolve_or_drop
 
 _IDENTIFIER = r"[A-Za-z_][A-Za-z_0-9]*"
-_CPP_FUNCTION = re.compile(rf"c:((?:@(?:N|S)@{_IDENTIFIER})*)@F@({_IDENTIFIER})#?")
+_CPP_FUNCTION = re.compile(rf"c:((?:@(?:N|S)@{_IDENTIFIER})*)@F@({_IDENTIFIER})")
+# LLVM 18 USRGeneration.cpp: parameters precede a final '#', followed by
+# static/CVR/ref method qualifiers. Parameter types are opaque here: the graph
+# keys functions by name, and this input comes from a resolved clang declaration.
+_CPP_SIGNATURE = re.compile(r"(?:[^\s#]+#)*S?[1-7]?(?:&{1,2})?")
 _C_FUNCTION = re.compile(rf"c:@F@({_IDENTIFIER})")
 _C_STATIC = re.compile(rf"c:([^@]+)@F@({_IDENTIFIER})")
 
@@ -29,8 +34,10 @@ def usr_to_id(usr: str, *, language: str, rel: str) -> str | None:
 
     ``rel`` is the declaration's repository-relative path, not the caller's TU.
     C statics use that full path (the USR itself contains only the basename).
-    Function parameter encodings are deliberately refused: stripping arbitrary USR
-    suffixes could turn a template/overload identity into a plausible wrong name.
+    Parameter encodings and method qualifiers do not participate in existing IDs.
+    Validate the declaration prefix separately, so templates, local declarations
+    and anonymous scopes cannot collapse onto an unrelated grounded name. This
+    projects a clang-generated USR; it is not a validator for arbitrary USR text.
     The caller must still verify that the result is a grounded function.
     """
     path = PurePosixPath(rel)
@@ -44,21 +51,25 @@ def usr_to_id(usr: str, *, language: str, rel: str) -> str | None:
         if match and match[1] == path.name:
             return f"c:{path.as_posix()}::{match[2]}"
     elif language == "cpp":
-        match = _CPP_FUNCTION.fullmatch(usr)
+        name, separator, signature = usr.partition("#")
+        if separator and not _CPP_SIGNATURE.fullmatch(signature):
+            return None
+        match = _CPP_FUNCTION.fullmatch(name)
         if match:
             parents = re.findall(r"@(?:N|S)@([^@]+)", match[1])
             return "cpp:" + "::".join([*parents, match[2]])
     return None
 
 
-# The side-channel names call *sites*, not symbol guesses. Byte offsets distinguish
-# two calls on one line and match clang's source ranges without text heuristics.
+# The side-channel names call *sites*, not symbol guesses. Full byte ranges distinguish
+# nested calls with the same start and match clang without text heuristics.
 @dataclass(frozen=True)
 class PendingMemberCall:
     caller: str
     file: str
     offset: int
     line: int
+    end_offset: int
 
 
 @dataclass
@@ -70,6 +81,7 @@ class ClangReport:
     parsed_tus: int = 0
     failed_tus: int = 0
     diagnostic_tus: int = 0
+    unresolved_reasons: dict[str, int] = field(default_factory=dict)
 
     def summary(self) -> str:
         availability = "" if self.available else " (extra unavailable)"
@@ -126,8 +138,9 @@ def link_clang(
     Reports are side-channel metadata, so facts stay deterministic and edge-only.
     """
     report = report if report is not None else ClangReport()
-    sites = {(p.file, p.offset): p for p in pending}
+    sites = {(p.file, p.offset, p.end_offset): p for p in pending}
     report.pending = len(sites)
+    report.unresolved_reasons = {"extra_unavailable": len(sites)} if sites else {}
     tus, includes, files = _tu_files(batch)
     report.total_tus = len(tus)
     report.available = clang_available()
@@ -161,10 +174,24 @@ def link_clang(
     header_dirs = sorted(
         {str((root / f).parent) for f in files if Path(f).suffix in {".h", ".hpp", ".hh", ".hxx"}}
     )
-    resolved: set[tuple[str, int]] = set()
+    resolved: set[tuple[str, int, int]] = set()
     # A shared header may be parsed in multiple TUs. Conflicting static targets
     # are refused rather than letting TU iteration order choose the graph.
-    candidates: dict[tuple[str, int], set[str]] = {}
+    candidates: dict[tuple[str, int, int], set[str]] = {}
+    sites_by_file: dict[str, set[tuple[str, int, int]]] = {}
+    for key in sites:
+        sites_by_file.setdefault(key[0], set()).add(key)
+    # Keep the furthest observed stage for each distinct site across all TUs.
+    # These are observations, not claims about the root cause of parser recovery.
+    stages = (
+        "no_matching_call",
+        "indirect_or_unsupported_target",
+        "outside_repository",
+        "unsupported_usr",
+        "ungrounded_caller",
+        "ungrounded_target",
+    )
+    progress = dict.fromkeys(sites, 0)
     for file, language in sorted(tus.items()):
         reachable: set[str] = set()
         stack = [file]
@@ -173,7 +200,7 @@ def link_clang(
             if item not in reachable:
                 reachable.add(item)
                 stack.extend(sorted(includes.get(item, ())))
-        wanted = {key for key in sites if key[0] in reachable}
+        wanted = {key for rel in reachable for key in sites_by_file.get(rel, ())}
         if not wanted:
             continue
         report.parsed_tus += 1
@@ -200,19 +227,27 @@ def link_clang(
                 continue
             if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.location.file:
                 rel = _repo_file(cursor.location.file.name, root)
-                key = (rel or "", cursor.extent.start.offset)
+                key = (rel or "", cursor.extent.start.offset, cursor.extent.end.offset)
                 if key in wanted:
+                    progress[key] = max(progress[key], 1)
                     target = cursor.referenced
                     if (
                         target
                         and target.kind in {cindex.CursorKind.CXX_METHOD, cindex.CursorKind.FUNCTION_DECL}
                         and target.location.file
                     ):
+                        progress[key] = max(progress[key], 2)
                         target_rel = _repo_file(target.location.file.name, root)
-                        target_id = usr_to_id(target.get_usr(), language=language, rel=target_rel or "")
-                        site = sites[key]
-                        if target_rel in files and site.caller in grounded and target_id in grounded:
-                            candidates.setdefault(key, set()).add(target_id)
+                        if target_rel in files:
+                            progress[key] = max(progress[key], 3)
+                            target_id = usr_to_id(target.get_usr(), language=language, rel=target_rel or "")
+                            if target_id is not None:
+                                progress[key] = max(progress[key], 4)
+                                site = sites[key]
+                                if site.caller in grounded:
+                                    progress[key] = max(progress[key], 5)
+                                    if target_id in grounded:
+                                        candidates.setdefault(key, set()).add(target_id)
             cursors.extend(cursor.get_children())
     for key, targets in sorted(candidates.items()):
         if len(targets) != 1:
@@ -228,4 +263,13 @@ def link_clang(
         ):
             resolved.add(key)
     report.resolved = len(resolved)
+    report.unresolved_reasons = dict(
+        sorted(
+            Counter(
+                "conflicting_targets" if len(candidates.get(key, ())) > 1 else stages[stage]
+                for key, stage in progress.items()
+                if key not in resolved
+            ).items()
+        )
+    )
     return batch
