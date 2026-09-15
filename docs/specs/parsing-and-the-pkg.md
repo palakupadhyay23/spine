@@ -250,17 +250,18 @@ map to the CST caller ID. Its source file must agree with the grounded caller,
 or the grounded overload must lie within its class declaration in a header.
 This refuses scope-stripped callers, macro test bodies, destructor/constructor
 collisions and unrelated program entrypoints without changing nodes or IDs.
-Caller identities outside the supported USR shapes are conservatively refused.
-Ordinary parameter and method qualifiers collapse to the existing name-based
-identity. Template/local/anonymous declaration identities and operators remain
-refused. Virtual calls use the static declaration; conflicting candidates are
-refused. The pass never changes the node set.
+Caller mapping also accepts file-static C++ functions, exact destructor names
+and `operator()` when the same identity and grounding checks succeed. Unsupported
+caller shapes remain refused. Ordinary parameter and method qualifiers collapse
+to the existing name-based identity. Template/local/anonymous declaration identities
+and operator targets remain refused. Virtual calls use the static declaration;
+conflicting candidates are refused. The pass never changes the node set.
 
 The report states recovered sites, total pending sites, parsed/total TUs,
 diagnostic/failed TUs, and a partition of unresolved sites by the furthest stage
 observed. These are coverage observations, not proof of complete resolution or
-attribution of every miss to missing headers. Latest measured recovery is 0.49%
-in the OpenCV fork and 30.09% in TinyXML-2, with the full denominators and runtime
+attribution of every miss to missing headers. Latest measured recovery is 0.51%
+in the OpenCV fork and 30.17% in TinyXML-2, with the full denominators and runtime
 in the [validation record](../evals/clang-semantic-validation.md).
 
 ## 6. What this buys, measured

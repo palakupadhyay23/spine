@@ -119,3 +119,19 @@ new specification is introduced. Full findings and limitations are in
 [the correctness audit](clang-semantic-correctness-audit.md).
 
 Step 2 final full suite: `3761 passed, 4 skipped, 51 deselected, 182 warnings in 221.76s (0:03:41)`. Accuracy: zero regressions. All four shapes pass; Spine verification: zero errors, one warning.
+
+## Confidence step 3 review
+
+The caller projection extension retains full named scope and destructor spelling;
+file-prefixed identities must match the declaration basename, then pass the
+existing full source-file grounding check. Target mapping, synthesized flags,
+TU selection, routing, nodes, IDs, packaging and cache inputs remain unchanged.
+The source implementation is already part of the cache fingerprint.
+
+Walked the documentation matrix and semantic-pass checklist again: CHANGELOG,
+README, SETUP, KNOWLEDGE_GRAPH, parser design, STATE-OF-SPINE and validation evidence
+carry the revised behavior or measurements. No new frontend, CLI/MCP surface,
+configuration, schema, spec, dependency, release or maintainer command was added.
+The 27 added edges received source review; the fixed Step 2 audit is preserved
+and all 32 incorrect/ambiguous relationships remain absent. See
+[the recovery report](clang-semantic-recovery.md) for per-edge evidence and gates.

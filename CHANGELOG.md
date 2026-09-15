@@ -18,6 +18,9 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Changed
 
+- Clang recovers calls inside grounded C++ file-static functions, exact destructors
+  and call operators while retaining caller scope and source-file checks.
+
 - Clang verifies the enclosing function against the grounded caller before adding
   a call. Mismatched scope, macro bodies and unrelated entrypoints are refused;
   nodes and IDs remain unchanged. See the [source audit](docs/evals/clang-semantic-correctness-audit.md).

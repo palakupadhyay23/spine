@@ -374,3 +374,56 @@ def test_local_class_calls_do_not_attach_to_outer_function(tmp_path: Path, clang
     assert ex.clang_report.pending == 1
     assert ex.clang_report.resolved == 0
     assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 1}
+
+
+def test_file_static_callers_preserve_scope_and_source_file(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.cpp").write_text(
+        "struct A { void run() {} };\n"
+        "static void use(A& a) { a.run(); }\n"
+        "namespace api { static void use(A& a) { a.run(); } }\n"
+    )
+    (tmp_path / "b.cpp").write_text(
+        "struct B { void run() {} };\n"
+        "static void use(B& b) { b.run(); }\n"
+        "namespace api { static void use(B& b) { b.run(); } }\n"
+    )
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:use", "cpp:A::run") in _calls(batch)
+    assert ("cpp:api::use", "cpp:A::run") in _calls(batch)
+    assert ("cpp:use", "cpp:B::run") not in _calls(batch)
+    assert ("cpp:api::use", "cpp:B::run") not in _calls(batch)
+    assert ex.clang_report.resolved == 2
+    assert ex.clang_report.unresolved_reasons == {"caller_identity_mismatch": 2}
+
+
+def test_exact_destructor_and_call_operator_callers(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "a.cpp").write_text(
+        "namespace api { struct Worker { void run() {} };\n"
+        "struct Guard { Worker w; ~Guard(); void operator()(); };\n"
+        "Guard::~Guard() { w.run(); }\n"
+        "void Guard::operator()() { w.run(); } }\n"
+    )
+    ex = RepoCodeExtractor()
+    batch = ex.extract(tmp_path)
+    assert ("cpp:api::Guard::~Guard", "cpp:api::Worker::run") in _calls(batch)
+    assert ("cpp:api::Guard::operator()", "cpp:api::Worker::run") in _calls(batch)
+    assert ("cpp:api::Guard::Guard", "cpp:api::Worker::run") not in _calls(batch)
+    assert ex.clang_report.resolved == ex.clang_report.pending == 2
+
+
+@pytest.mark.parametrize(
+    "usr",
+    [
+        "c:other.cpp@F@use#",
+        "c:a.cpp@aN@F@use#",
+        "c:a.cpp@99@F@outer#@S@Local@F@operator()#",
+        "c:@ST>1#T@Box@F@operator()#",
+        "c:a.cpp@FT@>1#Tuse#t0.0#v#",
+        "c:@S@A@F@operator+#I#",
+    ],
+)
+def test_additional_caller_shapes_still_refuse_unrepresentable_identities(usr: str) -> None:
+    from orchestrator.pkg.clang_link import _caller_usr_to_id
+
+    assert _caller_usr_to_id(usr, language="cpp", rel="src/a.cpp") is None

@@ -583,3 +583,23 @@ recovery is lower because unsafe or unsupported caller identities are refused.
 The independent source audit does not establish population-wide precision.
 Full evidence, acceptance checks, tradeoffs and regression receipts are in the
 audit report. Release remains pending in draft MR #379.
+
+## Confidence step 3 — diagnose misses and recover supported callers
+
+The [recovery diagnosis](clang-semantic-recovery.md) records a fixed 100-site miss
+sample and classifies all Step 2 caller rejections. Caller-only mapping now admits
+file-static C++ functions, exact destructors and `operator()` while retaining the
+identity and source-grounding guards. D1–D6 are unchanged.
+
+Recovery rises from 670 to **696 / 135,633** sites in OpenCV and from 415 to
+**416 / 1,379** in TinyXML-2. All **27 new edges** passed source review; all Step 2
+edges remain. The original audit now retains 166 reviewed-correct edges and still
+refuses every one of its 31 incorrect and one ambiguous relationships. The two
+remaining correct losses are unsupported template callers.
+
+The dominant miss buckets remain absent/unresolved clang expressions and missing
+grounded identities. This is a bounded recovery improvement; release remains
+pending. Current repeated timing, graph invariants and regression receipts are
+in the recovery report and its linked machine-readable evidence.
+
+Step 3 final local suite: `3769 passed, 4 skipped, 51 deselected, 182 warnings in 220.58s (0:03:40)`. Phase gates, zero-regression accuracy, all four shapes and self-verification (0 errors, 1 warning) passed.

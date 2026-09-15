@@ -29,6 +29,9 @@ _CPP_FUNCTION = re.compile(rf"c:((?:@(?:N|S)@{_IDENTIFIER})*)@F@({_IDENTIFIER})"
 # static/CVR/ref method qualifiers. Parameter types are opaque here: the graph
 # keys functions by name, and this input comes from a resolved clang declaration.
 _CPP_SIGNATURE = re.compile(r"(?:[^\s#]+#)*S?[1-7]?(?:&{1,2})?")
+_CPP_CALLER_FUNCTION = re.compile(
+    rf"c:([^@]+)?((?:@(?:N|S)@{_IDENTIFIER})*)@F@(~?{_IDENTIFIER}|operator\(\))"
+)
 _C_FUNCTION = re.compile(rf"c:@F@({_IDENTIFIER})")
 _C_STATIC = re.compile(rf"c:([^@]+)@F@({_IDENTIFIER})")
 
@@ -127,6 +130,29 @@ def _tu_files(batch: FactBatch) -> tuple[dict[str, str], dict[str, set[str]], se
     return tus, includes, set(files)
 
 
+def _caller_usr_to_id(usr: str, *, language: str, rel: str) -> str | None:
+    """Project additional caller shapes only; callee eligibility stays unchanged.
+
+    The caller guard separately checks exact CST identity and source grounding.
+    This admits file statics, destructors and call operators without stripping
+    namespace/class scope or confusing a destructor with its constructor.
+    """
+    mapped = usr_to_id(usr, language=language, rel=rel)
+    if mapped is not None or language != "cpp":
+        return mapped
+    path = PurePosixPath(rel)
+    if not rel or path.is_absolute() or ".." in path.parts or "\\" in rel or ":" in rel:
+        return None
+    name, separator, signature = usr.partition("#")
+    if separator and not _CPP_SIGNATURE.fullmatch(signature):
+        return None
+    match = _CPP_CALLER_FUNCTION.fullmatch(name)
+    if not match or (match[1] is not None and match[1] != path.name):
+        return None
+    parents = re.findall(r"@(?:N|S)@([^@]+)", match[2])
+    return "cpp:" + "::".join([*parents, match[3]])
+
+
 def _caller_matches(
     caller: Cursor | None, site: PendingMemberCall, node: Node, language: str, root: Path
 ) -> bool:
@@ -141,7 +167,7 @@ def _caller_matches(
     if caller is None or not caller.location.file or node.provenance is None:
         return False
     rel = _repo_file(caller.location.file.name, root)
-    if usr_to_id(caller.get_usr(), language=language, rel=rel or "") != site.caller:
+    if _caller_usr_to_id(caller.get_usr(), language=language, rel=rel or "") != site.caller:
         return False
     if node.provenance.file == rel:
         return True
