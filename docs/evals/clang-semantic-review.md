@@ -95,3 +95,13 @@ errors and one warning. Spine extraction contains no corpus fixture source nodes
 The first suite attempt's single documentation-count mismatch occurred while
 documentation was being edited between its two snapshots; the stable full rerun
 above passes without changing that test.
+
+
+P5 follow-up review: `stats.summarise_store` now counts incoming calls in its
+existing edge pass, preserving the caller-exists and function-target conditions,
+repeated call-site counts, missing-endpoint handling and deterministic tie order.
+The regression test compares against `FactStore.callers_of`, bounds edge visits
+and verifies unchanged nodes/edges. Full validation now completes both state
+stages; see the final output in the validation record. README's three new links
+were converted to absolute URLs after CI reported its PyPI-link check.
+Final full suite: `3755 passed, 4 skipped, 51 deselected, 182 warnings in 198.13s (0:03:18)`.

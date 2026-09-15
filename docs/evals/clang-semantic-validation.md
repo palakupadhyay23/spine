@@ -409,3 +409,63 @@ separate from completing these checks; the MR is prepared as a draft while P5's
 large-repository state smoke is revisited.
 
 P6 full suite: `3754 passed, 4 skipped, 51 deselected, 182 warnings in 211.56s (0:03:31)`. Phase gates and MCP inventory pass; accuracy reports zero gated regressions.
+
+
+## P5 return after P6 — complete state smoke
+
+P6 completed in draft [MR #379](https://github.com/synaptixs/spine/pull/379), based
+on commit `a604472`. Returning to the incomplete `state` stage exposed the existing
+cost in `stats.summarise_store`: `callers_of` scanned all edges once per function.
+A regression fixture with 87 edges visited **7,134 edges** while preserving the
+right counts. Counting incoming calls during the existing edge-count pass visits
+those 87 edges once. The test compares the result with `callers_of`, including
+missing endpoints, external function targets, non-function callers/targets,
+repeated call sites, and deterministic ties, and verifies no graph mutation.
+
+This changes summary aggregation only. It does not change clang, compile flags,
+CST nodes, IDs, graph edges, or the recovery denominator. The full validation
+script is rerun on the same pinned commits and `.git`-less copies, including its
+previously unfinished downstream state stage.
+
+
+### Completed end-to-end results
+
+The original `scripts/validate-frontend.py cpp <tinyxml2-copy> <opencv-copy>`
+completed extraction, verification, state rendering and unresolved-import reporting
+for **both** repositories. [Complete captured output](clang-semantic-p5-complete-output.txt)
+ends with `validate-frontend: FAILED — 2 repo(s) checked` because the known graph
+verification errors remain; the process was not interrupted and neither state
+stage failed.
+
+| Repository | Extraction | Semantic recovery | Completed state |
+|---|---|---|---|
+| TinyXML-2 (`8224e42`) | 0.282 s; 425 nodes / 2,013 edges | 434/1,379 (31.4721%); 3/3 TUs | 5 modules, 8 types, 243 functions, 76 fields, 319 docs; call graph available |
+| OpenCV fork (`b4c5ec4`) | 56.368 s; 87,181 nodes / 398,001 edges | 949/135,633 (0.6997%); 1,981/2,468 TUs | 4,752 modules, 7,156 types, 42,621 functions, 25,893 fields, 1,981 docs; call graph available |
+
+All extraction counts and miss categories match the prior revised P5 measurement.
+Timing varies between runs; the summary optimization occurs after extraction and
+is **not** the cause of the 63.160 → 56.368-second extraction-time difference.
+The full regression suite started only after the timed extraction had finished;
+it overlapped the later state stage. No controlled state-speedup ratio is claimed.
+The generated state contains docs in addition to extracted source facts.
+
+Verification remains: TinyXML-2 **1 error/1 warning** (dangling edges and phantom
+modules); OpenCV **3 errors/2 warnings** (dangling edges, Java/Python orphan rates,
+phantom modules and scope-bound call warnings). This is completed validation with
+reported limitations, not a clean external graph or a release recommendation.
+All temporary clone/copy directories and the isolated no-clang environment were
+removed after validation.
+
+### Final regression receipt
+
+```text
+48 passed in 3.47s (statistics and state tests)
+3755 passed, 4 skipped, 51 deselected, 182 warnings in 198.13s (0:03:18)
+pkg accuracy --check: OK — 0 gated regression(s), 0 improvement(s).
+```
+
+Mypy, lint, format, generated artifacts and roadmap checks pass. CI's README
+absolute-link requirement exposed three new relative links; commit `f5a3004`
+corrects them without changing application behavior. P5 validation and P6 review
+are complete; the draft MR retains the measured recovery/verification limits for
+the release decision.

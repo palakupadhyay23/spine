@@ -18,6 +18,8 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Changed
 
+- `state` graph statistics count incoming calls in one edge pass, preserving
+  existing counts while avoiding a full edge scan per function on large repos.
 - Headers ending in `.h` reached through literal C++ includes use the C++ CST
   parser, including transitive includes. Other `.h` files retain C routing.
 - Semantic validation reports why pending calls remain unresolved. Full source
