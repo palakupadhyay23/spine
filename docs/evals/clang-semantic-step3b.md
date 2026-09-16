@@ -393,4 +393,4 @@ nor a population-wide precision estimate.
   [Local gate receipt](clang-semantic-step3b-gates.txt).
 - [45-run output](clang-semantic-step3b-runs-output.txt) and
   [comparison assertions](clang-semantic-step3b-compare-output.txt).
-  Post-commit documentation audit and remote CI receipts are recorded on draft MR #379.
+  Post-commit documentation audit and remote CI receipts are recorded on MR #379.

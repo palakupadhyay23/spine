@@ -393,7 +393,7 @@ Step 3b implementation is complete when:
 4. Required phase checks, focused tests, full pytest, accuracy gate, repository
    shapes, self-verification and documentation review pass. Keep workspace files
    frozen during full pytest; exclude `episteme/` and the working root roadmap
-   from commits; use the existing draft MR #379.
+   from commits; use the existing MR #379.
 5. The report states where opt-in clang provides useful correct relationships,
    its runtime cost and its remaining limits, including profiles with little or
    no benefit. Keep implementation completion separate from release approval.
@@ -407,13 +407,14 @@ scope the next decision rather than expanding this implementation silently.
 
 #### Step 4 — release readiness
 
-**Status: Step 4.1–4.4 complete on `0c39f6b`, including final CI. Step 4.5 is
-in progress: gap triage complete; maintainer acceptance pending.** Defined at the
+**Status: COMPLETE. Steps 4.1–4.5 done; the maintainer accepted the tradeoffs and
+[MR #379](https://github.com/synaptixs/spine/pull/379) merged 2026-09-15, released in
+3.35.0.** Defined at the
 user's request after Step 3b. This confidence step follows the completed P0–P6
 implementation track; it is distinct from the original P4 header-routing phase.
 The starting candidate is `3b0eea8`, with the
 [Step 3b evaluation](../evals/clang-semantic-step3b.md) as its evidence baseline
-and [draft MR #379](https://github.com/synaptixs/spine/pull/379) as the delivery vehicle.
+and [MR #379](https://github.com/synaptixs/spine/pull/379) as the delivery vehicle (merged).
 
 **Objective:** determine whether the current optional clang support is ready for
 maintainer merge and release review, with an explicit support contract, accepted
