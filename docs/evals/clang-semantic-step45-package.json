@@ -1,0 +1,18 @@
+{
+  "reviewed_commit": "0c39f6b74f21c9c64dd971f7b5dddcaad3a7cc56",
+  "wheel_sha256": "0d8b09c7e178baa745ae5e3eae4e22ddcb7e1ae4f855b291f51185fcaaaf99fb",
+  "complete_python_payload_matches_checkout": 365,
+  "readme_metadata_matches_checkout": true,
+  "expected_c_cpp_corpus_roots": [
+    "c/function_pointers/expected.json:.repo",
+    "c/header_unaffected/expected.json:.repo",
+    "c/plain/expected.json:.repo",
+    "cpp/header_classes/expected.json:.repo",
+    "cpp/instance_calls/expected.json:.repo",
+    "cpp/plain/expected.json:.repo",
+    "cpp/shadowed_calls/expected.json:.repo"
+  ],
+  "frozen_inputs_still_match": true,
+  "original_build_base_commit": "001b5285a5f5669911b6db40cd406fe7cbcd90c8",
+  "provenance_note": "Original source_candidate was HEAD during the build; README changes were uncommitted then. This receipt verifies the unchanged wheel runtime payload and README against the reviewed commit."
+}

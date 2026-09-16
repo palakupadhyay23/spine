@@ -12,6 +12,7 @@ graph is a build artifact keyed to a commit, never a one-time crawl.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import importlib.util
 import json
 import subprocess
@@ -172,6 +173,7 @@ _GRAMMAR_MODULES = (
     "tree_sitter_perl",
     "tree_sitter_kotlin",
     "sqlglot",
+    "clang",
 )
 
 _FINGERPRINT: str | None = None
@@ -211,6 +213,13 @@ def extractor_fingerprint(*, package_dir: Path | None = None) -> str:
         digest.update(b"\0")
     available = [name for name in _GRAMMAR_MODULES if importlib.util.find_spec(name) is not None]
     digest.update(",".join(available).encode("utf-8"))
+    if "clang" in available:
+        # The wheel version changes semantic resolution even at the same repo commit.
+        try:
+            version = importlib.metadata.version("libclang")
+        except importlib.metadata.PackageNotFoundError:
+            version = "unavailable"
+        digest.update(f"libclang={version}".encode())
 
     fingerprint = digest.hexdigest()[:16]
     if package_dir is None:

@@ -26,7 +26,7 @@ _12 of the symbols other code depends on here have no test path the graph can se
 
 ## Documented in
 
-`docs/evidence/perl-codegen-c0-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/README.md#3-gap-taxonomy-g1g17`, `docs/specs/README.md#6-immediate-next-steps`, `docs/specs/codegen-benchmark-roadmap.md#non-goals`, `docs/specs/codegen-benchmark-roadmap.md#the-strategic-problem-stated-plainly`
+`docs/evals/clang-semantic-step3b-gates.txt`, `docs/evals/clang-semantic-step4-gates.txt`, `docs/evidence/perl-codegen-c0-validation.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/README.md#3-gap-taxonomy-g1g17`, `docs/specs/README.md#6-immediate-next-steps`
 
 ## Types
 

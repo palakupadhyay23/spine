@@ -1,0 +1,26 @@
+import collections, hashlib, json
+from pathlib import Path
+from clang import cindex
+root=Path('/tmp/spine-clang-ab-opencv')
+record=json.loads(Path('docs/evals/clang-semantic-step3b-results.json').read_text())['repositories']['opencv']
+files={'modules/core/src/lda.cpp':[974],'modules/dnn/src/darknet/darknet_io.cpp':[766,816]}
+cindex.Config.set_library_file(str(Path(cindex.__file__).parent/'native/libclang.dylib'))
+rows=[]
+for file, lines in files.items():
+ for mode in ['B','C']:
+  dirs=record['baseline_include_directories']+(record['additional_include_directories'] if mode=='C' else [])
+  args=record['fixed_flags_by_language']['cpp']+['-I'+str(root/d) for d in dirs]
+  tu=cindex.Index.create().parse(str(root/file),args=args)
+  nearby=[]; enclosing=[]
+  for c in tu.cursor.walk_preorder():
+   if c.location.file and Path(c.location.file.name)==root/file:
+    if c.location.line in lines:
+     nearby.append({'kind':c.kind.name,'spelling':c.spelling,'line':c.location.line,'start':c.extent.start.offset,'end':c.extent.end.offset})
+    if c.kind.name in {'FUNCTION_DECL','CXX_METHOD'} and any(c.extent.start.line<=line<=c.extent.end.line for line in lines):
+     enclosing.append({'kind':c.kind.name,'spelling':c.spelling,'start_line':c.extent.start.line,'end_line':c.extent.end.line,'children':[n.kind.name for n in c.get_children()]})
+  diags=[{'severity':d.severity,'file':str(d.location.file) if d.location.file else None,'line':d.location.line,'message':d.spelling} for d in tu.diagnostics]
+  for d in diags:
+   if d['file'] and d['file'].startswith(str(root)+'/'):d['file']=d['file'][len(str(root))+1:]
+  row={'file':file,'mode':mode,'source_sha256':hashlib.sha256((root/file).read_bytes()).hexdigest(),'at_lines':nearby,'enclosing_functions':enclosing,'diagnostic_counts':dict(collections.Counter(d['severity'] for d in diags)), 'first_diagnostics':diags[:15], 'source_diagnostics':[d for d in diags if d['file']==file]}
+  rows.append(row);print(file,mode,len(nearby),len(enclosing),len(diags),flush=True)
+Path('/tmp/spine-step45-loss-context.json').write_text(json.dumps(rows,indent=2)+'\n')

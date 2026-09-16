@@ -1,0 +1,355 @@
+[
+  {
+    "file": "modules/core/src/lda.cpp",
+    "mode": "B",
+    "source_sha256": "cfe646d9f8d6ad6104da18243873ad7335e47c7c63e490539e40b3374b6be355",
+    "at_lines": [
+      {
+        "kind": "CALL_EXPR",
+        "spelling": "compute",
+        "line": 974,
+        "start": 34713,
+        "end": 34747
+      },
+      {
+        "kind": "MEMBER_REF_EXPR",
+        "spelling": "compute",
+        "line": 974,
+        "start": 34713,
+        "end": 34732
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "eigensystem",
+        "line": 974,
+        "start": 34713,
+        "end": 34724
+      },
+      {
+        "kind": "UNEXPOSED_EXPR",
+        "spelling": "",
+        "line": 974,
+        "start": 34733,
+        "end": 34739
+      },
+      {
+        "kind": "CXX_BOOL_LITERAL_EXPR",
+        "spelling": "",
+        "line": 974,
+        "start": 34741,
+        "end": 34746
+      }
+    ],
+    "enclosing_functions": [
+      {
+        "kind": "FUNCTION_DECL",
+        "spelling": "eigenNonSymmetric",
+        "start_line": 956,
+        "end_line": 1004,
+        "children": [
+          "PARM_DECL",
+          "PARM_DECL",
+          "PARM_DECL",
+          "COMPOUND_STMT"
+        ]
+      }
+    ],
+    "diagnostic_counts": {
+      "4": 1
+    },
+    "first_diagnostics": [
+      {
+        "severity": 4,
+        "file": "modules/core/src/precomp.hpp",
+        "line": 50,
+        "message": "'opencv2/opencv_modules.hpp' file not found"
+      }
+    ],
+    "source_diagnostics": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "mode": "C",
+    "source_sha256": "cfe646d9f8d6ad6104da18243873ad7335e47c7c63e490539e40b3374b6be355",
+    "at_lines": [
+      {
+        "kind": "UNEXPOSED_EXPR",
+        "spelling": "",
+        "line": 974,
+        "start": 34713,
+        "end": 34747
+      },
+      {
+        "kind": "MEMBER_REF_EXPR",
+        "spelling": "compute",
+        "line": 974,
+        "start": 34713,
+        "end": 34732
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "eigensystem",
+        "line": 974,
+        "start": 34713,
+        "end": 34724
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "src64f",
+        "line": 974,
+        "start": 34733,
+        "end": 34739
+      },
+      {
+        "kind": "CXX_BOOL_LITERAL_EXPR",
+        "spelling": "",
+        "line": 974,
+        "start": 34741,
+        "end": 34746
+      }
+    ],
+    "enclosing_functions": [
+      {
+        "kind": "FUNCTION_DECL",
+        "spelling": "eigenNonSymmetric",
+        "start_line": 956,
+        "end_line": 1004,
+        "children": [
+          "PARM_DECL",
+          "PARM_DECL",
+          "PARM_DECL",
+          "COMPOUND_STMT"
+        ]
+      }
+    ],
+    "diagnostic_counts": {
+      "4": 1
+    },
+    "first_diagnostics": [
+      {
+        "severity": 4,
+        "file": "modules/core/src/precomp.hpp",
+        "line": 50,
+        "message": "'opencv2/opencv_modules.hpp' file not found"
+      }
+    ],
+    "source_diagnostics": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "mode": "B",
+    "source_sha256": "219edb632783c3d18bdcc7b5117b879b634de7b1726f24bcae0ace6ae7374efc",
+    "at_lines": [
+      {
+        "kind": "CALL_EXPR",
+        "spelling": "setConvolution",
+        "line": 766,
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "kind": "MEMBER_REF_EXPR",
+        "spelling": "setConvolution",
+        "line": 766,
+        "start": 33652,
+        "end": 33676
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "setParams",
+        "line": 766,
+        "start": 33652,
+        "end": 33661
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "kernel_size",
+        "line": 766,
+        "start": 33677,
+        "end": 33688
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "padding",
+        "line": 766,
+        "start": 33690,
+        "end": 33697
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "stride",
+        "line": 766,
+        "start": 33699,
+        "end": 33705
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "filters",
+        "line": 766,
+        "start": 33707,
+        "end": 33714
+      },
+      {
+        "kind": "ARRAY_SUBSCRIPT_EXPR",
+        "spelling": "",
+        "line": 766,
+        "start": 33716,
+        "end": 33731
+      },
+      {
+        "kind": "UNEXPOSED_EXPR",
+        "spelling": "",
+        "line": 766,
+        "start": 33716,
+        "end": 33728
+      },
+      {
+        "kind": "INTEGER_LITERAL",
+        "spelling": "",
+        "line": 766,
+        "start": 33729,
+        "end": 33730
+      },
+      {
+        "kind": "CALL_EXPR",
+        "spelling": "setCrop",
+        "line": 816,
+        "start": 36200,
+        "end": 36286
+      },
+      {
+        "kind": "MEMBER_REF_EXPR",
+        "spelling": "setCrop",
+        "line": 816,
+        "start": 36200,
+        "end": 36217
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "setParams",
+        "line": 816,
+        "start": 36200,
+        "end": 36209
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "crop_height",
+        "line": 816,
+        "start": 36218,
+        "end": 36229
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "crop_width",
+        "line": 816,
+        "start": 36231,
+        "end": 36241
+      },
+      {
+        "kind": "ARRAY_SUBSCRIPT_EXPR",
+        "spelling": "",
+        "line": 816,
+        "start": 36243,
+        "end": 36258
+      },
+      {
+        "kind": "UNEXPOSED_EXPR",
+        "spelling": "",
+        "line": 816,
+        "start": 36243,
+        "end": 36255
+      },
+      {
+        "kind": "INTEGER_LITERAL",
+        "spelling": "",
+        "line": 816,
+        "start": 36256,
+        "end": 36257
+      },
+      {
+        "kind": "ARRAY_SUBSCRIPT_EXPR",
+        "spelling": "",
+        "line": 816,
+        "start": 36260,
+        "end": 36275
+      },
+      {
+        "kind": "UNEXPOSED_EXPR",
+        "spelling": "",
+        "line": 816,
+        "start": 36260,
+        "end": 36272
+      },
+      {
+        "kind": "INTEGER_LITERAL",
+        "spelling": "",
+        "line": 816,
+        "start": 36273,
+        "end": 36274
+      },
+      {
+        "kind": "DECL_REF_EXPR",
+        "spelling": "noadjust",
+        "line": 816,
+        "start": 36277,
+        "end": 36285
+      }
+    ],
+    "enclosing_functions": [
+      {
+        "kind": "FUNCTION_DECL",
+        "spelling": "ReadDarknetFromCfgStream",
+        "start_line": 677,
+        "end_line": 971,
+        "children": [
+          "PARM_DECL",
+          "PARM_DECL",
+          "COMPOUND_STMT"
+        ]
+      }
+    ],
+    "diagnostic_counts": {
+      "4": 1
+    },
+    "first_diagnostics": [
+      {
+        "severity": 4,
+        "file": "modules/dnn/src/darknet/../precomp.hpp",
+        "line": 43,
+        "message": "'cvconfig.h' file not found"
+      }
+    ],
+    "source_diagnostics": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "mode": "C",
+    "source_sha256": "219edb632783c3d18bdcc7b5117b879b634de7b1726f24bcae0ace6ae7374efc",
+    "at_lines": [],
+    "enclosing_functions": [
+      {
+        "kind": "FUNCTION_DECL",
+        "spelling": "ReadDarknetFromCfgStream",
+        "start_line": 677,
+        "end_line": 971,
+        "children": [
+          "PARM_DECL",
+          "PARM_DECL",
+          "COMPOUND_STMT"
+        ]
+      }
+    ],
+    "diagnostic_counts": {
+      "4": 1
+    },
+    "first_diagnostics": [
+      {
+        "severity": 4,
+        "file": "modules/dnn/src/darknet/../precomp.hpp",
+        "line": 43,
+        "message": "'cvconfig.h' file not found"
+      }
+    ],
+    "source_diagnostics": []
+  }
+]

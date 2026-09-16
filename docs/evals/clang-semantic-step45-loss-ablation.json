@@ -1,0 +1,402 @@
+[
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": null,
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/dlpack/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/flatbuffers/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/include/opencl/1.2",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/libwebp",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "3rdparty/libwebp/src",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "hal/carotene/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/calib3d/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/core/include",
+    "calls": [
+      {
+        "line": 974,
+        "spelling": "compute",
+        "start": 34713,
+        "end": 34747
+      }
+    ]
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/dnn/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/features2d/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/flann/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/gapi/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/gapi/src/3rdparty/vasot/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/highgui/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/imgcodecs/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/imgproc/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/ml/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/objdetect/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/photo/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/stitching/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/ts/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/video/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/videoio/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "omitted_root": "modules/world/include",
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "only_added_roots": [],
+    "calls": [
+      {
+        "line": 974,
+        "spelling": "compute",
+        "start": 34713,
+        "end": 34747
+      }
+    ]
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "only_added_roots": [
+      "modules/core/include"
+    ],
+    "calls": []
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "only_added_roots": [
+      "modules/dnn/include"
+    ],
+    "calls": [
+      {
+        "line": 974,
+        "spelling": "compute",
+        "start": 34713,
+        "end": 34747
+      }
+    ]
+  },
+  {
+    "file": "modules/core/src/lda.cpp",
+    "only_added_roots": [
+      "modules/core/include",
+      "modules/dnn/include"
+    ],
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": null,
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/dlpack/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/flatbuffers/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/include/opencl/1.2",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/libwebp",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "3rdparty/libwebp/src",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "hal/carotene/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/calib3d/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/core/include",
+    "calls": [
+      {
+        "line": 766,
+        "spelling": "setConvolution",
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "line": 816,
+        "spelling": "setCrop",
+        "start": 36200,
+        "end": 36286
+      }
+    ]
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/dnn/include",
+    "calls": [
+      {
+        "line": 766,
+        "spelling": "setConvolution",
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "line": 816,
+        "spelling": "setCrop",
+        "start": 36200,
+        "end": 36286
+      }
+    ]
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/features2d/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/flann/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/gapi/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/gapi/src/3rdparty/vasot/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/highgui/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/imgcodecs/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/imgproc/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/ml/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/objdetect/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/photo/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/stitching/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/ts/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/video/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/videoio/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "omitted_root": "modules/world/include",
+    "calls": []
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "only_added_roots": [],
+    "calls": [
+      {
+        "line": 766,
+        "spelling": "setConvolution",
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "line": 816,
+        "spelling": "setCrop",
+        "start": 36200,
+        "end": 36286
+      }
+    ]
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "only_added_roots": [
+      "modules/core/include"
+    ],
+    "calls": [
+      {
+        "line": 766,
+        "spelling": "setConvolution",
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "line": 816,
+        "spelling": "setCrop",
+        "start": 36200,
+        "end": 36286
+      }
+    ]
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "only_added_roots": [
+      "modules/dnn/include"
+    ],
+    "calls": [
+      {
+        "line": 766,
+        "spelling": "setConvolution",
+        "start": 33652,
+        "end": 33785
+      },
+      {
+        "line": 816,
+        "spelling": "setCrop",
+        "start": 36200,
+        "end": 36286
+      }
+    ]
+  },
+  {
+    "file": "modules/dnn/src/darknet/darknet_io.cpp",
+    "only_added_roots": [
+      "modules/core/include",
+      "modules/dnn/include"
+    ],
+    "calls": []
+  }
+]

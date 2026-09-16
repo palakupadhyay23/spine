@@ -204,6 +204,13 @@ Without `mcp` every MCP test skips *and* `mypy src tests` reports three phantom
 nothing to ignore. Without the language extras only the `python` and `sql` front-ends
 register, so most language tests skip and `pkg accuracy` cannot score their corpus cases.
 
+For a semantic-parser diagnostic census, run `uv run --with libclang==18.1.1 python
+scripts/parse-census.py clang /path/to/repo --suffix .c .cpp .cc .cxx --json`.
+It uses repository-only include paths; diagnostics measure parse coverage, not call recall.
+`scripts/validate-frontend.py` also reports semantic recovery, TU coverage, diagnostics,
+and extraction time for C/C++. For a pinned branch, clone that ref and pass a local
+copy without `.git` as the repository argument; the script accepts paths as well as URLs.
+
 ## Code of Conduct
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Report

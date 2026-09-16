@@ -1,0 +1,43 @@
+import hashlib, json, subprocess, zipfile
+from pathlib import Path
+from email.parser import BytesParser
+D = Path('docs/evals')
+a = json.loads(Path('/tmp/spine-step4-absent.json').read_text())
+b = json.loads(Path('/tmp/spine-step4-present.json').read_text())
+assert a['fixture_nodes'] == b['fixture_nodes']
+assert a['fingerprint'] != b['fingerprint']
+assert a['corpus'].keys() == b['corpus'].keys()
+counts = {}
+for key, absent in a['corpus'].items():
+    present = b['corpus'][key]
+    assert absent['nodes'] == present['nodes'], key
+    assert set(absent['edges']) <= set(present['edges']), key
+    additions = set(present['edges']) - set(absent['edges'])
+    for raw in additions:
+        edge = json.loads(raw)
+        assert edge['kind'] == 'CALLS'
+        assert {edge['src'], edge['dst']} <= set(present['grounded']), (key, edge)
+    counts[key] = len(additions)
+results = json.loads((D/'clang-semantic-step3b-results.json').read_text())
+for path, expected in results['frozen_inputs'].items():
+    assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == expected, path
+wheel = Path('/tmp/spine-step4-dist/synaptixs_spine-3.34.2-py3-none-any.whl')
+with zipfile.ZipFile(wheel) as z:
+    files = sorted(p for p in z.namelist() if p.startswith('orchestrator/') and p.endswith('.py'))
+    for p in files:
+        assert z.read(p) == (Path('src')/p).read_bytes(), p
+    md = BytesParser().parsebytes(z.read('synaptixs_spine-3.34.2.dist-info/METADATA'))
+    requirements = md.get_all('Requires-Dist')
+    assert any('libclang>=18' in r and "extra == 'clang'" in r for r in requirements)
+    assert any('libclang>=18' in r and "extra == 'all'" in r for r in requirements)
+    assert not any('clang' in r and "extra == 'languages'" in r for r in requirements)
+receipt = {
+    'date': '2026-09-15', 'source_candidate': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+    'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(), 'wheel_python_files_match_checkout': len(files),
+    'frozen_inputs_match': results['frozen_inputs'], 'metadata_extra_closure_correct': True,
+    'absent': {k:v for k,v in a.items() if k != 'corpus'}, 'present': {k:v for k,v in b.items() if k != 'corpus'},
+    'c_cpp_corpus_roots': len(counts), 'corpus_added_grounded_calls': counts,
+    'all_corpus_nodes_identical': True, 'all_cst_edges_preserved': True,
+}
+(D/'clang-semantic-step4-package.json').write_text(json.dumps(receipt, indent=2)+'\n')
+print(json.dumps(receipt, indent=2))

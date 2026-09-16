@@ -24,7 +24,7 @@
 
 ## Documented in
 
-`CHANGELOG.md`, `CLAUDE.md#invariants-break-these-and-things-get-subtly-wrong`, `docs/specs/capability-recommendations-kg-grounded.md#c2-kg-grounded-bug-fix-rca-pipeline-effort-l-net-new-headline`, `docs/specs/comprehension-skill-spec.md#what-already-exists-reuse-dont-rebuild`, `docs/specs/doc-ingestion-spec.md#what-already-exists-reuse-dont-rebuild`, `docs/specs/gap-roadmap-index.md#who-owns-which-files`
+`CHANGELOG.md`, `CLAUDE.md#invariants-break-these-and-things-get-subtly-wrong`, `docs/evals/clang-semantic-p5-output.txt`, `docs/specs/capability-recommendations-kg-grounded.md#c2-kg-grounded-bug-fix-rca-pipeline-effort-l-net-new-headline`, `docs/specs/comprehension-skill-spec.md#what-already-exists-reuse-dont-rebuild`, `docs/specs/doc-ingestion-spec.md#what-already-exists-reuse-dont-rebuild`
 
 ## Types
 
@@ -202,9 +202,9 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 [`src/orchestrator/knowledge/current_state.py:841`](../../src/orchestrator/knowledge/current_state.py#L841)
 
-- **Called by** (6 production · 1 test): [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`build_current_state`](../../src/orchestrator/knowledge/current_state.py#L859), [`run`](../../src/orchestrator/plugin/server.py#L920), [`run`](../../src/orchestrator/plugin/server.py#L415), [`state_report`](../../src/orchestrator/plugin/resources.py#L116), [`validate_one`](../../scripts/validate-frontend.py#L49), [`test_the_gate_number_is_the_number_state_reports`](../../tests/pkg/test_accuracy.py#L454)
+- **Called by** (6 production · 1 test): [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`build_current_state`](../../src/orchestrator/knowledge/current_state.py#L859), [`run`](../../src/orchestrator/plugin/server.py#L920), [`run`](../../src/orchestrator/plugin/server.py#L415), [`state_report`](../../src/orchestrator/plugin/resources.py#L116), [`validate_one`](../../scripts/validate-frontend.py#L51), [`test_the_gate_number_is_the_number_state_reports`](../../tests/pkg/test_accuracy.py#L454)
 - **Calls** (1): [`analyse`](../../src/orchestrator/knowledge/analysis.py#L50)
-- **Documented in**: `docs/specs/comprehension-skill-spec.md#the-tool-surface-new-read-only-mcp-tools`, `docs/specs/comprehension-skill-spec.md#what-already-exists-reuse-dont-rebuild`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
+- **Documented in**: `docs/evals/clang-semantic-p5-output.txt`, `docs/specs/comprehension-skill-spec.md#the-tool-surface-new-read-only-mcp-tools`, `docs/specs/comprehension-skill-spec.md#what-already-exists-reuse-dont-rebuild`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
 
 ### `render_current_state`
 
