@@ -26,7 +26,7 @@ _19 of the symbols other code depends on here have no test path the graph can se
 
 ## Documented in
 
-`CHANGELOG.md`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/perl-support-roadmap.md#6-files-to-change`
+`CHANGELOG.md`, `docs/evals/clang-semantic-step3b-focused.txt`, `docs/evals/clang-semantic-step4-gates.txt`, `docs/evidence/perl-codegen-c5-validation.txt`, `docs/specs/perl-support-roadmap.md#6-files-to-change`
 
 ## Types
 

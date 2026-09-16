@@ -1,4 +1,4 @@
-"""Whole-graph projections for other people's tools — GraphML, DOT, JSON.
+"""Whole-graph projections for other people's tools — GraphML, DOT, JSON, Cypher.
 
 The visualization gap was never really about our own renderer. A user who wants to explore
 the graph in Gephi, yEd, Obsidian or Cytoscape could not, because the only projection was
@@ -19,6 +19,15 @@ edge key, so ``git diff`` on a committed export shows real change and nothing el
 came from exactly that. :func:`tests.pkg.test_graph_export` asserts byte equality rather
 than trusting the intention.
 
+**Cypher carries provenance in the relationship MERGE key, on purpose.** ``Edge.key()``
+includes provenance, so one ``CALLS`` fact is one *call site*; a graph database's relationship
+identity is only ``(start, type, end)``. The idiomatic ``MERGE (a)-[:CALLS]->(b)`` therefore
+collapses parallel facts — measured on this repository at **4,054 of 45,058 edges, 9.00%**,
+with one ``run``/``_audit`` pair losing 21 call sites to a single relationship. Loading a graph
+that silently disagrees with its own export summary is the same failure as a truncated
+GraphML, so the writer is deliberately unidiomatic and :func:`tests.pkg.test_graph_export`
+reconciles the emitted row count against ``len(batch.edges)`` rather than spot-checking shape.
+
 Dangling edges — an edge whose endpoint is not among the nodes — are *materialised* as
 explicit placeholder nodes rather than dropped. A GraphML edge referencing an undeclared
 node is invalid and strict readers reject the file, but silently dropping the edge would
@@ -36,7 +45,7 @@ from xml.sax.saxutils import quoteattr as xml_attr
 
 from orchestrator.pkg.facts import Edge, FactBatch, Node
 
-GRAPH_FORMATS = ("graphml", "dot", "json")
+GRAPH_FORMATS = ("graphml", "dot", "json", "cypher")
 """Formats this module writes. ``sqlite`` lives in :mod:`pkg.export` and is handled there."""
 
 
@@ -234,16 +243,145 @@ def export_json(batch: FactBatch, path: Path | str) -> dict[str, int]:
     return {"nodes": len(nodes), "edges": len(edges), "dangling": len(dangling)}
 
 
+_CYPHER_BATCH = 1000
+"""Rows per ``UNWIND``. A module constant rather than a flag: the emitted *bytes* must depend
+only on the facts, or the byte-identical-per-commit guarantee above stops holding."""
+
+
+def _cypher_str(value: str) -> str:
+    """A double-quoted Cypher string literal.
+
+    Not the same escape set as XML or DOT — Cypher needs the backslash and the quote, and the
+    control characters escaped rather than emitted raw, so an id or a name carrying a newline
+    cannot terminate the literal early. Ids routinely carry ``::``, ``@``, ``/`` and C++
+    template angle brackets; none of those need escaping, which is why only the four below do.
+    """
+    out = value.replace("\\", "\\\\").replace('"', '\\"')
+    out = out.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    return f'"{out}"'
+
+
+def _cypher_rows(rows: list[str], pattern: str) -> list[str]:
+    """One ``UNWIND`` statement per ``_CYPHER_BATCH`` rows, each closed with ``pattern``."""
+    out: list[str] = []
+    for start in range(0, len(rows), _CYPHER_BATCH):
+        chunk = rows[start : start + _CYPHER_BATCH]
+        out.append("UNWIND [\n" + ",\n".join(f"  {row}" for row in chunk) + "\n] AS row\n" + pattern)
+    return out
+
+
+def _edge_prov_shape(e: Edge) -> tuple[str, ...]:
+    """Which provenance components this edge actually has, in a fixed order.
+
+    Edges are grouped by kind **and** by this shape so the MERGE key never contains a ``null``.
+    A null in a merge key matches on ``IS NULL`` rather than on absence, which is the kind of
+    quietly-wrong behaviour this writer exists to avoid; grouping keeps every statement's key
+    made only of components its rows really carry. Mirrors ``Edge.key()``, which digests the
+    whole ``Provenance`` — so two edges differing only in ``end_line`` or ``repo`` stay two
+    facts here exactly as they are two facts in the batch.
+    """
+    p = e.provenance
+    if p is None:
+        return ()
+    shape = ["file", "line"]
+    if p.end_line is not None:
+        shape.append("end_line")
+    if p.repo:
+        shape.append("repo")
+    return tuple(shape)
+
+
+def export_cypher(batch: FactBatch, path: Path | str) -> dict[str, int]:
+    """Write the whole graph as a Cypher script — Neo4j, Memgraph, Apache AGE.
+
+    The body is openCypher core (``UNWIND`` / ``MERGE`` / ``MATCH`` / ``SET``); only the
+    leading ``CREATE CONSTRAINT`` is Neo4j 5 syntax, kept as its own commented first statement
+    so a non-Neo4j reader deletes one block. No APOC, no GDS — a plugin requirement would make
+    the export unloadable on a default install.
+
+    Every node carries a universal ``:Symbol`` label beside its kind. That gives one uniqueness
+    constraint and one merge key for the whole graph, and it is the only scheme that also works
+    for dangling placeholders, which by invariant #1 carry **no kind** at all.
+    """
+    nodes = _sorted_nodes(batch)
+    edges = _sorted_edges(batch)
+    dangling = _dangling_ids(nodes, edges)
+
+    out: list[str] = [
+        "\n".join(
+            (
+                "// Generated by `orchestrator pkg export --format cypher`. Load with:",
+                "//   cypher-shell -u <user> -p <pass> --file <this file>",
+                "// The constraint below is Neo4j 5 syntax; delete it for Memgraph / Apache AGE.",
+                "// Relationships carry file/line in their MERGE key on purpose: one fact is one",
+                "// call site, and collapsing them would silently drop ~9% of this graph's edges.",
+            )
+        ),
+        "CREATE CONSTRAINT spine_symbol_id IF NOT EXISTS\nFOR (n:Symbol) REQUIRE n.id IS UNIQUE;",
+    ]
+
+    by_kind: dict[str, list[Node]] = {}
+    for n in nodes:
+        by_kind.setdefault(n.kind.value, []).append(n)
+    for kind in sorted(by_kind):
+        rows = []
+        for n in by_kind[kind]:
+            file, line, end_line = _prov(n)
+            pairs = [f"id: {_cypher_str(n.id)}", f"name: {_cypher_str(n.name)}"]
+            if n.language:
+                pairs.append(f"language: {_cypher_str(n.language)}")
+            pairs.append(f"grounded: {'true' if n.grounded else 'false'}")
+            if file:
+                pairs.append(f"file: {_cypher_str(file)}")
+                pairs.append(f"line: {int(line)}")
+            if end_line:
+                pairs.append(f"end_line: {int(end_line)}")
+            rows.append("{" + ", ".join(pairs) + "}")
+        out += _cypher_rows(rows, f"MERGE (n:Symbol:{kind} {{id: row.id}})\nSET n += row;")
+
+    if dangling:
+        rows = [f"{{id: {_cypher_str(mid)}, name: {_cypher_str(mid)}, dangling: true}}" for mid in dangling]
+        out += _cypher_rows(rows, "MERGE (n:Symbol {id: row.id})\nSET n += row;")
+
+    buckets: dict[tuple[str, tuple[str, ...]], list[Edge]] = {}
+    for e in edges:
+        buckets.setdefault((e.kind.value, _edge_prov_shape(e)), []).append(e)
+    for kind, shape in sorted(buckets):
+        rows = []
+        for e in buckets[(kind, shape)]:
+            pairs = [f"src: {_cypher_str(e.src)}", f"dst: {_cypher_str(e.dst)}"]
+            p = e.provenance
+            if p is not None:
+                pairs.append(f"file: {_cypher_str(p.file)}")
+                pairs.append(f"line: {int(p.line)}")
+                if p.end_line is not None:
+                    pairs.append(f"end_line: {int(p.end_line)}")
+                if p.repo:
+                    pairs.append(f"repo: {_cypher_str(p.repo)}")
+            rows.append("{" + ", ".join(pairs) + "}")
+        key = "" if not shape else " {" + ", ".join(f"{c}: row.{c}" for c in shape) + "}"
+        out += _cypher_rows(
+            rows,
+            "MATCH (a:Symbol {id: row.src})\nMATCH (b:Symbol {id: row.dst})\n"
+            f"MERGE (a)-[r:{kind}{key}]->(b);",
+        )
+
+    Path(path).write_text("\n\n".join(out) + "\n", encoding="utf-8")
+    return {"nodes": len(nodes), "edges": len(edges), "dangling": len(dangling)}
+
+
 WRITERS = {
     "graphml": export_graphml,
     "dot": export_dot,
     "json": export_json,
+    "cypher": export_cypher,
 }
 """Format name → writer. Keys match :data:`GRAPH_FORMATS`."""
 
 __all__ = [
     "GRAPH_FORMATS",
     "WRITERS",
+    "export_cypher",
     "export_dot",
     "export_graphml",
     "export_json",

@@ -39,6 +39,12 @@ To look at your own repo first, run `orchestrator state /path/to/repo`. It write
 nothing unless you request an output file. `orchestrator understand` builds the
 reviewable `episteme/` knowledge base; it is the comprehension command that writes.
 
+The optional `[clang]` extra adds C/C++ member-call edges between existing
+symbols. Installing it enables the pass automatically, including through `[all]`.
+For extraction without clang, use a fresh environment with `[languages]` or
+`[c,cpp]`. Installation details and limits are in
+[SETUP.md](https://github.com/synaptixs/spine/blob/main/SETUP.md#optional-extras).
+
 ## What is measured
 
 The graph comes from parsers, with `file:line` provenance. CI scores its precision
@@ -59,9 +65,25 @@ an arm without the graph and tickets that already name their target file. Read t
 and [external replication](https://github.com/synaptixs/spine/blob/main/docs/specs/external-repo-grounding-results.md)
 for the models, commands, counts and limits.
 
+C/C++ semantic recovery and runtime vary widely by repository. Repository-local
+include roots can improve resolution, while missing standard/generated headers
+and unsupported identities still limit it. Recovered pending-site fractions are
+not whole-repository recall. OpenCV's measured median extraction takes 300.296 s
+with clang versus 29.501 s without it; this suits batch work only when that cost
+is acceptable. Some measured profiles gain no useful relationships. See the
+[support contract](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-release-readiness.md#support-contract)
+and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-step3b.md).
+
 ## What's new
 
-**3.34.2 (current)** — maintainer tooling: a generic plan skeleton every development
+**3.35.0 (current)** — two additive features. An optional C/C++ semantic pass
+(`pip install 'synaptixs-spine[clang]'`) resolves member calls the CST cannot, adding edges
+only between symbols already in the graph — ids, nodes and determinism unchanged; the
+standard library stays out of reach. And `pkg export --format cypher` loads the graph into
+Neo4j, Memgraph or any openCypher store for the traversal questions the flat projections
+cannot answer — transitive closure, cycles, shortest path.
+
+**3.34.2** — maintainer tooling: a generic plan skeleton every development
 plan starts from, and a roadmap-currency gate that can check a plan kept outside the
 checkout. No engine changes.
 
@@ -95,10 +117,11 @@ in [CLI_REFERENCE.md](https://github.com/synaptixs/spine/blob/main/CLI_REFERENCE
 | Durable multi-feature pipeline and approval dashboard | ✅ | `sdlc run`, `up`; [Operations](https://github.com/synaptixs/spine/blob/main/OPERATIONS.md) |
 | Inspect the execution graph, node results and selected workflow | ✅ | `sdlc explain`, `sdlc workflow` |
 | Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl comprehension/codegen | ✅ | `pkg extract`, `sdlc feature --language`; [toolchains](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#10-language-support--toolchains) |
+| Optional C/C++ member-call enrichment between grounded symbols; measured coverage limits | 🟡 | `[clang]` (also in `[all]`); [validation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-validation.md) |
 | SQL schema/query/procedure comprehension, migration folding, UTF-16 and SQL Server `GO` batches | ✅ | `[sql]`; `pkg extract`, `understand` |
 | SQL migration codegen validated in SQLite or opt-in Docker Postgres | ✅ | `sdlc feature --language sql`; `[sql-postgres]` |
 | Framework endpoints and data-layer edges, including JAX-RS, ASP.NET Core and EF Core | ✅ | [Knowledge Graph](https://github.com/synaptixs/spine/blob/main/KNOWLEDGE_GRAPH.md) |
-| C/C++ include graphs and header/source merging; CMake or brownfield Meson builds | ✅ | `sdlc feature --language c` / `cpp` |
+| C/C++ include graphs, C++ routing for included `.h` files and header/source merging; CMake or brownfield Meson builds | ✅ | `sdlc feature --language c` / `cpp` |
 | Go packages, calls and interface satisfaction; multi-module build/test selection | ✅ | `sdlc feature --language go` |
 | PHP namespaces/traits/calls, Laravel/Slim/Symfony routes, Eloquent/Doctrine entities; Composer/PHAR PHPUnit | ✅ | [PHP workflow](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md#php-code-generation) |
 | Perl packages/inheritance/fields/calls, routes and data layer; syntax checks and `prove` | ✅ | [Perl workflow](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md#perl-code-generation) |

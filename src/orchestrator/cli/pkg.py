@@ -79,6 +79,8 @@ def pkg_extract(
     per_kind = {k[len("edges_") :]: v for k, v in summary.items() if k.startswith("edges_")}
     if per_kind:
         typer.echo("  " + "  ".join(f"{k.upper()} {v}" for k, v in per_kind.items()))
+    if merged is None and extractor.clang_report.total_tus:
+        typer.echo(extractor.clang_report.summary())
     if extractor.skipped:
         typer.echo(f"  (skipped {len(extractor.skipped)} unparseable file(s))")
 
@@ -324,6 +326,8 @@ def pkg_verify(
             }
         )
     else:
+        if extractor.clang_report.total_tus:
+            typer.echo(extractor.clang_report.summary())
         for issue in report.issues:
             typer.echo(f"[{issue.severity}] {issue.check}: {issue.message}")
         typer.echo(
@@ -1131,7 +1135,7 @@ def pkg_export(
         str,
         typer.Option(
             "--format",
-            help="sqlite | graphml | dot | json | obsidian. GraphML/DOT open in Gephi/yEd.",
+            help="sqlite | graphml | dot | json | cypher | obsidian. GraphML/DOT open in Gephi/yEd.",
         ),
     ] = "sqlite",
     out: Annotated[
@@ -1163,7 +1167,9 @@ def pkg_export(
 
     `sqlite` is the ontomesh-ready kind-per-table projection. `graphml` and `dot` open in
     Gephi, yEd, Cytoscape and Graphviz; `json` carries nodes AND edges (unlike
-    `pkg extract --json`, which is nodes plus a summary). `obsidian` writes an Obsidian vault
+    `pkg extract --json`, which is nodes plus a summary). `cypher` loads into Neo4j, Memgraph
+    or any openCypher store, for the traversal questions the flat projections cannot answer —
+    transitive closure, cycles, shortest path. `obsidian` writes an Obsidian vault
     — a COPY of the repo's existing `episteme/` with wikilink syntax, so run `understand`
     first; it reads the knowledge base rather than re-extracting, and never edits it in place.
 
@@ -1220,7 +1226,9 @@ def pkg_export(
         typer.echo("note: --db is deprecated; use --out.")
         out = db
 
-    suffix = {"sqlite": "db", "graphml": "graphml", "dot": "dot", "json": "json"}[fmt]
+    # Bare subscript on purpose: a format reaching here that has no extension is a
+    # registration bug, and a silent fallback would ship files named `pkg-facts.None`.
+    suffix = {"sqlite": "db", "graphml": "graphml", "dot": "dot", "json": "json", "cypher": "cypher"}[fmt]
     target = out if out is not None else Path(f"pkg-facts.{suffix}")
 
     with _repo_arg(path) as (repo, _):

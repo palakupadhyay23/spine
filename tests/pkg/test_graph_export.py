@@ -23,10 +23,16 @@ from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Pr
 from orchestrator.pkg.graph_export import (
     GRAPH_FORMATS,
     WRITERS,
+    export_cypher,
     export_dot,
     export_graphml,
     export_json,
 )
+
+
+def _cypher_rows(text: str, pattern: str) -> int:
+    """Row count across every ``UNWIND`` block whose statement contains ``pattern``."""
+    return sum(s.count("\n  {") for s in text.split("\n\n") if s.startswith("UNWIND") and pattern in s)
 
 
 def _batch() -> FactBatch:
@@ -82,6 +88,126 @@ def test_export_is_complete_not_truncated(fmt: str, tmp_path: Path) -> None:
     counts = WRITERS[fmt](_batch(), tmp_path / f"g.{fmt}")
     assert counts["nodes"] == 4
     assert counts["edges"] == 3
+
+
+def _parallel_batch() -> FactBatch:
+    """Two functions and **three distinct call sites between the same pair**.
+
+    This is the D2 fixture and the reason the reconciliation test exists. ``Edge.key()``
+    digests provenance, so three calls from ``a`` to ``b`` are three facts — but a graph
+    database identifies a relationship by ``(start, type, end)`` alone, so the idiomatic
+    ``MERGE (a)-[:CALLS]->(b)`` would store one and silently drop two. Measured on Spine's own
+    graph that is 4,054 of 45,058 edges (9.00%), every count still looking plausible.
+    """
+    b = FactBatch()
+    b.add_node(Node(id="py:m.a", kind=NodeKind.FUNCTION, name="a", language="python"))
+    b.add_node(Node(id="py:m.b", kind=NodeKind.FUNCTION, name="b", language="python"))
+    for line in (11, 22, 33):
+        b.add_edge(
+            Edge(
+                src="py:m.a",
+                dst="py:m.b",
+                kind=EdgeKind.CALLS,
+                provenance=Provenance(file="m.py", line=line),
+            )
+        )
+    return b
+
+
+def test_cypher_emits_one_row_per_fact(tmp_path: Path) -> None:
+    """Every node and every edge reaches the script — reconciled by count, not by shape.
+
+    Runs without a database on purpose: it is the guard that stays in the default gate, so a
+    later "simplification" of the relationship MERGE cannot quietly drop parallel edges.
+    """
+    batch = _batch()
+    path = tmp_path / "g.cypher"
+    counts = export_cypher(batch, path)
+    text = path.read_text(encoding="utf-8")
+
+    # 4 declared nodes + the 1 dangling placeholder the edges reference.
+    assert _cypher_rows(text, "MERGE (n:") == len(batch.nodes) + counts["dangling"]
+    assert _cypher_rows(text, "MERGE (a)-") == len(batch.edges)
+
+
+def test_cypher_keeps_parallel_edges_distinct(tmp_path: Path) -> None:
+    """Three call sites between one pair stay three relationships, not one."""
+    batch = _parallel_batch()
+    path = tmp_path / "p.cypher"
+    counts = export_cypher(batch, path)
+    text = path.read_text(encoding="utf-8")
+
+    assert len(batch.edges) == 3, "fixture must hold three distinct facts"
+    assert counts["edges"] == 3
+    assert _cypher_rows(text, "MERGE (a)-") == 3
+    # Provenance in the MERGE key is what makes them distinct; without it they collapse.
+    assert "MERGE (a)-[r:CALLS {file: row.file, line: row.line}]->(b);" in text
+
+
+def test_cypher_merge_keys_never_contain_null(tmp_path: Path) -> None:
+    """Edges are bucketed by provenance *shape*, so no key references an absent component.
+
+    A ``null`` in a merge key matches on ``IS NULL`` rather than on absence — it would make
+    two facts collide on a property neither of them has. ``_batch`` carries both an edge with
+    provenance and one without, so both buckets are exercised here.
+    """
+    path = tmp_path / "n.cypher"
+    export_cypher(_batch(), path)
+    keys = [line for line in path.read_text(encoding="utf-8").splitlines() if "MERGE (a)-" in line]
+    assert keys, "fixture must produce relationship statements"
+    assert not any("null" in key for key in keys)
+    # The no-provenance edge gets a bare pattern rather than a key of nulls.
+    assert "MERGE (a)-[r:CALLS]->(b);" in path.read_text(encoding="utf-8")
+
+
+def test_cypher_escapes_strings_the_way_cypher_needs(tmp_path: Path) -> None:
+    """Cypher's escape set is not XML's and not DOT's.
+
+    A quote or backslash that reaches the file unescaped ends the literal early and the script
+    will not parse; a raw newline does the same. Ids genuinely carry these — C++ template
+    parameters and quoted arguments are in ``_batch`` for exactly this reason.
+    """
+    b = FactBatch()
+    b.add_node(
+        Node(
+            id='py:weird\\path"q',
+            kind=NodeKind.FUNCTION,
+            name='line1\nline2\ttab"q\\z',
+            language="python",
+        )
+    )
+    path = tmp_path / "e.cypher"
+    export_cypher(b, path)
+    text = path.read_text(encoding="utf-8")
+
+    assert '\\"' in text and "\\\\" in text
+    assert "\\n" in text and "\\t" in text
+    # No raw control character survives inside a literal.
+    for line in text.splitlines():
+        assert "\t" not in line
+
+
+def test_cypher_dangling_placeholder_carries_a_label_but_no_kind(tmp_path: Path) -> None:
+    """Invariant #1: no ``NodeKind.UNKNOWN`` is invented for the exporter's convenience.
+
+    The placeholder still needs the universal ``:Symbol`` label, or the uniqueness constraint
+    cannot cover it and the relationship ``MATCH`` cannot find it.
+    """
+    path = tmp_path / "d.cypher"
+    counts = export_cypher(_batch(), path)
+    text = path.read_text(encoding="utf-8")
+
+    assert counts["dangling"] == 1
+    assert "MERGE (n:Symbol {id: row.id})" in text
+    assert "dangling: true" in text
+
+
+def test_cypher_declares_the_uniqueness_constraint_first(tmp_path: Path) -> None:
+    """Without the constraint the relationship ``MATCH`` es degrade to full label scans."""
+    path = tmp_path / "c.cypher"
+    export_cypher(_batch(), path)
+    statements = [s for s in path.read_text(encoding="utf-8").split("\n\n") if s.strip()]
+    assert statements[1].startswith("CREATE CONSTRAINT spine_symbol_id IF NOT EXISTS")
 
 
 def test_graphml_is_well_formed_and_declares_every_edge_endpoint(tmp_path: Path) -> None:

@@ -1,0 +1,77 @@
+Step 4 local validation — 2026-09-15
+
+Implementation 3b0eea825e1c196fc50cc942a26e270ecaf455b7, review base 001b5285a5f5669911b6db40cd406fe7cbcd90c8; docs/evidence only.
+
+
+## focused
+........................................................................ [ 66%]
+.....................................                                    [100%]
+=============================== warnings summary ===============================
+tests/pkg/test_clang_link.py: 30 warnings
+  /Users/falcon/projects/ai/spine/src/orchestrator/pkg/perl_extractor.py:1100: DeprecationWarning: int argument support is deprecated
+    return Language(raw)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+109 passed, 30 warnings in 2.19s
+
+
+## phase gates
+Success: no issues found in 723 source files
+All checks passed!
+760 files already formatted
+[trend] binding: total mentions: doc-binding-walkthrough.md says 9482, the source says 12858
+[trend] binding: one symbol anchor: doc-binding-walkthrough.md says 3168, the source says 3940
+[trend] binding: ambiguous: doc-binding-walkthrough.md says 2030, the source says 2637
+[trend] binding: file only: doc-binding-walkthrough.md says 891, the source says 1222
+[trend] binding: no anchor: doc-binding-walkthrough.md says 3393, the source says 5059
+[trend] binding: edges drawn: doc-binding-walkthrough.md says 3120, the source says 3882
+[trend] binding: drift findings: doc-binding-walkthrough.md says 1556, the source says 2647
+[trend] binding: unbound sections: doc-binding-walkthrough.md says 826, the source says 1021
+[trend] binding: Doc nodes: doc-binding-walkthrough.md says 1622, the source says 1936
+state-numbers --check: OK — 14 gated claim(s) match; 9 trended.
+46 capability rows
+21 where Spine stands alone
+3 where Spine is ❌
+3 at 🟡
+assets/spine-architecture.svg is current
+assets/knowledge-foundation.svg is current, and its layout checks pass
+roadmap-status --check: OK — 3 phase table(s) checked, 7 checks each.
+MCP tool table is current.
+
+
+## accuracy
+[trend]      doc drift: 1173 -> 1677 (ungated — a tenth of it cannot bind by construction; see GATES)
+
+pkg accuracy --check: OK — 0 gated regression(s), 0 improvement(s).
+
+
+## repository shapes
+building 4 shape(s) under /var/folders/2c/q2v76xf106gb1bbhlghqt2_h0000gn/T/sdlc-shapes-h0ijfknb
+  single     ok    plan deterministic
+  monorepo   ok    plan deterministic
+  multirepo  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+  submodule  ok    plan deterministic, declared repos clean, merged graph trusted, cross-repo brief
+
+all shapes hold
+
+
+## self verification
+[warning] phantom-module: 8 external module(s) share a first-party module's basename (stdlib shadowing, or an unjoined import): py:codegen_benchmark (vs py:scripts.codegen_benchmark), py:bench_tickets_ontomesh.build (vs py:orchestrator.cli.build), py:opentelemetry.trace (vs py:orchestrator.registry.api.trace), py:functools.cache (vs py:orchestrator.intake.cache), py:coverage (vs py:orchestrator.sdlc.coverage), +3 more
+pkg verify: OK — 0 error(s), 1 warning(s).
+
+
+## saved audit recheck
+Fixed OpenCV 200-edge selection reproduced; graph hashes and reviewed refusal assertions pass.
+{'retained': 219, 'refused_incorrect': 13, 'known_correct_loss': 5}
+
+
+## full suite
+=========================== short test summary info ============================
+SKIPPED [1] tests/gateway/test_run_python_analysis.py:74: E2B_API_KEY not set
+SKIPPED [1] tests/pkg/test_media_extract.py:212: could not import 'pytesseract': No module named 'pytesseract'
+SKIPPED [1] tests/sdlc/test_php_codegen.py:277: PHP/Composer unavailable
+SKIPPED [1] tests/sdlc/test_sql_build.py:149: set RUN_POSTGRES_IT=1 and install the sql-postgres extra (needs Docker)
+3798 passed, 4 skipped, 51 deselected, 182 warnings in 221.97s (0:03:41)
+
+
+The first restricted run was interrupted after 19 cache PermissionErrors and an npm install stall: 19 failed, 3368 passed, 4 skipped, 51 deselected, 182 warnings in 286.70s. All 19 failures were writes under /Users/falcon/.cache/orchestrator/pkg. Authorized rerun above passed without source changes. Workspace files remained frozen during each full run.

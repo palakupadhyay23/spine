@@ -1,0 +1,265 @@
+{
+  "candidate": "0c39f6b74f21c9c64dd971f7b5dddcaad3a7cc56",
+  "cases": [
+    {
+      "mode": "absent",
+      "order": [
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes",
+        "extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes",
+        "extractor",
+        "c_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "clang_link",
+        "clang_includes",
+        "extractor",
+        "c_extractor",
+        "cpp_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "clang_includes",
+        "extractor",
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "extractor",
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "extractor",
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor",
+        "extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor",
+        "extractor",
+        "clang_includes"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "cpp_extractor",
+        "c_extractor",
+        "extractor",
+        "clang_includes",
+        "clang_link"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "absent",
+      "order": [
+        "c_extractor",
+        "extractor",
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 0
+    },
+    {
+      "mode": "present",
+      "order": [
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes",
+        "extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes",
+        "extractor",
+        "c_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "clang_link",
+        "clang_includes",
+        "extractor",
+        "c_extractor",
+        "cpp_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "clang_includes",
+        "extractor",
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "extractor",
+        "c_extractor",
+        "cpp_extractor",
+        "clang_link",
+        "clang_includes"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "extractor",
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor",
+        "extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "clang_link",
+        "cpp_extractor",
+        "c_extractor",
+        "extractor",
+        "clang_includes"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "cpp_extractor",
+        "c_extractor",
+        "extractor",
+        "clang_includes",
+        "clang_link"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    },
+    {
+      "mode": "present",
+      "order": [
+        "c_extractor",
+        "extractor",
+        "clang_includes",
+        "clang_link",
+        "cpp_extractor"
+      ],
+      "lazy_native_import": true,
+      "header_routing": true,
+      "resolved": 1
+    }
+  ]
+}

@@ -26,7 +26,7 @@ docs · **n/a** out of category
 
 ---
 
-| Capability | **Spine 3.34.2** | CodeGraph | Graphify | GitNexus | Serena | Joern | Sourcegraph | OpenHands | Devin |
+| Capability | **Spine 3.35.0** | CodeGraph | Graphify | GitNexus | Serena | Joern | Sourcegraph | OpenHands | Devin |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | **LAYER A — CODE INTELLIGENCE** |
 | Deterministic, no-LLM extraction | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | ➖ |
@@ -94,7 +94,7 @@ through a committed `.spine-media/` artifact so no model runs in the determinist
 own roadmap said *"Not started"* for months after it shipped.
 
 **³ Interactive exploration is delivered by delegation, not omission.** `pkg export` writes
-GraphML, DOT, JSON and an Obsidian vault. G5 shipped in **3.11.0** and its Phase 3 — a built-in
+GraphML, DOT, JSON, Cypher and an Obsidian vault. G5 shipped in **3.11.0** and its Phase 3 — a built-in
 renderer — was **deliberately dropped**: *"Gephi already does filtering, search, clustering and
 click-through-to-source on our own export."*
 

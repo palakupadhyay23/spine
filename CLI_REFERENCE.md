@@ -44,7 +44,7 @@ Set up your environment and run the platform.
 Prints the installed version **and the path it is running from**:
 
 ```
-Spine 3.34.2  (synaptixs-spine)
+Spine 3.35.0  (synaptixs-spine)
   running from /path/to/site-packages/orchestrator
 ```
 
@@ -309,6 +309,14 @@ orchestrator catalog plan [PATH] [OPTIONS]
 
 ### `orchestrator pkg extract`
 
+For single-repository C/C++ extraction, text output includes `clang: resolved N of M unresolved call
+sites in K of T TUs`, with diagnostic and failure counts. The optional `clang` extra
+adds only grounded CALLS edges; unavailable headers and unsupported symbols remain
+unresolved. `pkg verify` prints the same bounded extraction summary. Counts refer
+to distinct call sites (including nested calls), not unique graph edges. No new
+command flag is needed; install the language parsers plus `[clang]`. See the
+[measured coverage limits](docs/evals/clang-semantic-validation.md).
+
 Extract grounded code facts from a repo and print a summary (read-only).
 
 SQL extraction handles UTF-16 scripts and SQL Server `GO` batch separators, including
@@ -380,7 +388,7 @@ orchestrator pkg export [PATH] [OPTIONS]
 
 | Option | Description |
 |---|---|
-| `--format` | `sqlite` \| `graphml` \| `dot` \| `json` \| `obsidian`. _(default: `sqlite`)_ |
+| `--format` | `sqlite` \| `graphml` \| `dot` \| `json` \| `cypher` \| `obsidian`. _(default: `sqlite`)_ |
 | `--out`, `-o` | Output file (or directory, for `obsidian`). _(default: `pkg-facts.<ext>`)_ |
 | `--db` | **Deprecated** alias for `--out`, `sqlite` only. Use `--out`. |
 
@@ -390,6 +398,7 @@ orchestrator pkg export [PATH] [OPTIONS]
 | `graphml` | **Gephi, yEd, Cytoscape.** The one to reach for to explore a graph visually. |
 | `dot` | Graphviz. |
 | `json` | Scripts and custom tooling. Carries nodes **and edges** — unlike `pkg extract --json`, which is nodes plus a summary. |
+| `cypher` | **Neo4j, Memgraph, Apache AGE.** A script of batched `UNWIND`/`MERGE` statements — for traversal questions the flat projections cannot answer: transitive closure, cycles, shortest path. Load with `cypher-shell --file`. Relationships carry `file`/`line` in their MERGE key **on purpose**: one `CALLS` fact is one *call site*, and a graph database identifies a relationship by `(start, type, end)` alone, so the idiomatic form would silently collapse ~9% of this repo's edges. Expect parallel relationships between the same pair, and expect `MATCH ()-[r]->() RETURN count(r)` to equal the edge count `--format json` reports. |
 | `obsidian` | An Obsidian vault: a copy of this repo's `episteme/` with `[[wikilink]]` syntax. Run `understand` first; it reads the knowledge base and never edits it in place. |
 
 ```bash
@@ -524,18 +533,19 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 | `--tests` | Test target(s) for `--oracle runtime`; defaults to the repo's own. |
 | `--dialect` | SQL dialect (postgres\|mysql\|tsql\|oracle\|…); default: auto-detect. |
 
-**Current corpus results** (47 fixture cases — 43 single-language, 4 multi-repo — across
+**Current corpus results** (49 fixture cases — 45 single-language, 4 multi-repo — across
 all 10 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
 **1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
 kind except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
-| `c` `sql` | 1.00 |
+| `c` `cpp` (with `clang`) `sql` | 1.00 |
 | `perl` | 0.89 |
 | `python` | 0.73 |
-| `cpp` `csharp` `go` `java` | 0.67 |
-| `typescript` | 0.50 |
+| `csharp` `go` `php` | 0.75 |
+| `java` | 0.67 |
+| `typescript` | 0.86 |
 
 Perl's 0.89 is 8 of 9 labelled `CALLS` edges in its own corpus — the one miss is a
 permanent, documented one (`instance_calls`, an untyped parameter with no declared type to
