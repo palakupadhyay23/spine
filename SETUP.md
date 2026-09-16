@@ -63,6 +63,18 @@ Optional extras, added when you need them:
   Inspect the `resolved N of M ... in K of T TUs` summary before relying on coverage;
   benefit and cost vary by repository. See the
   [five-repository evaluation](docs/evals/clang-semantic-step3b.md).
+  Installation **automatically enables** eligible C/C++ semantic extraction,
+  including when installed through `[all]`; there is no CLI switch to disable it.
+  For CST extraction without clang, create a fresh virtual environment and install
+  `pip install 'synaptixs-spine[c,cpp]'` (or `[languages]` for all grammars).
+  Omitting an extra in an existing environment does **not** remove a previously
+  installed `libclang`; use a separate environment to compare the two modes.
+  OpenCV's measured median is 300.296 s with clang versus 29.501 s without it;
+  pugixml and fmt's own API showed no semantic benefit. Native runtime evidence
+  covers macOS arm64 and Linux CI; Windows wheel availability is not a runtime
+  validation. The tested native version is 18.1.1; the declared `>=18` dependency
+  is not proof that every newer release behaves identically. See the
+  [support and platform matrix](docs/evals/clang-semantic-release-readiness.md#support-contract).
 - `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or

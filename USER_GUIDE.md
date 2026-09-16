@@ -249,8 +249,13 @@ is: `orchestrator understand .` → commit `episteme/`, then re-run whenever the
 > symbols; included `.h` files use C++ routing when reached from a C++ source file.
 > Check the reported recovered-site and parsed-TU counts: missing headers can
 > leave most calls unresolved. Repository include roots are inferred conservatively;
-> benefit and runtime vary by codebase. See the
-> [five-repository evaluation](docs/evals/clang-semantic-step3b.md).
+> benefit and runtime vary by codebase. Installing `[clang]` or `[all]` enables
+> the pass automatically. OpenCV measured 300.296 s with clang versus 29.501 s
+> without; use it for batch work when the extra relationships justify that cost.
+> For extraction without clang, follow the fresh-environment `[c,cpp]` or
+> `[languages]` path in [SETUP](SETUP.md#optional-extras). See the
+> [support contract](docs/evals/clang-semantic-release-readiness.md#support-contract)
+> and [five-repository evaluation](docs/evals/clang-semantic-step3b.md).
 > Python needs no parser extra. SQL uses SQLite by default; `[sql-postgres]` adds
 > Docker-backed Postgres validation. See the dedicated [PHP](#php-code-generation)
 > and [Perl](#perl-code-generation) sections below for brownfield behavior.

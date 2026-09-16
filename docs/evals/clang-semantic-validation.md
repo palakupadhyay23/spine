@@ -612,10 +612,11 @@ recommendations. OpenCV recovers 2,597/135,633 sites at 300.296 s median; the fi
 profiles show different benefits and costs. D1–D6 remain unchanged. The prior
 Step 3 measurements above are historical. Required local gates passed; see the Step 3b receipt.
 
-## Confidence step 4 — release readiness planned
+## Confidence step 4 — release readiness
 
 The [Step 4 plan](../specs/parsing-and-the-pkg.md#step-4--release-readiness) defines
 the support contract, review of known correct-edge losses and runtime cost,
-final-candidate validation, and the maintainer decision. Status: **planned;
-execution not started**. Step 3b supplies the evidence baseline; readiness and
-merge/release approval are separate decisions. D1–D6 remain unchanged.
+final-candidate validation, and the maintainer decision. Status: **in progress**;
+the [readiness record](clang-semantic-release-readiness.md) records execution.
+Step 3b supplies hash-matched measurements; readiness and merge/release approval
+are separate decisions. D1–D6 remain unchanged.

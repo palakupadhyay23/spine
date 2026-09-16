@@ -40,7 +40,9 @@ nothing unless you request an output file. `orchestrator understand` builds the
 reviewable `episteme/` knowledge base; it is the comprehension command that writes.
 
 The optional `[clang]` extra adds C/C++ member-call edges between existing
-symbols. It is included in `[all]`; installation details and limits are in
+symbols. Installing it enables the pass automatically, including through `[all]`.
+For extraction without clang, use a fresh environment with `[languages]` or
+`[c,cpp]`. Installation details and limits are in
 [SETUP.md](https://github.com/synaptixs/spine/blob/main/SETUP.md#optional-extras).
 
 ## What is measured
@@ -66,8 +68,11 @@ for the models, commands, counts and limits.
 C/C++ semantic recovery and runtime vary widely by repository. Repository-local
 include roots can improve resolution, while missing standard/generated headers
 and unsupported identities still limit it. Recovered pending-site fractions are
-not whole-repository recall. See the
-[five-repository evaluation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-step3b.md).
+not whole-repository recall. OpenCV's measured median extraction takes 300.296 s
+with clang versus 29.501 s without it; this suits batch work only when that cost
+is acceptable. Some measured profiles gain no useful relationships. See the
+[support contract](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-release-readiness.md#support-contract)
+and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-step3b.md).
 
 ## What's new
 

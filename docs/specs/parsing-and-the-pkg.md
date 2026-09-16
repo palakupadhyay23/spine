@@ -407,7 +407,8 @@ scope the next decision rather than expanding this implementation silently.
 
 #### Step 4 — release readiness
 
-**Status: planned; scope documented, execution not started.** Defined at the
+**Status: in progress; support, loss/cost review, isolated packaging and local
+validation complete; final CI and maintainer acceptance pending.** Defined at the
 user's request after Step 3b. This confidence step follows the completed P0–P6
 implementation track; it is distinct from the original P4 header-routing phase.
 The starting candidate is `3b0eea8`, with the
@@ -441,8 +442,9 @@ plan does not itself authorize merging the MR or publishing a release.
 
 ##### Work sequence and deliverables
 
-All work items below are **planned**. Prior Step 3b checks are inputs to this
-review, not evidence that Step 4 has already been executed.
+Execution receipts are in the [release-readiness record](../evals/clang-semantic-release-readiness.md).
+The table defines the acceptance criteria; the record tracks actual completion.
+Prior Step 3b measurements are reused only where the candidate hashes match.
 
 | Work item | Planned action | Required completion evidence |
 |---|---|---|
@@ -452,8 +454,8 @@ review, not evidence that Step 4 has already been executed.
 | **4.4 — Validate the final candidate** | Pin the candidate commit and reconcile its code with the measured hashes. Review packaging and run absent/present-extra smoke checks in isolated environments. Complete applicable CONTRIBUTING gates, the documentation matrix and semantic-pass checklist; inspect CI on the final revision. | A candidate-specific validation record: focused regressions, full pytest summary, mypy/ruff, generated checks, accuracy, repository shapes, self-verification, documentation audit and CI links. Record skips and existing warnings. Keep workspace files frozen during full pytest. Explain any reused measurements and any changes since `3b0eea8`; resolve new failures before readiness. |
 | **4.5 — Record the maintainer decision** | Present the support contract, correctness dispositions, cost assessment and candidate checks for final review on MR #379. | A dated decision identifying the reviewed commit and reviewer, accepted limitations, remaining blockers and follow-up ownership. Record **ready for merge/release review**, **hold for specified fixes**, or **defer support**. Merge/publish actions require the subsequent maintainer authorization and normal release process. |
 
-The planned output is `docs/evals/clang-semantic-release-readiness.md`, linked
-from this section and the existing MR when created. It must contain the support
+The output is [clang-semantic-release-readiness.md](../evals/clang-semantic-release-readiness.md),
+linked from this section and the existing MR. It must contain the support
 matrix, per-loss and per-profile decisions, validation receipts, and final
 decision. Update this status, SPEC-INDEX, STATE-OF-SPINE and the MR together as
 work completes; do not mark readiness from a checklist with pending evidence.

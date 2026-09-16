@@ -1,0 +1,61 @@
+import dataclasses
+import hashlib
+import importlib.metadata as metadata
+import importlib.util
+import json
+from pathlib import Path
+import platform
+import sys
+import tempfile
+
+import orchestrator.pkg.extractor as extractor
+from orchestrator.pkg.persistence import extractor_fingerprint
+
+present = sys.argv[1] == 'present'
+source = Path(extractor.__file__).resolve()
+assert source.is_relative_to(Path(sys.prefix).resolve()), source
+assert 'clang.cindex' not in sys.modules
+assert (importlib.util.find_spec('clang') is not None) == present
+try:
+    version = metadata.version('libclang')
+except metadata.PackageNotFoundError:
+    version = None
+assert (version == '18.1.1') if present else (version is None)
+with tempfile.TemporaryDirectory() as directory:
+    root = Path(directory)
+    (root / 'include/api').mkdir(parents=True)
+    (root / 'include/api/worker.hpp').write_text('struct Worker { void run() {} };\n')
+    (root / 'main.cpp').write_text('#include <api/worker.hpp>\nvoid use(Worker& w) { w.run(); }\n')
+    parser = extractor.RepoCodeExtractor()
+    graph = parser.extract(root)
+    calls = {(e.src, e.dst) for e in graph.edges if e.kind.value == 'CALLS'}
+    assert (('cpp:use', 'cpp:Worker::run') in calls) == present
+    assert parser.clang_report.pending == 1
+    assert parser.clang_report.resolved == int(present)
+    assert parser.clang_report.parsed_tus == int(present)
+    assert parser.clang_report.failed_tus == 0
+    grounded = {n.id for n in graph.nodes if n.grounded}
+    assert {'cpp:use', 'cpp:Worker::run'} <= grounded
+    nodes = sorted((dataclasses.asdict(n) for n in graph.nodes), key=lambda n: n['id'])
+    fixture_nodes = hashlib.sha256(json.dumps(nodes, sort_keys=True, default=str).encode()).hexdigest()
+    fixture_report = dataclasses.asdict(parser.clang_report)
+corpus = Path(sys.argv[2])
+roots = {}
+for spec_path in sorted(corpus.glob('*/*/expected.json')):
+    if spec_path.relative_to(corpus).parts[0] not in {'c', 'cpp'}:
+        continue
+    spec = json.loads(spec_path.read_text())
+    for rel in (list(spec.get('roots', {}).values()) or [spec.get('root', '.repo')]):
+        parser = extractor.RepoCodeExtractor()
+        graph = parser.extract(spec_path.parent / rel)
+        nodes = sorted((dataclasses.asdict(n) for n in graph.nodes), key=lambda n: n['id'])
+        edges = sorted(json.dumps(dataclasses.asdict(e), sort_keys=True, default=str) for e in graph.edges)
+        roots[str(spec_path.relative_to(corpus)) + ':' + rel] = {
+            'nodes': hashlib.sha256(json.dumps(nodes, sort_keys=True, default=str).encode()).hexdigest(),
+            'edges': edges,
+            'grounded': sorted(n.id for n in graph.nodes if n.grounded),
+            'report': dataclasses.asdict(parser.clang_report),
+        }
+print(json.dumps({'mode': sys.argv[1], 'import_path': str(source), 'python': platform.python_version(),
+                  'platform': platform.platform(), 'libclang': version, 'fingerprint': extractor_fingerprint(),
+                  'fixture_nodes': fixture_nodes, 'fixture_report': fixture_report, 'corpus': roots}, indent=2))
