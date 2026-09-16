@@ -40,6 +40,10 @@ standard/generated headers, partial AST recovery and existing CST identity gaps
 remain. Any next track should separately measure those causes before proposing
 changes to D2 or D3; no SDK, compilation database or node repair was added here.
 
+The next documented step is [Step 4 — release readiness](../specs/parsing-and-the-pkg.md#step-4--release-readiness):
+support contract, explicit loss/cost dispositions, final-candidate checks and a
+maintainer decision. Its scope is documented; execution has not started.
+
 ## Final five-repository measurements
 
 All 45 fresh-process extractions completed in the frozen order. Each A/B/C

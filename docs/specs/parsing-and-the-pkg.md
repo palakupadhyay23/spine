@@ -405,6 +405,92 @@ checks, alter denominators, or cross D1–D6 to force an improvement. If reposit
 include roots do not materially address the observed misses, use the evidence to
 scope the next decision rather than expanding this implementation silently.
 
+#### Step 4 — release readiness
+
+**Status: planned; scope documented, execution not started.** Defined at the
+user's request after Step 3b. This confidence step follows the completed P0–P6
+implementation track; it is distinct from the original P4 header-routing phase.
+The starting candidate is `3b0eea8`, with the
+[Step 3b evaluation](../evals/clang-semantic-step3b.md) as its evidence baseline
+and [draft MR #379](https://github.com/synaptixs/spine/pull/379) as the delivery vehicle.
+
+**Objective:** determine whether the current optional clang support is ready for
+maintainer merge and release review, with an explicit support contract, accepted
+limitations and evidence tied to the candidate being reviewed. Completing this
+plan does not itself authorize merging the MR or publishing a release.
+
+##### Scope and boundaries
+
+- Preserve **D1–D6** as recorded above. This is a release-readiness review, not a
+  new recovery-expansion track. Compilation databases, host SDKs, generated
+  stubs, CST identity repair and broader USR support remain outside scope.
+- Keep `[clang]` optional, included in `[all]` and excluded from `[languages]`.
+  Explain that installing it enables the pass for eligible C/C++ extraction;
+  users of `[all]` also incur its cost. Verify the documented installation and
+  omission paths rather than assuming an unimplemented enable/disable flag.
+- Describe support as **repository-dependent enrichment between existing
+  grounded functions**. The measured pending-site fraction and selected label
+  coverage are not whole-repository recall or population-wide precision.
+- Reuse the frozen Step 3b repositories, labels, source audits and timing
+  methodology. A documentation-only change does not require another 45-run
+  benchmark. If fixes change semantic behavior or cost, rerun the affected
+  comparisons and audit their differences before using the old conclusions;
+  shared mapper, include-root or traversal changes affect all five repositories.
+- Keep `episteme/` and the working root roadmap out of commits. Continue on the
+  existing MR; this plan introduces no new release, version bump or promotion PR.
+
+##### Work sequence and deliverables
+
+All work items below are **planned**. Prior Step 3b checks are inputs to this
+review, not evidence that Step 4 has already been executed.
+
+| Work item | Planned action | Required completion evidence |
+|---|---|---|
+| **4.1 — Define the support contract** | Reconcile README, SETUP, USER_GUIDE and parser documentation around optional activation, supported identity shapes, repository profiles, fixed flags, platform evidence and coverage limits. Distinguish wheel availability from a successful runtime test. | A support matrix linking each claim to an existing test or measured result; installation/omission guidance that matches actual behavior, including `[all]`. Untested platforms and unsupported shapes are stated explicitly. |
+| **4.2 — Review correctness and known losses** | Review the five correct OpenCV losses individually, the lambda and namespace corrections, the fixed negative cases and retained Step 3 additions. Record what is diagnosed and what remains unexplained. | A source-linked disposition for each correct loss: accept as a documented limitation, fix and revalidate, or hold release. The three partial-AST losses must not acquire an invented root-cause explanation. No unresolved reviewed incorrect or ambiguous additions; retained/refused audit relationships remain accounted for. |
+| **4.3 — Review operational cost** | Assess the measured cost for each supported use case, including automatic activation through `[all]`. Review existing cache behavior and invalidation if cached operation is used to justify usability. | Explicit disposition of OpenCV's 29.501 s clang-off, 58.381 s previous-clang and 300.296 s candidate medians, with the recorded ranges and single-host limits. State when batch use is acceptable and when the extra offers insufficient benefit. Any cache-hit claim has a measured hit/miss and invalidation receipt separate from the fresh-extraction benchmark. |
+| **4.4 — Validate the final candidate** | Pin the candidate commit and reconcile its code with the measured hashes. Review packaging and run absent/present-extra smoke checks in isolated environments. Complete applicable CONTRIBUTING gates, the documentation matrix and semantic-pass checklist; inspect CI on the final revision. | A candidate-specific validation record: focused regressions, full pytest summary, mypy/ruff, generated checks, accuracy, repository shapes, self-verification, documentation audit and CI links. Record skips and existing warnings. Keep workspace files frozen during full pytest. Explain any reused measurements and any changes since `3b0eea8`; resolve new failures before readiness. |
+| **4.5 — Record the maintainer decision** | Present the support contract, correctness dispositions, cost assessment and candidate checks for final review on MR #379. | A dated decision identifying the reviewed commit and reviewer, accepted limitations, remaining blockers and follow-up ownership. Record **ready for merge/release review**, **hold for specified fixes**, or **defer support**. Merge/publish actions require the subsequent maintainer authorization and normal release process. |
+
+The planned output is `docs/evals/clang-semantic-release-readiness.md`, linked
+from this section and the existing MR when created. It must contain the support
+matrix, per-loss and per-profile decisions, validation receipts, and final
+decision. Update this status, SPEC-INDEX, STATE-OF-SPINE and the MR together as
+work completes; do not mark readiness from a checklist with pending evidence.
+
+##### Decision inputs that must remain visible
+
+- **Correctness:** five correct OpenCV relationships were lost; two have
+  MAX-expansion range evidence and three lack matching calls in the partial AST
+  without a fully isolated cause. The fixed old audit retains 164 of its previous
+  166 correct relationships; all 32 old negative/ambiguous cases remain absent,
+  and all 27 Step 3 additions remain. The new fixed OpenCV sample retains 198
+  correct additions and refuses two wrong ones; all 54 GoogleTest additions were
+  source-reviewed. These are bounded reviews, not an independent population audit.
+- **Benefit and cost:** OpenCV gains 1,844 relationships over the previous pass
+  at +241.914 s median extraction cost. TinyXML-2 retains useful existing
+  contribution with no new edges; GoogleTest gains 54. pugixml recovers zero;
+  fmt contributes only 24 bundled-test relationships and no fmt-owned ones.
+  Include all five profiles in the decision, including those with no useful gain.
+- **Claim limits:** frozen supported-label presence is 48/50 OpenCV, 50/50
+  TinyXML-2, 0/6 pugixml, 1/50 fmt and 2/50 GoogleTest. The fmt labels come from
+  bundled GoogleTest and the pugixml sample is short of 50. Keep those selection
+  limits, unchanged denominators and the complete timing ranges attached to claims.
+
+##### Exit criteria
+
+Step 4 is complete when the readiness record and final MR review identify an
+explicit decision for the pinned candidate, with every correctness/cost concern
+either accepted with evidence or assigned a concrete blocking disposition.
+**Completion may result in a hold or defer decision; it does not imply shipment.**
+
+A **ready** recommendation additionally requires passing applicable local and
+remote gates, a verified support contract, no unresolved reviewed wrong/ambiguous
+additions, and explicit acceptance of the remaining correct-edge losses and
+runtime cost by the decision owner. An unresolved concern produces a hold;
+metrics must not be improved by changing labels, denominators or D1–D6.
+There is no universal recovery threshold and no automatic OpenCV-only veto.
+
 ## 6. What this buys, measured
 
 The parser choice is not an aesthetic preference. It is what makes the accuracy claim possible:
