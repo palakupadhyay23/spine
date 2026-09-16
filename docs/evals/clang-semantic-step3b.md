@@ -41,9 +41,11 @@ remain. Any next track should separately measure those causes before proposing
 changes to D2 or D3; no SDK, compilation database or node repair was added here.
 
 [Step 4 — release readiness](../specs/parsing-and-the-pkg.md#step-4--release-readiness)
-is in progress. The [readiness record](clang-semantic-release-readiness.md) contains
-the support contract, individual loss/cost dispositions and candidate checks;
-maintainer acceptance remains pending.
+has completed 4.1–4.4 on `0c39f6b`, including CI. The
+[readiness record](clang-semantic-release-readiness.md) and
+[Step 4.5 gap review](clang-semantic-step45-gap-review.md) contain the support
+contract, individual loss/cost dispositions, candidate checks and additional
+review evidence; maintainer acceptance remains pending.
 
 ## Final five-repository measurements
 

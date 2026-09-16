@@ -407,8 +407,8 @@ scope the next decision rather than expanding this implementation silently.
 
 #### Step 4 — release readiness
 
-**Status: in progress; support, loss/cost review, isolated packaging and local
-validation complete; final CI and maintainer acceptance pending.** Defined at the
+**Status: Step 4.1–4.4 complete on `0c39f6b`, including final CI. Step 4.5 is
+in progress: gap triage complete; maintainer acceptance pending.** Defined at the
 user's request after Step 3b. This confidence step follows the completed P0–P6
 implementation track; it is distinct from the original P4 header-routing phase.
 The starting candidate is `3b0eea8`, with the
@@ -444,6 +444,8 @@ plan does not itself authorize merging the MR or publishing a release.
 
 Execution receipts are in the [release-readiness record](../evals/clang-semantic-release-readiness.md).
 The table defines the acceptance criteria; the record tracks actual completion.
+The [Step 4.5 gap review](../evals/clang-semantic-step45-gap-review.md) covers the ten
+CodeQL discussion dispositions, package provenance, loss-root controls and owners.
 Prior Step 3b measurements are reused only where the candidate hashes match.
 
 | Work item | Planned action | Required completion evidence |

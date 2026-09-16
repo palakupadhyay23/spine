@@ -1,0 +1,24 @@
+import hashlib,json,subprocess,zipfile
+from email.parser import BytesParser
+from pathlib import Path
+D=Path('docs/evals');wheel=Path('/tmp/spine-step4-dist/synaptixs_spine-3.34.2-py3-none-any.whl')
+old=json.loads((D/'clang-semantic-step4-package.json').read_text())
+assert hashlib.sha256(wheel.read_bytes()).hexdigest()==old['wheel_sha256']
+with zipfile.ZipFile(wheel) as z:
+ expected={str(p.relative_to('src')) for p in Path('src/orchestrator').rglob('*.py')}
+ packaged={p for p in z.namelist() if p.startswith('orchestrator/') and p.endswith('.py')}
+ assert expected==packaged,(expected-packaged,packaged-expected)
+ for p in sorted(expected):assert z.read(p)==(Path('src')/p).read_bytes(),p
+ md=BytesParser().parsebytes(z.read('synaptixs_spine-3.34.2.dist-info/METADATA'))
+ assert md.get_payload(decode=True).decode('utf-8').strip()==Path('README.md').read_text().strip()
+a=json.loads(Path('/tmp/spine-step4-absent.json').read_text());b=json.loads(Path('/tmp/spine-step4-present.json').read_text())
+expected=set()
+for path in sorted(Path('corpus').glob('*/*/expected.json')):
+ if path.relative_to('corpus').parts[0] in {'c','cpp'}:
+  spec=json.loads(path.read_text())
+  expected.update(str(path.relative_to('corpus'))+':'+rel for rel in (list(spec.get('roots',{}).values()) or [spec.get('root','.repo')]))
+assert len(expected)==7 and expected==set(a['corpus'])==set(b['corpus'])
+for p,h in old['frozen_inputs_match'].items():assert hashlib.sha256(Path(p).read_bytes()).hexdigest()==h,p
+receipt={'reviewed_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'wheel_sha256':old['wheel_sha256'],'complete_python_payload_matches_checkout':len(packaged),'readme_metadata_matches_checkout':True,'expected_c_cpp_corpus_roots':sorted(expected),'frozen_inputs_still_match':True,'original_build_base_commit':old['source_candidate'],'provenance_note':'Original source_candidate was HEAD during the build; README changes were uncommitted then. This receipt verifies the unchanged wheel runtime payload and README against the reviewed commit.'}
+Path('/tmp/spine-step45-package.json').write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps(receipt,indent=2))

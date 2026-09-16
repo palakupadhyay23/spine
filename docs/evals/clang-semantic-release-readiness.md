@@ -9,6 +9,9 @@ independent reviewer. Decision owner: **repository maintainer**; acceptance pend
 
 Implementation candidate: `3b0eea825e1c196fc50cc942a26e270ecaf455b7`.
 Starting review revision: `001b5285a5f5669911b6db40cd406fe7cbcd90c8`.
+Validated review candidate: `0c39f6b74f21c9c64dd971f7b5dddcaad3a7cc56`.
+[Step 4.5 gap review](clang-semantic-step45-gap-review.md) records subsequent
+review-thread triage, stronger package provenance and partial-AST isolation.
 Step 4 changes documentation and validation receipts only; no production code,
 labels, dependency declarations, version, or D1–D6 changes. The final documentation
 revision and its remote gate results are recorded on MR #379.
@@ -19,11 +22,12 @@ revision and its remote gate results are recorded on MR #379.
 | 4.2 Correctness / five losses | Technical review complete; proposed limitations below await decision-owner acceptance |
 | 4.3 Operational cost | Technical review complete; profile-specific recommendation below awaits acceptance |
 | 4.4 Candidate validation | Local gates and isolated wheel checks passed; final remote gates recorded on MR #379 |
-| 4.5 Maintainer decision | Pending; no merge or release approval inferred |
+| 4.5 Maintainer decision | In progress; gap review complete, tradeoff acceptance pending; no merge or release approval inferred |
 
 Technical recommendation: retain **optional, repository-dependent enrichment**
-with the limits below. Readiness is held until final remote gates pass and the maintainer
-explicitly accepts the five losses and cost. This is not a claim of broad semantic
+with the limits below. All remote gates passed on `0c39f6b`. Readiness remains held
+for maintainer acceptance of the five losses and cost; subsequent documentation
+revisions carry their own CI results on MR #379. This is not a claim of broad semantic
 coverage, independent population precision, or low-latency C++ analysis.
 
 ## Support contract
@@ -66,6 +70,10 @@ Source links use OpenCV's frozen commit `b4c5ec4042f097e2a5b386b9d413ec7333d0a18
 
 Diagnostic receipts: [old pass](clang-semantic-step3b-loss-B.json),
 [candidate](clang-semantic-step3b-loss-C.json), [cursor evidence](clang-semantic-step3b-loss-cursors.jsonl).
+The [Step 4.5 root controls](clang-semantic-step45-gap-review.md#partial-ast-loss-isolation)
+isolate I220's sensitivity to `modules/core/include` and I217/I218's sensitivity
+to the core/dnn root pair. The deeper header/type-recovery cause remains unresolved;
+these diagnostic controls do not justify removing valid production include roots.
 The I219 Torch loss is a wrong namespace identity and is correctly refused.
 The seven fmt removals omit `fmt::v11` and are correctly refused.
 
@@ -140,6 +148,11 @@ Reproduction uses `uv build --wheel`, `uv export --frozen --no-dev --extra c
 add `[clang]` and `libclang==18.1.1` for the present environment. Run the smoke
 from outside the checkout with arguments `absent|present <absolute-corpus-path>`.
 The comparison reproducer records the fixture, corpus and source-hash assertions.
+The original receipt's `source_candidate` is the build's HEAD; README edits were
+uncommitted then. The [Step 4.5 provenance receipt](clang-semantic-step45-package.json)
+closes that ambiguity by verifying the exact same wheel against `0c39f6b`: complete
+Python file coverage, byte equality, UTF-8 README metadata and all seven expected
+corpus roots. It also rejects an empty/incomplete corpus receipt.
 
 ### Gate receipt
 
@@ -163,14 +176,27 @@ blocked by sandbox permissions, and npm installation stalled. The authorized
 rerun above passed without source changes. Workspace files were frozen throughout
 each full run. This interruption is not counted as a passing run.
 
-The documentation audit and pre-commit hooks run on the committed review package;
-final remote CI (including native Linux tests and the `understand` build) is checked
-on that revision. Exact revision, outcomes and CI URLs are recorded on MR #379;
-no ready disposition is permitted while a required check is pending or failing.
+On `0c39f6b`, commit hooks (including secret scanning) passed and the post-commit
+documentation audit returned **0 STALE/MISSING, 39 INFO**. Remote receipts:
+
+- [Main CI](https://github.com/synaptixs/spine/actions/runs/35043355378): passed,
+  including Linux native tests, repository shapes, generated artifacts and the
+  `understand` build.
+- [CodeQL](https://github.com/synaptixs/spine/actions/runs/35043355487): both analyses passed.
+- [Dependency audit](https://github.com/synaptixs/spine/actions/runs/35043355461): passed.
+
+Green CodeQL did not mean every review discussion was resolved: Step 4.5 found ten
+import-cycle notes. Their [individual triage and 20-process smoke proof](clang-semantic-step45-gap-review.md#codeql-discussions)
+retain explicit architecture debt without suppressing the scanner. Current thread
+resolution and subsequent documentation-revision CI are recorded on MR #379.
+No ready disposition is permitted while a required check is pending or failing.
 
 ## Decision and follow-up ownership
 
-**Current disposition: awaiting maintainer decision; readiness held.**
+**Current disposition: Step 4.5 in progress; gap triage complete, maintainer
+decision pending and readiness held.** See the [gap register and ownership](clang-semantic-step45-gap-review.md).
+The additional probes improve diagnosis; they do not repair the five losses,
+reduce runtime or supply independent maintainer approval.
 Reviewer: Codex, implementing agent, 2026-09-15. No independent maintainer review
 or acceptance is implied by this technical recommendation.
 
