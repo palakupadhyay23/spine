@@ -478,7 +478,7 @@ def _terminal_gate() -> Any:
 
 @sdlc_app.command("approve")
 def sdlc_approve(
-    intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. SSPN-49.")],
+    intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. PROJ-123.")],
     path: Annotated[str, typer.Option("--path", help="Repo the plan was written for.")] = ".",
     by: Annotated[
         str | None, typer.Option("--by", help="Who is deciding (default: git config user.name).")
@@ -819,7 +819,7 @@ def sdlc_feature(
         str | None,
         typer.Option(
             "--issue",
-            help="Adopt an existing tracker issue (e.g. SSPN-9) instead of creating one — the "
+            help="Adopt an existing tracker issue (e.g. PROJ-123) instead of creating one — the "
             "branch, PR, comment and transition all land on it.",
         ),
     ] = None,

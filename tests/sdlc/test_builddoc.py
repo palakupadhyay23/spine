@@ -811,6 +811,67 @@ def test_the_caveat_says_what_the_number_was_measured_against() -> None:
     assert "not this repository" in prose
 
 
+def test_the_caveat_cites_no_tracker_key() -> None:
+    """A reader outside this project cannot resolve our Jira keys.
+
+    The caveat carried `(SSPN-48)` into every build document, including documents describing
+    repositories whose owners have never seen that tracker. The sentence already states the
+    limitation in words, so the key was telling a reader to look something up they cannot.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": []}, "python")
+    assert "SSPN" not in prose
+    assert "emit no `CALLS` edge" in prose
+
+
+def test_containment_says_how_many_importers_it_did_not_list() -> None:
+    """Invariant 7: a clipped list must not read as a complete one.
+
+    The sentence printed the true count and then listed eight names, so a reader who counted
+    got a different number from the one we had just printed.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    names = [f"pkg.mod{i}" for i in range(13)]
+    module = {"ref": "a.py", "importers": 13, "importer_names": names}
+    prose = _blast_prose({"call_graph_available": True, "modules": [module]}, "python")
+    assert "reaches 13 non-test module(s)" in prose
+    assert "(+5 more)" in prose
+
+
+def test_containment_does_not_count_dotnet_tests_as_product_code() -> None:
+    """The prose is language-neutral; the test-detection rule was not.
+
+    On a .NET repository `UnitTests/Functions/GetProductsFunctionTests.cs` was counted among
+    the *product* modules a change is visible to — inflating the one number in the paragraph
+    a reader uses to judge containment.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    names = [
+        "Commercial.Secondary.Sales.Functions.Repositories",
+        "UnitTests/Functions/GetProductsFunctionTests.cs",
+    ]
+    module = {"ref": "a.cs", "importers": 2, "importer_names": names}
+    prose = _blast_prose({"call_graph_available": True, "modules": [module]}, "csharp")
+    assert "reaches 1 non-test module(s)" in prose
+    assert "GetProductsFunctionTests" not in prose
+
+
+def test_test_detection_does_not_fire_on_ordinary_words() -> None:
+    """`Contests` is not a test class, and an auction product may well have one."""
+    from orchestrator.sdlc.builddoc import _is_test_module
+
+    assert not _is_test_module("Auctions.Contests")
+    assert not _is_test_module("latest_run")
+    assert _is_test_module("UnitTests/Functions/GetProductsFunctionTests.cs")
+    assert _is_test_module("src/test/java/com/x/FooTest.java")
+    assert _is_test_module("app/foo.spec.ts")
+    # The original Python clauses, unchanged — this rule only ever adds.
+    assert _is_test_module("tests.sdlc.test_builddoc") and _is_test_module("foo_test")
+
+
 def test_an_unmeasured_language_keeps_the_original_wording() -> None:
     """None is not zero — a language nobody measured has not scored badly, it has not scored.
 

@@ -641,9 +641,53 @@ def _mermaid_blast(bd: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+#: Path or module segments that name test code in some language's convention. Matched
+#: whole, never as a substring, so `contest` and `latest` are not tests.
+_TEST_SEGMENTS = frozenset(
+    {"test", "tests", "testing", "unittest", "unittests", "conftest", "spec", "specs", "__tests__"}
+)
+
+#: .NET names a test class for what it tests: `GetProductsFunctionTests`. Anchored on a
+#: lower-case-then-`T` boundary so it reads a PascalCase suffix and not the tail of an
+#: ordinary word — `Contests` and `Protests` are left alone.
+_PASCAL_TEST_SUFFIX = re.compile(r"[a-z0-9]Tests?$")
+
+
 def _is_test_module(name: str) -> bool:
+    """Is this module test code?
+
+    **The prose that uses this is language-neutral; this rule was not.** The original four
+    clauses are all Python shapes, so on a .NET repository
+    `UnitTests/Functions/GetProductsFunctionTests.cs` was counted as *product* code and
+    inflated "the neighbourhood reaches N non-test module(s)".
+
+    Segments, not substrings: a name here is either a dotted module (`tests.pkg.foo`) or a
+    path a non-Python front-end emitted, so `.`, `/` and `\\` all end a segment.
+
+    Additive by construction — the original clauses run first and unchanged, so no name that
+    was a test yesterday stops being one today. A convention none of these cover is
+    *under*-counted, which is the direction the caveat beneath already warns about.
+    """
     n = str(name)
-    return n.startswith("test") or n.startswith("tests.") or ".test" in n or "_test" in n
+    if n.startswith("test") or n.startswith("tests.") or ".test" in n or "_test" in n:
+        return True
+    segments = [s for s in re.split(r"[./\\]", n) if s]
+    return any(s.lower() in _TEST_SEGMENTS for s in segments) or any(
+        _PASCAL_TEST_SUFFIX.search(s) for s in segments
+    )
+
+
+#: How many importer names the containment sentence spells out before eliding.
+_MAX_IMPORTERS = 8
+
+
+def _more(names: list[str]) -> str:
+    """The elision clause, or nothing. Invariant 7: a clipped list says how much it clipped.
+
+    Stating the count and then listing eight of it is a sentence that reads as complete and
+    is not — a reader counts the names and gets a different number from the one we printed.
+    """
+    return f" (+{len(names) - _MAX_IMPORTERS} more)" if len(names) > _MAX_IMPORTERS else ""
 
 
 def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
@@ -669,15 +713,16 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
             "cannot propagate outward."
         )
     elif all(_is_test_module(n) for n in all_importers):
+        tests = sorted(set(all_importers))
         containment = (
-            f"**Containment:** the only importers are tests ({', '.join(sorted(set(all_importers))[:8])}). "
-            "Nothing in the product depends on what changes."
+            f"**Containment:** the only importers are tests ({', '.join(tests[:_MAX_IMPORTERS])}"
+            f"{_more(tests)}). Nothing in the product depends on what changes."
         )
     else:
         product = sorted({n for n in all_importers if not _is_test_module(n)})
         containment = (
             f"**Containment:** the neighbourhood reaches {len(product)} non-test module(s): "
-            f"{', '.join(product[:8])}. A change here is visible to them."
+            f"{', '.join(product[:_MAX_IMPORTERS])}{_more(product)}. A change here is visible to them."
         )
 
     if not bd.get("call_graph_available"):
@@ -687,7 +732,7 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
         )
     else:
         caveat = (
-            "**Caveat:** method calls through an instance emit no `CALLS` edge (SSPN-48), so "
+            "**Caveat:** method calls through an instance emit no `CALLS` edge, so "
             "per-method counts under-report. Module-function counts are exact."
         )
         # The measured version of the same caveat. "Counts under-report" tells a reader to be
