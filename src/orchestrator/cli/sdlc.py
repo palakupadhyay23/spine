@@ -841,7 +841,12 @@ def sdlc_feature(
     package_name: Annotated[
         str | None,
         typer.Option(
-            "--package-name", help="Override the scaffold package name (default: derived from repo)."
+            "--package-name",
+            help=(
+                "Override the scaffold package name (default: derived from repo). In a "
+                "multi-module Gradle/Android repo this also selects the module the change "
+                "belongs to."
+            ),
         ),
     ] = None,
     refresh: Annotated[
@@ -856,8 +861,8 @@ def sdlc_feature(
         typer.Option(
             "--language",
             help=(
-                "Target language: auto (detect), python, java, typescript, csharp, "
-                "c, cpp, go, php, perl, or sql."
+                "Target language: auto (detect), python, java, kotlin, typescript, "
+                "csharp, c, cpp, go, php, perl, or sql."
             ),
         ),
     ] = "auto",

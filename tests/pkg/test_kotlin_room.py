@@ -1,0 +1,240 @@
+"""PKG: Room maps onto ``Entity`` + ``READS``/``WRITES``/``REFERENCES``.
+
+P3 of kotlin-support-roadmap.md, §3.3. The behaviours pinned here are the ones
+where a plausible shortcut gives a wrong answer:
+
+* an entity's **name is its table** while its **id is its class** — the id keeps
+  it unique, the name is what ``data_layer_link`` reconciles against a schema;
+* a ``@Query`` is classified by *parsing* it, so ``DELETE FROM topics`` is a
+  ``WRITES`` even though the annotation is called Query;
+* a write method's entity comes from its **parameter type**, peeled through the
+  collection and coroutine wrappers Room methods are written against;
+* a table no class declares still gets an edge, to an honest external node.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from orchestrator.pkg.data_layer_link import link_data_layer
+from orchestrator.pkg.extractor import RepoCodeExtractor
+from orchestrator.pkg.facts import EdgeKind, FactBatch, NodeKind
+from orchestrator.pkg.kotlin_extractor import KotlinExtractor
+
+pytest.importorskip("tree_sitter_kotlin", reason="install the 'kotlin' extra")
+pytest.importorskip("sqlglot", reason="install the 'sql' extra")
+
+DATA_KT = """\
+package shop.db
+
+import androidx.room.ColumnInfo
+import androidx.room.Dao
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.Upsert
+
+@Entity(tableName = "topics")
+data class TopicEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "display_name") val name: String,
+    notAProperty: String,
+)
+
+@Entity
+data class Plain(val id: String)
+
+@Entity(
+    tableName = "news_topics",
+    foreignKeys = [ForeignKey(entity = TopicEntity::class, parentColumns = ["id"])],
+)
+data class CrossRef(@PrimaryKey val topicId: String)
+
+@Dao
+interface TopicDao {
+    @Query(value = "SELECT * FROM topics")
+    fun all(): List<TopicEntity>
+
+    @Query(value = \"\"\"
+        DELETE FROM topics
+        WHERE id = :id
+    \"\"\")
+    suspend fun remove(id: String)
+
+    @Query(value = "SELECT * FROM unmapped_audit")
+    fun audit(): List<String>
+
+    @Query(value = "this is not sql at all ((")
+    fun broken(): List<String>
+
+    @Upsert
+    suspend fun upsert(entities: List<TopicEntity>)
+}
+"""
+
+
+def _facts(tmp_path: Path, src: str = DATA_KT, name: str = "Data.kt") -> FactBatch:
+    f = tmp_path / name
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(src, encoding="utf-8")
+    ex = KotlinExtractor()
+    return ex.finalize(ex.extract(path=f, module=ex.module_name(f, tmp_path), rel=name))
+
+
+def _entities(batch: FactBatch) -> dict[str, str]:
+    """Entity id → its name (the table)."""
+    return {n.id: n.name for n in batch.nodes if n.kind is NodeKind.ENTITY}
+
+
+def _edges(batch: FactBatch, kind: EdgeKind) -> set[tuple[str, str]]:
+    return {(e.src, e.dst) for e in batch.edges if e.kind is kind}
+
+
+# ---- Entity nodes -----------------------------------------------------------
+
+
+def test_entity_id_follows_the_class_and_name_follows_the_table(tmp_path: Path) -> None:
+    """The split that lets one node be both a Kotlin class and a SQL table."""
+    entities = _entities(_facts(tmp_path))
+    assert entities["java:entity:shop.db.TopicEntity"] == "topics"
+
+
+def test_entity_without_a_table_name_falls_back_to_the_class(tmp_path: Path) -> None:
+    assert _entities(_facts(tmp_path))["java:entity:shop.db.Plain"] == "Plain"
+
+
+def test_constructor_properties_become_entity_fields(tmp_path: Path) -> None:
+    batch = _facts(tmp_path)
+    fields = {n.id for n in batch.nodes if n.kind is NodeKind.FIELD}
+    assert "java:entity:shop.db.TopicEntity.id" in fields
+    # `@ColumnInfo(name = ...)` renames the column, and the graph records columns.
+    assert "java:entity:shop.db.TopicEntity.display_name" in fields
+    # A bare constructor parameter declares no property, so no column (D6).
+    assert "java:entity:shop.db.TopicEntity.notAProperty" not in fields
+
+
+def test_the_class_keeps_its_own_type_and_fields(tmp_path: Path) -> None:
+    """The Entity is a parallel view, not a replacement — the C#/PHP precedent."""
+    batch = _facts(tmp_path)
+    ids = {n.id for n in batch.nodes}
+    assert "java:shop.db.TopicEntity" in ids
+    assert "java:shop.db.TopicEntity.name" in ids
+
+
+# ---- REFERENCES -------------------------------------------------------------
+
+
+def test_foreign_key_inside_the_entity_annotation_is_a_reference(tmp_path: Path) -> None:
+    """Room writes `ForeignKey(...)` inside `@Entity(foreignKeys = [...])`, with no `@`."""
+    references = _edges(_facts(tmp_path), EdgeKind.REFERENCES)
+    assert (
+        "java:entity:shop.db.CrossRef",
+        "java:entity:shop.db.TopicEntity",
+    ) in references
+
+
+def test_relation_view_references_through_embedded_and_junction(tmp_path: Path) -> None:
+    """A Room view is not an entity; its edges hang off the entity it embeds."""
+    src = """\
+package shop.db
+
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.Junction
+import androidx.room.Relation
+
+@Entity(tableName = "topics")
+data class TopicEntity(val id: String)
+
+@Entity(tableName = "news")
+data class NewsEntity(val id: String)
+
+@Entity(tableName = "news_topics")
+data class CrossRef(val id: String)
+
+data class PopulatedNews(
+    @Embedded val entity: NewsEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+        associateBy = Junction(value = CrossRef::class),
+    )
+    val topics: List<TopicEntity>,
+)
+"""
+    references = _edges(_facts(tmp_path, src, "View.kt"), EdgeKind.REFERENCES)
+    news = "java:entity:shop.db.NewsEntity"
+    assert (news, "java:entity:shop.db.TopicEntity") in references  # child, from the element type
+    assert (news, "java:entity:shop.db.CrossRef") in references  # the junction table
+    # The view class itself is a query result shape, not a table.
+    assert "java:entity:shop.db.PopulatedNews" not in _entities(_facts(tmp_path, src, "View.kt"))
+
+
+# ---- READS / WRITES ---------------------------------------------------------
+
+
+def test_a_select_query_reads_its_table(tmp_path: Path) -> None:
+    reads = _edges(_facts(tmp_path), EdgeKind.READS)
+    assert ("java:shop.db.TopicDao.all", "java:entity:shop.db.TopicEntity") in reads
+
+
+def test_a_delete_query_writes_rather_than_reads(tmp_path: Path) -> None:
+    """The reason the SQL is parsed: `@Query` says nothing about direction."""
+    batch = _facts(tmp_path)
+    caller = "java:shop.db.TopicDao.remove"
+    target = "java:entity:shop.db.TopicEntity"
+    assert (caller, target) in _edges(batch, EdgeKind.WRITES)
+    assert (caller, target) not in _edges(batch, EdgeKind.READS)
+
+
+def test_an_upsert_resolves_its_entity_through_the_parameter_type(tmp_path: Path) -> None:
+    """`upsert(entities: List<TopicEntity>)` — the wrapper must not hide the entity."""
+    writes = _edges(_facts(tmp_path), EdgeKind.WRITES)
+    assert ("java:shop.db.TopicDao.upsert", "java:entity:shop.db.TopicEntity") in writes
+
+
+def test_a_table_no_class_declares_still_gets_an_honest_edge(tmp_path: Path) -> None:
+    """The DAO really does read `unmapped_audit`; pretending otherwise loses a fact."""
+    batch = _facts(tmp_path)
+    reads = _edges(batch, EdgeKind.READS)
+    assert ("java:shop.db.TopicDao.audit", "java:entity:unmapped_audit") in reads
+    external = {n.id for n in batch.nodes if n.external and n.kind is NodeKind.ENTITY}
+    assert "java:entity:unmapped_audit" in external
+
+
+def test_unparseable_sql_emits_nothing(tmp_path: Path) -> None:
+    batch = _facts(tmp_path)
+    touched = {src for src, _ in _edges(batch, EdgeKind.READS) | _edges(batch, EdgeKind.WRITES)}
+    assert "java:shop.db.TopicDao.broken" not in touched
+
+
+def test_a_plain_class_produces_no_entity(tmp_path: Path) -> None:
+    src = "package shop.db\n\nclass NotAnEntity(val id: String)\n"
+    assert _entities(_facts(tmp_path, src, "Plain.kt")) == {}
+
+
+# ---- the payoff: reconciliation with a real schema ---------------------------
+
+
+def test_room_entities_reconcile_against_a_sql_schema(tmp_path: Path) -> None:
+    """P3's exit criterion: the DAO layer and its migrations describe one table.
+
+    ``data_layer_link`` pairs an ORM entity with a schema table **by name**, which
+    is the whole reason a Room entity is named after its table rather than its
+    class. The schema wins, and the DAO's READS/WRITES follow it across.
+    """
+    pytest.importorskip("sqlglot", reason="install the 'sql' extra")
+    (tmp_path / "Data.kt").write_text(DATA_KT, encoding="utf-8")
+    (tmp_path / "schema.sql").write_text(
+        "CREATE TABLE topics (id TEXT PRIMARY KEY, display_name TEXT);\n", encoding="utf-8"
+    )
+    batch = link_data_layer(RepoCodeExtractor().extract(tmp_path))
+
+    ids = {n.id for n in batch.nodes}
+    assert "sql:topics" in ids, "the schema table is the authoritative node"
+    assert "java:entity:shop.db.TopicEntity" not in ids, "the ORM entity merged onto it"
+    reads = _edges(batch, EdgeKind.READS)
+    assert ("java:shop.db.TopicDao.all", "sql:topics") in reads

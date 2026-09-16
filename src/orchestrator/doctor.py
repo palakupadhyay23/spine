@@ -147,6 +147,7 @@ EXTRA_PROBES: Mapping[str, str] = {
     "go": "tree_sitter_go",
     "php": "tree_sitter_php",
     "perl": "tree_sitter_perl",
+    "kotlin": "tree_sitter_kotlin",
     "sql": "sqlglot",
     "docs": "pypdf",
     "office": "docx",

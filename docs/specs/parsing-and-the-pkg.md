@@ -77,7 +77,7 @@ distinctive syntax and can be overridden with `--dialect`.
 ## 3. Resolution — the only place a front-end may be wrong
 
 Parsing is not where accuracy is lost. **Every node kind and every edge kind except `CALLS`
-scores 1.00 precision and 1.00 recall on the corpus, in all 10 languages.** Structure is
+scores 1.00 precision and 1.00 recall on the corpus, in all 11 languages.** Structure is
 either in the tree or it is not.
 
 > **Read that sentence as the conditional it is: 1.00 *on the corpus*.** It held at 1.00 for
@@ -178,7 +178,7 @@ A macro-generated function does not exist as far as the tree is concerned.
 
 ## 5. What lands in the graph
 
-Eight node kinds and eleven edge kinds — a deliberately small vocabulary that every front-end
+Eight node kinds and twelve edge kinds — a deliberately small vocabulary that every front-end
 maps onto, so a query works the same way across languages.
 
 **Nodes:** `Module` · `Type` · `Function` · `Field` · `Endpoint` · `Entity` · `Doc` · `Intent`
@@ -234,7 +234,7 @@ The parser choice is not an aesthetic preference. It is what makes the accuracy 
 
 | | Result |
 |---|---|
-| Precision | **1.00** on every node kind and every edge kind, all 10 languages — on the corpus, which now includes the shadowed-callee shape (§3) |
+| Precision | **1.00** on every node kind and every edge kind, all 11 languages — on the corpus, which now includes the shadowed-callee shape (§3) |
 | Recall | 1.00 on every kind except `CALLS` |
 | `CALLS` recall | 1.00 (c, sql) · 0.89 (perl) · 0.86 (typescript) · 0.75 (cpp, csharp, go, php) · 0.73 (python) · 0.67 (java) |
 | Invention | **0** on this repo, and **0** across 11 pinned public repos in 6 front-ends (2026-08-24). Java and SQL are recorded *not-applicable* with reasons rather than scored 0 |

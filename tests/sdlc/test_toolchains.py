@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from orchestrator.catalog.catalog import CapabilityCatalog
+from orchestrator.catalog.catalog import _SEED, CapabilityCatalog
 from orchestrator.sdlc.feature_runner import _resolve_language
 from orchestrator.sdlc.preflight import PhpPreflightRunner, SubprocessPreflightRunner, make_preflight_runner
 from orchestrator.sdlc.toolchains import TOOLCHAINS
@@ -39,11 +39,23 @@ def test_auto_language_precedence_is_preserved(
     assert _resolve_language(tmp_path, "auto") == expected
 
 
-def test_convention_ids_name_existing_catalog_capabilities() -> None:
+def test_every_languages_conventions_capability_resolves_to_a_skill() -> None:
+    """Replaces a check on `Toolchain.conventions_skill_id`, removed in P10 as dead code.
+
+    The invariant it guarded is real and belongs on the path codegen actually uses: the
+    planner selects by capability, so a `<language>-conventions` capability that resolves to
+    nothing reaches a run as an id with no text behind it — guidance that silently is not
+    there. Not every language has one (SQL ships without), so a missing capability is fine;
+    a *registered* one that resolves to nothing is not.
+    """
     catalog = CapabilityCatalog.from_sources()
-    for row in TOOLCHAINS.values():
-        if row.conventions_skill_id is not None:
-            assert catalog.get(row.conventions_skill_id) is not None
+    dangling = [
+        f"{language}-conventions"
+        for language in TOOLCHAINS
+        if catalog.get(f"{language}-conventions") is None
+        and any(f"{language}-conventions" == cap.id for cap in _SEED)
+    ]
+    assert dangling == []
 
 
 def test_preflight_factory_preserves_interpreter_selection() -> None:

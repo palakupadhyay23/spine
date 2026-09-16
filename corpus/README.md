@@ -60,12 +60,24 @@ Labelling in the wrong vocabulary scores 0.00 and reads as a catastrophic front-
 | `go` | `go:package` | `go:cart.Cart` | `.` |
 | `php` | `php:App.Svc` | `php:App.Svc.Cart` | `.` |
 | `perl` | `perl:lib/Shop/Cart.pm` *(always a path)* | `perl:Shop.Cart` | `.` |
+| **`kotlin`** | **`java:package`** *(Java's prefix, not `kt:`)* | **`java:shop.Cart`** | `.` |
 | **`c`** | `c:src/cart.c` *(a path)* | — | **bare symbol: `c:subtotal`** |
 | **`cpp`** | `cpp:src/cart.cpp` *(a path)* | **bare: `cpp:Cart`** | **`::`** |
 | `sql` | `sql:schema.sql` | `sql:customer` *(an Entity)* | `.` |
 
 C and C++ ids are **bare symbols, not module-qualified** — a symbol, not a location. Python's
 scheme applied to either scores zero.
+
+**Kotlin labels in `java:`, not `kt:`** — the third exception this table has to explain, and the
+only case of a namespace deliberately shared between front-ends. Kotlin and Java share one JVM
+package namespace: `import com.x.Y` names the same class whether `Y` is a `.kt` or a `.java`
+file, and it cannot be both. So the Kotlin front-end mints `java:` ids and distinguishes itself
+with `language: kotlin` on the node, which is what `pkg accuracy` and the capability matrix key
+on. The payoff is the `mixed_java` case: a `.kt` beside a `.java` in one package — the normal
+Android layout — produces **one** graph, with `IMPLEMENTS` and `CALLS` crossing the language
+boundary onto real nodes. Under a separate prefix every one of those edges would dangle.
+Labelling a Kotlin case in `kt:` scores 0.00. See D2 in
+[kotlin-support-roadmap.md](../docs/specs/kotlin-support-roadmap.md).
 
 PHP's module id is namespace-keyed like C#/Java **only when the file has one**. A file with no
 `namespace` (WordPress-style, legacy code) keys on its repo-relative path instead —

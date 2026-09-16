@@ -53,12 +53,14 @@ jobs:
       # repo's own graph is unchanged (it is pure Python outside the corpus fixtures). `php`
       # joined the same way (php-support-roadmap.md P1) — without it, `PhpExtractor` never
       # registers and the biconditional test in test_default_extractors.py proves nothing.
-      # `perl` joined the same way (perl-support-roadmap.md P1).
+      # `perl` joined the same way (perl-support-roadmap.md P1), and `kotlin`
+      # (kotlin-support-roadmap.md P1) — without it every Kotlin test `importorskip`s
+      # and the front-end is unverified in CI while looking green.
       - name: Install project
         run: >-
           uv sync --extra dev --extra mcp
           --extra typescript --extra java --extra csharp
-          --extra c --extra cpp --extra go --extra php --extra perl
+          --extra c --extra cpp --extra go --extra php --extra perl --extra kotlin
 
       - name: Lint (ruff)
         run: uv run ruff check .
@@ -139,6 +141,15 @@ jobs:
       # fail. This runs them.
       - name: STATE-OF-SPINE's numbers match the source
         run: uv run python scripts/state-numbers.py --check
+
+      # Every language-track roadmap carries a living phase table whose rule is that Status,
+      # Started, Finished and Evidence are updated in the same commit as the work. The rule
+      # names the table, so the table is what gets maintained: the Kotlin roadmap's own header
+      # said "P0-P5 done" while P6, P7 and P8 sat finished and evidenced twelve lines below it,
+      # for three phases, and nothing noticed. Structured cells on both sides, so this is a
+      # gate rather than the prose classification that was withdrawn at 33% precision.
+      - name: Roadmap phase tables are current and agree with their own headers
+        run: uv run python scripts/roadmap-status.py --check
 
       # Spine's own episteme has to describe Spine's own HEAD — but it is regenerated
       # *after* merge (.github/workflows/episteme.yml), not carried on branches. A PR

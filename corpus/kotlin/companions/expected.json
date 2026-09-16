@@ -1,0 +1,30 @@
+{
+  "language": "kotlin",
+  "case": "companions",
+  "why": "D5. A `companion object`'s members fold onto the enclosing type: `make()` is `java:shop.make.Widget.make`, not `…Widget.Companion.make`. The justification is what call sites actually write — `Widget.make()` from outside and a bare `make()` from inside both name the class, and nothing anywhere writes `Companion`, so a separate node would be a name the graph invented rather than read. The fixture exercises both call forms so they have to land on the same id, and includes a `const val` in the companion because constants fold the same way. `Widget()` inside `make()` is the constructor case: instantiation is a call to the Type.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.make", "kind": "Module" },
+    { "id": "java:shop.make.Widget", "kind": "Type" },
+    { "id": "java:shop.make.Caller", "kind": "Type" },
+    { "id": "java:shop.make.Widget.rebuild", "kind": "Function" },
+    { "id": "java:shop.make.Widget.make", "kind": "Function" },
+    { "id": "java:shop.make.Caller.go", "kind": "Function" },
+    { "id": "java:shop.make.Widget.KIND", "kind": "Field" }
+  ],
+  "edges": [
+    { "src": "java:shop.make", "dst": "java:shop.make.Widget", "kind": "CONTAINS" },
+    { "src": "java:shop.make", "dst": "java:shop.make.Caller", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.rebuild", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.make", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.KIND", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Caller", "dst": "java:shop.make.Caller.go", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget.rebuild", "dst": "java:shop.make.Widget.make", "kind": "CALLS" },
+    { "src": "java:shop.make.Caller.go", "dst": "java:shop.make.Widget.make", "kind": "CALLS" },
+    { "src": "java:shop.make.Widget.make", "dst": "java:shop.make.Widget", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "excluded": [],
+  "open_questions": []
+}

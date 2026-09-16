@@ -1,0 +1,33 @@
+{
+  "language": "kotlin",
+  "case": "retrofit_consumer",
+  "why": "The inversion D10 is built on, stated as an *absence*. Every other front-end's HTTP reader finds routes a codebase serves; an Android app serves none — it calls them. So a Retrofit `@GET(\"topics\")` must produce **no `Endpoint` and no `CONSUMES` edge**, because either one would assert that this repository serves a path it merely calls, about an endpoint nothing in scope is known to serve. This case exists to hold that line: the labels below are exactly what a plain interface would produce, and the graph is byte-identical to a world where Retrofit was never read at all.\n\nThe calls are not discarded — they go to `unresolved_calls`, the same `PendingCall` side-channel `python_client` uses, where `pkg joins` can match them against *another* repository's endpoints. That side-channel is deliberately **not** scored here, because it is not a fact about this codebase; `tests/pkg/test_kotlin_http.py` covers it, including the third method, whose path is a constant reference rather than a literal and so yields no candidate at all.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.net", "kind": "Module" },
+    { "id": "java:shop.net.ShopApi", "kind": "Type" },
+    { "id": "java:shop.net.ShopApi.getTopics", "kind": "Function" },
+    { "id": "java:shop.net.ShopApi.createCart", "kind": "Function" },
+    { "id": "java:shop.net.ShopApi.getOrders", "kind": "Function" }
+  ],
+  "edges": [
+    { "src": "java:shop.net", "dst": "java:shop.net.ShopApi", "kind": "CONTAINS" },
+    { "src": "java:shop.net.ShopApi", "dst": "java:shop.net.ShopApi.getTopics", "kind": "CONTAINS" },
+    { "src": "java:shop.net.ShopApi", "dst": "java:shop.net.ShopApi.createCart", "kind": "CONTAINS" },
+    { "src": "java:shop.net.ShopApi", "dst": "java:shop.net.ShopApi.getOrders", "kind": "CONTAINS" },
+    { "src": "java:shop.net", "dst": "java:retrofit2.http.GET", "kind": "IMPORTS" },
+    { "src": "java:shop.net", "dst": "java:retrofit2.http.POST", "kind": "IMPORTS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [
+    {
+      "edge": { "src": "java:endpoint:GET /topics", "dst": "java:shop.net.ShopApi.getTopics", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. This is the tempting reading — `@GET(\"topics\")` looks exactly like the JAX-RS and Spring annotations that *do* make endpoints — and it is backwards. Retrofit declares a call, not a route. An Endpoint node here would make this app appear to serve `/topics`, and would make `pkg verify` report zero dangling while doing it: the self-consistent invention this project has removed twice."
+    }
+  ],
+  "excluded": [
+    "`java:retrofit2.http.GET` and `java:retrofit2.http.POST` are external — nothing here declares them — so they stay out of the node ratio; the IMPORTS edges to them still count.",
+    "`private const val ORDERS` is a top-level property, which is deliberately not a Field (D6), so it is not labelled as one."
+  ],
+  "open_questions": []
+}

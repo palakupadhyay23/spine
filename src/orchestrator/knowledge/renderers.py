@@ -22,7 +22,12 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from orchestrator.catalog.profile import ProjectProfile
-from orchestrator.knowledge.areas import AreaIndex, area_of_name, zone_of
+from orchestrator.knowledge.areas import (
+    AreaIndex,
+    area_of_name,
+    common_namespace_prefix,
+    zone_of,
+)
 from orchestrator.pkg.facts import EdgeKind, Node, NodeKind
 from orchestrator.pkg.stats import GraphStats
 from orchestrator.pkg.store import FactStore
@@ -703,10 +708,16 @@ def collect_areas(store: FactStore, deps: ModuleDeps) -> dict[str, AreaFacts]:
     """
     areas: dict[str, AreaFacts] = {}
     area_of_module: dict[str, str] = {}
-    for mod in store.nodes:
-        if mod.kind is not NodeKind.MODULE or mod.external or _is_test_module(mod.name):
-            continue
-        name = area_of_name(mod.name)
+    first_party = [
+        mod
+        for mod in store.nodes
+        if mod.kind is NodeKind.MODULE and not mod.external and not _is_test_module(mod.name)
+    ]
+    # Same rule as `state` and `AreaIndex`: a reverse-DNS project groups by the segments
+    # that differ, not by the vendor prefix every module shares.
+    prefix = common_namespace_prefix(mod.name for mod in first_party)
+    for mod in first_party:
+        name = area_of_name(mod.name, prefix)
         area_of_module[mod.id] = name
         areas.setdefault(name, AreaFacts(name, [])).modules.append(mod)
 

@@ -1,7 +1,10 @@
 # Language expansion roadmap — Go + 3 (focused)
 
 **Status:** Roadmap / prioritization. **Scope decided: Go · Rust · Kotlin · PHP** (Go shipped, PHP
-comprehension + `CALLS` shipped, Rust/Kotlin still proposals). Open question 1 (below) resolved
+comprehension + `CALLS` shipped, **Kotlin shipped through P9** — comprehension, `CALLS`,
+Room/Retrofit, Compose navigation + Hilt, Gradle modules, Ktor/Spring routes, Multiplatform source sets, and codegen for both
+Kotlin/JVM and Android; Rust still a
+proposal). Open question 1 (below) resolved
 PHP over Ruby for the 4th slot on 2026-09-08 — Ruby stays queued, not dropped. **Perl is not
 in this four-language set** — it is a demand-pulled addition, admitted under this document's
 first prioritisation criterion; its own track is
@@ -62,7 +65,7 @@ large majority, without over-investing:
 |---|---|---|---|---|
 | **Go** | systems/services | ~1 wk (spec'd) | ✅ ~1 wk (`go build`/`go test`) | interface satisfaction by method-set matching; package = directory |
 | **Rust** | systems / AI-adjacent | ~1 wk | ✅ ~1 wk (`cargo build`/`cargo test`) | traits → `IMPLEMENTS` (`impl Trait for Type`); `::` path resolution |
-| **Kotlin** | JVM / Android | ~1 wk | ✅ *reuses Java/Gradle plumbing* | JVM; Java interop; coroutines/null-safety don't change the graph |
+| **Kotlin** | JVM / Android | ~1 wk *(estimate; P0–P9 took 6 days of track time, codegen included)* | 🟡 *half true — the graph reuses Java's id namespace, but the JVM test runner was Maven-only, so P8 built a Gradle runner and P9 made it variant-aware for Android* | JVM; Java interop; coroutines/null-safety don't change the graph |
 | **PHP** | dynamic / web (Laravel, WordPress) | **DONE** (P1+P2 — comprehension and `CALLS` both ship) | defer (D6 — comprehension-first discipline, despite a clean toolchain) | traits → `IMPLEMENTS` (no vocabulary precedent); class-name resolution is *static* per file (PHP RFC), unlike Ruby's |
 
 Ruby (dynamic / web, Rails) stays queued behind these four — comprehension + CALLS-partial is

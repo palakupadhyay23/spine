@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
+import shutil
 import sys
 from pathlib import Path
 
-from orchestrator.sdlc import process
+from orchestrator.sdlc import android, process
 from orchestrator.sdlc.contracts import TestRunner as TestRunner
 from orchestrator.sdlc.contracts import TestRunResult as TestRunResult
 from orchestrator.sdlc.process import _SECRET_ENV_PREFIXES as _SECRET_ENV_PREFIXES
@@ -481,6 +483,173 @@ class GoTestRunner:
                 rel = mod_dir.relative_to(root).as_posix()
                 mods.add("." if rel == "" else rel)
         return sorted(mods)
+
+
+class GradleTestRunner:
+    """Runs ``./gradlew test`` (or ``gradle test``) in a JVM worktree via exec, no shell.
+
+    P8 of docs/specs/kotlin-support-roadmap.md, §9.3. ``layout.py`` has detected Gradle
+    since the Java track shipped, but ``MavenTestRunner`` was the only JVM runner — so
+    codegen on *any* Gradle project, Java included, could not run its tests. This closes
+    that for both languages at once; Kotlin simply has no Maven era to be backwards
+    compatible with.
+
+    **The wrapper is preferred, and that is not a style choice.** ``./gradlew`` pins the
+    Gradle version the project was written against and downloads it on first use, so it
+    builds the same way on a machine that has never seen Gradle. A bare ``gradle`` on PATH
+    is whatever version happens to be installed, which for a real project is a coin flip.
+    Wrapper first, ``gradle`` second, and when there is neither the run **fails with a
+    hint** rather than reporting a green suite that never compiled anything.
+
+    **It runs the module that owns the changed files** — the Go 4.5 lesson. A Gradle build
+    is routinely multi-project, and ``./gradlew test`` from the root does run every module's
+    tests, but a repo whose root aggregates dozens of Android modules spends minutes on code
+    the change never touched. Naming the owning modules (``:core:data:test``) keeps the
+    refine loop's feedback tied to what it just wrote. Falling back to the whole build when
+    nothing is detected is the safe direction: it tests more, never less.
+
+    ``--console=plain`` because the refine prompt reads this output, and Gradle's rich
+    console is ANSI cursor movement that renders as line noise in a transcript.
+    """
+
+    def __init__(self, gradle: str = "gradle", *, timeout: float = 900.0) -> None:
+        # Gradle's first run downloads a distribution and resolves a dependency graph, so
+        # the default is longer than Maven's: a cold wrapper bootstrap alone can take
+        # minutes, and a timeout there would look exactly like a failing test.
+        self._gradle = gradle
+        self._timeout = timeout
+        # Variant task names Gradle has already told us about, keyed by the name we asked
+        # for. The refine loop reuses one runner across iterations, so the build that
+        # discovers `testDemoDebugUnitTest` is the only one that pays for the discovery.
+        self._resolved: dict[str, str] = {}
+
+    async def run(self, *, path: str) -> TestRunResult:
+        argv_base = self._invocation(Path(path))
+        if argv_base is None:
+            return TestRunResult(
+                passed=False,
+                returncode=-1,
+                output=(
+                    "gradle test could not run: this project has no ./gradlew wrapper and no "
+                    "`gradle` on PATH. Add the Gradle wrapper (`gradle wrapper`) or install "
+                    "Gradle, then retry."
+                ),
+            )
+        tasks = [self._resolved.get(t, t) for t in (await self._changed_module_tasks(path) or ["test"])]
+        argv = (*argv_base, *tasks, "--console=plain")
+        rc, out = await _exec_capture(argv, cwd=path, timeout=self._timeout)
+        retry = _variant_tasks(out, tasks) if rc != 0 else None
+        if retry is None:
+            return TestRunResult(passed=rc == 0, returncode=rc, output=_clip(f"# {' '.join(argv)}\n{out}"))
+        self._resolved.update(dict(zip(tasks, retry, strict=True)))
+        argv = (*argv_base, *retry, "--console=plain")
+        rc, out = await _exec_capture(argv, cwd=path, timeout=self._timeout)
+        # The note is prepended *after* clipping, not folded into the text being clipped:
+        # `_clip` keeps the tail, and an Android build log is long enough to push anything
+        # written before it off the front — which would leave the reader of this transcript
+        # wondering why the task named here is not the task that ran.
+        note = (
+            f"# {' '.join(tasks)} does not exist in this build (Gradle listed the build-variant\n"
+            f"# tasks that replace it), so it was re-run as:\n# {' '.join(argv)}\n"
+        )
+        return TestRunResult(passed=rc == 0, returncode=rc, output=note + _clip(out))
+
+    def _invocation(self, root: Path) -> tuple[str, ...] | None:
+        """The wrapper when the project ships one, else ``gradle``, else ``None``."""
+        wrapper = root / "gradlew"
+        if wrapper.is_file():
+            return (str(wrapper),)
+        return (self._gradle,) if shutil.which(self._gradle) else None
+
+    async def _changed_module_tasks(self, path: str) -> list[str]:
+        """``:core:data:test`` for each Gradle module owning a changed JVM source file.
+
+        Empty when nothing is detected — a fresh scaffold, a non-git worktree, or a change
+        outside any module — and the caller then runs the whole build's ``test``.
+        """
+        # `-uall` rather than the default: git collapses a wholly-new untracked directory to
+        # the directory itself ("core/model/src/test/"), and a generated test is very often
+        # the first file in a directory that did not exist. Without this the change looks
+        # like it touches no source file at all and the whole build is tested instead.
+        rc, out = await _exec_capture(("git", "status", "--porcelain", "-uall"), cwd=path, timeout=60.0)
+        if rc != 0:
+            return []
+        root = Path(path)
+        modules: set[str] = set()
+        for line in out.splitlines():
+            name = line[3:].strip() if len(line) > 3 else ""
+            if "->" in name:  # a rename reports "old -> new"
+                name = name.split("->", 1)[1].strip()
+            name = name.strip('"')
+            if not name.endswith((".kt", ".kts", ".java")):
+                continue
+            module_dir = _nearest_gradle_module(root / name, root)
+            if module_dir is None:
+                continue
+            rel = module_dir.relative_to(root).as_posix()
+            # The root project's own tests are the bare `test` task; a subproject is
+            # addressed by its path with `/` as `:`, which is Gradle's own spelling.
+            task = android.unit_test_task(module_dir)
+            modules.add(task if rel == "" else f":{rel.replace('/', ':')}:{task}")
+        return sorted(modules)
+
+
+# Gradle spells the same complaint two ways, and both name the tasks that do exist:
+#   Cannot locate tasks that match ':core:data:testDebugUnitTest' as task
+#   'testDebugUnitTest' is ambiguous in project ':core:data'. Candidates are:
+#   'testDemoDebugUnitTest', 'testProdDebugUnitTest'.
+#   Task 'testDebugUnitTest' not found in project ':app'. Some candidates are: '…'.
+_ASKED_TASK = re.compile(
+    r"Cannot locate tasks that match '(?P<path>[^']+)'|Task '(?P<task>[^']+)' not found in project"
+)
+_CANDIDATES = re.compile(r"[Cc]andidates are: (?P<list>'[^']+'(?:,\s*'[^']+')*)")
+_QUOTED = re.compile(r"'([^']+)'")
+
+
+def _variant_tasks(output: str, tasks: list[str]) -> list[str] | None:
+    """Rewrite ``tasks`` using the variant task names Gradle just named, or ``None``.
+
+    ``testDebugUnitTest`` is the documented Android unit-test task and it does not
+    universally exist: the moment a module declares product flavours, the Android Gradle
+    Plugin replaces it with one task per flavour — the validation app applies flavours to
+    every *library* module through a convention plugin, so ``:core:data:testDebugUnitTest``
+    is ambiguous there and ``:core:data:testDemoDebugUnitTest`` is what runs.
+
+    Flavour names cannot be read off a build script (they are computed in Kotlin, inside a
+    separate included build), so this does not try to predict them. Gradle's own failure
+    lists the candidates; using that list is the difference between a derived answer and a
+    guess. A ``Debug`` variant is preferred because unit tests run against the debug build
+    type by convention, and the first of Gradle's alphabetical candidates settles ties so
+    that two runs of the same build pick the same task.
+    """
+    asked = _ASKED_TASK.search(output)
+    listed = _CANDIDATES.search(output)
+    if asked is None or listed is None:
+        return None
+    path = asked.group("path") or asked.group("task") or ""
+    name = path.rsplit(":", 1)[-1]
+    candidates = _QUOTED.findall(listed.group("list"))
+    if not name or not candidates:
+        return None
+    debug = [c for c in candidates if "Debug" in c]
+    chosen = (debug or candidates)[0]
+    if chosen == name:
+        return None
+    rewritten = [t if t.rsplit(":", 1)[-1] != name else t[: len(t) - len(name)] + chosen for t in tasks]
+    return rewritten if rewritten != tasks else None
+
+
+def _nearest_gradle_module(start: Path, root: Path) -> Path | None:
+    """Nearest ancestor of ``start`` holding a Gradle build script, within ``root``."""
+    d = start.parent
+    while True:
+        if (d / "build.gradle.kts").is_file() or (d / "build.gradle").is_file():
+            return d
+        if d == root:
+            return None
+        d = d.parent
+        if d != root and root not in d.parents:
+            return None
 
 
 def _nearest_go_mod(start: Path, root: Path) -> Path | None:

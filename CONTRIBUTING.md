@@ -192,7 +192,17 @@ pytest commands install exactly the extras named by CI's sync step.
 
 See [SETUP.md](SETUP.md) for the full local stack and [USER_GUIDE.md](USER_GUIDE.md)
 for the everyday workflow. In short: Python 3.12+, [`uv`](https://docs.astral.sh/uv/),
-then `uv sync`.
+then the **same extras CI syncs** — a bare `uv sync` is not enough to reproduce a CI result:
+
+```bash
+uv sync --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp \
+  --extra c --extra cpp --extra go --extra php --extra perl --extra kotlin
+```
+
+Without `mcp` every MCP test skips *and* `mypy src tests` reports three phantom
+`unused-ignore` errors, because the `type: ignore`s guarding its optional imports have
+nothing to ignore. Without the language extras only the `python` and `sql` front-ends
+register, so most language tests skip and `pkg accuracy` cannot score their corpus cases.
 
 ## Code of Conduct
 

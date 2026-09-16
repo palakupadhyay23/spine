@@ -65,8 +65,8 @@ def _cards_html() -> str:
 _CAPS: tuple[tuple[str, str, str], ...] = (
     (
         "terminal",
-        "Nine languages",
-        "Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl (plus SQL data-layer).",
+        "Ten languages",
+        "Python, Java, Kotlin, TypeScript, C#, C, C++, Go, PHP and Perl (plus SQL data-layer).",
     ),
     (
         "branch",

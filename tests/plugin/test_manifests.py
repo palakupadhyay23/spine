@@ -35,6 +35,7 @@ _COMP_TOOLS = (
 _DISPLAY_NAMES = {
     "python": "Python",
     "java": "Java",
+    "kotlin": "Kotlin",
     "typescript": "TypeScript",
     "csharp": "C#",
     "c": "C",

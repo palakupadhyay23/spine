@@ -1,0 +1,38 @@
+{
+  "language": "kotlin",
+  "case": "extensions",
+  "why": "D4, from both sides. An extension `fun Slug.tidy()` is a **free function under the package module** — `java:shop.text.tidy`, never `java:shop.text.Slug.tidy` — because the receiver type does not own it; attaching it would hang a CONTAINS edge off a type that in real code usually lives in another module or in the SDK. The call side has to agree: `slug.tidy()` looks exactly like a member call and must still resolve to the free function. The plain top-level `shorten(slug)` is here as the contrast — same module-level id, no receiver.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.text", "kind": "Module" },
+    { "id": "java:shop.text.Slug", "kind": "Type" },
+    { "id": "java:shop.text.Formatter", "kind": "Type" },
+    { "id": "java:shop.text.Formatter.run", "kind": "Function" },
+    { "id": "java:shop.text.tidy", "kind": "Function" },
+    { "id": "java:shop.text.shorten", "kind": "Function" },
+    { "id": "java:shop.text.Slug.raw", "kind": "Field" }
+  ],
+  "edges": [
+    { "src": "java:shop.text", "dst": "java:shop.text.Slug", "kind": "CONTAINS" },
+    { "src": "java:shop.text", "dst": "java:shop.text.Formatter", "kind": "CONTAINS" },
+    { "src": "java:shop.text", "dst": "java:shop.text.tidy", "kind": "CONTAINS" },
+    { "src": "java:shop.text", "dst": "java:shop.text.shorten", "kind": "CONTAINS" },
+    { "src": "java:shop.text.Slug", "dst": "java:shop.text.Slug.raw", "kind": "CONTAINS" },
+    { "src": "java:shop.text.Formatter", "dst": "java:shop.text.Formatter.run", "kind": "CONTAINS" },
+    { "src": "java:shop.text.Formatter.run", "dst": "java:shop.text.tidy", "kind": "CALLS" },
+    { "src": "java:shop.text.Formatter.run", "dst": "java:shop.text.shorten", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [
+    {
+      "edge": {
+        "src": "java:shop.text.Formatter.run",
+        "dst": "java:shop.text.Slug.tidy",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `slug.tidy()` is syntactically a member call, so attaching the extension to its receiver type is the one tempting fabrication in Kotlin (D4, risks §11) — it reads naturally and is what a Java-trained reader expects. `Slug` does not declare `tidy`; the package does."
+    }
+  ],
+  "excluded": [],
+  "open_questions": []
+}

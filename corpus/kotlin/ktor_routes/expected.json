@@ -1,0 +1,52 @@
+{
+  "language": "kotlin",
+  "case": "ktor_routes",
+  "why": "D16. This is where a Kotlin program stops being only an HTTP *client* and becomes a provider: Ktor routes land in the same `java:endpoint:<VERB> <path>` namespace as Java's, so `pkg joins` can pair an Android app's Retrofit call with the Kotlin service that answers it.\n\nThe case is built around the three things that make a DSL hard to read. **`get` is not a keyword** — it is one of the most common method names in Kotlin, so a route is only read when the callee is a bare identifier *and* it sits in a route context. **Prefixes compose**: `route(\"/api\") { route(\"/users\") { get(\"/{id}\") } }` is one path built from three calls, and a bare `get { }` inside a group serves the group's own path. **A route module's prefix is not lexical**: `fun Route.orders()` lives in another file and declares routes at whatever path its caller mounts it on, so `route(\"/v1\") { orders() }` is what makes those routes `/v1/orders`. Mounting is resolved across the whole tree in `finalize`, not while reading either file.\n\nTwo refusals are pinned. `route(Paths.ADMIN)` silences everything inside it — a wrong prefix is worse than a missing route (the PHP lesson) — and `get(buildPath())` yields nothing at all. `fun Route.orphan()` is mounted nowhere, so its path is genuinely unknown and it yields nothing: rooting it at `/` would be a guess that happens to be right in the common case, which is the worst kind.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:svc", "kind": "Module" },
+    { "id": "java:svc.Paths", "kind": "Type" },
+    { "id": "java:svc.Paths.ADMIN", "kind": "Field" },
+    { "id": "java:svc.module", "kind": "Function" },
+    { "id": "java:svc.pingHandler", "kind": "Function" },
+    { "id": "java:svc.buildPath", "kind": "Function" },
+    { "id": "java:svc.orders", "kind": "Function" },
+    { "id": "java:svc.orphan", "kind": "Function" },
+    { "id": "java:endpoint:GET /health", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /ping", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /me", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /api/users", "kind": "Endpoint" },
+    { "id": "java:endpoint:POST /api/users", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /api/users/{id}", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /v1/orders", "kind": "Endpoint" },
+    { "id": "java:endpoint:DELETE /v1/orders/{id}", "kind": "Endpoint" }
+  ],
+  "edges": [
+    { "src": "java:svc", "dst": "java:svc.Paths", "kind": "CONTAINS" },
+    { "src": "java:svc", "dst": "java:svc.module", "kind": "CONTAINS" },
+    { "src": "java:svc", "dst": "java:svc.pingHandler", "kind": "CONTAINS" },
+    { "src": "java:svc", "dst": "java:svc.buildPath", "kind": "CONTAINS" },
+    { "src": "java:svc", "dst": "java:svc.orders", "kind": "CONTAINS" },
+    { "src": "java:svc", "dst": "java:svc.orphan", "kind": "CONTAINS" },
+    { "src": "java:svc.Paths", "dst": "java:svc.Paths.ADMIN", "kind": "CONTAINS" },
+    { "src": "java:svc.module", "dst": "java:svc.buildPath", "kind": "CALLS" },
+    { "src": "java:endpoint:GET /ping", "dst": "java:svc.pingHandler", "kind": "EXPOSES" }
+  ],
+  "known_gaps": [],
+  "false_positives": [
+    {
+      "edge": { "src": "java:endpoint:GET /health", "dst": "java:svc.module", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. `get(\"/health\") { }` handles the route with an inline lambda, which has no id to point at. Pointing EXPOSES at the enclosing function instead would be the closure rule's failure mode: `module` does not serve `/health`, it *registers* it, and one `module` would end up exposing every route in the file. Only `get(\"/ping\", ::pingHandler)` names a function the graph already holds, and only it gets the edge."
+    }
+  ],
+  "excluded": [
+    "`route(Paths.ADMIN) { get(\"/secret\") { } }` yields NO endpoint. `Paths.ADMIN` is a compile-time constant and a future reader could resolve it, but it is a *qualified* one (`object Paths`), which is beyond what the route reader resolves today — so the group is silenced rather than guessed at. See open_questions.",
+    "`get(buildPath()) { }` yields nothing: a path from a function call cannot be known, and naming the endpoint after the expression would put a route in the graph that no client could ever call.",
+    "`fun Route.orphan()` declares `get(\"/never-mounted\")` and is mounted nowhere in the tree, so it yields nothing. This is the deliberate half of the mount resolution: routes exist only at prefixes the tree actually shows.",
+    "`routing`, `route`, `get`, `post`, `delete` and `authenticate` arrive by wildcard import (`io.ktor.server.routing.*`), which names no single symbol — so there are no IMPORTS edges and no CALLS edges to them. This is how real Ktor code is written, and it is why the file's only CALLS edge is the one to `buildPath`.",
+    "`authenticate(\"session\") { get(\"/me\") { } }` contributes no path of its own. It is a wrapper that nests routes without changing them, so `/me` is correct and `/session/me` would be an invention."
+  ],
+  "open_questions": [
+    "Should a `const val` route prefix resolve the way a Compose route constant does (D14)? The nav reader already collects bare top-level `const val`s across the whole walk; extending that to qualified `object Paths.ADMIN` references would turn this case's one silenced group into `GET /admin/secret`. It is deliberately not done in P6: the constant table would have to grow a qualified-name form, and a half-resolved prefix is exactly the failure this refusal exists to prevent."
+  ]
+}

@@ -1,7 +1,10 @@
 # Design + Plan: adding Kotlin to the PKG (10th language) — the whole language, on real apps
 
-**Status:** 🟡 **P0 done** (this plan, the branch, the baseline) · P1–P11 not started.
-**Branch:** `feat/kotlin-support` off `develop` at `d84e666` (3.33.2). **Opened:** 2026-09-10.
+**Status:** 🟡 **P0–P10 done** (plan + baseline; comprehension; corpus + `CALLS` + invention
+walker; Room + Retrofit; Compose navigation + Hilt, incl. the `PROVIDES` edge kind; Gradle
+modules; Ktor + Spring routes; Kotlin Multiplatform; Kotlin/JVM codegen; Android codegen; generic work) ·
+P11 not started. Last measured 2026-09-16 at 3.34.2.
+**Branch:** `feat/kotlin_support` off `develop` at 3.34.2. **Opened:** 2026-09-10.
 **Scope decided 2026-09-10: complete.** Comprehension, call graph, Room and Retrofit, Compose
 navigation and Hilt bindings, Gradle `.kts` modules, Ktor and Spring server routes, Kotlin
 Multiplatform, and codegen for Kotlin/JVM and Android — nothing of the language is left for a
@@ -41,7 +44,7 @@ updated **in the same commit** as the work, never after. §9.1 turns the rule in
 | **D1** | Parser | (a) `tree-sitter-kotlin` 1.1.0 (fwcd), (b) `tree-sitter-kotlin-ng`, (c) `tree-sitter-language-pack` | **(a).** On PyPI with abi3 wheels for every CI platform (`py>=3.9`; its `tree-sitter~=0.22` pin sits behind an optional extra, so it coexists with the 0.26 in `uv.lock`). **Measured 2026-09-10 on the validation repository: 0 files with an ERROR node out of 263, 0 of 22,662 lines.** Snippet probes fail only on single-line `;`-separated members and one-line `object X { val … }`, which real code does not write. (b) is not on PyPI. (c) is 20 MB for one grammar. |
 | **D2** | Id prefix | (a) share **`java:`** (one JVM namespace), (b) own `kt:` prefix | **(a).** Kotlin and Java share one package namespace; a Kotlin `import com.x.Y` names the same class whether `Y` is `.kt` or `.java`, and `Y` cannot exist in both. Sharing the prefix means the placeholder `java:com.x.Y` is upgraded by `FactBatch` dedup regardless of which front-end declared it, Java's `_DOTTED_PREFIXES` import join works unchanged, and a mixed repo (`src/main/java/**/*.kt` beside `.java`, which is exactly aiandroid's layout: 193 of 263 files) gets one graph, not two. Nodes carry `language="kotlin"`; `pkg accuracy` and the capability matrix key on that, not the prefix. Precedent: `ts:` covers `.ts`, `.tsx`, `.js`, `.jsx`. |
 | **D3** | Module unit | (a) the `package` header, path fallback, (b) file path | **(a)** — the Java rule (`JavaExtractor.module_name`), and it is what makes D2 work. 249 of 263 files declare a package; the 14 that do not key on their path. |
-| **D4** | Top-level and extension functions | (a) `Function` under the package module, id `java:pkg.name`; an extension `fun T.name()` is the same, with the receiver recorded nowhere, (b) attach extensions to the receiver `Type` | **(a).** An extension is not a member — the receiver type does not own it, and attaching it would put a `CONTAINS` edge on a type declared in another module or in the SDK. Calls resolve to it by name (D8 row 5). Two extensions with the same name in one package are a compile error in Kotlin, so the id is unique. |
+| **D4** | Top-level and extension functions | (a) `Function` under the package module, id `java:pkg.name`; an extension `fun T.name()` is the same, with the receiver recorded nowhere, (b) attach extensions to the receiver `Type` | **(a).** An extension is not a member — the receiver type does not own it, and attaching it would put a `CONTAINS` edge on a type declared in another module or in the SDK. Calls resolve to it by name (D8 row 5). ~~Two extensions with the same name in one package are a compile error in Kotlin, so the id is unique.~~ **Corrected 2026-09-15 against the validation repo — that claim was false.** The receiver is part of an extension's signature, so same-name extensions in one package are legal and common: `core.data.model` declares `NetworkTopic.asEntity`, `NetworkNewsResource.asEntity` **and** `NetworkNewsResourceExpanded.asEntity`, and `core.database.model` does the same for `asExternalModel`/`asFtsEntity`. The id is therefore **not** unique, and they collapse onto one node exactly as overloads do — which is the documented Java behaviour (`java_extractor.py`: "overloads collapse onto one id"), so the *decision* stands and only its justification changes. Measured cost on aiandroid: 9 of 738 function declarations collapse this way. |
 | **D5** | `object` and `companion object` | (a) `object X` → `Type`; companion members fold into the enclosing class (`A.h()` → `java:pkg.A.h`), (b) a nested `Type` `A.Companion` | **(a).** Call sites name the class, never `Companion`; folding is how the graph will be read. A companion's own name, when given, is recorded in `name` only. 43 objects and 7 companions in the validation repo. |
 | **D6** | `Field` | (a) `val`/`var` properties in a class body **and** `val`/`var` primary-constructor parameters, (b) body properties only | **(a).** In Kotlin a constructor `val` *is* a property, and in DI-heavy code (`class Repo @Inject constructor(private val dao: TopicDao)`) it is the typed receiver every call in the class goes through (D8 row 6). A bare constructor parameter without `val`/`var` is not a `Field`. Top-level `val`s are not `Field`s (corpus rule: a `Field` belongs to a `Type`). 799 properties in the validation repo. |
 | **D7** | Inheritance | `delegation_specifier` → `IMPLEMENTS`, resolved by the Java rule (import → same package → external) | Kotlin does not distinguish `extends` from `implements` syntactically; neither does the edge. A guessed same-package target that nothing declares is repointed in `finalize`, the C#/PHP pattern. |
@@ -50,7 +53,7 @@ updated **in the same commit** as the work, never after. §9.1 turns the rule in
 | **D10** | Framework edges — an Android app is a **client** | Retrofit `@GET("topics")` → a **`CONSUMES` candidate**, not an `Endpoint`; Room `@Entity` → `Entity`; Ktor and Spring **server** routes are P6 (D16), where a Kotlin service is the provider | Nothing in an Android app *exposes* a route; it calls one. `python_client.py`'s `PendingCall` side-channel exists for exactly this — an unmatched call is a **cross-repo join candidate**, and `pkg joins` matches it against a provider's `Endpoint`s by verb and path. This makes a Kotlin app the first mobile **consumer** in the multi-repo join, which no other front-end can be today. Path from the annotation literal; base URL from a literal `baseUrl("…")` when present, else path-only. |
 | **D11** | `.kts` Gradle scripts | (a) not registered, (b) parse as Kotlin source, (c) a **dedicated reader** for the Gradle DSL only | **(c), in P5.** 33 build scripts whose "functions" are DSL calls; parsed as Kotlin they would add a phantom component per module. Read as what they are instead: `settings.gradle.kts` `include(":core:data")` declares the **Gradle modules**, and each module's `dependencies { implementation(project(":core:model")) }` declares **module-to-module dependencies** — the architecture of an Android app, which nothing else states. `Module` nodes `gradle:core/data` (own prefix; the id is the module path) and `IMPORTS` between them; `libs.versions.toml` and version catalogs feed the profiler (D12). Every `.kt` file's package module gets a `CONTAINS`-free link to its Gradle module through provenance path only — no fabricated ownership edge. Until P5 the profiler reads them as markers. |
 | **D12** | Profiler | `.kt` → `kotlin`; `build.gradle.kts` / `settings.gradle.kts` / `gradle/libs.versions.toml` read as markers; `androidx`/`compose` → framework `android`, `io.ktor` → `ktor`, `springframework` (already) → `spring`; `junit` (already) → `junit` | Today `profile_repo` on the validation repository returns **`languages: []`** — only `build.gradle` (no `.kts`) is read, and `.kt` maps to nothing. |
-| **D13** | Codegen | (a) Kotlin/JVM first (P8), then Android brownfield (P9); (b) Android first | **(a).** Neither can reuse the Java track as the expansion roadmap assumed: `MavenTestRunner` is the only JVM runner and aiandroid, like most Kotlin, is Gradle. P8 builds `GradleTestRunner` + `KotlinToolEnvironment` (§9.3 — it unblocks Java Gradle projects too) and a greenfield `kotlin("jvm")` scaffold proven against real `./gradlew test`. P9 adds Android: placement into the right Gradle module, `package` from the module's existing sources, and tests through `./gradlew :module:testDebugUnitTest` — JVM unit tests, **never an emulator**; instrumented tests are the one thing explicitly out (§10). `"kotlin"` enters `SUPPORTED_LANGUAGES` **only in P8**, together with layout/scaffold/testenv/testrunner/prompts/`kotlin-conventions`; until then `--language kotlin` exits 2 rather than scaffolding Python. |
+| **D13** | Codegen | (a) Kotlin/JVM first (P8), then Android brownfield (P9); (b) Android first | **(a).** Neither can reuse the Java track as the expansion roadmap assumed: `MavenTestRunner` is the only JVM runner and aiandroid, like most Kotlin, is Gradle. P8 builds `GradleTestRunner` + `KotlinToolEnvironment` (§9.3 — it unblocks Java Gradle projects too) and a greenfield `kotlin("jvm")` scaffold proven against real `./gradlew test`. P9 adds Android: placement into the right Gradle module, `package` from the module's existing sources, and tests through the module's own JVM unit-test task — `testDebugUnitTest`, or the flavoured variant Gradle names when that one is ambiguous (§11) — **never an emulator**; instrumented tests are the one thing explicitly out (§10). `"kotlin"` enters `SUPPORTED_LANGUAGES` **only in P8**, together with layout/scaffold/testenv/testrunner/prompts/`kotlin-conventions`; until then `--language kotlin` exits 2 rather than scaffolding Python. |
 | **D14** | Compose navigation as routes | (a) `Endpoint` with verb `NAV` + `EXPOSES`/`CONSUMES`, (b) a new node kind, (c) nothing | **(a), in P4.** `NavHost { composable("topic/{topicId}") { TopicRoute(…) } }` declares a route and `navController.navigate("topic/$id")` consumes it — the same shape as an HTTP route, with the app as both provider and consumer. `java:endpoint:NAV topic/{topicId}`; `EXPOSES` to the one named composable the lambda calls (none if zero or several — the closure rule); `CONSUMES` from the function containing a **literal** `navigate("…")`; a template string with a segment is kept literal (`topic/{topicId}` ↔ `"topic/$id"` normalise to the same path). `NAV` cannot collide with an HTTP verb in `pkg joins`, so the D2 no-`ANY` rule is respected. No new node kind. |
 | **D15** | Hilt / Dagger bindings | (a) a new **`PROVIDES`** edge kind + a consumer in the same phase, (b) reuse `IMPLEMENTS`, (c) nothing | **(a), in P4.** `@Binds fun binds(impl: OfflineRepo): Repo` and `@Provides fun provide(): Repo` say *which* implementation reaches every `Repo` injection site — the fact that answers "what breaks if I change `OfflineRepo`" for a DI codebase, and no existing edge carries it (`IMPLEMENTS` is already true of `OfflineRepo`, so (b) would be lossy and wrong for `@Provides`). `EdgeKind.PROVIDES`: provider → the provided `Type`; `@Inject constructor` parameters and `@Inject` fields become `REFERENCES`-free **injection sites** read by `blast_radius`, which in the same phase learns to follow `PROVIDES` from a type to its injection sites. The closed enum grows by one member with a consumer that reads it — the `facts.py` rule ("grow as needed"), honoured the way `INTENT`/`SERVES` did. `KNOWLEDGE_GRAPH.md` matrices, `corpus/README.md` and the capability matrix change with it. |
 | **D16** | Ktor and Spring server routes | Ktor `routing { get("/x") { } }` → `Endpoint` (closure → no `EXPOSES`; `get("/x", ::handler)` → `EXPOSES`); Spring `@GetMapping`/`@RequestMapping(method=…)` on `@RestController` methods → `Endpoint` + `EXPOSES` with the class-level prefix | **In P6, for Kotlin and Java at once.** The Java front-end reads JAX-RS only; Spring in Java is the same missing reader, so the Spring reader lives in a shared `jvm_routes.py` and both front-ends call it. Verb-less `@RequestMapping` → nothing (the no-`ANY` rule). Ktor route groups (`route("/api") { … }`) compose like Laravel groups; a computed path silences the group (the PHP lesson). |
@@ -179,7 +182,7 @@ generates, builds and tests code, greenfield and into the validation app.
 | **Spring routes** (P6, D16) | `@RestController @RequestMapping("/api") class C { @GetMapping("/topics") fun list() }`, `@PostMapping`, `@RequestMapping(method = [RequestMethod.GET])` | `Endpoint` + `EXPOSES` → the method; read by `jvm_routes.py` for `.kt` and `.java` alike | verb-less `@RequestMapping` → nothing; a class prefix that is not a literal silences the class |
 | **KMP** (P7, D17) | `src/commonMain`, `src/androidMain`, `src/iosMain`, `src/jvmMain`; `expect fun platform(): String` / `actual fun platform(): String` | the `expect` gets the plain id; each `actual` gets `@<sourceSet>`; `IMPLEMENTS` actual → expect; `Module` provenance records the source set | an `actual` with no matching `expect` in the tree gets no `IMPLEMENTS` (external placeholder for the expect, honestly) |
 | **Kotlin/JVM codegen** (P8, D13) | greenfield: `settings.gradle.kts`, `build.gradle.kts` with `kotlin("jvm")` + `kotlin("test")`, `src/main/kotlin`, `src/test/kotlin`; brownfield: place into the existing module's package | `GradleTestRunner` (`./gradlew test --console=plain`, wrapper if present, else `gradle`), `KotlinToolEnvironment`, `kotlin-conventions` skill, prompts | the runner runs the module that owns the changed files (the Go 4.5 lesson); a repo with no wrapper and no `gradle` on PATH is a `FeatureRunError` with the hint, never a silent pass |
-| **Android codegen** (P9, D13) | brownfield into aiandroid: choose the Gradle module by the target package, honour its existing `package`, add a Compose screen or a repository function with a JVM unit test | `./gradlew :module:testDebugUnitTest`; `android_toolchain_available()` checks `ANDROID_HOME`/`sdkmanager` and the wrapper | never an emulator or instrumented test; a generated screen gets a JVM-testable ViewModel/repository slice, and the UI test is left as an explicit TODO in the build document — said, not hidden |
+| **Android codegen** (P9, D13) | brownfield into aiandroid: choose the Gradle module by the target package, honour its existing `package`, add a Compose screen or a repository function with a JVM unit test | the module's real unit-test task, resolved from Gradle when `testDebugUnitTest` is ambiguous (§11); `android_toolchain_available()` checks `ANDROID_HOME`/`sdkmanager`, and `kotlin_project_error` the wrapper | never an emulator or instrumented test; a generated screen gets a JVM-testable ViewModel/repository slice, and the UI test is left as an explicit TODO in the build document — said, not hidden |
 
 ---
 
@@ -212,16 +215,16 @@ result disagrees with this document, the document changes.
 | Phase | Work | Effort | Exit criteria | Status | Started | Finished | Evidence |
 |---|---|---|---|---|---|---|---|
 | **P0 Plan + baseline** | This document; branch `feat/kotlin-support`; grammar census; `profile_repo`/`map_repo` baseline; PKG blast radius (§8) | 1 d | Decisions D1–D13 recorded with evidence; baseline numbers in §1 | ✅ DONE | 2026-09-10 | 2026-09-10 | §1, §8, D1 census (0/263 files with ERROR) |
-| **P1 Comprehension** | `kotlin_extractor.py` (§3.1, D1–D7, D11); `jvm_names.py` leaf if Java helpers are shared; registration: `default_extractors`, `FRONT_ENDS`, `EXTRA_PROBES`, `_GRAMMAR_MODULES`, profiler (D12), `scope.py` placeholder until P2, `docs.py`/`doc_link.py` `kt`; packaging (`kotlin` extra, `languages` meta-extra, mypy override, `ci.yml`); tests per [docs/reviewing/language-frontend-checklist.md](../reviewing/language-frontend-checklist.md); docs per [docs/reviewing/docs-matrix.md](../reviewing/docs-matrix.md) | 4–6 d | `map_repo` on the validation repo: modules/types/functions/fields > 0 with the census as the ceiling (232 / 43+ / 738 / 799); `pkg verify` 0 errors; drift claims below 57; **every P1 row of §7.1 updated** and `scripts/docs_audit.py` reports no STALE/MISSING; gate green with `--extra kotlin` | ⬜ | | | |
-| **P2 Corpus + CALLS + invention walker** | `corpus/kotlin/{plain,typed_receivers,extensions,companions,shadowed_calls,mixed_java}` labelled from source first; §3.2 rows; `_Kotlin` walker (D9); `--scoreboard` | 4–5 d | precision 1.00 on every kind; `invention` `MEASURED` with 0; `state` "Call graph: available"; `blast_radius` on a validation-repo repository class lists its DI callers | ⬜ | | | |
-| **P3 Room + Retrofit** | `kotlin_room.py` (Entity/Field/REFERENCES; DAO READS/WRITES via sqlglot when present), `kotlin_http.py` (Retrofit `CONSUMES` candidates through the `PendingCall` side-channel); corpus `room`, `retrofit_consumer`; a two-repo `pkg joins` fixture with a tiny provider | 3–5 d | 6 entities on the validation repo; `pkg joins` proposes the consumer→provider join; `data_layer_link` reconciles against a `.sql` schema | ⬜ | | | |
-| **P4 Compose navigation + Hilt** (D14, D15) | `kotlin_nav.py` (routes as `NAV` endpoints, `EXPOSES`/`CONSUMES`); `EdgeKind.PROVIDES` in `facts.py` + `kotlin_di.py`; `blast_radius` follows `PROVIDES` to injection sites; `KNOWLEDGE_GRAPH.md` matrices; corpus `compose_nav`, `hilt_bindings` | 4–6 d | on aiandroid: a `NAV` endpoint per `composable(...)` route with a literal string; `blast_radius` on `OfflineTopicsRepository` lists the screens that inject `TopicsRepository`; precision 1.00 | ⬜ | | | |
-| **P5 Gradle modules** (D11) | `gradle_extractor.py` for `settings.gradle.kts` + `build.gradle.kts` (`gradle:` modules, `IMPORTS` from `project(":…")`); profiler reads version catalogs; `state` architecture layers use the module graph; corpus `gradle_modules` | 3–4 d | 28 `gradle:` modules on aiandroid with the `core/` ← `feature/` dependency direction visible in `state`; zero edges from `libs.x` coordinates | ⬜ | | | |
-| **P6 Ktor + Spring routes** (D16) | `jvm_routes.py` shared by the Kotlin and Java front-ends; Ktor DSL reader; corpus `ktor_routes`, `spring_routes` (Kotlin and Java) | 3–5 d | `Endpoint`s on the Spring and Ktor validation repos; a Kotlin service joins as a **provider** in `pkg joins`; Java Spring repos gain endpoints too | ⬜ | | | |
-| **P7 Kotlin Multiplatform** (D17) | source-set aware module naming, `expect`/`actual` ids and `IMPLEMENTS`; `state` per source set; corpus `kmp_expect_actual` | 2–4 d | KaMPKit renders per source set; every `actual` has an `IMPLEMENTS` to its `expect`; no id collisions (`pkg verify` clean) | ⬜ | | | |
-| **P8 Kotlin/JVM codegen** (D13, §9.3) | `GradleTestRunner`, `KotlinToolEnvironment`, `kotlin_toolchain_available`; layout/scaffold for `kotlin("jvm")`; prompts + `kotlin-conventions`; `"kotlin"` into `SUPPORTED_LANGUAGES`; preflight via `./gradlew check` when `ktlint`/`detekt` are configured | 5–7 d | greenfield `sdlc feature --language kotlin` → real `./gradlew test` green **and** red proven (the Go 4.2 pair); brownfield on the Spring validation repo green, independently re-run | ⬜ | | | |
-| **P9 Android codegen** (D13) | module placement by package, existing-`package` matching, `testDebugUnitTest` runner, `android_toolchain_available`, Android guidance in the prompts | 5–8 d | brownfield on aiandroid: a repository function + JVM unit test placed in the right `core/` module, `./gradlew :core:data:testDebugUnitTest` **genuinely green, independently verified**; grounding uses the P1–P5 graph | ⬜ | | | |
-| **P10 Generic work** (§9.1, §9.2, §9.4) | `scripts/roadmap-status.py --check`; `scripts/validate-frontend.py`; reverse-DNS area grouping | 3–4 d | each item's own exit in §9; this table passes its own check | ⬜ | | | |
+| **P1 Comprehension** | `kotlin_extractor.py` (§3.1, D1–D7, D11); `jvm_names.py` leaf if Java helpers are shared; registration: `default_extractors`, `FRONT_ENDS`, `EXTRA_PROBES`, `_GRAMMAR_MODULES`, profiler (D12), `scope.py` placeholder until P2, `docs.py`/`doc_link.py` `kt`; packaging (`kotlin` extra, `languages` meta-extra, mypy override, `ci.yml`); tests per [docs/reviewing/language-frontend-checklist.md](../reviewing/language-frontend-checklist.md); docs per [docs/reviewing/docs-matrix.md](../reviewing/docs-matrix.md) | 4–6 d | `map_repo` on the validation repo: modules/types/functions/fields > 0 with the census as the ceiling (232 / 43+ / 738 / 799); `pkg verify` 0 errors; drift claims below 57; **every P1 row of §7.1 updated** and `scripts/docs_audit.py` reports no STALE/MISSING; gate green with `--extra kotlin` | ✅ DONE | 2026-09-15 | 2026-09-15 | `map_repo` on aiandroid: **85 modules · 271 types · 713 functions · 488 fields** (census ceiling 232+43 types / 738 fns / 799 props — see the gap analysis below); `pkg verify` **0 errors**; drift **57 → 25**; `tests/pkg/test_kotlin_extractor.py` 19 P1 tests; capability matrix regenerated |
+| **P2 Corpus + CALLS + invention walker** | `corpus/kotlin/{plain,typed_receivers,extensions,companions,shadowed_calls,mixed_java}` labelled from source first; §3.2 rows; `_Kotlin` walker (D9); `--scoreboard` | 4–5 d | precision 1.00 on every kind; `invention` `MEASURED` with 0; `state` "Call graph: available"; `blast_radius` on a validation-repo repository class lists its DI callers | ✅ DONE | 2026-09-15 | 2026-09-15 | `pkg accuracy --language kotlin`: **precision 1.00 on every node and edge kind**, 6 cases, CALLS recall 0.83 (both misses are labelled `known_gaps`); `invention` **`measured`, 0 invented across 2,167 bare calls**; `state` → "Call graph: available"; **2,169 CALLS** on aiandroid, `OfflineFirstTopicsRepository.getTopics → TopicDao.getTopicEntities` through a constructor property |
+| **P3 Room + Retrofit** | `kotlin_room.py` (Entity/Field/REFERENCES; DAO READS/WRITES via sqlglot when present), `kotlin_http.py` (Retrofit `CONSUMES` candidates through the `PendingCall` side-channel); corpus `room`, `retrofit_consumer`; a two-repo `pkg joins` fixture with a tiny provider | 3–5 d | 6 entities on the validation repo; `pkg joins` proposes the consumer→provider join; `data_layer_link` reconciles against a `.sql` schema | ✅ DONE | 2026-09-16 | 2026-09-16 | **6 entities** on aiandroid (all grounded, named by `tableName`), 12 `READS` / 11 `WRITES` / 4 `REFERENCES`, **0 dangling**; `pkg verify` 0 errors; corpus `room` + `retrofit_consumer` **1.00 precision and recall on every kind**; `multirepo/http_join_kotlin_consumer` joins a Kotlin app to a Java JAX-RS provider (`CONSUMES` 1.00/1.00); `data_layer_link` merges Room entities onto `sql:` tables (`tests/pkg/test_kotlin_room.py`); 4 Retrofit candidates on aiandroid |
+| **P4 Compose navigation + Hilt** (D14, D15) | `kotlin_nav.py` (routes as `NAV` endpoints, `EXPOSES`/`CONSUMES`); `EdgeKind.PROVIDES` in `facts.py` + `kotlin_di.py`; `blast_radius` follows `PROVIDES` to injection sites; `KNOWLEDGE_GRAPH.md` matrices; corpus `compose_nav`, `hilt_bindings` | 4–6 d | on aiandroid: a `NAV` endpoint per `composable(...)` route with a literal string; `blast_radius` on `OfflineTopicsRepository` lists the screens that inject `TopicsRepository`; precision 1.00 | ✅ DONE | 2026-09-16 | 2026-09-16 | **8 `NAV` endpoints** on aiandroid (incl. `NAV topic_route/{topicId}`, the `{$topicIdArg}` constant resolved per D14), **5 `EXPOSES`**, **4 `CONSUMES`**, **47 `PROVIDES`**; `pkg verify` 0 errors; `blast_radius(OfflineFirstTopicsRepository)` → `TopicsRepository` → `GetFollowableTopicsUseCase.invoke` + `topic.topicUiState` (**empty before this phase**); corpus `compose_nav` + `hilt_bindings` **1.00 precision and recall on every kind**; `EdgeKind.PROVIDES` + `FactStore.injection_reach_of`; 16 tests in `test_kotlin_nav.py` / `test_kotlin_di.py`; matrices, SVG and vocabulary counts regenerated (11→12 edge kinds) |
+| **P5 Gradle modules** (D11) | `gradle_extractor.py` for `settings.gradle.kts` + `build.gradle.kts` (`gradle:` modules, `IMPORTS` from `project(":…")`); profiler reads version catalogs; `state` architecture layers use the module graph; corpus `gradle_modules` | 3–4 d | 28 `gradle:` modules on aiandroid with the `core/` ← `feature/` dependency direction visible in `state`; zero edges from `libs.x` coordinates | ✅ DONE | 2026-09-16 | 2026-09-16 | **29 `gradle:` modules** (27 `include(...)` + the root + `build-logic/convention`; the plan's “28” was an estimate) and **72 module→module `IMPORTS`**, **zero** from `libs.*`; `pkg verify` 0 errors; `state`'s components go from a single `com.google` area to the real build — `core/data`, `core/database`, `feature/foryou`, `sync/work` … — and its architecture arrows are the Gradle graph (`app → core/data`, `sync/work → core/testing`); corpus `gradle_modules` **1.00 precision and recall**; 9 tests in `test_gradle_extractor.py` + a `state` area test. **Direction caveat in the evidence, not hidden:** no `feature → core` edge exists because all six feature modules take those deps from a `build-logic` convention plugin (`.kt`), not from their own `.kts` — see §11 |
+| **P6 Ktor + Spring routes** (D16) | `jvm_routes.py` shared by the Kotlin and Java front-ends; Ktor DSL reader; corpus `ktor_routes`, `spring_routes` (Kotlin and Java) | 3–5 d | `Endpoint`s on the Spring and Ktor validation repos; a Kotlin service joins as a **provider** in `pkg joins`; Java Spring repos gain endpoints too | ✅ DONE | 2026-09-16 | 2026-09-16 | spring-petclinic-kotlin: **18 endpoints · 18 `EXPOSES`** — all 18 mapping annotations in the repository, 0 missed, 0 invented. ktor-samples (151 files): **67 endpoints**, every provenance line audited to be a real route call. `jvm_routes.py` shared by both JVM front-ends, so **Java gained Spring** (it read JAX-RS only). Corpus `kotlin/ktor_routes`, `kotlin/spring_routes`, `java/spring_routes` and `multirepo/http_join_kotlin_provider` — **1.00 precision and recall on every kind**, 0 missing and 0 unlabelled; 63 cases total at P6 (64 with P7's). `tests/pkg/test_jvm_routes.py` (25) + `tests/pkg/test_kotlin_routes.py` (23). aiandroid unchanged (8 `NAV`, 5 `EXPOSES`) — no false positives from the new readers. |
+| **P7 Kotlin Multiplatform** (D17) | source-set aware module naming, `expect`/`actual` ids and `IMPLEMENTS`; `state` per source set; corpus `kmp_expect_actual` | 2–4 d | KaMPKit renders per source set; every `actual` has an `IMPLEMENTS` to its `expect`; no id collisions (`pkg verify` clean) | ✅ DONE | 2026-09-16 | 2026-09-16 | KaMPKit (34 `.kt`, 6 source sets): `state` components **2 → 7** (`shared/commonMain`, `shared/androidMain`, `shared/iosMain` + their test sets, beside `app`); **7 source-set-suffixed declarations**; **4 of 4** representable `actual`s carry an `IMPLEMENTS` to their `expect`; `pkg verify` **0 issues**. aiandroid unchanged at 28 components — an ordinary Android module is not split. Corpus `kotlin/kmp_expect_actual` **1.00 on every kind**, 0 missing / 0 unlabelled, 2 declared false positives. `tests/pkg/test_kotlin_kmp.py` (16). |
+| **P8 Kotlin/JVM codegen** (D13, §9.3) | `GradleTestRunner`, `KotlinToolEnvironment`, `kotlin_toolchain_available`; layout/scaffold for `kotlin("jvm")`; prompts + `kotlin-conventions`; `"kotlin"` into `SUPPORTED_LANGUAGES`; preflight via `./gradlew check` when `ktlint`/`detekt` are configured | 5–7 d | greenfield `sdlc feature --language kotlin` → real `./gradlew test` green **and** red proven (the Go 4.2 pair); brownfield on the Spring validation repo green, independently re-run | ✅ DONE | 2026-09-16 | 2026-09-16 | Real Gradle 8.13 / Kotlin 2.0.21. **Greenfield:** scaffold → `gradle test` **BUILD SUCCESSFUL**; assertion broken → **BUILD FAILED** naming the test (the Go 4.2 pair). **Brownfield:** `VisitFee` + test placed into spring-petclinic-kotlin's existing package → **3 tests, 0 failures, 0 errors**, re-run green with `--rerun-tasks`. `GradleTestRunner` verified red (`rc=1`), green (`rc=0`), wrapper-preferred on KaMPKit, and loud-failure with neither wrapper nor `gradle`. `GradlePreflightRunner` skips without a linter and finds ktlint in KaMPKit / nothing in petclinic or aiandroid. `tests/sdlc/test_kotlin_codegen.py` (26); `tests/sdlc` + `catalog` + `personas` **1,115 passed, 0 failed**. |
+| **P9 Android codegen** (D13) | `android.py` (module placement by package, Android-module detection, SDK probe); variant-aware unit-test task in `GradleTestRunner`; `android_toolchain_available` + `kotlin_project_error`; `TargetLayout.module`/`.android`; Android guidance in the prompts | 5–8 d | brownfield on aiandroid: a repository function + JVM unit test placed in the right `core/` module, the module's real unit-test task **genuinely green, independently verified**; grounding uses the P1–P5 graph | ✅ DONE | 2026-09-16 | 2026-09-16 | Real Gradle 8.1 / AGP 8.1.0-beta01 / JDK 17 / Android SDK platform 33. **The exit criterion as first written names a task that does not exist** — `:core:data:testDebugUnitTest` is *ambiguous* in aiandroid, because `AndroidLibraryConventionPlugin` calls `configureFlavors`, so **every** library module is flavoured and the real tasks are `testDemoDebugUnitTest` / `testProdDebugUnitTest`. Measured, not assumed (§11). **Placement:** 27 modules, `build-logic` correctly excluded as an included build; `…core.data` → `core/data`, the *new* sub-package `…core.data.pricing` → `core/data` under that module's own `src/main/java`, `…core.model.data` → `core/model` with the plain `test` task (a Kotlin/JVM module inside an Android build); an unrelated package resolves to **nothing** and the run stops with the module list rather than guessing. Classification checked against **all 27** modules: 25 Android, 2 plain JVM (`core/model`, `lint`) — and `lint` is the case that vindicates detecting an `android { }` block rather than a plugin id, since it applies `com.android.lint`, which is the *standalone* Lint plugin on a JVM library and produces no variants. **Brownfield:** `syncBackoffMillis` + `SyncBackoffTest` placed into `core/data`'s existing package → **4 tests, 0 failures, 0 errors**; independently re-run with `--rerun-tasks` (**197 tasks executed**, nothing from cache) → **BUILD SUCCESSFUL**. **Red:** assertion broken → `passed=False`, `rc=1`, naming `SyncBackoffTest > each retry doubles the wait FAILED` at `SyncBackoffTest.kt:17` (the Go 4.2 pair). The runner found the module from `git status`, asked for `testDebugUnitTest`, recovered from Gradle's own candidate list, and cached the answer for later refine iterations. `detect_jvm_test_library` now reads `build-logic/` convention plugins — aiandroid declares `kotlin("test")` *only* there, so before this it was right by luck. **Mixed build proven too:** a second feature placed into `core/model` — a plain Kotlin/JVM module in the same Android repo — ran as `:core:model:test` while `core/data` ran as `:core:data:testDemoDebugUnitTest` in the *same* invocation (**3 tests, 0 failures**, independently re-run with `--rerun-tasks`). That second module is what exposed the per-module test-library finding (§11) and a `git status` flag: git collapses a wholly-new untracked directory, so a generated test that is the first file in a new directory was invisible to module attribution until `-uall`. `tests/sdlc/test_android_codegen.py` (43). |
+| **P10 Generic work** (§9.1, §9.2, §9.4) | `scripts/roadmap-status.py --check` (two new checks + CI); `scripts/validate-frontend.py` proven on Kotlin; reverse-DNS area grouping; the dead `Toolchain.conventions_skill_id` removed | 3–4 d | each item's own exit in §9; this table passes its own check | ✅ DONE | 2026-09-16 | 2026-09-16 | **§9.1** — the gate existed but was missing the check §9.1 names, and this roadmap proved why: its own **Status** line read *“P0–P5 done · P6–P11 not started”* for three phases while the table below it showed P6–P8 DONE with evidence, and the gate stayed green. Two checks added — the header's phase claim against its own table's DONE rows, and the spec's claim against `SPEC-INDEX.md`'s — both structured on *both* sides, which is what separates them from the prose classification withdrawn at 33% precision. A third defect surfaced doing it: `_TOP_STATUS` matched `(.+?)\.` on one line, so a **wrapped** status line matched nothing at all — and every roadmap here wraps its own, which made every check reading it a silent no-op. Now 9 checks, 3 tables, **and wired into CI** (it was not). **§9.2** — `validate-frontend.py` existed and is now *demonstrated* on Kotlin rather than assumed: 1,635 grounded nodes, node counts split `kotlin` / `gradle`, `pkg verify` OK, the `state` stack line, and the top-10 unresolved imports. **§9.4** — reverse-DNS grouping: on the validation app **258 of 273 first-party types sat in one area called `com.google`**; they now render as **39 areas** — `core.data` (40), `core.database`, `feature.topic` … — while this repository is measurably **unchanged** (its deepest majority prefix is `orchestrator` at 48.1%, under the threshold, because `orchestrator.pkg` already *is* the area). The spec's literal rule — the prefix shared by *every* module — does not survive the validation repo: one first-party module declaring `package androidx.test.uiautomator` drags the common prefix of all 71 to nothing, so the rule is coverage-based, with the threshold placed in the measured gap (94.4% → 57.7%). 9 tests in `tests/knowledge/test_areas_reverse_dns.py`, 9 more in `tests/test_roadmap_status.py`. |
 | **P11 Review + MR** (D19) | `/review-pr` on the branch (self-review with the same checklist a maintainer will run); fix; convert the draft MR to ready with the phase table and every validation number as its body | 1–2 d | verdict "mergeable"; the review's docs-audit table shows every §7.1 row updated; full suite with CI's extras green; no `episteme/` in the diff | ⬜ | | | |
 
 Rough total: **45–60 days**, one engineer familiar with the PKG. **Delivery is one merge** (D19):
@@ -307,7 +310,7 @@ report no STALE or MISSING line before that commit. `/review-pr` walks
 | `plugins/spine/skills/*/SKILL.md` | the language line | P1 |
 | `docs/specs/STATE-OF-SPINE.md` | front-end count, the precision row's "all N front-ends", the `CALLS` recall row (Kotlin's number and denominator), source-module and test counts (`state-numbers.py --check`) | P1, P2 |
 | `docs/specs/SPEC-INDEX.md`, `language-expansion-roadmap.md` | this spec's row and the expansion roadmap's Kotlin line, updated to the phase reached — never ahead of it | every phase |
-| `USER_GUIDE.md` toolchain passages, `CLAUDE_GUIDE.md`/`CODEX_GUIDE.md` toolchain tables, `SETUP.md` | Kotlin/JVM and Android codegen rows: the `gradle` wrapper, `ANDROID_HOME`, `testDebugUnitTest`, and what is never run (emulator) | P8, P9 |
+| `USER_GUIDE.md` toolchain passages, `AGENT_GUIDE.md` §10 toolchain table (`CLAUDE_GUIDE.md`/`CODEX_GUIDE.md` are five-line redirects into it, not tables of their own — corrected P9), `SETUP.md` | Kotlin/JVM and Android codegen rows: the `gradle` wrapper, `ANDROID_HOME`, the per-module unit-test task (and that flavours rename it), and what is never run (emulator) | P8, P9 |
 | `KNOWLEDGE_GRAPH.md`, `corpus/README.md`, `docs/specs/PRODUCT-KNOWLEDGE-GRAPH.md`, `assets/spine-architecture.svg` | the `PROVIDES` edge kind: matrices, decided rules, "N node kinds · M edge kinds" | P4 |
 | `FEATURES.md`, `README.md` | rows/lines for Compose navigation, Hilt, Gradle modules, Ktor/Spring, KMP, and codegen as each lands | P4–P9 |
 | `CHANGELOG.md` | one entry under Unreleased per merged phase, in the house voice (what it does, what it refuses to guess, the extra to install) | every phase |
@@ -415,20 +418,293 @@ Kotlin:
 - **The `sql` extra is optional** — Room `@Query` edges must degrade to "not read", never to a guess.
 - **Untracked `docs/specs/*.md` changes the spec count**; this file is tracked from its first commit.
 - **Never commit `episteme/`.** The validation repository's bank stays in the scratch dir.
+- **Android product flavours collide on one id, and nothing warns.** *(Found 2026-09-15, P1.)*
+  `src/demo/` and `src/prod/` are separate source sets that declare the **same class in the same
+  package** — aiandroid does it four times (`AnalyticsModule`, `FlavoredNetworkModule`,
+  `NotificationsModule`, `SyncModule`, plus their 5 `@Binds` methods). One id, so `FactBatch`
+  dedup keeps one node and the other file's provenance is lost. It resolves *deterministically*
+  — the walk is sorted, so `demo` always wins — and it is arguably correct, since only one
+  flavour compiles at a time and both are the same fully-qualified name. But the graph points at
+  a file the build may not use and says nothing about it. This is the KMP problem in miniature and
+  **P7's `@<sourceSet>` id suffix (D17) is the same fix**; until then it is a known, measured,
+  9-declaration gap on the primary validation repo, recorded here rather than left to be
+  rediscovered.
+- **`@ForeignKey` is not an annotation — do not grep for one.** *(Found 2026-09-16, P3.)* §3.3
+  writes it as `@ForeignKey(entity = X::class, …)`, and a census for `@ForeignKey` on the
+  validation repo returns **0**, which briefly looked like "aiandroid has no foreign keys".
+  It has two. Room spells them as *constructor calls inside* `@Entity(foreignKeys = [...])`,
+  with no `@`. The same trap applies to `Junction`: it is `associateBy = Junction(...)`, an
+  **argument** to `@Relation`, and the grammar parses it as a `call_expression` there while
+  parsing the identical text as a `constructor_invocation` in annotation position. A reader
+  that handles only the annotation-position spelling silently drops every junction table.
+- **`@Relation` lives on a class that is not an `@Entity`.** *(Found 2026-09-16, P3.)* §3.3
+  implies the relation annotations sit on entities. In real Room they sit on a *view* class —
+  `@Embedded` names the parent entity, the annotated property's element type names the child —
+  and that class is a query result shape, not a table, so it gets no `Entity` node of its own.
+  Reading relations only from `@Entity` classes finds none of them.
+- **The capability matrix cannot tell "reads a kind" from "emits a kind".** *(Found 2026-09-16,
+  P3.)* `capabilities._kinds_in` attributes every `NodeKind.X` named by a front-end **or its
+  direct delegates**, so importing `python_client.emit` — which mentions `NodeKind.ENDPOINT`
+  to *look endpoints up* — made Kotlin claim it could emit `Endpoint` nodes, the exact inverse
+  of D10. Worked around by keeping that import one level further out, in `kotlin_http`, where
+  the matrix does not inherit it. Kotlin is the first consumer-only front-end, which is why
+  nothing hit this before; a second one will hit it again.
+- **`FEATURES.md` does not exist.** *(Found 2026-09-16.)* §7.1 assigns it four rows. There is
+  no such file in the repository — the user-facing capability table lives in `README.md`, and
+  the Kotlin row was added there instead.
+- **A trailing lambda wraps the call it decorates.** *(Found 2026-09-16, P4.)*
+  `composable(route = r) { Screen() }` is an **outer** `call_expression` whose callee is the
+  inner `composable(route = r)`: the arguments live on the inner node and the lambda on the
+  outer. Reading the node whose callee is named `composable` therefore finds the route and
+  never the screen — measured as 8 endpoints and **0** `EXPOSES` until both halves were read
+  from the right node. Every Compose and Kotlin DSL reader after this one hits the same shape.
+- **`kotlin` was missing from `ci.yml`.** *(Found 2026-09-16, P4, by `scripts/docs_audit.py`.)*
+  P1's row names `ci.yml` and it was still missed, so every Kotlin test `importorskip`-ed in
+  CI and the front-end was unverified while the build looked green. This is the registration
+  site the checklist did not catch; the audit did.
+- **A Gradle module graph read from `.kts` alone is a lower bound.** *(Found 2026-09-16, P5.)*
+  A mature build factors shared wiring into `build-logic` precompiled plugins, so a module's
+  script says `plugins { id("nowinandroid.android.feature") }` and its dependencies on
+  `core:*` live in that plugin's **Kotlin** source. Measured: every `app →` and `sync →`
+  edge is visible and **no `feature → core` edge is**, because all six feature modules get
+  theirs that way. The module *nodes* are complete; the edge set is not. Closing it means
+  resolving a plugin id to the file that registers it and then interpreting Gradle API calls
+  in ordinary source — a much less certain job than reading a literal, so it is recorded.
+- **A nested `settings.gradle.kts` belongs to another build.** *(Found 2026-09-16, P5.)*
+  `includeBuild("build-logic")` composes a *separate* build whose `include(":convention")`
+  is relative to itself. Reading it as this repository's produced a phantom top-level
+  `convention` module beside the real `build-logic/convention`.
+- **§3.5's "test configurations tagged in provenance" is not representable.**
+  *(Found 2026-09-16, P5.)* `Provenance` carries file, line, end_line and repo — there is no
+  field for a tag, and adding one touches 46 non-test importers. Test-configuration
+  dependencies are therefore emitted as ordinary `IMPORTS` (a test dependency is a real
+  dependency) and `state` cannot separate them. Recorded rather than faked.
+- **D16 names only `@RestController`; the validation repository uses `@Controller`.**
+  *(Found 2026-09-16, P6.)* `@RestController` is `@Controller` + `@ResponseBody`; both
+  register handler mappings, and every one of spring-petclinic-kotlin's six controllers uses
+  the plain form. A reader following D16 literally finds **zero** endpoints there. Both are
+  accepted. The *requirement* itself stands and is load-bearing: Spring Cloud OpenFeign puts
+  the same mapping annotations on an interface to declare a **client**, so keying off the
+  mapping alone turns every consumer into a provider.
+- **A Ktor route module's prefix is not lexical, and D16 does not say what to do about it.**
+  *(Found 2026-09-16, P6.)* D16 covers `routing { }` and `route(...)` groups, which are one
+  tree. Real Ktor splits routes across files as `fun Route.orders()` extensions mounted by
+  their caller — 20 of them in the Ktor sample corpus — so a route's path is set somewhere
+  else entirely. Mount points are resolved across the whole repository in `finalize`, to a
+  fixpoint since a module can mount another; a module nothing mounts yields **nothing**.
+  Measured on `httpbin`: **1 endpoint before, 35 after**.
+- **A chained call hides the route underneath it.** *(Found 2026-09-16, P6.)*
+  `get("/get") { … }.describe { … }` is one call *on* another, so the outer node's callee is a
+  `navigation_expression` and the route is in its receiver. Descending only into the outer
+  lambda — the obvious reading after P4's trailing-lambda lesson — loses every route in such a
+  file. This is the second shape in this track where the node you name is not the node you
+  want; the fix is to descend through the whole unrecognised call, not just its lambda.
+- **tree-sitter-kotlin 1.1.0 strands a parenthesised top-level annotation.**
+  *(Found 2026-09-16, P6.)* `@Resource("/x")` or `@RequestMapping("/api")` above a declaration
+  is parsed as a standalone `annotated_expression` — an argument-less `annotation` plus a
+  `parenthesized_expression` — and the declaration loses its `modifiers` entirely. Every
+  framework reading in this track (Room, Hilt, Retrofit, Spring) asks
+  `kotlin_names.annotations_of` for a declaration's annotations, so the failure is silent and
+  total: the class reads as a plain class. Measured across the three validation repositories
+  (452 `.kt` files): **32 stranded blocks**, including `@AndroidEntryPoint class MainActivity`.
+  `annotations_of` now recovers them from the preceding sibling. **1 of the 32** additionally
+  swallows the declaration itself into an `infix_expression` (a bare `class X {` with no
+  constructor and no supertype) and is unrecoverable without re-parsing — recorded as a gap.
+- **`Annotation.arg` falls back to the first positional argument, which is wrong for a
+  non-path argument.** *(Found 2026-09-16, P6.)* The fallback is deliberate and right for a
+  path (`@GET(value = "x")` and `@GET("x")` are the same thing), but asking it for `method`
+  on `@RequestMapping("/any")` returns the *path* — which was minted as an HTTP verb, giving
+  an endpoint named `"/topics/anything" /api/topics/anything`. A non-path argument must be
+  looked up by name exactly. Any future reader using this helper needs the same care.
+- **`scripts/docs_audit.py --strict` does not catch a stale *count*.**
+  *(Found 2026-09-16, P6.)* The audit passed green while `EXAMPLE.md` said "47 hand-labelled
+  cases covering all 10 of Spine's front-ends" (it is 63 across 12), `BENCHMARK.md` said
+  "there are ten now" and "eight now" for the front-end count, and `KNOWLEDGE_GRAPH.md` and
+  `CLI_REFERENCE.md` both carried a `CALLS`-recall table that disagreed with the committed
+  `scoreboard.json` in five rows. The audit checks that documented *symbols* still exist; a
+  number that has drifted is prose to it. §7.1's instruction to grep the number word as well
+  as the digit is the only control here, and it has to be run by hand — these four were found
+  by reading every file that enumerates front-ends, not by a script. `language-expansion-roadmap.md`
+  had likewise not been updated since the track opened, though §7.1 assigns it *every phase*.
+- **The `actual` suffix does *not* fix Android product flavours.** *(Found 2026-09-16, P7.)*
+  The flavour note above predicts that "P7's `@<sourceSet>` id suffix (D17) is the same fix".
+  Measured at P7, it is not. A flavour variant carries **no keyword** — `src/demo` and
+  `src/prod` declare plain classes — so a rule keyed on `actual` cannot see them, and the 9
+  colliding declarations in the validation app are unchanged. Keying on the *directory*
+  instead was considered and rejected: it would suffix declarations that never collided,
+  and a call from `main` into flavour code would then point at an id nothing declares.
+  Closing it properly needs a collision-driven rule computed across the whole tree, which
+  makes an id depend on what else the repository contains. Still open, now with a reason.
+- **Two of KaMPKit's three `expect` declarations are top-level properties, so they are not
+  nodes.** *(Found 2026-09-16, P7.)* `expect val platformModule: Module` and its two
+  `actual val platformModule` implementations produce nothing at all — not because of
+  anything in P7, but because D6 makes a `Field` belong to a `Type` and a top-level property
+  declares no node. The KMP reading is therefore complete over *what the graph represents*
+  (4 of 4 `actual` classes and functions linked) while covering 4 of the repository's 6
+  `expect`/`actual` pairs. The gap is D6's, not D17's, and it is recorded here because the
+  phase's headline number is otherwise easy to misread.
+- **`kotlin.test` is not the right default for brownfield, and the validation repo proves it.**
+  *(Found 2026-09-16, P8.)* §4's P8 row says the scaffold depends on `kotlin("test")`, which is
+  true — and the guidance derived from it told the model to use `kotlin.test` everywhere.
+  spring-petclinic-kotlin declares `junit-jupiter-api` and no `kotlin("test")`, so a generated
+  `import kotlin.test.Test` **does not compile** there, and the refine loop would spend a pass
+  undoing it. `TargetLayout` gained `test_library`, read from the build scripts: measured
+  `junit5` on petclinic, `kotlin.test` on aiandroid, neither on KaMPKit — three answers from
+  three real repositories, which is why one hardcoded value was wrong. Any future JVM language
+  inherits the same problem.
+- **`Toolchain.conventions_skill_id` is declared and never read.** *(Found 2026-09-16, P8.)*
+  Every one of the ten toolchain rows fills it in; nothing in `src/` consumes it. The skill
+  actually reaches codegen through the catalog planner's `CapabilitySelector`, a completely
+  separate mechanism — so `kotlin-conventions` could be registered on the toolchain while the
+  skill itself did not exist, and every test stayed green. Both paths are now asserted in
+  `tests/sdlc/test_kotlin_codegen.py`. Removing the dead field touches all ten rows and belongs
+  in P10, not here.
+- **A conventions skill is optional, and SQL is the proof.** *(Found 2026-09-16, P8.)* SQL ships
+  as a supported codegen language with no conventions skill at all. What makes a run correct is
+  the layout guidance and the prompt set, which are unconditional; the skill is guidance the
+  planner *may* add. Worth stating because the reverse assumption would make every new language
+  block on authoring a skill before it could generate anything.
+- **`testDebugUnitTest` is not a task that reliably exists, and this plan named it four times.**
+  *(Found 2026-09-16, P9.)* It is the documented Android unit-test task and it is what §3.4, §5,
+  §7.1 and the D13 decision all specify. On the validation repository it does not exist at all:
+  `AndroidLibraryConventionPlugin` calls `configureFlavors`, so **every** library module carries
+  the `demo`/`prod` dimension and Gradle answers `:core:data:testDebugUnitTest` with *"task
+  'testDebugUnitTest' is ambiguous in project ':core:data'. Candidates are:
+  'testDemoDebugUnitTest', 'testProdDebugUnitTest'."* Flavour names cannot be read off a build
+  script — they are computed in Kotlin, in a separate included build, from an enum — so the
+  runner does not predict them: it asks for the documented task and, when Gradle rejects it,
+  takes the replacement **from Gradle's own candidate list** and caches it. That is a derived
+  answer rather than a guess, and it costs one configuration per module per session. Noted
+  because "run the Android unit tests" reads like a solved problem and is not.
+- **A convention plugin hides a module's dependencies from its own build script.**
+  *(Found 2026-09-16, P9.)* `detect_jvm_test_library` read `build.gradle{,.kts}`, which is where
+  a dependency is declared in every small project and in none of the large ones. aiandroid
+  declares `kotlin("test")` exactly once, inside `build-logic/`, and **no** build script in the
+  repository names a test library — so the detector returned "unknown" and the greenfield default
+  happened to be correct. Right answer, wrong reasoning, and it would have been the wrong answer
+  for a repo whose convention plugin picks JUnit. The scan now includes `build-logic/` and
+  `buildSrc/`. The same blindness applies to any future detector that reads build scripts: on
+  Android, the build script is often only a list of plugin ids.
+- **Placement in a multi-module build must refuse, not guess.** *(Found 2026-09-16, P9.)* A
+  27-module repository has no root `src/`, so P8's single-module resolver produced a path
+  belonging to no Gradle project — a file compiled by nothing, verified by a task that does not
+  exist. Placement is now keyed on the target package, with an exact match preferred over the
+  longest prefix. When nothing matches, the layout is deliberately left **empty** and the run
+  stops with the list of candidate modules and an instruction to pass `--package`. The failure
+  mode being avoided is not a crash: it is a repository function written into a plausible-looking
+  wrong module, where it compiles, its test passes, and nobody finds it.
+- **One `missing_hint` cannot serve three different failures.** *(Found 2026-09-16, P9.)* P8's
+  `Toolchain.available_in` returned a bool and reused the language's generic hint, which would
+  tell a developer with a working JDK and Gradle that they need a JDK and Gradle. It is now
+  `project_error`, returning the message itself, and Kotlin distinguishes "no Gradle here", "this
+  is Android and there is no SDK" (which also has to say *no emulator is needed*, because the
+  obvious reading of "install the Android SDK" is that a device is required) and "this build has
+  27 modules and none of them holds your package". One field, one user, three sentences.
+- **`--language`'s own help text never learned about Kotlin, and two error messages named
+  flags that do not exist.** *(Found 2026-09-16, P9.)* P8 put `kotlin` into
+  `SUPPORTED_LANGUAGES` and every test passed, but the `sdlc feature --language` help string
+  still read *"auto (detect), python, java, typescript, csharp, c, cpp, go, php, perl, or
+  sql"* — so the feature was shipped and undiscoverable, and `CLI_REFERENCE.md` (maintained by
+  hand against that string) repeated the omission. Separately, P9's own "which module?" error
+  first told the reader to pass `--package` and `--mode new`; the flags are `--package-name`
+  and `--layout new`, so following the message exactly produced two further errors. A message
+  that cannot be typed is not actionable, and nothing checked it — `tests/sdlc/test_android_codegen.py`
+  now asserts that every `--flag` appearing in that message exists in the CLI source.
+- **The test library is a property of the module, not the repository — P8's finding, one level
+  down.** *(Found 2026-09-16, P9.)* P8 established that a generated `import kotlin.test.Test`
+  does not compile in a project that depends only on JUnit, and read the answer per repository.
+  That is still too coarse for a real Android build: `core/data` gets `kotlin("test")` from a
+  convention plugin, while `core/model` — a plain `id("kotlin")` library in the *same* build —
+  declares no test dependency at all. Generating into it produced `Unresolved reference: test`,
+  caught by running the brownfield proof on a second module rather than by any test. Resolution
+  is now per module, strongest evidence first: what that module's existing tests already
+  **import** (proof, not inference), then what its own build script declares, then what the
+  convention plugins it applies declare on its behalf — the plugin id maps to an
+  `implementationClass`, which is the file name, so the hop is exact. When the answer is
+  genuinely "nothing", the guidance says so and names the dependency to add, instead of picking
+  one and hoping. Measured across the validation app: `kotlin.test` for `core/data`, `junit4`
+  for `core/testing`, nothing for `core/model` and `lint`.
+- **`test_the_scoreboard_is_deterministic` is order-sensitive — open, and not caused by this
+  track.** *(Found 2026-09-16, P9/P10.)* The corpus-accuracy gate builds the scoreboard twice
+  and asserts the two are byte-identical. Measured: `build_scoreboard` is **deterministic in a
+  clean process** (four consecutive builds, byte-identical), the test passes on its own, passes
+  with `tests/catalog` + `tests/knowledge` + `tests/mcp` ahead of it, and passes with the whole
+  of `tests/pkg` (930 tests) — but it **failed in two of four full-suite runs and passed in the
+  other two**. So something elsewhere in the suite intermittently leaves global state that
+  changes extraction, and the gate that is supposed to stop corpus quality regressing is itself
+  order-dependent. It predates this track and nothing here touches it; recorded rather than
+  quietly re-run until green, and it belongs in P11's review.
+- **Deferring `mypy` to the end hid 14 type errors in P9's own test file, and no other gate
+  saw them.** *(Found 2026-09-16, gate.)* `ruff check`, `ruff format --check` and 3,885 passing
+  tests were all green over a file with seven untyped `monkeypatch` parameters, two untyped
+  async stand-ins and four `type: ignore` comments that were no longer doing anything. Type
+  errors in *tests* are exactly what `mypy src tests` — rather than `mypy src` — exists to
+  catch, and running it per phase would have caught them in P9. All fixed; the gate now reports
+  **`Success: no issues found in 742 source files`**.
+- **The gate could not run at all on this machine, for two environmental reasons worth
+  recording.** *(Found 2026-09-16, gate.)* First, `mypy` sat at **0.1% CPU for 21 minutes**: the
+  virtualenv lives under an iCloud-synced `~/Documents` and its files had been evicted, so every
+  read was a network fetch — measured at **55 seconds for 150 files from `.venv`, against 0.04
+  seconds for 150 from `src/`**, a ~1,400× difference. Pre-materialising site-packages with
+  parallel reads took 9m43s once and made the run ordinary. Second, the last three errors were
+  not code at all: `mcp` was absent from this venv, so the `type: ignore`s guarding its optional
+  imports read as unused. CI installs that extra deliberately — *"an optional extra the repo
+  ships code for is not optional to test"* — and installing it locally both cleared the three
+  and took the suite from **3,885 passed / 27 skipped to 3,922 passed / 6 skipped**, because 21
+  MCP tests had never run here.
+- **A gate can be green because it is reading nothing.** *(Found 2026-09-16, P10.)*
+  `roadmap-status.py`'s `_TOP_STATUS` was `^\*\*Status:\*\*\s*(.+?)\.` — one line, up to the
+  first period. Every roadmap in this repository wraps its **Status** line across two or three
+  lines, and not one of them puts a period on the first, so the pattern matched **nothing** and
+  every check built on it silently passed. That is worse than a missing check: a missing check
+  is visible in the list, while this one was counted in "7 checks each" on every green run. The
+  pattern now reads the whole field, and the wrapped case is pinned by a test.
+- **The prefix "shared by every first-party module" does not exist in a real repository.**
+  *(Found 2026-09-16, P10.)* §9.4 specifies stripping the longest package prefix every
+  first-party module shares. The validation app has exactly one module declaring
+  `package androidx.test.uiautomator` — a file extending a third-party namespace on purpose —
+  and that single module takes the common prefix of all 71 down to nothing, leaving the rule a
+  no-op on the very repository its exit criterion names. It is coverage-based instead, and the
+  threshold is measured rather than picked: the vendor prefix covers **94.4%** of modules and
+  the next segment falls to **57.7%**, and that cliff is where a namespace stops naming the
+  organisation and starts naming components. It also has to stay a no-op where namespaces are
+  already shallow — this repository's deepest majority prefix is `orchestrator` at 48.1%, and
+  `orchestrator.pkg` is already the right area.
+- **This document's own status line went stale for four phases.** *(Found 2026-09-16, P9.)*
+  §5's phase table was updated in the same change as every phase, exactly as the currency rule
+  requires — but the one-line **Status** at the top of the file still read *"P0–P5 done · P6–P11
+  not started"* while P6, P7 and P8 were finished and evidenced twelve lines below it, and §12's
+  sequence block was stale the same way. The rule names the table, so the table is what got
+  maintained. Both are now current; the durable fix is `scripts/roadmap-status.py --check` (§9.1,
+  P10), which is precisely the gate that would have caught this.
+- **Four more surfaces advertise the language list, and running the narrow suites hid all of
+  them.** *(Found 2026-09-16, P9.)* P8 was validated with `tests/sdlc` + `tests/catalog` +
+  `tests/personas`, which is where its code lives. The first *full* run afterwards failed at
+  **collection**: `tests/plugin/test_manifests.py` derives its prose list from `TOOLCHAINS`, so
+  adding `kotlin` raised `KeyError: 'kotlin'` — by design, with a comment saying the guard exists
+  precisely because "the eight-language string survived PHP and Perl". Behind it sat three plugin
+  manifests and the operator console's capability grid, which still said *"Nine languages"*. The
+  lesson is about the gate, not the copy: a registry addition has blast radius outside its own
+  test directory, so the phase gate is the **whole** suite, not the directories the phase touched.
+- **`is_public` is in §3.1 but not in this codebase.** *(Found 2026-09-15, P1.)* `facts.Node` has
+  no such field, and no front-end has such a method — §3.1's row was written from another
+  project's shape. Nothing to implement; the row is noted here so the next reader does not go
+  looking for the seam.
 
 ## 12. Sequence
 
 ```
 P0  plan + baseline            ✅ 2026-09-10   this document, branch, census, blast radius
-P1  comprehension              → map_repo shows the app; drift < 57; draft MR opened (D19)
-P2  corpus + CALLS + walker    → precision 1.00; call graph available; invention measured
-P3  Room + Retrofit            → entities; first mobile consumer in pkg joins
-P4  Compose nav + Hilt         → NAV endpoints; PROVIDES edge kind + blast_radius consumer
-P5  Gradle modules             → gradle: modules and their dependency graph in state
-P6  Ktor + Spring routes       → a Kotlin (and Java Spring) service as a provider
-P7  Kotlin Multiplatform       → source sets; expect/actual
-P8  Kotlin/JVM codegen         → GradleTestRunner; sdlc feature --language kotlin green + red
-P9  Android codegen            → brownfield into the validation app; testDebugUnitTest green
-P10 generic work               → roadmap-status check, validate-frontend script, reverse-DNS areas
+P1  comprehension              ✅ 2026-09-15   map_repo: 85 modules · 271 types · 713 functions
+P2  corpus + CALLS + walker    ✅ 2026-09-15   precision 1.00; 2,169 CALLS; invention measured 0
+P3  Room + Retrofit            ✅ 2026-09-16   6 entities; Kotlin consumer joins a Java provider
+P4  Compose nav + Hilt         ✅ 2026-09-16   8 NAV endpoints; PROVIDES (12th edge kind); 47 bindings
+P5  Gradle modules             ✅ 2026-09-16   29 gradle: modules; 72 module→module IMPORTS
+P6  Ktor + Spring routes       ✅ 2026-09-16   petclinic 18 endpoints; ktor-samples 67; Java gained Spring
+P7  Kotlin Multiplatform       ✅ 2026-09-16   KaMPKit 2 → 7 components; 4/4 actuals linked
+P8  Kotlin/JVM codegen         ✅ 2026-09-16   greenfield green+red; petclinic brownfield 3/3
+P9  Android codegen            ✅ 2026-09-16   brownfield into the validation app; the module's
+                                              own unit-test task green, independently re-run
+P10 generic work               ✅ 2026-09-16   roadmap gate +2 checks & into CI; areas 1 → 39
 P11 /review-pr, MR to ready    → one merge into develop
 ```

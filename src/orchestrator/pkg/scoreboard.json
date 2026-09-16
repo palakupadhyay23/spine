@@ -8,9 +8,9 @@
       },
       "note": "provenance measured on this repo, offline; the pinned corpus is run explicitly",
       "provenance": {
-        "anchored": 12291,
-        "excluded": 825,
-        "resolved": 12291,
+        "anchored": 12842,
+        "excluded": 852,
+        "resolved": 12842,
         "unreadable": 0
       }
     },
@@ -189,36 +189,137 @@
               "matched": 2
             },
             "CONTAINS": {
-              "emitted": 11,
-              "expected": 11,
-              "matched": 11
+              "emitted": 24,
+              "expected": 24,
+              "matched": 24
+            },
+            "EXPOSES": {
+              "emitted": 8,
+              "expected": 8,
+              "matched": 8
             },
             "IMPLEMENTS": {
               "emitted": 1,
               "expected": 1,
               "matched": 1
+            },
+            "IMPORTS": {
+              "emitted": 6,
+              "expected": 6,
+              "matched": 6
             }
           },
           "nodes": {
+            "Endpoint": {
+              "emitted": 8,
+              "expected": 8,
+              "matched": 8
+            },
             "Field": {
               "emitted": 1,
               "expected": 1,
               "matched": 1
             },
             "Function": {
-              "emitted": 6,
-              "expected": 6,
-              "matched": 6
+              "emitted": 16,
+              "expected": 16,
+              "matched": 16
             },
             "Module": {
+              "emitted": 3,
+              "expected": 3,
+              "matched": 3
+            },
+            "Type": {
+              "emitted": 7,
+              "expected": 7,
+              "matched": 7
+            }
+          }
+        },
+        "kotlin": {
+          "edges": {
+            "CALLS": {
+              "emitted": 23,
+              "expected": 25,
+              "matched": 23
+            },
+            "CONSUMES": {
               "emitted": 2,
               "expected": 2,
               "matched": 2
             },
-            "Type": {
+            "CONTAINS": {
+              "emitted": 111,
+              "expected": 111,
+              "matched": 111
+            },
+            "EXPOSES": {
+              "emitted": 9,
+              "expected": 9,
+              "matched": 9
+            },
+            "IMPLEMENTS": {
               "emitted": 4,
               "expected": 4,
               "matched": 4
+            },
+            "IMPORTS": {
+              "emitted": 21,
+              "expected": 21,
+              "matched": 21
+            },
+            "PROVIDES": {
+              "emitted": 3,
+              "expected": 3,
+              "matched": 3
+            },
+            "READS": {
+              "emitted": 1,
+              "expected": 1,
+              "matched": 1
+            },
+            "REFERENCES": {
+              "emitted": 1,
+              "expected": 1,
+              "matched": 1
+            },
+            "WRITES": {
+              "emitted": 2,
+              "expected": 2,
+              "matched": 2
+            }
+          },
+          "nodes": {
+            "Endpoint": {
+              "emitted": 17,
+              "expected": 17,
+              "matched": 17
+            },
+            "Entity": {
+              "emitted": 2,
+              "expected": 2,
+              "matched": 2
+            },
+            "Field": {
+              "emitted": 20,
+              "expected": 20,
+              "matched": 20
+            },
+            "Function": {
+              "emitted": 59,
+              "expected": 59,
+              "matched": 59
+            },
+            "Module": {
+              "emitted": 15,
+              "expected": 15,
+              "matched": 15
+            },
+            "Type": {
+              "emitted": 32,
+              "expected": 32,
+              "matched": 32
             }
           }
         },
@@ -230,19 +331,19 @@
               "matched": 12
             },
             "CONSUMES": {
-              "emitted": 3,
-              "expected": 4,
-              "matched": 3
+              "emitted": 5,
+              "expected": 6,
+              "matched": 5
             },
             "CONTAINS": {
-              "emitted": 25,
-              "expected": 25,
-              "matched": 25
+              "emitted": 35,
+              "expected": 35,
+              "matched": 35
             },
             "EXPOSES": {
-              "emitted": 3,
-              "expected": 3,
-              "matched": 3
+              "emitted": 5,
+              "expected": 5,
+              "matched": 5
             },
             "IMPLEMENTS": {
               "emitted": 5,
@@ -250,9 +351,9 @@
               "matched": 5
             },
             "IMPORTS": {
-              "emitted": 11,
-              "expected": 11,
-              "matched": 11
+              "emitted": 15,
+              "expected": 15,
+              "matched": 15
             },
             "READS": {
               "emitted": 3,
@@ -267,9 +368,9 @@
           },
           "nodes": {
             "Endpoint": {
-              "emitted": 3,
-              "expected": 3,
-              "matched": 3
+              "emitted": 5,
+              "expected": 5,
+              "matched": 5
             },
             "Entity": {
               "emitted": 2,
@@ -282,19 +383,19 @@
               "matched": 3
             },
             "Function": {
-              "emitted": 15,
-              "expected": 15,
-              "matched": 15
+              "emitted": 22,
+              "expected": 22,
+              "matched": 22
             },
             "Module": {
+              "emitted": 12,
+              "expected": 12,
+              "matched": 12
+            },
+            "Type": {
               "emitted": 8,
               "expected": 8,
               "matched": 8
-            },
-            "Type": {
-              "emitted": 5,
-              "expected": 5,
-              "matched": 5
             }
           }
         },
@@ -592,10 +693,10 @@
       "skipped_languages": []
     },
     "drift": {
-      "count": 1065,
-      "docs": 1741,
+      "count": 1274,
+      "docs": 1800,
       "gated": false,
-      "mentions": 11446,
+      "mentions": 12271,
       "note": "recorded, never gated \u2014 an upper bound: a tenth of the population cannot bind by construction. See GATES"
     },
     "invention": {
@@ -607,12 +708,12 @@
           "invented": 0,
           "shadowable": 0,
           "status": "measured",
-          "total_calls": 18966,
+          "total_calls": 19886,
           "unexamined": 0
         }
       },
       "note": "gated at zero per language, not against this baseline \u2014 see GATES",
-      "total_calls": 18966
+      "total_calls": 19886
     },
     "parity": {
       "declared": 75,

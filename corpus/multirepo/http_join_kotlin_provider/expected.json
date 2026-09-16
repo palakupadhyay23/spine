@@ -1,0 +1,50 @@
+{
+  "language": "multirepo",
+  "case": "http_join_kotlin_provider",
+  "requires": ["kotlin"],
+  "roots": {
+    "api": ".api",
+    "mobile": ".mobile"
+  },
+  "joins": [
+    {
+      "kind": "http",
+      "consumer": "mobile",
+      "provider": "api"
+    }
+  ],
+  "why": "The other half of D10, and the point of P6. `http_join_kotlin_consumer` proved a Kotlin app can be a **consumer** against a Java provider; this proves a Kotlin service can be the **provider** — which nothing in Kotlin could be before Ktor routes were read. Both ends are Kotlin here, which is the shape an Android team actually ships: the app and the backend written in the same language, in two repositories, with nothing in either one naming the other.\n\nThe join has to survive the *inversion* that D10 insists on. `api` writes `get(\"/topics\")` inside `route(\"/v1\")` and gets an `Endpoint`; `mobile` writes `@GET(\"v1/topics\")` and gets **no** `Endpoint` at all, only a `CONSUMES` candidate. Two readings of superficially similar annotations in one language, resolved in opposite directions — and if either one flipped, the case would pair two providers, or two consumers, and propose nothing.\n\nIt also pins the path composition across the boundary: the endpoint's path is built from a group and a verb call in the service (`/v1` + `/topics`), the call's path is written as one string without a leading slash (`v1/topics`), and they must still match. `getUnserved` is the control — nothing serves `/v1/unserved`, so the correct number of edges from it is zero.",
+  "nodes": [
+    { "id": "java:api@shop.api", "kind": "Module" },
+    { "id": "java:api@shop.api.module", "kind": "Function" },
+    { "id": "java:api@shop.api.listTopics", "kind": "Function" },
+    { "id": "java:api@endpoint:GET /v1/topics", "kind": "Endpoint" },
+    { "id": "java:mobile@shop.net", "kind": "Module" },
+    { "id": "java:mobile@shop.net.ShopApi", "kind": "Type" },
+    { "id": "java:mobile@shop.net.ShopApi.getTopics", "kind": "Function" },
+    { "id": "java:mobile@shop.net.ShopApi.getUnserved", "kind": "Function" }
+  ],
+  "edges": [
+    { "src": "java:api@shop.api", "dst": "java:api@shop.api.module", "kind": "CONTAINS" },
+    { "src": "java:api@shop.api", "dst": "java:api@shop.api.listTopics", "kind": "CONTAINS" },
+    { "src": "java:api@endpoint:GET /v1/topics", "dst": "java:api@shop.api.listTopics", "kind": "EXPOSES" },
+    { "src": "java:mobile@shop.net", "dst": "java:mobile@shop.net.ShopApi", "kind": "CONTAINS" },
+    { "src": "java:mobile@shop.net.ShopApi", "dst": "java:mobile@shop.net.ShopApi.getTopics", "kind": "CONTAINS" },
+    { "src": "java:mobile@shop.net.ShopApi", "dst": "java:mobile@shop.net.ShopApi.getUnserved", "kind": "CONTAINS" },
+    { "src": "java:mobile@shop.net", "dst": "java:retrofit2.http.GET", "kind": "IMPORTS" },
+    { "src": "java:mobile@shop.net.ShopApi.getTopics", "dst": "java:api@endpoint:GET /v1/topics", "kind": "CONSUMES" }
+  ],
+  "known_gaps": [],
+  "false_positives": [
+    {
+      "edge": { "src": "java:mobile@endpoint:GET /v1/topics", "dst": "java:mobile@shop.net.ShopApi.getTopics", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. Retrofit's `@GET(\"v1/topics\")` looks exactly like a route declaration and is the opposite of one (D10). Reading it as an `Endpoint` would make the app a provider of the route it calls, and the join would then pair two providers and propose nothing — the failure would be silent, because the graph would still be internally consistent."
+    }
+  ],
+  "excluded": [
+    "`getUnserved` calling `GET /v1/unserved` is NOT labelled: nothing serves it, so zero edges is the correct answer. It is the control against a matcher that pairs on verb alone.",
+    "`java:api@shop.api.module` gets no `EXPOSES`: it *registers* the route, it does not serve it. The handler is named by `::listTopics`, which is why that function has the edge instead — an inline lambda would leave the `Endpoint` with none at all (the closure rule, D16).",
+    "`java:retrofit2.http.GET` is external and unscoped — no repository declares it — so it stays out of the node ratio; the IMPORTS edge to it still counts. Ktor arrives by wildcard import, which names no single symbol and so adds no edge."
+  ],
+  "open_questions": []
+}

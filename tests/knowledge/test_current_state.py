@@ -277,3 +277,40 @@ def test_layout_is_deterministic_across_hash_seeds(tmp_path: Path) -> None:
     assert len(outs) == 1, (
         f"{len(outs)} distinct renderings across 5 hash seeds — layout is not total-ordered"
     )
+
+
+def test_areas_come_from_the_gradle_module_graph_when_there_is_one(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """P5/D11: a Gradle build states its own architecture, so `state` reads it.
+
+    Grouping by namespace is what every other language gets, and it is actively
+    wrong for Android: reverse-DNS packages share their first two segments, so all
+    of an app's types land in one area (`com.google`) while the build has dozens of
+    modules. The link is by **path** — a Gradle module is a directory — so nothing
+    is invented to make it.
+    """
+    import pytest
+
+    pytest.importorskip("tree_sitter_kotlin", reason="install the 'kotlin' extra")
+    from orchestrator.catalog.profile import ProjectProfile
+    from orchestrator.knowledge.current_state import compute_current_state
+    from orchestrator.pkg.extractor import RepoCodeExtractor
+
+    (tmp_path / "settings.gradle.kts").write_text(
+        'include(":core:data")\ninclude(":feature:topic")\n', encoding="utf-8"
+    )
+    for module, cls in (("core/data", "TopicRepository"), ("feature/topic", "TopicScreen")):
+        script = tmp_path / module / "build.gradle.kts"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text("dependencies {\n}\n", encoding="utf-8")
+        src = tmp_path / module / "src" / "main" / "java" / "com" / "shop" / "app"
+        src.mkdir(parents=True, exist_ok=True)
+        (src / f"{cls}.kt").write_text(
+            f"package com.shop.app\n\nclass {cls} {{\n    fun go() {{}}\n}}\n", encoding="utf-8"
+        )
+
+    batch = RepoCodeExtractor().extract(tmp_path)
+    state = compute_current_state(batch, ProjectProfile.from_repo(tmp_path))
+    areas = set(state.area_types) | set(state.area_funcs)
+    # Both classes share the package `com.shop.app`, so namespace grouping would put
+    # them in one area. The build says they are two modules, and the build is right.
+    assert {"core/data", "feature/topic"} <= areas

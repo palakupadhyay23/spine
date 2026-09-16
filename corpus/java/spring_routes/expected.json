@@ -1,0 +1,78 @@
+{
+  "language": "java",
+  "case": "spring_routes",
+  "why": "D16, and the half of it that is not about Kotlin at all. The Java front-end has read JAX-RS since G6 and has never read Spring — the framework most Java services actually use. Adding Spring for Kotlin alone would have left that blind spot in the older front-end while claiming the graph understands JVM web services, so the reader lives in `pkg/jvm_routes.py` and both front-ends call it. This case and `kotlin/spring_routes` pin the *same* rules through two different grammars: Java spells an annotation `annotation`/`marker_annotation` with a `name` field and `element_value_pair` arguments, Kotlin nests a `user_type` or a `constructor_invocation`.\n\nThe Java-specific argument shapes are what this case adds. `method = {RequestMethod.PUT, RequestMethod.PATCH}` is an `element_value_array_initializer` naming **two** verbs, and two verbs on one method are two endpoints pointing at one handler — that is what Spring does, so that is what the graph says. `method = RequestMethod.POST` is the same argument written without braces. `path =` and `value =` are both accepted because Spring accepts both. A bare `@GetMapping` is a `marker_annotation` with no argument list at all and maps the class prefix itself.\n\n`TopicClient` is the precision case: `@GetMapping` on an interface with no `@Controller`/`@RestController` is the Spring Cloud OpenFeign shape, where the annotation declares a route the service **calls**. It yields nothing. `anything` is the no-`ANY` rule: a verb-less `@RequestMapping` yields nothing rather than a verb the source never wrote.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:svc.web", "kind": "Module" },
+    { "id": "java:svc.web.TopicController", "kind": "Type" },
+    { "id": "java:svc.web.PageController", "kind": "Type" },
+    { "id": "java:svc.web.TopicClient", "kind": "Type" },
+    { "id": "java:svc.web.TopicController.list", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.create", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.root", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.replace", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.archive", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.anything", "kind": "Function" },
+    { "id": "java:svc.web.TopicController.helper", "kind": "Function" },
+    { "id": "java:svc.web.PageController.welcome", "kind": "Function" },
+    { "id": "java:svc.web.PageController.vets", "kind": "Function" },
+    { "id": "java:svc.web.TopicClient.remote", "kind": "Function" },
+    { "id": "java:endpoint:GET /api", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /api/topics", "kind": "Endpoint" },
+    { "id": "java:endpoint:POST /api/topics", "kind": "Endpoint" },
+    { "id": "java:endpoint:PUT /api/topics/{id}", "kind": "Endpoint" },
+    { "id": "java:endpoint:PATCH /api/topics/{id}", "kind": "Endpoint" },
+    { "id": "java:endpoint:POST /api/topics/{id}/archive", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /", "kind": "Endpoint" },
+    { "id": "java:endpoint:GET /vets.json", "kind": "Endpoint" }
+  ],
+  "edges": [
+    { "src": "java:svc.web", "dst": "java:svc.web.TopicController", "kind": "CONTAINS" },
+    { "src": "java:svc.web", "dst": "java:svc.web.PageController", "kind": "CONTAINS" },
+    { "src": "java:svc.web", "dst": "java:svc.web.TopicClient", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.list", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.create", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.root", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.replace", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.archive", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.anything", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicController", "dst": "java:svc.web.TopicController.helper", "kind": "CONTAINS" },
+    { "src": "java:svc.web.PageController", "dst": "java:svc.web.PageController.welcome", "kind": "CONTAINS" },
+    { "src": "java:svc.web.PageController", "dst": "java:svc.web.PageController.vets", "kind": "CONTAINS" },
+    { "src": "java:svc.web.TopicClient", "dst": "java:svc.web.TopicClient.remote", "kind": "CONTAINS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.stereotype.Controller", "kind": "IMPORTS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.web.bind.annotation.GetMapping", "kind": "IMPORTS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.web.bind.annotation.PostMapping", "kind": "IMPORTS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.web.bind.annotation.RequestMapping", "kind": "IMPORTS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.web.bind.annotation.RequestMethod", "kind": "IMPORTS" },
+    { "src": "java:svc.web", "dst": "java:org.springframework.web.bind.annotation.RestController", "kind": "IMPORTS" },
+    { "src": "java:endpoint:GET /api", "dst": "java:svc.web.TopicController.root", "kind": "EXPOSES" },
+    { "src": "java:endpoint:GET /api/topics", "dst": "java:svc.web.TopicController.list", "kind": "EXPOSES" },
+    { "src": "java:endpoint:POST /api/topics", "dst": "java:svc.web.TopicController.create", "kind": "EXPOSES" },
+    { "src": "java:endpoint:PUT /api/topics/{id}", "dst": "java:svc.web.TopicController.replace", "kind": "EXPOSES" },
+    { "src": "java:endpoint:PATCH /api/topics/{id}", "dst": "java:svc.web.TopicController.replace", "kind": "EXPOSES" },
+    { "src": "java:endpoint:POST /api/topics/{id}/archive", "dst": "java:svc.web.TopicController.archive", "kind": "EXPOSES" },
+    { "src": "java:endpoint:GET /", "dst": "java:svc.web.PageController.welcome", "kind": "EXPOSES" },
+    { "src": "java:endpoint:GET /vets.json", "dst": "java:svc.web.PageController.vets", "kind": "EXPOSES" }
+  ],
+  "known_gaps": [],
+  "false_positives": [
+    {
+      "edge": { "src": "java:endpoint:GET /remote/topics", "dst": "java:svc.web.TopicClient.remote", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. `TopicClient` is a Feign-shaped interface: the same `@GetMapping` annotation, used to declare a route this service *calls*. Keying off the mapping annotation alone turns a consumer into a provider, and `pkg joins` would then pair a caller with itself. The class stereotype requirement is what prevents it, and it is the only thing that can."
+    },
+    {
+      "edge": { "src": "java:endpoint:ANY /api/topics/anything", "dst": "java:svc.web.TopicController.anything", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. A verb-less `@RequestMapping` matches every method. `ANY` is not a verb any client sends and no other front-end emits one, so such an endpoint could never join; expanding it to seven endpoints would invent six routes the source does not contain."
+    }
+  ],
+  "excluded": [
+    "`TopicController.helper` carries no mapping annotation and yields nothing — the ordinary case, here to show that being a method of a controller is not by itself a route.",
+    "`produces = \"application/json\"` on `vets` is read past, not recorded: content negotiation is not part of an endpoint's identity in this vocabulary, and two endpoints differing only in `produces` would collide on one id anyway.",
+    "The six `java:org.springframework.*` import targets are external and stay out of the node ratio; the IMPORTS edges to them still count. `PageController` imports by wildcard as well, which names no single symbol and so adds no edge."
+  ],
+  "open_questions": [
+    "Should `@RequestMapping` on a class with a verb — legal, and occasionally written — emit an endpoint for the class itself? It is not read today: the reader takes class annotations as prefix-only. No sample in the validation repositories does this, so the rule has no evidence behind it either way and was left where a missing endpoint is the failure rather than an invented one."
+  ]
+}

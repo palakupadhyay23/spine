@@ -134,22 +134,26 @@ a variable yields no edge, because a wrong edge is worse than an absent one.
 | `go` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `php` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `perl` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
+| `kotlin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
+| `gradle` | ✓ | · | · | · | · | · | · | · |
 | `sql` | ✓ | · | ✓ | ✓ | · | ✓ | · | · |
 
 **Edges**
 
-| Front-end | `IMPORTS` | `CONTAINS` | `CALLS` | `IMPLEMENTS` | `READS` | `WRITES` | `EXPOSES` | `CONSUMES` | `REFERENCES` | `MENTIONS` | `SERVES` |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
-| `java` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · |
-| `typescript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · |
-| `csharp` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · |
-| `c` | ✓ | ✓ | ✓ | · | · | · | · | · | ✓ | · | · |
-| `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | · |
-| `go` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · |
-| `php` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · |
-| `perl` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · |
-| `sql` | · | ✓ | ✓ | · | ✓ | ✓ | · | · | ✓ | · | · |
+| Front-end | `IMPORTS` | `CONTAINS` | `CALLS` | `IMPLEMENTS` | `READS` | `WRITES` | `EXPOSES` | `CONSUMES` | `REFERENCES` | `MENTIONS` | `SERVES` | `PROVIDES` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
+| `java` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
+| `typescript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
+| `csharp` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
+| `c` | ✓ | ✓ | ✓ | · | · | · | · | · | ✓ | · | · | · |
+| `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | · | · |
+| `go` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
+| `php` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
+| `perl` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
+| `kotlin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ |
+| `gradle` | ✓ | · | · | · | · | · | · | · | · | · | · | · |
+| `sql` | · | ✓ | ✓ | · | ✓ | ✓ | · | · | ✓ | · | · | · |
 
 Read a `·` as *this front-end has no code that emits that kind* — not as *your repo
 has none*. A front-end that can emit `Endpoint` still emits none for a repo without
@@ -240,7 +244,7 @@ flowchart LR
   | Language | Status | Enable with |
   |---|---|---|
   | Python | ✅ built-in | (default) |
-  | Java | ✅ + JAX-RS endpoints | `pip install 'synaptixs-spine[java]'` |
+  | Java | ✅ + JAX-RS **and Spring MVC** endpoints | `pip install 'synaptixs-spine[java]'` |
   | TypeScript / TSX | ✅ | `pip install 'synaptixs-spine[typescript]'` |
   | C# | ✅ + framework edges | `pip install 'synaptixs-spine[csharp]'` |
   | C | ✅ + `#include` graph | `pip install 'synaptixs-spine[c]'` |
@@ -251,7 +255,14 @@ flowchart LR
 
   Java lifts JAX-RS / Jakarta REST resource methods into `Endpoint` nodes with
   `EXPOSES` edges to their handlers. Both `javax.ws.rs` and `jakarta.ws.rs`
-  annotations are recognized.
+  annotations are recognized. **Spring MVC** is read too, by the same
+  `pkg/jvm_routes.py` the Kotlin front-end uses: `@GetMapping`/`@PostMapping` and a
+  verbed `@RequestMapping` on a `@Controller`/`@RestController` class become
+  `Endpoint` + `EXPOSES`, joined to the class-level prefix. The class stereotype is
+  required rather than assumed — Spring Cloud OpenFeign puts the *same* annotations
+  on an interface to declare a **client**, and reading those as endpoints would make
+  every consumer look like a provider. A verb-less `@RequestMapping` yields nothing:
+  it matches every method, and `ANY` is a verb no client sends.
 
   C# additionally lifts **framework edges** into the graph: ASP.NET Core controllers
   and Minimal-API routes become `Endpoint` nodes with `EXPOSES` edges to their
@@ -569,8 +580,50 @@ reviews honest.
 
 - **Static, not runtime.** The PKG is built from source structure; it doesn't capture
   runtime behavior, dynamic dispatch it can't see, or values only known at execution.
-- **Parser coverage.** Python/Java/TypeScript/C#/C/C++/**Go**/**PHP**/**Perl** and **SQL**
-  today — ten front-ends. Other languages aren't extracted yet (their files are simply not
+- **Parser coverage.** Python/Java/TypeScript/C#/C/C++/**Go**/**PHP**/**Perl**/**Kotlin** and
+  **SQL** today, plus a **Gradle** reader for `.kts` build scripts — twelve front-ends, of
+  which eleven are languages. Kotlin reads `.kt` only and mints ids in **Java's**
+  `java:` namespace, so a mixed Kotlin/Java module is one graph rather than two (D2); a `.kts`
+  Gradle script is a build DSL and is read as a marker, not parsed into modules.
+  Kotlin's framework readings are **inverted relative to every other front-end**: Room
+  `@Entity` classes become `Entity` nodes *named by their table* (so `data_layer_link`
+  reconciles them with a real `.sql` schema, which pairs by name), DAO `READS`/`WRITES`
+  come from **parsing** each `@Query` with sqlglot rather than matching its text, and
+  Retrofit `@GET`/`@POST` produce **no `Endpoint` at all** — an Android app calls routes,
+  it does not serve them, so those become `CONSUMES` candidates for the multi-repo join
+  instead (D10).
+  Compose **navigation** then adds the one `Endpoint` kind an app does own: an in-app route
+  declared by `composable("topic/{topicId}")` becomes `NAV topic/{topicId}`, with `EXPOSES`
+  to the screen it shows and `CONSUMES` from the code that navigates there. `NAV` is not an
+  HTTP verb, so an in-app route can never join to a real one in `pkg joins`.
+  A Kotlin **service** is read the other way round, as a provider: **Ktor**
+  `routing { route("/api") { get("/topics") { … } } }` and **Spring MVC** controllers both
+  become ordinary `Endpoint`s in the shared `java:endpoint:` namespace, so an Android app's
+  Retrofit call and the Kotlin service answering it can pair in `pkg joins`. Two refusals
+  bound the Ktor reading: a route whose path is not a literal yields nothing, and a
+  `route(…)` group whose path is not a literal silences every route inside it. A
+  `fun Route.orders()` route module declares routes at whatever path its *caller* mounts it
+  on, resolved across the whole repository; one that nothing mounts yields nothing, because
+  its path is genuinely unknown. A handler written as an inline lambda gets an `Endpoint` and
+  no `EXPOSES` — there is no id to point at — while `get("/x", ::handler)` gets both.
+  Ktor's typed resource routes (`get<Index> { }`) are not read: the path lives in a
+  `@Resource` annotation on another class.
+  **Multiplatform** is where Kotlin's id rule needs an exception. `expect class Clock` in
+  `commonMain` and `actual class Clock` in `androidMain` and `iosMain` are three declarations
+  of one package-qualified name, so an `actual`'s id carries the source set that declares it
+  (`java:app.Clock@iosMain`) while the `expect` keeps the plain id — common code names the
+  contract, so that is the id a call from `commonMain` should resolve to. `IMPLEMENTS` runs
+  actual → expect, the same edge a class-fulfils-an-interface relation uses. A declaration
+  without the `actual` keyword keeps its plain id even in a platform source set, and an
+  `actual` whose `expect` is not in the scanned tree gets no edge at all. In `state`, a module
+  with a `commonMain` directory is split into its source sets, because in a multiplatform
+  module that *is* the component boundary; ordinary Android modules stay whole.
+- **`PROVIDES` is the twelfth edge kind, and Kotlin is why it exists.** Hilt/Dagger
+  `@Binds`/`@Provides` record *which* implementation is wired behind an interface —
+  a fact `IMPLEMENTS` cannot carry, because it is already true of every implementation
+  including the test fakes. It is also the only edge `blast_radius` follows **outbound**:
+  dependency injection means nothing calls an implementation by name, so its dependents are
+  reachable only through the interface it provides. Other languages aren't extracted yet (their files are simply not
   represented). For C, parsing is
   pre-preprocessor — heavy macro use yields partial facts (we never run `cpp`). For SQL, the
   dialect is auto-detected (override with `--dialect`); UTF-16 and `GO`-separated SQL Server
@@ -593,19 +646,21 @@ reviews honest.
 ## 10. How right is it? — measured, not asserted
 
 "Grounded" is an adjective; this is a number. `orchestrator pkg accuracy` scores the graph
-against a committed corpus of **47 hand-labelled fixture cases across all 10
+against a committed corpus of **64 hand-labelled fixture cases across all 12
 front-ends**, and the baseline lives in `src/orchestrator/pkg/scoreboard.json`.
 
-**Precision is 1.00 on every node kind and every edge kind, in all 10 languages.** Recall is
+**Precision is 1.00 on every node kind and every edge kind, in all 11 languages.** Recall is
 1.00 on every kind except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
 | `c` `sql` | 1.00 |
+| `kotlin` | 0.92 |
 | `perl` | 0.89 |
+| `typescript` | 0.86 |
+| `cpp` `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
-| `cpp` `csharp` `go` `java` | 0.67 |
-| `typescript` | 0.50 |
+| `java` | 0.67 |
 
 Read the precision row carefully, because it is the load-bearing claim: **nothing in the graph
 is invented.** Every edge Spine emits is one that exists in the source. The entire remaining

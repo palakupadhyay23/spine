@@ -524,18 +524,20 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 | `--tests` | Test target(s) for `--oracle runtime`; defaults to the repo's own. |
 | `--dialect` | SQL dialect (postgres\|mysql\|tsql\|oracle\|…); default: auto-detect. |
 
-**Current corpus results** (47 fixture cases — 43 single-language, 4 multi-repo — across
-all 10 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
+**Current corpus results** (64 fixture cases — 58 single-language, 6 multi-repo — across
+all 12 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
 **1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
 kind except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
 | `c` `sql` | 1.00 |
+| `kotlin` | 0.92 |
 | `perl` | 0.89 |
+| `typescript` | 0.86 |
+| `cpp` `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
-| `cpp` `csharp` `go` `java` | 0.67 |
-| `typescript` | 0.50 |
+| `java` | 0.67 |
 
 Perl's 0.89 is 8 of 9 labelled `CALLS` edges in its own corpus — the one miss is a
 permanent, documented one (`instance_calls`, an untyped parameter with no declared type to
@@ -566,7 +568,7 @@ is not computable from a trace, and the report says so on every run.
 **Two coverage limits worth knowing before you quote a number:**
 
 - **`--oracle runtime` is Python-only.** It uses `sys.monitoring` (PEP 669), which has no
-  equivalent in the other nine front-ends. "Runtime-verified" means "runtime-verified for
+  equivalent in the other eleven front-ends. "Runtime-verified" means "runtime-verified for
   Python".
 - **`--oracle invention` only examines Python.** It resolves caller-scope bindings with
   Python's `ast`, so calls in other languages are counted as *unexaminable* rather than
@@ -1115,10 +1117,10 @@ orchestrator sdlc feature [OPTIONS]
 | `--issue` | Adopt an existing tracker issue (e.g. SSPN-9) instead of creating one — the branch, PR, comment and transition all land on it. |
 | `--base` | Branch to build on **and** open the PR into (default `$SDLC_PR_BASE`, else the repo's default branch). The worktree is cut from this — see `sdlc autorun` above. |
 | `--layout` | Target structure: auto (scaffold only empty repos), new (always scaffold a src/<pkg>/ skeleton), or existing (follow the repo's layout). (default: `auto`) |
-| `--package-name` | Override the scaffold package name (default: derived from repo). |
+| `--package-name` | Override the scaffold package name (default: derived from repo). In a multi-module Gradle/Android repo this also selects the module the change belongs to. |
 | `--spec` | Implement a hand-written spec (JSON) instead of deriving one from the source — see `sdlc autorun` above for the format. |
 | `--refresh` | Re-extract intents from the source (default: reuse the cached, deterministic backlog). |
-| `--language` | Target language: auto (detect), python, java, typescript, csharp, c, cpp, go, php, perl, or sql. (default: `auto`) |
+| `--language` | Target language: auto (detect), python, java, kotlin, typescript, csharp, c, cpp, go, php, perl, or sql. (default: `auto`) |
 
 Perl requires `perl` and `prove`; `cpanm` is optional. Greenfield uses `lib/`, `t/`
 and `cpanfile`; existing distributions keep their package layout and packaging files.

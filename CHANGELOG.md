@@ -4,6 +4,285 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Added
+
+- **Kotlin comprehension and call graph — the 11th PKG front-end** (`[kotlin]` extra, P1+P2 of
+  [the Kotlin roadmap](docs/specs/kotlin-support-roadmap.md)). Reads `.kt` into the universal
+  facts: classes and objects in every flavour, companions folded onto the class they belong to,
+  extension and top-level functions, constructor properties, enum entries, imports and
+  inheritance. The call graph leans on the one thing Kotlin gives you for free — a declared type
+  on every property and parameter — so `dao.getTopics()` resolves *exactly*, through the import
+  map, with no inference.
+
+  **What it refuses to guess:** a call on an unannotated `val`, anything reached through `it` in
+  a lambda, a chained receiver, a callable reference, and a same-package function declared in
+  another file. A local binding silences a bare call of the same name, because a Kotlin local
+  genuinely can shadow one — unlike Java, where the two live in separate namespaces. Measured on
+  a 263-file Android app: 2,169 `CALLS` edges, **0 fabricated** across 2,167 bare calls; corpus
+  precision **1.00** on every node and edge kind.
+
+  Kotlin ids share Java's `java:` namespace, so a mixed `.kt`/`.java` module — the normal Android
+  layout — is **one** graph, with inheritance and calls crossing the language boundary. `.kts`
+  Gradle scripts are read as build markers, not parsed as source. Routes, Room entities and
+  codegen are later phases of the same roadmap, shipped further down this list.
+
+  Install with `pip install 'synaptixs-spine[kotlin]'`, or `[languages]` for every front-end.
+
+- **Kotlin reads the Android data layer, and an Android app can now be a cross-repo
+  consumer** (P3 of the same roadmap). Room `@Entity` classes become `Entity` nodes named
+  by their **table**, so `data_layer_link` reconciles them against a real `.sql` schema and
+  the two describe one thing instead of two. Their columns come from the constructor
+  properties, honouring `@ColumnInfo(name = …)`. `REFERENCES` come from `ForeignKey(...)`
+  inside `@Entity` and from `@Relation`/`Junction` on a view class. DAO `READS`/`WRITES`
+  are obtained by **parsing** each `@Query` with sqlglot — so a `@Query` holding
+  `DELETE FROM topics` is a write, which no amount of reading the annotation's name would
+  tell you — and are skipped entirely, never regexed, when the `sql` extra is absent.
+
+  Retrofit is read as the **client** it is. `@GET("topics")` produces **no `Endpoint`**:
+  an Android app calls routes, it does not serve them, and claiming otherwise would make
+  the app look like a provider. The calls become `CONSUMES` candidates on the same
+  side-channel the Python client scanner uses, so `pkg joins` can match them against
+  another repository's endpoints — making a mobile app the first consumer in the
+  multi-repo graph. A computed path yields nothing; a `baseUrl(...)` that is not a
+  literal leaves the call path-only.
+
+  Measured on a 263-file Android app: 6 entities, 12 `READS`, 11 `WRITES`, 4 `REFERENCES`,
+  0 dangling edges, and 4 cross-repo join candidates.
+
+- **A twelfth edge kind, `PROVIDES`, and Compose navigation as routes** (P4 of the same
+  roadmap). `PROVIDES` records which implementation a Hilt/Dagger module actually wires
+  behind an interface. `IMPLEMENTS` cannot say that — it is already true of every
+  implementation, and the validation app has three for one interface, two of them test
+  fakes — so the question "what breaks if I change this repository" had no answer before.
+  `blast_radius` follows the new edge **outbound**, which is the only edge here that it
+  does, because dependency injection means nothing calls an implementation by name: its
+  dependents are reachable only through the interface it provides. Measured: the blast
+  radius of a repository implementation goes from empty to the use-case, view model and
+  worker that use it. Two providers for one type both keep their edge — qualifiers are
+  recorded, never resolved, so the answer is "two providers", not a guess.
+
+  Compose navigation becomes `Endpoint`s with the pseudo-verb `NAV`: `composable(...)`
+  declares a route, `EXPOSES` names the single screen it shows, and `navigate(...)`
+  `CONSUMES` it. `NAV` is not an HTTP verb, so in-app routes never join to real ones.
+  Routes are read the way they are actually written — a constant imported from another
+  module, or a literal with a constant interpolated into it — and a declaration and its
+  call site pair even when they spell the parameter differently. A computed route yields
+  nothing, and a lambda showing two screens gets the route but no `EXPOSES`.
+
+- **Gradle `.kts` build scripts are read as a module graph** (P5 of the same roadmap), by a
+  reader of their own rather than by the Kotlin front-end — a build script's "functions" are
+  configuration, and parsing them as source would add a phantom component per module.
+  `settings.gradle.kts` declares what the modules are; each script's
+  `implementation(project(":core:model"))` declares what depends on what.
+
+  This is what an Android app's architecture actually is, and nothing else in the repository
+  states it. `state` now reports real components — `core/data`, `core/database`,
+  `feature/foryou`, `sync/work` — where before every type in the app landed in a single area,
+  because reverse-DNS package names share their first two segments. Its dependency arrows are
+  the build's own edges (`app → core/data`, `sync/work → core/testing`).
+
+  Version-catalog coordinates (`libs.foo`) produce nothing — they are third-party artifacts,
+  not modules — and `project(someVariable)` produces nothing either. One honest limit:
+  dependencies a module inherits from a `build-logic` convention plugin live in Kotlin
+  source, not in the script, so the module list is complete while the edge set is a lower
+  bound.
+
+- **Ktor and Spring MVC routes — a Kotlin service is now a provider, and the Java front-end
+  finally reads Spring** (P6 of the same roadmap). Until now every route a Kotlin program
+  could show was one it *called* (Retrofit) or navigated to in-process (Compose). Ktor
+  `routing { route("/api") { get("/topics") { … } } }` and Spring MVC controllers now become
+  ordinary `Endpoint`s in the shared `java:endpoint:` namespace, so `pkg joins` can pair an
+  Android app's Retrofit call with the Kotlin service that answers it.
+
+  Spring is read by `pkg/jvm_routes.py`, which **both** JVM front-ends call. That is the
+  point: the Java front-end has read JAX-RS since it shipped and had never read Spring — the
+  framework most Java services actually use — so adding it for Kotlin alone would have left
+  the same blind spot in the older front-end. Java now reads `@GetMapping`, `@PostMapping`
+  and a verbed `@RequestMapping` on `@Controller`/`@RestController` classes, with the
+  class-level prefix joined on, including `method = {RequestMethod.PUT, RequestMethod.PATCH}`
+  naming two verbs at once.
+
+  **What it refuses to guess.** The class stereotype is required, because Spring Cloud
+  OpenFeign puts the *same* annotations on an interface to declare a client — reading those
+  as endpoints would turn every consumer into a provider. A verb-less `@RequestMapping`
+  yields nothing: `ANY` is a verb no client sends and the source never wrote. In Ktor, a
+  `route(…)` group whose path is not a literal silences every route inside it, a verb call
+  with a computed path yields nothing, and a `fun Route.orders()` route module that nothing
+  in the repository mounts yields nothing — its path is genuinely unknown, and rooting it at
+  `/` would be a guess that happens to be right in the common case. A handler written as an
+  inline lambda gets an `Endpoint` and no `EXPOSES`; `get("/x", ::handler)` gets both.
+
+  Ktor's difficulty is that `get` is one of the most common method names in Kotlin, so a
+  route is read only when the callee is a bare identifier *and* it sits in a route context.
+  Measured on the Ktor sample corpus (151 files): **67 endpoints**, every one of them
+  anchored to a line that really is a route call. On spring-petclinic-kotlin: **18 endpoints,
+  18 `EXPOSES`** — all 18 mapping annotations in the repository, none missed, none invented.
+
+  One fix came out of it that helps every Kotlin framework reading. tree-sitter-kotlin 1.1.0
+  parses a top-level annotation with parenthesised arguments as a standalone expression and
+  strips the decorated declaration's modifiers, so `@AndroidEntryPoint class MainActivity`
+  arrives with no annotations at all. 32 files across the validation repositories hit it.
+  `annotations_of` now recovers them, which is what Room, Hilt, Retrofit and Spring all read.
+
+- **Kotlin Multiplatform: source sets, and `expect`/`actual` as a contract** (P7 of the same
+  roadmap). A multiplatform module declares one API in `commonMain` and implements it once per
+  target, so `expect class Clock` and its two `actual class Clock` declarations share a
+  package-qualified name — and therefore, under the package rule every other Kotlin declaration
+  follows, one id. The graph de-duplicates by id, so two of the three used to vanish silently,
+  taking their provenance with them.
+
+  An `actual` declaration's id now carries the source set that declares it
+  (`java:app.Clock@iosMain`), and the `expect` keeps the plain id. That way round is the point:
+  common code is written against the contract, so a call from `commonMain` resolves to the
+  thing the source actually names rather than to one platform's copy picked by walk order.
+  `IMPLEMENTS` runs actual → expect — an `actual` fulfils a contract exactly as a class fulfils
+  an interface, and the graph already had an edge for that.
+
+  **What it refuses to guess.** The suffix keys off the `actual` keyword, never the directory:
+  a plain helper in `androidMain` keeps its plain id, because renaming declarations that never
+  collided would break every call into them. An `actual` whose `expect` is not in the scanned
+  tree gets no edge — the contract may be real, but this run has not seen it. And a member of
+  an `actual` class inherits the suffix through its parent without carrying the keyword, so it
+  gets no contract edge of its own: Kotlin does not require `actual` on every member, and a
+  platform class may add members the `expect` never declared.
+
+  `state` now splits a module with a `commonMain` directory into its source sets, because in a
+  multiplatform module that is the component boundary. Measured on KaMPKit: **2 components
+  before, 7 after** — `shared/commonMain`, `shared/androidMain`, `shared/iosMain` and their
+  test sets, beside `app`. Ordinary Android modules are deliberately left whole, and the
+  validation app's 28 components are unchanged.
+
+- **Kotlin/JVM codegen, and a Gradle test runner the Java front-end has been missing**
+  (P8 of the same roadmap). `sdlc feature --language kotlin` works: it scaffolds a
+  `kotlin("jvm")` Gradle project or writes into an existing one, and runs the tests through
+  `./gradlew test`. Until now `--language kotlin` exited 2.
+
+  **The runner closes a gap that was never Kotlin's.** `layout.py` has detected Gradle since
+  the Java track shipped, but `MavenTestRunner` was the only JVM runner — so codegen on *any*
+  Gradle project, Java included, could not run its tests. `GradleTestRunner` fixes both at
+  once. It prefers a committed `./gradlew` over a `gradle` on PATH, because the wrapper pins
+  the version the project was written against and downloads it on first use, and it runs the
+  tests of the Gradle **modules the change touched** rather than the whole build — the same
+  reasoning that made the Go runner module-aware. A repo with neither a wrapper nor Gradle
+  fails with that message rather than reporting a suite that never compiled.
+
+  **What the toolchain check does not look for is `kotlinc`.** The Kotlin compiler arrives as
+  a Gradle plugin pinned in the build script, so a machine with a JDK and a wrapper can build
+  Kotlin without a Kotlin install anywhere on it. Gradle itself is checked per-repository
+  rather than on PATH, since a committed wrapper is what most real Kotlin projects ship.
+
+  **Generated tests follow the repository, not the language default.** A Kotlin project may
+  use `kotlin.test` or JUnit 5, and the two are not interchangeable: the Spring validation
+  repo declares `junit-jupiter` and no `kotlin("test")`, so a generated `import kotlin.test.Test`
+  does not compile there. The layout now reads which library the build actually declares and
+  the prompt follows it — measured at `junit5` on spring-petclinic-kotlin, `kotlin.test` on the
+  Android app, neither on KaMPKit.
+
+  Preflight runs `./gradlew check`, but only when ktlint or detekt is configured: without a
+  linter `check` is `test` again, and a preflight that fails for the same reason as the tests
+  reads as two independent problems. Otherwise it reports *skipped*.
+
+  Proven against real Gradle 8.13 / Kotlin 2.0.21, not a stub: a greenfield scaffold compiles
+  and tests **green**, then **red** when an assertion is broken; and a class placed into
+  spring-petclinic-kotlin's existing package runs **3 tests, 0 failures**, re-run
+  independently with `--rerun-tasks`.
+
+- **Android codegen: the right module, and the unit-test task that actually exists**
+  (P9 of the same roadmap). `sdlc feature --language kotlin` now works on an Android
+  repository, which differs from a plain Kotlin/JVM one in two ways that both decide whether
+  the generated code compiles at all.
+
+  **There are no sources at the root.** A real Android app is dozens of Gradle modules; the
+  validation app is 27 and its root holds only build scripts. Placement is therefore keyed on
+  the target package: the module that already contains it wins, otherwise the module whose own
+  package is the longest prefix of it, so a brand-new `…core.data.pricing` lands inside
+  `core/data` — under that module's own `src/main/java`, because Android keeps Kotlin in the
+  Java source root and a second root would need a build-script change to compile. When nothing
+  matches, the run **stops** and lists the candidate modules instead of guessing. A wrong
+  module is not a crash: it is a file that compiles, a test that passes, and a change nobody
+  finds.
+
+  **`testDebugUnitTest` is not guaranteed to exist.** It is the documented Android unit-test
+  task, and on the validation app Gradle rejects it as *ambiguous* — every library module
+  inherits the `demo`/`prod` flavour dimension from a convention plugin, so the real tasks are
+  `testDemoDebugUnitTest` and `testProdDebugUnitTest`. Flavour names are computed in Kotlin
+  inside a separate included build and cannot be read off a build script, so Spine does not
+  predict them: it asks for the documented task and, when Gradle rejects it, takes the
+  replacement from Gradle's own list of candidates and remembers it for the rest of the run.
+  A plain Kotlin/JVM module in the same build still uses `test` — the task follows the module,
+  not the repository.
+
+  A missing Android SDK is reported **before** generation as one sentence naming `ANDROID_HOME`,
+  rather than as an Android Gradle Plugin failure minutes into a build, and it says that no
+  emulator is needed — because instrumented tests are never run. The prompt rules them out
+  explicitly (no `androidTest/`, no Espresso, no `AndroidJUnit4`) and asks for an explicit
+  `TODO: UI test` where UI verification is genuinely required, so the gap is stated rather than
+  hidden.
+
+  Two detection bugs came out of this, and both reach past Android. The test-library probe read
+  only `build.gradle{,.kts}`, and the validation app declares `kotlin("test")` exactly once —
+  inside `build-logic/`. No build script in the repository names a test library at all, so the
+  probe returned "unknown" and was correct only by luck. And the answer is not a property of the
+  repository in the first place: `core/data` gets `kotlin("test")` from a convention plugin while
+  `core/model`, a plain `id("kotlin")` library in the same build, declares no test dependency at
+  all. It is now resolved per module — from what that module's own tests already import, else
+  what its build script declares, else what its convention plugins declare for it — and when the
+  answer is genuinely "nothing", the prompt says so and names the dependency to add rather than
+  emitting an import that cannot resolve.
+
+  Proven against real Gradle 8.1 / AGP 8.1.0-beta01 / JDK 17: a repository function and its
+  test placed into the Android app's existing `core/data` package run **4 tests, 0 failures**,
+  verified independently with `--rerun-tasks` (197 tasks, nothing from cache); breaking an
+  assertion turns it **red** with the failing test named. A second feature placed into
+  `core/model` — a plain Kotlin/JVM module in the same repo — runs as `:core:model:test` in the
+  same invocation that runs `core/data` as `:core:data:testDemoDebugUnitTest`, which is the
+  mixed-build case the per-module rules exist for.
+
+- **The roadmap-currency gate now reads the half of a roadmap nobody was checking, and runs in
+  CI.** Every language-track roadmap carries a living phase table whose rule is that Status,
+  Started, Finished and Evidence move in the same commit as the work. The rule names the
+  *table*, so the table is what stayed maintained: this repository's Kotlin roadmap carried
+  *"P0–P5 done · P6–P11 not started"* at the top of the file while P6, P7 and P8 sat finished and
+  evidenced twelve lines below it — for three phases, with the gate green throughout.
+
+  Two checks close it. A roadmap's own `**Status:**` phase claim is compared against its table's
+  DONE rows, in both directions, and against `SPEC-INDEX.md`'s claim about the same spec. Both
+  read **structured** claims on both sides — a set of phase ids, not prose — which is what
+  separates them from the generalised spec-status gate that was measured at 33% precision and
+  withdrawn: this fires only where both sides use the `P0–P9 done` shorthand, so a status word
+  appearing in ordinary prose is never read. It caught a live disagreement on its first run.
+
+  A third defect surfaced while adding them, and it is the more interesting one: the pattern
+  reading the status line was anchored to a single line ending in a period. Every roadmap here
+  wraps that line, so it matched **nothing at all** — and the checks built on it had been
+  counted as passing on every green run. A check that is silently reading nothing is worse than
+  a check that is missing, because the missing one is visible in the list.
+
+- **Reverse-DNS namespaces group into real components instead of one.** An *area* is meant to be
+  a component, derived from a module's first two namespace segments. Under a reverse-DNS
+  convention those two segments name the organisation, so the Android validation app put **258
+  of its 273 first-party types into a single area called `com.google`** — an architecture
+  diagram with one box in it. The prefix every module shares carries no information, so it is
+  dropped before grouping: the same app now renders **39 areas** — `core.data`, `core.database`,
+  `feature.topic` — and Java and C# repositories under the same convention benefit identically.
+
+  Two things kept it honest. The rule as specified — the prefix shared by *every* first-party
+  module — does not survive the repository it was specified against: one module declaring
+  `package androidx.test.uiautomator` takes the common prefix of all 71 down to nothing. It is
+  coverage-based instead, with the threshold placed in a measured gap (the vendor prefix covers
+  94.4% of modules; the next segment falls to 57.7%). And it must not fire where namespaces are
+  already shallow — on this repository the deepest majority prefix is `orchestrator` at 48.1%,
+  under the threshold, so grouping is measurably unchanged and `orchestrator.pkg` stays the area.
+
+- **Removed `Toolchain.conventions_skill_id`, which ten toolchain rows filled in and nothing
+  read.** A skill reaches codegen through the catalog planner's capability selector, an entirely
+  separate mechanism — which is how a conventions skill could be named on a toolchain while the
+  skill itself did not exist, with every test green. The invariant it appeared to guard is real
+  and now sits on the live path: a registered `<language>-conventions` capability must resolve to
+  a defined skill. Not every language has one, and none is required — SQL ships without.
+
 ## 3.34.2 — 2026-09-14
 
 ### Added

@@ -308,6 +308,18 @@ joins:
     provider: billing
 ```
 
+**An Android app can be the consumer.** Retrofit interfaces are read as HTTP *calls*, not
+routes — an app serves nothing, it calls something — so a Kotlin mobile repo joins to a
+Java, Go, PHP or Python provider by verb and path like any other consumer. That makes
+"which screens break if this service drops `GET /topics`" answerable, which no front-end
+could do before. The path comes from the annotation; a `baseUrl(...)` that is not a string
+literal (the usual case, since it comes from build config) leaves the call path-only.
+
+**And a Kotlin service can be the provider.** Ktor `routing { get("/topics") { … } }` and
+Spring MVC controllers become `Endpoint`s in the same namespace, so both ends of that join
+can now be Kotlin — the shape a team shipping an app and its backend in one language
+actually has. The Spring half is shared with the Java front-end, which read JAX-RS only.
+
 The same question then crosses the boundary:
 
 ```
@@ -744,20 +756,26 @@ approval — Spine refuses a live write without it. `live=true` needs a reachabl
 
 ## 10. Language support & toolchains
 
-Comprehension covers **ten front-ends**.
+Comprehension covers **twelve front-ends** — eleven languages, plus a Gradle reader
+that turns `.kts` build scripts into a module dependency graph (it is not a language
+and has no toolchain row). Kotlin reads structure, calls, Room entities, Retrofit
+calls, Compose routes and Hilt wiring, and is a **codegen target** for both plain
+Kotlin/JVM and Android projects.
 Spine only needs a language's toolchain when it **builds/tests** generated code in that
 language:
 
 | Language | Build/test needs on PATH |
 |---|---|
 | Python | nothing extra (pytest ships with the engine's `sdlc` extra) |
-| Java | a JDK + **Maven** |
+| Java | a JDK + **Maven**, or **Gradle** (a committed `./gradlew` counts) |
 | TypeScript | **Node.js** + a package manager (npm/pnpm/yarn) |
 | C# | the **.NET SDK** (`dotnet`) |
 | C | **CMake** (or **Meson + Ninja**) + a C compiler |
 | C++ | **CMake** (or **Meson + Ninja**) + a C++ compiler |
 | Go | the **`go`** toolchain (`go build` / `go test`); multi-module aware |
 | PHP | **PHP** (8.3 recommended); **Composer** when `composer.json` exists, otherwise a verified PHPUnit PHAR is downloaded outside the worktree |
+| Kotlin | a JDK + **Gradle** — a committed `./gradlew` is enough, since it downloads the version the project pins; no Kotlin install is needed, as `kotlin("jvm")` brings the compiler |
+| Kotlin (Android) | the above **plus an Android SDK** (`ANDROID_HOME`). Unit tests only — no emulator and no device, ever |
 | Perl | **perl** + **prove**; **cpanm** optional for `cpanfile` dependencies |
 | SQL | nothing extra — schema, queries, stored procedures, ordered-migration folding |
 

@@ -12,7 +12,11 @@ front-end: ``Module`` (the package), ``Type`` (class/interface/enum/record),
 ``Function`` (method/constructor), ``Field`` nodes; ``IMPORTS``, ``CONTAINS``,
 and ``IMPLEMENTS`` (extends + implements) edges; JAX-RS / Jakarta REST
 annotations become ``Endpoint`` nodes with ``EXPOSES`` edges to their handler
-methods. ``CALLS`` is emitted only where the callee resolves precisely (a
+methods, and so do Spring MVC ``@GetMapping``/``@RequestMapping`` handlers, read
+through the shared ``jvm_routes`` module the Kotlin front-end also uses (D16 of
+docs/specs/kotlin-support-roadmap.md) — Spring is the framework most Java services
+actually use, and this front-end was blind to it until P6. ``CALLS`` is emitted only
+where the callee resolves precisely (a
 second pass over method bodies): unqualified / ``this.`` calls to a sibling
 method, and ``Type.method()`` calls whose ``Type`` resolves via imports or the
 same package. Instance calls on a typed variable (``obj.method()``) are skipped
@@ -29,6 +33,16 @@ from typing import TYPE_CHECKING, Any
 
 from orchestrator.pkg.extractor import rel_module_name
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.jvm_routes import (
+    MAPPING_ANNOTATIONS,
+    METHOD_ARGUMENT,
+    PATH_ARGUMENTS,
+    RouteAnnotation,
+    class_prefix,
+    emit_endpoints,
+    is_controller,
+    resolves_into_spring,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node as TSNode
@@ -138,6 +152,11 @@ class JavaExtractor:
         if body is None:
             return
         class_path = _path_annotation(node, source, imports)
+        # Spring (D16). ``None`` means "not a controller, or a class prefix that is
+        # not a literal" — both silence every method, for the same reason: a method
+        # path without its real prefix names a route that does not exist.
+        class_routes = _spring_annotations(node, imports, source)
+        spring_prefix = class_prefix(class_routes) if is_controller(class_routes) else None
         methods = type_methods.setdefault(type_id, set())
         for member in body.named_children:
             mline = member.start_point[0] + 1
@@ -150,6 +169,15 @@ class JavaExtractor:
                     methods.add(mname)
                     if member.type == "method_declaration":
                         _jax_rs_endpoints(member, fid, class_path, imports, source, rel, batch)
+                        if spring_prefix is not None:
+                            emit_endpoints(
+                                _spring_annotations(member, imports, source),
+                                method_id=fid,
+                                prefix=spring_prefix,
+                                language="java",
+                                rel=rel,
+                                batch=batch,
+                            )
                     mbody = member.child_by_field_name("body")
                     if mbody is not None:
                         funcs.append((fid, type_id, mbody))
@@ -282,6 +310,81 @@ def _jax_rs_endpoints(
             )
         )
         batch.add_edge(Edge(endpoint_id, method_id, EdgeKind.EXPOSES, provenance))
+
+
+def _spring_annotations(node: TSNode, imports: _ImportContext, source: bytes) -> list[RouteAnnotation]:
+    """Read this declaration's Spring annotations into ``jvm_routes``'s neutral form.
+
+    The grammar-specific half of D16: Java spells an annotation ``annotation`` /
+    ``marker_annotation`` with a ``name`` field and ``element_value_pair`` arguments,
+    where Kotlin nests a ``user_type`` or a ``constructor_invocation``. Everything
+    the two readings then *mean* is in ``jvm_routes``.
+    """
+    out: list[RouteAnnotation] = []
+    for name, annotation in _annotations(node, source):
+        if not resolves_into_spring(
+            name, by_simple=imports.by_simple, wildcard_prefixes=imports.wildcard_prefixes
+        ):
+            continue
+        simple = _simple_annotation_name(name)
+        line = annotation.start_point[0] + 1
+        if simple not in MAPPING_ANNOTATIONS:
+            out.append(RouteAnnotation(name=simple, line=line))
+            continue
+        out.append(
+            RouteAnnotation(
+                name=simple,
+                path=_spring_path(annotation, source),
+                methods=_spring_methods(annotation, source),
+                line=line,
+            )
+        )
+    return out
+
+
+def _spring_path(annotation: TSNode, source: bytes) -> str | None:
+    """``""`` when the annotation names no path, ``None`` when it is not a literal."""
+    arguments = annotation.child_by_field_name("arguments")
+    if arguments is None:
+        return ""  # a marker `@GetMapping`, which maps the class prefix itself
+    positional: TSNode | None = None
+    for child in arguments.named_children:
+        if child.type == "element_value_pair":
+            if _text(child.child_by_field_name("key"), source) in PATH_ARGUMENTS:
+                return _spring_literal(child.child_by_field_name("value"), source)
+        elif positional is None:
+            positional = child
+    return "" if positional is None else _spring_literal(positional, source)
+
+
+def _spring_literal(node: TSNode | None, source: bytes) -> str | None:
+    """A string literal's text, taking the first element of a ``{...}`` array."""
+    if node is None:
+        return ""
+    if node.type == "element_value_array_initializer":
+        items = node.named_children
+        if not items:
+            return ""
+        node = items[0]
+    return _string_literal(node, source) if node.type == "string_literal" else None
+
+
+def _spring_methods(annotation: TSNode, source: bytes) -> tuple[str, ...]:
+    """``method = {RequestMethod.GET}`` → ``("GET",)``; ``()`` when absent."""
+    arguments = annotation.child_by_field_name("arguments")
+    if arguments is None:
+        return ()
+    for child in arguments.named_children:
+        if child.type != "element_value_pair":
+            continue
+        if _text(child.child_by_field_name("key"), source) != METHOD_ARGUMENT:
+            continue
+        value = child.child_by_field_name("value")
+        if value is None:
+            return ()
+        items = value.named_children if value.type == "element_value_array_initializer" else [value]
+        return tuple(verb for item in items if (verb := _text(item, source).rsplit(".", 1)[-1]))
+    return ()
 
 
 def _path_annotation(node: TSNode, source: bytes, imports: _ImportContext) -> str | None:

@@ -1,0 +1,36 @@
+{
+  "language": "kotlin",
+  "case": "typed_receivers",
+  "why": "D8's main event, and the reason the Kotlin call graph is P2 rather than a late phase. Kotlin declares the type of every property and every parameter, so `dao.fetch(id)` on a `private val dao: CartDao` resolves exactly through the import map with no inference at all — this is the dominant shape in DI-heavy Kotlin and it is the difference between a real call graph and a merely structural one. The case pairs it with its own limit, three call sites that look identical at the point of use and differ only in what the declaration wrote down: a constructor property (resolves), an explicitly-typed local (resolves), and an unannotated `val` (a permanent, predicted miss). Only the declaration tells them apart, which is exactly why the third is labelled as a gap rather than chased with inference.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.data", "kind": "Module" },
+    { "id": "java:shop.data.CartRepository", "kind": "Type" },
+    { "id": "java:shop.data.CartRepository.load", "kind": "Function" },
+    { "id": "java:shop.data.CartRepository.build", "kind": "Function" },
+    { "id": "java:shop.data.CartRepository.dao", "kind": "Field" }
+  ],
+  "edges": [
+    { "src": "java:shop.data", "dst": "java:shop.data.CartRepository", "kind": "CONTAINS" },
+    { "src": "java:shop.data.CartRepository", "dst": "java:shop.data.CartRepository.load", "kind": "CONTAINS" },
+    { "src": "java:shop.data.CartRepository", "dst": "java:shop.data.CartRepository.build", "kind": "CONTAINS" },
+    { "src": "java:shop.data.CartRepository", "dst": "java:shop.data.CartRepository.dao", "kind": "CONTAINS" },
+    { "src": "java:shop.data", "dst": "java:shop.db.CartDao", "kind": "IMPORTS" },
+    { "src": "java:shop.data", "dst": "java:shop.log.Logger", "kind": "IMPORTS" },
+    { "src": "java:shop.data.CartRepository.load", "dst": "java:shop.db.CartDao.fetch", "kind": "CALLS" },
+    { "src": "java:shop.data.CartRepository.load", "dst": "java:shop.log.Logger.note", "kind": "CALLS" },
+    { "src": "java:shop.data.CartRepository.load", "dst": "java:shop.log.Logger.flush", "kind": "CALLS" },
+    { "src": "java:shop.data.CartRepository.load", "dst": "java:shop.data.CartRepository.build", "kind": "CALLS" }
+  ],
+  "known_gaps": [
+    {
+      "edge": { "src": "java:shop.data.CartRepository.load", "dst": "java:shop.log.Logger.flush", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. `val inferred = build()` declares no type, so resolving this receiver would mean inferring `build()`'s return type. The front-end refuses that (§3.2 last row), so the edge is a permanent recall miss rather than a guess. Note how little separates it from the `typed.note(id)` edge above, which does resolve: the only difference is the `: Logger` someone wrote."
+    }
+  ],
+  "false_positives": [],
+  "excluded": [
+    "java:shop.db.CartDao, java:shop.db.CartDao.fetch, java:shop.log.Logger, java:shop.log.Logger.note and java:shop.log.Logger.flush are external — imported, never declared here — so they stay out of the node ratio per corpus/README.md's rule; the IMPORTS and CALLS edges to them still count."
+  ],
+  "open_questions": []
+}

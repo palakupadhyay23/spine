@@ -1,0 +1,939 @@
+"""Kotlin front-end for the PKG extractor (the 11th language front-end).
+
+Maps Kotlin source onto the universal ``facts`` vocabulary, like every other
+front-end. Parsing is via tree-sitter (``tree-sitter-kotlin``), an OPTIONAL
+dependency behind the ``kotlin`` extra; the import is lazy so the base install
+stays stdlib-only and importing this module never fails.
+
+**Ids share Java's ``java:`` prefix — this is deliberate, and load-bearing**
+(docs/specs/kotlin-support-roadmap.md D2). Kotlin and Java share one JVM package
+namespace: a Kotlin ``import com.x.Y`` names the same class whether ``Y`` is
+declared in ``Y.kt`` or ``Y.java``, and it cannot be both. Sharing the prefix
+means a mixed repository — which is the normal Android layout, 193 of the 263
+files in the validation app sit under ``src/main/java/**`` — produces **one**
+graph rather than two disjoint ones, ``FactBatch`` dedup upgrades whichever
+front-end declared a placeholder first, and Java's dotted-prefix import join
+works unchanged. Nodes carry ``language="kotlin"``, which is what ``pkg
+accuracy`` and the capability matrix key on; the prefix is a namespace, not a
+language tag. Precedent: ``ts:`` already covers ``.ts``, ``.tsx``, ``.js``, ``.jsx``.
+
+Emits the high-confidence declaration subset, precision-first:
+
+* ``Module`` — the ``package`` header, falling back to the repo-relative path
+  for the 14 of 263 files that declare none (D3, the Java rule).
+* ``Type`` — ``class`` in every flavour (data / sealed / enum / value /
+  annotation / interface) and ``object``. A ``companion object``'s members fold
+  onto the enclosing type (D5): call sites name the class, never ``Companion``.
+* ``Function`` — members, and top-level functions **including extensions**. An
+  extension ``fun T.name()`` is a free function under the package module and the
+  receiver is recorded nowhere (D4): the receiver type does not own the
+  extension, and attaching it would hang a ``CONTAINS`` edge off a type declared
+  in another module or in the SDK.
+* ``Field`` — ``val``/``var`` properties in a type body **and** ``val``/``var``
+  primary-constructor parameters, because in Kotlin a constructor ``val`` *is* a
+  property (D6). A bare constructor parameter without ``val``/``var`` is not a
+  field. Top-level ``val``s are not fields either — a ``Field`` belongs to a
+  ``Type``. Enum entries are fields of their enum.
+* ``IMPORTS`` / ``CONTAINS`` / ``IMPLEMENTS``. Kotlin does not distinguish
+  ``extends`` from ``implements`` syntactically and neither does the edge (D7);
+  a same-package guess that nothing declares is repointed in ``finalize``, the
+  C#/PHP pattern.
+
+``.kts`` build scripts are **not** this front-end's business — they are a DSL
+whose "functions" are Gradle configuration, and parsing them as Kotlin source
+would invent a phantom component per module. They get a dedicated reader
+(``gradle_extractor.py``, D11).
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from orchestrator.pkg.extractor import rel_module_name
+from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.kotlin_di import read_module
+from orchestrator.pkg.kotlin_http import (
+    ClientState,
+    PendingCall,
+    base_url_path,
+    join_to_endpoints,
+    scan_type,
+)
+from orchestrator.pkg.kotlin_kmp import id_suffix as kmp_id_suffix
+from orchestrator.pkg.kotlin_kmp import link_actuals, source_set_of
+from orchestrator.pkg.kotlin_nav import NavState
+from orchestrator.pkg.kotlin_nav import collect_consts as collect_route_consts
+from orchestrator.pkg.kotlin_nav import emit as emit_nav_routes
+from orchestrator.pkg.kotlin_nav import scan_calls as scan_nav_calls
+from orchestrator.pkg.kotlin_room import (
+    read_dao,
+    read_entity,
+    read_relation_view,
+    repoint_table_edges,
+)
+from orchestrator.pkg.kotlin_routes import (
+    KtorState,
+    read_controller,
+    register_module,
+    spring_resolver,
+)
+from orchestrator.pkg.kotlin_routes import emit as emit_ktor_routes
+from orchestrator.pkg.kotlin_routes import scan_calls as scan_ktor_calls
+
+if TYPE_CHECKING:
+    from tree_sitter import Node as TSNode
+
+# Kotlin's package header has no trailing semicolon, unlike Java's.
+_PACKAGE_RE = re.compile(r"^\s*package\s+([\w.]+)", re.M)
+
+#: Declarations that produce a ``Type``. ``class_declaration`` covers `class`,
+#: `interface`, `data class`, `sealed class/interface`, `enum class`, `value
+#: class` and `annotation class` — the grammar spells them all the same way and
+#: puts the flavour in `modifiers`, which the graph does not record.
+_TYPE_DECLS = frozenset({"class_declaration", "object_declaration"})
+
+#: Bodies a type's members can live in. `enum class` uses its own body node.
+_TYPE_BODIES = frozenset({"class_body", "enum_class_body"})
+
+_LANG = "kotlin"
+
+
+@dataclass
+class _ImportContext:
+    """Kotlin imports needed for precise type resolution.
+
+    ``by_simple`` maps a simple name to its fully-qualified one, honouring
+    ``import a.b.C as D`` (the alias is what the file uses, so the alias is the
+    key). ``wildcard_prefixes`` keeps ``import a.b.*`` for resolution only — a
+    wildcard names no single symbol, so it gets no ``IMPORTS`` edge.
+    """
+
+    by_simple: dict[str, str] = field(default_factory=dict)
+    wildcard_prefixes: set[str] = field(default_factory=set)
+
+
+@dataclass
+class _Pending:
+    """A function body held back until every declaration in the file is known."""
+
+    func_id: str
+    owner: str | None  # enclosing type id; None for a top-level function
+    body: TSNode
+    params: dict[str, str]  # parameter name → its declared type, as written
+    #: whether this is a `fun Route.x()` — a Ktor route module, so its body is
+    #: already in route context even though no `routing { … }` encloses it (D16)
+    route_module: bool = False
+
+
+@dataclass
+class _FileContext:
+    """The resolver table for one file — built in pass 1, read in pass 2.
+
+    Kotlin declares the type of every property and every parameter, which is the
+    whole reason typed-receiver resolution is P2 here rather than a late phase as
+    it was for PHP and TypeScript: ``dao.getTopics()`` resolves *exactly* through
+    the import map, with no inference anywhere. These tables are what make that a
+    lookup instead of a guess.
+    """
+
+    package: str
+    imports: _ImportContext
+    #: type id → the member names it declares, companion members folded in (D5)
+    type_members: dict[str, set[str]] = field(default_factory=dict)
+    #: type id → {property name: its declared type as written} — the typed receivers
+    field_types: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: names of plain top-level functions declared in this file
+    top_level_funcs: set[str] = field(default_factory=set)
+    #: extension name → the receiver type it extends, for `x.ext()` resolution (D4)
+    extensions: dict[str, str] = field(default_factory=dict)
+    #: simple names of types declared in this file, for constructor calls
+    local_types: set[str] = field(default_factory=set)
+    pending: list[_Pending] = field(default_factory=list)
+    #: the path from a literal Retrofit ``baseUrl(...)`` in this file, if any (D10)
+    base_path: str = ""
+    #: the Gradle source set this file sits in — `androidMain`, `main`, … (D17)
+    source_set: str = ""
+
+    def members_of(self, type_id: str | None) -> set[str]:
+        return self.type_members.get(type_id or "", set())
+
+
+class KotlinExtractor:
+    """Kotlin front-end (tree-sitter). Install the ``kotlin`` extra to use it."""
+
+    language: str = _LANG
+    suffixes: tuple[str, ...] = (".kt",)
+
+    def __init__(self) -> None:
+        # Retrofit calls accumulate across the walk and are joined to endpoints in
+        # ``finalize``, because the endpoint they call may be declared in another
+        # file — or, for the cross-repo join, in another repository (D10).
+        self._client = ClientState()
+        #: Calls that matched no endpoint here. **A side-channel, never facts** —
+        #: ``RepoCodeExtractor`` collects this duck-typed attribute and ``pkg joins``
+        #: proposes them against other repositories' endpoints.
+        self.unresolved_calls: list[PendingCall] = []
+        # Compose routes are named once and imported, so a route constant is almost
+        # always in a different file from the `composable` using it (D14).
+        self._nav = NavState()
+        # Ktor route modules are mounted by their caller, usually in another file,
+        # so a route's full path is only known once the whole tree is read (D16).
+        self._ktor = KtorState()
+
+    def module_name(self, path: Path, root: Path) -> str:
+        # Kotlin's module is the package declaration, which lives in the file and
+        # is free of the directory layout Java enforces; fall back to the
+        # repo-relative path when there is none (14 of 263 in the validation app).
+        try:
+            m = _PACKAGE_RE.search(path.read_text(encoding="utf-8"))
+        except OSError:
+            m = None
+        return m.group(1) if m else rel_module_name(path, root)
+
+    def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
+        parser = _kotlin_parser()
+        source = path.read_bytes()
+        tree = parser.parse(source)
+        batch = FactBatch()
+        module_id = f"java:{module}" if module else "java:<root>"
+        batch.add_node(Node(module_id, NodeKind.MODULE, module or rel, _LANG, Provenance(rel, 1)))
+
+        imports = self._imports(tree.root_node, module_id, source, rel, batch)
+        ctx = _FileContext(package=module, imports=imports, source_set=source_set_of(rel))
+        # Retrofit puts the host in the builder, not the annotations, so the base
+        # path (when it is a literal at all) has to be read before the interfaces.
+        ctx.base_path = base_url_path(tree.root_node, source)
+        collect_route_consts(tree.root_node, source, self._nav)
+
+        # Pass 1 — every declaration, and the resolver table that describes them.
+        for node in tree.root_node.named_children:
+            if node.type in _TYPE_DECLS:
+                self._emit_type(node, module_id, ctx, source, rel, batch)
+            elif node.type == "function_declaration":
+                # Top level, so a free function or an extension — same node either
+                # way (D4). The receiver, when there is one, is recorded nowhere.
+                self._emit_function(node, module_id, None, ctx, source, rel, batch)
+            elif node.type == "type_alias":
+                # No node — it names no new declaration. Recorded so `Cb` resolves.
+                alias = _field_text(node, "type", source)
+                if alias:
+                    ctx.local_types.add(alias)
+            # A top-level `property_declaration` is intentionally not a Field: a
+            # Field belongs to a Type (D6).
+
+        # Pass 2 — calls, once every id in the file is known (D8, §3.2).
+        for pend in ctx.pending:
+            self._calls(pend, ctx, source, rel, batch)
+            scan_nav_calls(pend.body, pend.func_id, source, rel, self._nav)
+            scan_ktor_calls(
+                pend.body, source, rel, self._ktor, owner=pend.func_id if pend.route_module else None
+            )
+        return batch
+
+    # ---- declarations -------------------------------------------------------
+
+    def _imports(
+        self, root: TSNode, module_id: str, source: bytes, rel: str, batch: FactBatch
+    ) -> _ImportContext:
+        """Emit concrete ``IMPORTS`` edges; retain wildcards and aliases for resolution."""
+        ctx = _ImportContext()
+        for node in root.named_children:
+            if node.type != "import":
+                continue
+            children = node.named_children
+            if not children:
+                continue
+            fqn = _text(children[0], source)
+            if not fqn:
+                continue
+            if _text(node, source).rstrip().endswith("*"):
+                # `import a.b.*` — the qualified_identifier is the prefix, and no
+                # single symbol is named, so resolution keeps it and the graph
+                # gets no edge for a thing that was never imported.
+                ctx.wildcard_prefixes.add(fqn)
+                continue
+            # `import a.b.C as D` puts the alias in a trailing identifier. The
+            # alias is the name this file actually writes, so it is the key.
+            alias = _text(children[1], source) if len(children) > 1 else ""
+            ctx.by_simple[alias or fqn.rsplit(".", 1)[-1]] = fqn
+            tid = f"java:{fqn}"
+            batch.add_node(Node(tid, NodeKind.MODULE, fqn, _LANG, external=True))
+            batch.add_edge(Edge(module_id, tid, EdgeKind.IMPORTS, Provenance(rel, node.start_point[0] + 1)))
+        return ctx
+
+    def _emit_type(
+        self,
+        node: TSNode,
+        parent_id: str,
+        ctx: _FileContext,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+    ) -> None:
+        name = _field_text(node, "name", source)
+        if not name:
+            return  # an anonymous `object : Foo {}` declares no named type
+        # An `actual` declares the *same* package-qualified name as its `expect`, so
+        # without the source set the two collide on one id and `FactBatch` keeps one
+        # (D17). Members inherit the suffix through this id, so nothing is doubled.
+        type_id = f"{parent_id}.{name}{kmp_id_suffix(node, source, ctx.source_set)}"
+        ctx.local_types.add(name)
+        ctx.type_members.setdefault(type_id, set())
+        ctx.field_types.setdefault(type_id, {})
+        line = node.start_point[0] + 1
+        batch.add_node(
+            Node(
+                type_id,
+                NodeKind.TYPE,
+                name,
+                _LANG,
+                Provenance(rel, line, node.end_point[0] + 1),
+            )
+        )
+        batch.add_edge(Edge(parent_id, type_id, EdgeKind.CONTAINS, Provenance(rel, line)))
+
+        for base in _supertypes(node, source):
+            target = self._resolve_type(base, ctx)
+            if target is not None:
+                batch.add_edge(Edge(type_id, target, EdgeKind.IMPLEMENTS, Provenance(rel, line)))
+
+        self._emit_constructor_properties(node, type_id, ctx, source, rel, batch)
+        for body in (c for c in node.named_children if c.type in _TYPE_BODIES):
+            self._emit_members(body, type_id, ctx, source, rel, batch)
+
+        # Framework readings (P3), after the members so a DAO method's Function id
+        # already exists to hang READS/WRITES off. Each is a no-op on a type that
+        # carries no such annotation, so a plain class costs one dictionary lookup.
+        resolve = self._type_resolver(ctx)
+        if not read_entity(node, type_id, resolve, source, rel, batch):
+            # Only a class that is not itself an entity can be a Room *view* — a
+            # query result shape holding `@Embedded` + `@Relation`.
+            read_relation_view(node, resolve, source, rel, batch)
+        read_dao(node, type_id, resolve, source, rel, batch)
+        read_module(node, type_id, resolve, source, rel, batch)
+        scan_type(node, type_id, source, rel, self._client, base_path=ctx.base_path)
+        read_controller(node, type_id, self._spring_resolver(ctx), source, rel, batch)
+
+    def _type_resolver(self, ctx: _FileContext) -> Any:
+        """A ``simple name → node id`` closure for the framework readers.
+
+        They need to turn ``TopicEntity::class`` into an id without importing the
+        resolver table's shape, so they get a function instead of the context.
+        """
+
+        def resolve(name: str) -> str | None:
+            return self._resolve_type(name, ctx)
+
+        return resolve
+
+    def _spring_resolver(self, ctx: _FileContext) -> Any:
+        """A ``simple annotation name → is it Spring's?`` predicate for this file.
+
+        ``@GetMapping`` is nobody's annotation until an import says whose it is, and
+        the validation repository imports it by wildcard, so both forms matter.
+        """
+        return spring_resolver(ctx.imports.by_simple, ctx.imports.wildcard_prefixes)
+
+    def _emit_constructor_properties(
+        self,
+        node: TSNode,
+        type_id: str,
+        ctx: _FileContext,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+    ) -> None:
+        """``class Repo(private val dao: Dao)`` — a constructor ``val`` is a property (D6).
+
+        This is not a convenience: in DI-heavy Kotlin the constructor property is
+        the typed receiver every call in the class goes through, so leaving it out
+        would drop most of the class's structure and, later, most of its call graph.
+        A parameter without ``val``/``var`` is a plain argument and gets nothing.
+        """
+        ctor = next((c for c in node.named_children if c.type == "primary_constructor"), None)
+        if ctor is None:
+            return
+        params = next((c for c in ctor.named_children if c.type == "class_parameters"), None)
+        if params is None:
+            return
+        for param in params.named_children:
+            if param.type != "class_parameter" or not _binds_property(param):
+                continue
+            pname = next((_text(c, source) for c in param.named_children if c.type == "identifier"), "")
+            if pname:
+                _add_member(batch, type_id, pname, NodeKind.FIELD, rel, param.start_point[0] + 1)
+                ctx.type_members.setdefault(type_id, set()).add(pname)
+                declared = next((_text(c, source) for c in param.named_children if c.type == "user_type"), "")
+                if declared:
+                    ctx.field_types.setdefault(type_id, {})[pname] = declared
+
+    def _emit_members(
+        self,
+        body: TSNode,
+        type_id: str,
+        ctx: _FileContext,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+    ) -> None:
+        for member in body.named_children:
+            line = member.start_point[0] + 1
+            if member.type == "function_declaration":
+                self._emit_function(member, type_id, type_id, ctx, source, rel, batch)
+            elif member.type == "property_declaration":
+                for pname in _property_names(member, source):
+                    _add_member(batch, type_id, pname, NodeKind.FIELD, rel, line)
+                    ctx.type_members.setdefault(type_id, set()).add(pname)
+                declared = _declared_property_type(member, source)
+                names = _property_names(member, source)
+                if declared and len(names) == 1:
+                    ctx.field_types.setdefault(type_id, {})[names[0]] = declared
+            elif member.type == "enum_entry":
+                ename = _field_text(member, "name", source) or next(
+                    (_text(c, source) for c in member.named_children if c.type == "identifier"), ""
+                )
+                if ename:
+                    _add_member(batch, type_id, ename, NodeKind.FIELD, rel, line)
+                    ctx.type_members.setdefault(type_id, set()).add(ename)
+            elif member.type == "companion_object":
+                # Fold onto the enclosing type (D5). `A.make()` and a bare `make()`
+                # inside `A` both name `java:pkg.A.make`; nothing at a call site
+                # ever writes `Companion`, so a separate node would be a name the
+                # graph invented. The companion's own name, where one is given, is
+                # not a declaration of its own.
+                for inner in (c for c in member.named_children if c.type in _TYPE_BODIES):
+                    self._emit_members(inner, type_id, ctx, source, rel, batch)
+            elif member.type in _TYPE_DECLS:
+                self._emit_type(member, type_id, ctx, source, rel, batch)
+
+    def _emit_function(
+        self,
+        node: TSNode,
+        parent_id: str,
+        owner: str | None,
+        ctx: _FileContext,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+    ) -> None:
+        """A named function under ``parent_id``.
+
+        ``override`` / ``suspend`` / ``operator`` / ``infix`` are modifiers the
+        graph does not record, and ``@Composable`` is a normal function — a
+        Compose screen is a function that returns Unit, not a new kind of thing.
+        """
+        name = _field_text(node, "name", source)
+        if not name:
+            return
+        func_id = _add_member(
+            batch,
+            parent_id,
+            name,
+            NodeKind.FUNCTION,
+            rel,
+            node.start_point[0] + 1,
+            suffix=kmp_id_suffix(node, source, ctx.source_set) if owner is None else "",
+        )
+        # Read regardless of nesting: a Ktor route module is normally top level, but
+        # `override fun Routing.registerRoutes()` inside a class is the same thing.
+        receiver = _extension_receiver(node, source)
+        route_module = bool(receiver) and register_module(name, func_id, receiver, self._ktor)
+        if owner is not None:
+            ctx.type_members.setdefault(owner, set()).add(name)
+        else:
+            if receiver:
+                # An extension: resolvable by name at a call site, and kept with
+                # its receiver so `x.ext()` is only claimed when `x` fits (D4).
+                ctx.extensions[name] = receiver
+            else:
+                ctx.top_level_funcs.add(name)
+
+        body = next((c for c in node.named_children if c.type == "function_body"), None)
+        if body is not None:
+            ctx.pending.append(_Pending(func_id, owner, body, _parameter_types(node, source), route_module))
+
+    def _finalize_resolver(self, batch: FactBatch) -> Any:
+        """A ``screen name → Function id`` closure over the finished batch.
+
+        Compose screens are declared in one module and navigated to from another,
+        so the ``EXPOSES`` target cannot be resolved while reading the file that
+        declares the route — by then the import map of the *other* file is what
+        would be needed. By ``finalize`` every declaration exists, so the screen is
+        found by name. A name that matches several grounded functions resolves to
+        nothing rather than picking one.
+        """
+        by_name: dict[str, list[str]] = {}
+        for node in batch.nodes:
+            if node.kind is NodeKind.FUNCTION and node.grounded:
+                by_name.setdefault(node.name, []).append(node.id)
+
+        def resolve(name: str) -> str | None:
+            found = by_name.get(name, [])
+            return found[0] if len(found) == 1 else None
+
+        return resolve
+
+    # ---- CALLS (D8, §3.2) ---------------------------------------------------
+
+    def _calls(self, pend: _Pending, ctx: _FileContext, source: bytes, rel: str, batch: FactBatch) -> None:
+        """Emit ``CALLS`` for the call sites in one body that resolve *exactly*.
+
+        Kotlin is the typed-receiver language: because every property and every
+        parameter carries a declared type, ``dao.getTopics()`` — the dominant
+        shape in this style of code — resolves through the import map with no
+        inference at all. That is why this is P2 and not a late phase.
+
+        Everything that would need inference is skipped rather than guessed: a
+        call on an unannotated ``val x = something()``, ``it.x()`` inside a
+        lambda, a chained receiver, a callable reference, ``invoke`` on a lambda.
+        A same-package function declared in *another* file is skipped too — there
+        is no ``finalize`` backstop for a function id, so it would be a guess that
+        never gets checked (§3.2 row 1).
+        """
+        scope = _Scope()
+        for name, declared in pend.params.items():
+            scope.bind(name, declared)
+        scope.merge_fields(ctx.field_types.get(pend.owner or "", {}))
+        _collect_bindings(pend.body, source, scope)
+
+        for call in _call_sites(pend.body):
+            target = self._resolve_call(call, pend.owner, ctx, scope, source)
+            if target is None:
+                continue
+            # A resolved third-party callee — `Modifier.padding`, `Json.decodeFromString` —
+            # is a real call to a real symbol this tree does not declare, so it gets an
+            # **external placeholder**. Without one the edge dangles and `pkg verify`
+            # reports an error for what is simply a call into a library (measured: 387
+            # such edges across 161 distinct AndroidX/kotlinx symbols on the validation
+            # app). `FactBatch` dedup upgrades the placeholder the moment a grounded
+            # declaration for the same id shows up — from this front-end or from Java's,
+            # which is the other half of what D2's shared namespace buys.
+            batch.add_node(Node(target, NodeKind.FUNCTION, target.rsplit(".", 1)[-1], _LANG, external=True))
+            batch.add_edge(
+                Edge(
+                    pend.func_id,
+                    target,
+                    EdgeKind.CALLS,
+                    Provenance(rel, call.start_point[0] + 1),
+                )
+            )
+
+    def _resolve_call(
+        self,
+        call: TSNode,
+        owner: str | None,
+        ctx: _FileContext,
+        scope: _Scope,
+        source: bytes,
+    ) -> str | None:
+        callee = next(iter(call.named_children), None)
+        if callee is None:
+            return None
+        if callee.type == "identifier":
+            return self._resolve_bare(_text(callee, source), owner, ctx, scope)
+        if callee.type == "navigation_expression":
+            return self._resolve_navigated(callee, owner, ctx, scope, source)
+        return None  # a chained or computed callee — inference, so never
+
+    def _resolve_bare(self, name: str, owner: str | None, ctx: _FileContext, scope: _Scope) -> str | None:
+        """``foo()`` with no receiver."""
+        if not name or name in scope.bound:
+            # D9: a Kotlin local *can* shadow a call — `val helper = ::other`
+            # then `helper()` invokes the local through `invoke`, not the member.
+            # Unlike Java, where variables and methods are separate namespaces,
+            # this is a real ambiguity, so the call is not claimed for either.
+            return None
+        # A member of the enclosing type, or of any type enclosing that one — a
+        # nested class can call its outer's members without qualifying them.
+        holder: str | None = owner
+        while holder:
+            if name in ctx.members_of(holder):
+                return f"{holder}.{name}"
+            holder = holder.rsplit(".", 1)[0] if holder.count(".") > 1 else None
+        if name in ctx.top_level_funcs or name in ctx.extensions:
+            return f"java:{ctx.package}.{name}" if ctx.package else None
+        if name in ctx.local_types:
+            # A constructor call. The corpus rule is that instantiation is a call
+            # to the type, so the target is the Type node, not an invented `.ctor`.
+            return f"java:{ctx.package}.{name}" if ctx.package else None
+        if name in ctx.imports.by_simple:
+            # Imported — and the id is the import target whether the name is a
+            # type or a function, which is exactly what D2's shared namespace
+            # buys: the id unifies with the declaration in the other file.
+            return f"java:{ctx.imports.by_simple[name]}"
+        return None
+
+    def _resolve_navigated(
+        self,
+        nav: TSNode,
+        owner: str | None,
+        ctx: _FileContext,
+        scope: _Scope,
+        source: bytes,
+    ) -> str | None:
+        """``recv.foo()`` — the typed-receiver case, and the static/companion one."""
+        parts = [c for c in nav.named_children]
+        if len(parts) < 2:
+            return None
+        receiver, name_node = parts[0], parts[-1]
+        if name_node.type != "identifier":
+            return None
+        name = _text(name_node, source)
+        if not name:
+            return None
+
+        if receiver.type == "this_expression":
+            return f"{owner}.{name}" if owner and name in ctx.members_of(owner) else None
+        if receiver.type != "identifier":
+            return None  # a chained or computed receiver — never
+        recv = _text(receiver, source)
+        recv_type = scope.type_of(recv)
+
+        # An extension is claimed only when the receiver fits, or when the receiver's
+        # type is unknown and so cannot contradict it. Attaching it to the receiver
+        # *type* would be the D4 fabrication.
+        if name in ctx.extensions and (recv_type is None or _bare_type(recv_type) == ctx.extensions[name]):
+            return f"java:{ctx.package}.{name}" if ctx.package else None
+        if recv_type is not None:
+            resolved = self._resolve_type(recv_type, ctx)
+            return f"{resolved}.{name}" if resolved else None
+        if recv[:1].isupper():
+            # `Type.foo()` — an object, a companion member folded onto the class
+            # (D5), or an enum member. The Java rule, unchanged.
+            resolved = self._resolve_type(recv, ctx)
+            return f"{resolved}.{name}" if resolved else None
+        return None
+
+    # ---- resolution ---------------------------------------------------------
+
+    def _resolve_type(self, simple_or_fqn: str, ctx: _FileContext) -> str | None:
+        """Resolve a type name to a node id (precision-first, else ``None``)."""
+        name = _bare_type(simple_or_fqn)
+        if not name:
+            return None
+        if "." in name:
+            # Already qualified, or a nested name (`Outer.Inner`) we take as read.
+            return f"java:{name}"
+        if name in ctx.imports.by_simple:
+            return f"java:{ctx.imports.by_simple[name]}"
+        if ctx.package:  # same-package sibling — a guess, checked again in finalize
+            return f"java:{ctx.package}.{name}"
+        return None
+
+    def finalize(self, batch: FactBatch) -> FactBatch:
+        """Repoint ``IMPLEMENTS`` edges whose base type was guessed into this package.
+
+        ``_resolve_type`` has to answer per file: a bare ``: ViewModel`` gives no
+        clue whether the base is a sibling declaration or ``androidx.lifecycle``.
+        It assumes the enclosing package, which is right for a sibling and wrong
+        for every framework supertype — and Android code inherits from the
+        framework constantly.
+
+        By the time this runs, every declaration in the repository is known, so
+        the guess is checkable. A target matching no declared type is repointed at
+        ``java:<BareName>`` with an **external** node: that asserts the name the
+        source actually wrote instead of a package this front-end invented, and it
+        lands the edge rather than leaving it dangling. Same shape as C# and PHP.
+
+        **Only a guess is repointed.** The test for "was this a guess" is whether
+        the target names a node at all: a supertype that resolved through an
+        explicit ``import androidx.lifecycle.ViewModel`` already has a node — the
+        external placeholder the import pass emitted — and its fully-qualified
+        name is *read from the source*, not inferred. Repointing that to a bare
+        ``java:ViewModel`` would throw away the one thing the file actually told
+        us. A same-package guess, by contrast, emits no node anywhere, which is
+        precisely what makes it identifiable here.
+        """
+        known = {n.id for n in batch.nodes}
+        out = FactBatch()
+        for node in batch.nodes:
+            out.add_node(node)
+        for edge in batch.edges:
+            if edge.kind is not EdgeKind.IMPLEMENTS or not edge.dst.startswith("java:") or edge.dst in known:
+                out.add_edge(edge)
+                continue
+            bare = edge.dst.rsplit(".", 1)[-1]
+            target = f"java:{bare}"
+            out.add_node(Node(target, NodeKind.TYPE, bare, _LANG, external=True))
+            out.add_edge(Edge(edge.src, target, EdgeKind.IMPLEMENTS, edge.provenance))
+
+        # P3, and both passes need the whole tree for the same reason the IMPLEMENTS
+        # repoint above does: a `@Query` names a *table* while an `@Entity` names a
+        # *class*, and a Retrofit call names a path whose endpoint — if it exists at
+        # all — is declared somewhere else entirely.
+        out = repoint_table_edges(out)
+        resolve_function = self._finalize_resolver(out)
+        emit_nav_routes(self._nav, out, resolve_function)
+        self._nav.clear()
+        emit_ktor_routes(self._ktor, out, resolve_function)
+        self._ktor.clear()
+        link_actuals(out)
+        self.unresolved_calls, _joined = join_to_endpoints(self._client, out)
+        return out
+
+
+# ---- scope, for typed receivers ---------------------------------------------
+
+
+@dataclass
+class _Scope:
+    """What names a body binds, and which of them carry a declared type.
+
+    Deliberately flat: one table for the whole function rather than one per
+    block. That over-approximates ``bound``, so a name bound anywhere in the body
+    silences a bare call to it everywhere in the body. The error is on the side
+    of emitting nothing, which is the direction this front-end is allowed to be
+    wrong in.
+    """
+
+    types: dict[str, str] = field(default_factory=dict)
+    bound: set[str] = field(default_factory=set)
+
+    def __post_init__(self) -> None:
+        self.bound |= set(self.types)
+
+    def merge_fields(self, fields: dict[str, str]) -> None:
+        """Enclosing-type properties are in scope, but a parameter shadows one."""
+        for name, declared in fields.items():
+            self.types.setdefault(name, declared)
+
+    def bind(self, name: str, declared: str = "") -> None:
+        if not name:
+            return
+        self.bound.add(name)
+        if declared:
+            self.types[name] = declared
+        else:
+            # An unannotated `val x = something()` — the type would have to be
+            # inferred, so the name is bound but deliberately untyped, and every
+            # call on it is skipped rather than guessed.
+            self.types.pop(name, None)
+
+    def type_of(self, name: str) -> str | None:
+        return self.types.get(name)
+
+
+def _collect_bindings(body: TSNode, source: bytes, scope: _Scope) -> None:
+    """Record every local binding in ``body``, with its declared type where given."""
+    for node in _walk(body):
+        if node.type == "property_declaration":
+            declared = _declared_property_type(node, source)
+            names = _property_names(node, source)
+            for name in names:
+                scope.bind(name, declared if len(names) == 1 else "")
+        elif node.type in ("lambda_parameters", "function_value_parameters"):
+            for child in node.named_children:
+                if child.type in ("parameter", "variable_declaration"):
+                    scope.bind(_declared_name_or_first(child, source))
+
+
+def _call_sites(body: TSNode) -> list[TSNode]:
+    """Every ``call_expression`` in a body, excluding nested type declarations.
+
+    A nested class or object is its own scope with its own members; its calls are
+    emitted against *its* functions, not the enclosing one.
+    """
+    out: list[TSNode] = []
+    stack = list(body.named_children)
+    while stack:
+        node = stack.pop()
+        if node.type in _TYPE_DECLS:
+            continue
+        if node.type == "call_expression":
+            out.append(node)
+        stack.extend(node.named_children)
+    return out
+
+
+def _walk(node: TSNode) -> list[TSNode]:
+    out: list[TSNode] = []
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        out.append(n)
+        stack.extend(n.named_children)
+    return out
+
+
+def _parameter_types(func: TSNode, source: bytes) -> dict[str, str]:
+    """``fun f(topic: Topic, onClick: () -> Unit)`` → ``{"topic": "Topic", "onClick": ""}``.
+
+    **Every** parameter is returned, including the ones whose type is not a simple
+    ``user_type``. The empty string means "bound here, but not usefully typed",
+    and both halves matter: the type drives receiver resolution, and the *name*
+    silences a bare call to it.
+
+    Dropping the untyped ones was a real defect, caught by the invention oracle
+    rather than by a test. Compose parameters are function-typed — ``onClick: ()
+    -> Unit`` is a ``function_type``, not a ``user_type`` — so they were not bound
+    at all, and a later bare ``onClick(...)`` resolved to an import of the same
+    name instead of being skipped as shadowed.
+    """
+    params = next((c for c in func.named_children if c.type == "function_value_parameters"), None)
+    if params is None:
+        return {}
+    out: dict[str, str] = {}
+    for param in params.named_children:
+        if param.type != "parameter":
+            continue
+        name = next((_text(c, source) for c in param.named_children if c.type == "identifier"), "")
+        declared = next((_text(c, source) for c in param.named_children if c.type == "user_type"), "")
+        if name:
+            out[name] = declared
+    return out
+
+
+def _extension_receiver(func: TSNode, source: bytes) -> str:
+    """The receiver of ``fun Topic.slugify()``, or ``""`` for a plain function.
+
+    The grammar puts the receiver's ``user_type`` *before* the name identifier,
+    so position is what tells an extension from a function with a return type.
+    """
+    name_node = func.child_by_field_name("name")
+    if name_node is None:
+        return ""
+    for child in func.named_children:
+        if child.type == "user_type" and child.end_byte < name_node.start_byte:
+            return _bare_type(_text(child, source))
+    return ""
+
+
+def _declared_property_type(prop: TSNode, source: bytes) -> str:
+    """The written type of ``val x: T = …``; ``""`` when it is inferred."""
+    decl = next((c for c in prop.named_children if c.type == "variable_declaration"), None)
+    if decl is None:
+        return ""
+    return next((_text(c, source) for c in decl.named_children if c.type == "user_type"), "")
+
+
+def _declared_name_or_first(node: TSNode, source: bytes) -> str:
+    return next((_text(c, source) for c in node.named_children if c.type == "identifier"), "")
+
+
+def _bare_type(name: str) -> str:
+    """``Flow<List<Topic>>`` → ``Flow``; a nullable ``Topic?`` → ``Topic``."""
+    return name.split("<", 1)[0].strip().rstrip("?").strip()
+
+
+# ---- module-level helpers ---------------------------------------------------
+
+
+def _add_member(
+    batch: FactBatch,
+    parent_id: str,
+    name: str,
+    kind: NodeKind,
+    rel: str,
+    line: int,
+    suffix: str = "",
+) -> str:
+    """Add a member node under ``parent_id`` plus its ``CONTAINS`` edge; return its id.
+
+    ``suffix`` marks a declaration that shares its name with another in a different
+    source set (D17); it is part of the id and never part of the ``name``, which stays
+    what the source wrote.
+    """
+    member_id = f"{parent_id}.{name}{suffix}"
+    batch.add_node(Node(member_id, kind, name, _LANG, Provenance(rel, line)))
+    batch.add_edge(Edge(parent_id, member_id, EdgeKind.CONTAINS, Provenance(rel, line)))
+    return member_id
+
+
+def _binds_property(param: TSNode) -> bool:
+    """Whether a ``class_parameter`` declares a property (``val``/``var``) (D6).
+
+    The keyword is an anonymous token child, not a field, so this reads the token
+    stream rather than asking for a name the grammar does not give.
+    """
+    return any(child.type in ("val", "var") for child in param.children)
+
+
+def _property_names(prop: TSNode, source: bytes) -> list[str]:
+    """Declared names in a ``property_declaration``, including destructuring.
+
+    ``val (a, b) = pair`` declares two properties; the grammar gives one
+    ``multi_variable_declaration`` holding both.
+    """
+    names: list[str] = []
+    for child in prop.named_children:
+        if child.type == "variable_declaration":
+            names.append(_declared_name(child, source))
+        elif child.type == "multi_variable_declaration":
+            names.extend(
+                _declared_name(inner, source)
+                for inner in child.named_children
+                if inner.type == "variable_declaration"
+            )
+    return [n for n in names if n]
+
+
+def _declared_name(decl: TSNode, source: bytes) -> str:
+    """The identifier of a ``variable_declaration`` (``name: Type`` → ``name``)."""
+    return next((_text(c, source) for c in decl.named_children if c.type == "identifier"), "")
+
+
+def _supertypes(node: TSNode, source: bytes) -> list[str]:
+    """Supertype names from a ``delegation_specifiers`` clause.
+
+    Kotlin writes one list for what Java splits into ``extends`` and
+    ``implements``: ``class A : Base(), Iface`` — the superclass is the one with
+    a constructor invocation, and the graph does not care which is which (D7).
+    """
+    out: list[str] = []
+    specifiers = next((c for c in node.named_children if c.type == "delegation_specifiers"), None)
+    if specifiers is None:
+        return out
+    for spec in specifiers.named_children:
+        if spec.type != "delegation_specifier":
+            continue
+        for child in spec.named_children:
+            if child.type == "user_type":
+                out.append(_text(child, source))
+                break
+            if child.type == "constructor_invocation":
+                inner = next((c for c in child.named_children if c.type == "user_type"), None)
+                if inner is not None:
+                    out.append(_text(inner, source))
+                break
+            if child.type == "explicit_delegation":
+                # `: Iface by impl` — the interface is still implemented.
+                inner = next((c for c in child.named_children if c.type == "user_type"), None)
+                if inner is not None:
+                    out.append(_text(inner, source))
+                break
+    return [n for n in out if n]
+
+
+def _field_text(node: TSNode, field_name: str, source: bytes) -> str:
+    child = node.child_by_field_name(field_name)
+    return _text(child, source) if child is not None else ""
+
+
+def _text(node: TSNode | None, source: bytes) -> str:
+    if node is None:
+        return ""
+    return source[node.start_byte : node.end_byte].decode("utf-8", "replace").strip()
+
+
+def _kotlin_parser() -> Any:
+    try:
+        import tree_sitter_kotlin
+        from tree_sitter import Language, Parser
+    except ImportError as exc:  # pragma: no cover - exercised only without the extra
+        raise RuntimeError(
+            "Kotlin extraction needs tree-sitter; install the extra: "
+            "uv pip install 'tree-sitter>=0.21' 'tree-sitter-kotlin>=1.1.0'"
+        ) from exc
+    language = Language(tree_sitter_kotlin.language())
+    try:
+        return Parser(language)
+    except TypeError:  # older tree-sitter API
+        parser = Parser()
+        parser.language = language
+        return parser
+
+
+__all__ = ["KotlinExtractor"]

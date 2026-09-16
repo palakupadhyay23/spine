@@ -214,7 +214,7 @@ orchestrator regression . --trace crash.log          # or use the fault site fro
 ```
 
 > **Call graphs.** `localize`, `rca`, and `regression` (and the design **Blast radius**) trace
-> caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, Go, PHP, and Perl** (Java/TS
+> caller/callee edges — now extracted for **Python, C, C++, C#, Java, TypeScript, Go, PHP, Perl, and Kotlin** (Java/TS
 > call graphs were added alongside these commands). On a language without one, the reports say
 > so and fall back to module-level impact rather than implying zero.
 
@@ -239,7 +239,28 @@ is: `orchestrator understand .` → commit `episteme/`, then re-run whenever the
 > greenfield projects.
 
 > **Multi-language.** Comprehension covers Python, Java, TypeScript, C#, C, C++, Go,
-> PHP, Perl and SQL. Install the matching [SETUP extras](SETUP.md#optional-extras).
+> PHP, Perl, Kotlin and SQL. Install the matching [SETUP extras](SETUP.md#optional-extras).
+> Kotlin reads `.kt` only — a `.kts` Gradle script is a build DSL, not source, so it gets a
+> separate reader that turns `include(":core:data")` and `project(":core:model")` into a
+> module dependency graph instead of parsing it as code. It also reads the Android data
+> layer: Room entities and DAO reads/writes, and Retrofit calls, which make a mobile app
+> a **consumer** in the multi-repo join rather than a provider. A Kotlin *service* is a
+> **provider**: Ktor `routing { get("/topics") { … } }` and Spring MVC controllers both become
+> `Endpoint`s, so `pkg joins` can pair an app's Retrofit call with the service answering it.
+> The Spring reader is shared with the **Java** front-end, which until then read JAX-RS only.
+> **Multiplatform** repositories render per source set: `expect`/`actual` declarations get
+> distinct ids instead of colliding on one, linked contract-to-implementation by `IMPLEMENTS`,
+> and `state` treats `commonMain`/`androidMain`/`iosMain` as the components they are.
+> Kotlin **codegen** runs on Gradle: `sdlc feature --language kotlin` scaffolds a
+> `kotlin("jvm")` project or writes into an existing one, then runs `./gradlew test` on the
+> modules the change touched. A repo with neither a `./gradlew` nor `gradle` on PATH stops
+> with that message rather than reporting a suite that never compiled. **Android** repos work
+> the same way with two differences: the Gradle module is picked from the target package,
+> because a large app keeps no sources at its root, and the tests run as that module's own
+> JVM unit-test task. That task is usually `testDebugUnitTest`, but product flavours rename
+> it — Spine asks Gradle and uses the name it reports. Set `ANDROID_HOME`; instrumented
+> tests and emulators are out of scope, so a generated screen gets a JVM-testable slice and
+> an explicit `TODO: UI test` rather than a silent gap.
 > Language-specific extraction (including SQL migration folding, C/C++ include graphs,
 > Go interface satisfaction, routes and data layers) is described in
 > [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md). Build tools and test runners are in the

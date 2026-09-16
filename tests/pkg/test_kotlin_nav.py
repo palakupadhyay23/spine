@@ -1,0 +1,139 @@
+"""PKG: Compose navigation as ``NAV`` endpoints (P4, D14).
+
+The behaviours here are the ones that decide whether in-app navigation is visible
+at all. Real Compose code names a route once as a constant and imports it, so the
+literal-only reading a first pass would write finds almost nothing; and a
+declaration and its call site spell the same route differently, so without
+normalisation nothing ever pairs.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from orchestrator.pkg.extractor import RepoCodeExtractor
+from orchestrator.pkg.facts import EdgeKind, FactBatch, NodeKind
+
+pytest.importorskip("tree_sitter_kotlin", reason="install the 'kotlin' extra")
+
+NAV_KT = """\
+package shop.nav
+
+import androidx.navigation.compose.composable
+
+const val cartRoute = "cart_route"
+const val itemIdArg = "itemId"
+
+fun navigateToCart() {
+    navigate(cartRoute)
+}
+
+fun navigateToItem(id: String) {
+    navigate("item_route/$id")
+}
+
+fun cartScreen() {
+    composable(route = cartRoute) { CartRoute() }
+}
+
+fun itemScreen() {
+    composable(route = "item_route/{$itemIdArg}") { ItemRoute() }
+}
+
+fun splitScreen() {
+    composable(route = "split_route") { LeftPane(); RightPane() }
+}
+
+fun computedScreen() {
+    composable(route = buildRoute()) { HiddenRoute() }
+}
+
+fun CartRoute() {}
+fun ItemRoute() {}
+fun LeftPane() {}
+fun RightPane() {}
+fun HiddenRoute() {}
+fun buildRoute(): String = "nope"
+"""
+
+
+def _facts(tmp_path: Path, src: str = NAV_KT, name: str = "Nav.kt") -> FactBatch:
+    (tmp_path / name).write_text(src, encoding="utf-8")
+    return RepoCodeExtractor().extract(tmp_path)
+
+
+def _endpoints(batch: FactBatch) -> set[str]:
+    return {n.name for n in batch.nodes if n.kind is NodeKind.ENDPOINT}
+
+
+def _edges(batch: FactBatch, kind: EdgeKind) -> set[tuple[str, str]]:
+    return {(e.src, e.dst) for e in batch.edges if e.kind is kind}
+
+
+def test_a_route_constant_becomes_an_endpoint(tmp_path: Path) -> None:
+    """Routes are named once and imported — literal-only reading finds nothing."""
+    assert "NAV cart_route" in _endpoints(_facts(tmp_path))
+
+
+def test_an_interpolated_constant_resolves_into_the_route_name(tmp_path: Path) -> None:
+    """`"item_route/{$itemIdArg}"` → `item_route/{itemId}`, D14's own example."""
+    assert "NAV item_route/{itemId}" in _endpoints(_facts(tmp_path))
+
+
+def test_a_computed_route_yields_no_endpoint(tmp_path: Path) -> None:
+    batch = _facts(tmp_path)
+    assert not any("nope" in name or "buildRoute" in name for name in _endpoints(batch))
+
+
+def test_the_route_exposes_the_single_screen_it_shows(tmp_path: Path) -> None:
+    exposes = _edges(_facts(tmp_path), EdgeKind.EXPOSES)
+    assert ("java:endpoint:NAV cart_route", "java:shop.nav.CartRoute") in exposes
+
+
+def test_a_lambda_showing_two_screens_exposes_neither(tmp_path: Path) -> None:
+    """The closure rule: visit order is not evidence about which screen is 'the' one."""
+    batch = _facts(tmp_path)
+    assert "NAV split_route" in _endpoints(batch)  # the route is still real
+    targets = {dst for src, dst in _edges(batch, EdgeKind.EXPOSES) if "split_route" in src}
+    assert targets == set()
+
+
+def test_navigating_consumes_the_route_across_differing_spellings(tmp_path: Path) -> None:
+    """`navigate("item_route/$id")` must pair with `composable("item_route/{itemId}")`."""
+    consumes = _edges(_facts(tmp_path), EdgeKind.CONSUMES)
+    assert (
+        "java:shop.nav.navigateToItem",
+        "java:endpoint:NAV item_route/{itemId}",
+    ) in consumes
+    assert ("java:shop.nav.navigateToCart", "java:endpoint:NAV cart_route") in consumes
+
+
+def test_navigating_to_an_undeclared_route_consumes_nothing(tmp_path: Path) -> None:
+    """Inventing the destination would make `pkg verify` report zero dangling for it."""
+    src = 'package shop.nav\n\nfun go() {\n    navigate("nowhere_route")\n}\n'
+    batch = _facts(tmp_path, src, "Go.kt")
+    assert _edges(batch, EdgeKind.CONSUMES) == set()
+    assert _endpoints(batch) == set()
+
+
+def test_a_route_constant_declared_in_another_file_still_resolves(tmp_path: Path) -> None:
+    """The case that forces a whole-repo pass: the constant is never local."""
+    (tmp_path / "Routes.kt").write_text(
+        'package shop.nav\n\nconst val searchRoute = "search_route"\n', encoding="utf-8"
+    )
+    (tmp_path / "Screen.kt").write_text(
+        "package shop.ui\n\nimport androidx.navigation.compose.composable\n\n"
+        "fun searchScreen() {\n    composable(route = searchRoute) { SearchRoute() }\n}\n\n"
+        "fun SearchRoute() {}\n",
+        encoding="utf-8",
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert "NAV search_route" in _endpoints(batch)
+
+
+def test_nav_endpoints_cannot_collide_with_an_http_verb(tmp_path: Path) -> None:
+    """`NAV` keeps in-app routes out of the cross-repo HTTP join entirely."""
+    names = _endpoints(_facts(tmp_path))
+    assert names and all(name.startswith("NAV ") for name in names)

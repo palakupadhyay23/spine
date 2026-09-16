@@ -122,7 +122,11 @@ _PHASE_ID = re.compile(r"^\*\*([A-Za-z]+-?\d+)\b")
 
 _DEPENDS_ON = re.compile(r"\*\*Depends on:\*\*\s*\[[^\]]+\]\(([^)]+)\)\s*merged\s*\(([^)]*)\)")
 _PHASE_CODE_IN_PROSE = re.compile(r"\b([A-Za-z]-?\d+)\b")
-_TOP_STATUS = re.compile(r"^\*\*Status:\*\*\s*(.+?)\.", re.M)
+# The whole **Status:** field, not its first sentence. It was `(.+?)\.` on one line, which
+# silently matched nothing the moment a status line wrapped — and all of this repository's
+# roadmaps wrap theirs, so every check reading it was a no-op here. Capture to the next
+# bolded field or blank line instead.
+_TOP_STATUS = re.compile(r"^\*\*Status:\*\*[ \t]*(.+?)(?=\n[ \t]*\n|\n\*\*|\Z)", re.M | re.S)
 _STALE_HEADER_PHRASES = ("no code written", "plan for review")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
@@ -287,6 +291,113 @@ def check_top_status_freshness(tables: dict[Path, list[PhaseRow]]) -> list[str]:
     return problems
 
 
+#: How a roadmap's top `**Status:**` line states its progress — the same shorthand its phase
+#: table uses ("P0–P9 done", "P1, P2 done", "P3 done"). Emphasis is stripped before matching,
+#: because every one of them is written `**P0–P9 done**`.
+_DONE_RANGE = re.compile(r"\bP(\d+)\s*[–—-]\s*P(\d+)\s+done\b", re.I)
+_DONE_LIST = re.compile(r"\b(P\d+(?:\s*,\s*(?:and\s+)?P\d+)+)\s+done\b", re.I)
+_DONE_ONE = re.compile(r"\bP(\d+)\s+done\b", re.I)
+_PHASE_NUMBER = re.compile(r"P(\d+)", re.I)
+
+
+def claimed_done(line: str) -> set[str] | None:
+    """Which phases a status line claims are finished, or ``None`` if it makes no such claim
+    in a form this can read.
+
+    ``None`` is a skip and never a failure. A roadmap may write its header however it likes,
+    and guessing at free prose is exactly the thing this gate does not do — see the module
+    docstring on why the generalised version of that idea was withdrawn at 33% precision.
+    """
+    plain = line.replace("*", " ").replace("_", " ")
+    ranged = _DONE_RANGE.search(plain)
+    if ranged:
+        lo, hi = int(ranged.group(1)), int(ranged.group(2))
+        return {f"P{n}" for n in range(min(lo, hi), max(lo, hi) + 1)}
+    listed = _DONE_LIST.search(plain)
+    if listed:
+        return {f"P{n}" for n in _PHASE_NUMBER.findall(listed.group(1))}
+    one = _DONE_ONE.search(plain)
+    return {f"P{one.group(1)}"} if one else None
+
+
+def _phase_order(phase_id: str) -> tuple[int, str]:
+    """Sort P2 before P10 — string order puts P10 second."""
+    digits = _PHASE_NUMBER.search(phase_id)
+    return (int(digits.group(1)) if digits else 0, phase_id)
+
+
+def check_top_status_matches_table(tables: dict[Path, list[PhaseRow]]) -> list[str]:
+    """The header's progress claim against its own table's DONE rows.
+
+    This is `check_top_status_freshness` sharpened. That one only catches a header still
+    saying "no code written", which stops being true once. A header that says "P0–P5 done"
+    goes stale *every time a phase lands* — and it did: this repository's Kotlin roadmap
+    carried "P0–P5 done · P6–P11 not started" while P6, P7 and P8 sat finished and evidenced
+    twelve lines below it, through three phases, with this gate green the whole way. The
+    currency rule names the *table*, so the table is what got maintained.
+
+    Structured on both sides — a set of phase ids from the header, a set from the table's
+    Status cells — so it is the same kind of check as 1-3, not the prose classification the
+    module docstring explains was withdrawn.
+    """
+    problems = []
+    for doc, rows in tables.items():
+        top = _TOP_STATUS.search(doc.read_text(encoding="utf-8"))
+        if not top:
+            continue
+        claimed = claimed_done(top.group(1))
+        if claimed is None:
+            continue
+        done = {row.phase_id for row in rows if STATUS_DONE in row.status}
+        if not done:
+            continue
+        behind = sorted(done - claimed, key=_phase_order)
+        ahead = sorted((claimed & {row.phase_id for row in rows}) - done, key=_phase_order)
+        if behind:
+            problems.append(
+                f"{doc.name}: top **Status:** does not claim {', '.join(behind)}, but the "
+                "phase table marks them DONE — the header is behind its own table"
+            )
+        if ahead:
+            problems.append(
+                f"{doc.name}: top **Status:** claims {', '.join(ahead)} done, but the phase "
+                "table does not mark them DONE — the header is ahead of its own table"
+            )
+    return problems
+
+
+def check_index_status_agrees(tables: dict[Path, list[PhaseRow]]) -> list[str]:
+    """A roadmap's own progress claim against `SPEC-INDEX.md`'s claim about it.
+
+    The two are written by hand in different files and drift apart — "P1+P2 done" in one and
+    "all four phases" in another is the case this gate was specified to catch. Only compared
+    when *both* sides state it in the readable shorthand, so an index row that summarises in
+    prose is skipped rather than guessed at.
+    """
+    spec_index = SPECS / "SPEC-INDEX.md"
+    if not spec_index.is_file():
+        return []
+    index_lines = spec_index.read_text(encoding="utf-8").splitlines()
+    problems = []
+    for doc in tables:
+        if doc == spec_index or doc.parent.resolve() != SPECS.resolve():
+            continue
+        row_line = next((ln for ln in index_lines if f"]({doc.name})" in ln), None)
+        if row_line is None:
+            continue  # `check_indexed` already reports a missing row
+        indexed = claimed_done(row_line)
+        top = _TOP_STATUS.search(doc.read_text(encoding="utf-8"))
+        own = claimed_done(top.group(1)) if top else None
+        if indexed is None or own is None or indexed == own:
+            continue
+        problems.append(
+            f"{doc.name}: SPEC-INDEX.md says "
+            f"{', '.join(sorted(indexed, key=_phase_order))} done, the spec's own "
+            f"**Status:** says {', '.join(sorted(own, key=_phase_order))} — they disagree"
+        )
+    return problems
+
+
 def check_indexed(tables: dict[Path, list[PhaseRow]]) -> list[str]:
     spec_index = SPECS / "SPEC-INDEX.md"
     if not spec_index.is_file():
@@ -367,6 +478,8 @@ CHECKS = (
     check_started_before_finished,
     check_cross_spec_dependency,
     check_top_status_freshness,
+    check_top_status_matches_table,
+    check_index_status_agrees,
     check_indexed,
     check_relative_links,
     check_header_found_but_unparsed,
