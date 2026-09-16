@@ -30,7 +30,7 @@ gates (before building, before merging). The product is **Spine**; it ships as
 | PHP delivery | Composer or pinned PHPUnit PHAR | Configured test layout, changed-file lint, modern PHPUnit; [validation roadmap](php-codegen-roadmap.md) |
 | CLI commands | **56** | `grep -c '\.command(' src/orchestrator/cli/*.py`, summed |
 | Source modules | **365** | `find src/orchestrator -name '*.py'` |
-| Test functions | **3,278** across 327 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
+| Test functions | **3,289** across 328 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
 | Optional C/C++ semantic pass | `[clang]`, included in `[all]` | [Five-repository evaluation](../evals/clang-semantic-step3b.md): OpenCV 2,597/135,633 sites at 300.296 s; TinyXML-2 416/1,379 at 0.300 s; GoogleTest 54; pugixml 0; fmt 24 bundled-test edges only. Step 3b complete; [Step 4 release readiness](parsing-and-the-pkg.md#step-4--release-readiness) 4.1–4.4 complete on `0c39f6b`; 4.5 gap triage complete, maintainer acceptance pending; draft MR #379. |
 | Graph precision | **1.00** on every node and edge kind, all 10 front-ends | `orchestrator pkg accuracy` against a hand-labelled corpus |
 | `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.89** (Perl, on 9 labelled edges) · **0.50** (PHP, on 8 labelled edges — the misses are P3's typed-receiver rule and the global-namespace fallback, both predicted `known_gaps`, not surprises) | same |

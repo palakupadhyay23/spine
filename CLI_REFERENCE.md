@@ -388,7 +388,7 @@ orchestrator pkg export [PATH] [OPTIONS]
 
 | Option | Description |
 |---|---|
-| `--format` | `sqlite` \| `graphml` \| `dot` \| `json` \| `obsidian`. _(default: `sqlite`)_ |
+| `--format` | `sqlite` \| `graphml` \| `dot` \| `json` \| `cypher` \| `obsidian`. _(default: `sqlite`)_ |
 | `--out`, `-o` | Output file (or directory, for `obsidian`). _(default: `pkg-facts.<ext>`)_ |
 | `--db` | **Deprecated** alias for `--out`, `sqlite` only. Use `--out`. |
 
@@ -398,6 +398,7 @@ orchestrator pkg export [PATH] [OPTIONS]
 | `graphml` | **Gephi, yEd, Cytoscape.** The one to reach for to explore a graph visually. |
 | `dot` | Graphviz. |
 | `json` | Scripts and custom tooling. Carries nodes **and edges** — unlike `pkg extract --json`, which is nodes plus a summary. |
+| `cypher` | **Neo4j, Memgraph, Apache AGE.** A script of batched `UNWIND`/`MERGE` statements — for traversal questions the flat projections cannot answer: transitive closure, cycles, shortest path. Load with `cypher-shell --file`. Relationships carry `file`/`line` in their MERGE key **on purpose**: one `CALLS` fact is one *call site*, and a graph database identifies a relationship by `(start, type, end)` alone, so the idiomatic form would silently collapse ~9% of this repo's edges. Expect parallel relationships between the same pair, and expect `MATCH ()-[r]->() RETURN count(r)` to equal the edge count `--format json` reports. |
 | `obsidian` | An Obsidian vault: a copy of this repo's `episteme/` with `[[wikilink]]` syntax. Run `understand` first; it reads the knowledge base and never edits it in place. |
 
 ```bash

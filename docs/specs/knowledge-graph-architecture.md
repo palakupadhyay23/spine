@@ -34,7 +34,7 @@ flowchart TD
   analyse["One analysis pipeline<br/>knowledge/analysis.py"]
   episteme["episteme/<br/>committed, deterministic"]
   state["state report<br/>ephemeral"]
-  exports["Exports<br/>GraphML · DOT · JSON · SQLite · RDF · vault"]
+  exports["Exports<br/>GraphML · DOT · JSON · Cypher<br/>SQLite · RDF · vault"]
   consumers["Grounded consumers<br/>codegen · review · blast radius · MCP tools"]
 
   src --> fe
@@ -150,7 +150,7 @@ would make `understand --check` fail forever after.
 |---|---|---|
 | `episteme/` markdown | `knowledge/renderers.py` | Committed, diffable, page-per-module/area |
 | `state` report | `knowledge/current_state.py` | Two lenses; HTML/SVG via `report_html`/`report_svg` |
-| GraphML / DOT / JSON | `pkg/graph_export.py` | Gephi, yEd, Cytoscape, Graphviz, scripts |
+| GraphML / DOT / JSON / Cypher | `pkg/graph_export.py` | Gephi, yEd, Cytoscape, Graphviz, scripts, Neo4j/Memgraph |
 | Obsidian vault | `knowledge/wikilinks.py` | A copy of `episteme/` in wikilink syntax |
 | SQLite | `pkg/export.py` | Kind-per-table, ontomesh-ready |
 | RDF | `pkg/rdf.py` | Semantic-web projection |
