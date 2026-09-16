@@ -1,0 +1,19 @@
+import json
+from pathlib import Path
+from clang import cindex
+root=Path('/tmp/spine-clang-ab-opencv')
+r=json.loads(Path('docs/evals/clang-semantic-step3b-results.json').read_text())['repositories']['opencv']
+extra=r['additional_include_directories'];base=r['baseline_include_directories']
+cindex.Config.set_library_file(str(Path(cindex.__file__).parent/'native/libclang.dylib'))
+index=cindex.Index.create();rows=[]
+for file,lines in [('modules/core/src/lda.cpp',{974}),('modules/dnn/src/darknet/darknet_io.cpp',{766,816})]:
+ for config in ([{'omitted_root':p} for p in [None]+extra]+[{'only_added_roots':p} for p in [[],['modules/core/include'],['modules/dnn/include'],['modules/core/include','modules/dnn/include']]]):
+  dirs=base+(config['only_added_roots'] if 'only_added_roots' in config else [d for d in extra if d!=config['omitted_root']])
+  tu=index.parse(str(root/file),args=r['fixed_flags_by_language']['cpp']+['-I'+str(root/d) for d in dirs])
+  calls=[]
+  for c in tu.cursor.walk_preorder():
+   if c.kind.name=='CALL_EXPR' and c.location.file and Path(c.location.file.name)==root/file and c.location.line in lines:
+    calls.append({'line':c.location.line,'spelling':c.spelling,'start':c.extent.start.offset,'end':c.extent.end.offset})
+  row={'file':file,**config,'calls':calls};rows.append(row)
+  if calls:print(json.dumps(row),flush=True)
+Path('/tmp/spine-step45-loss-ablation.json').write_text(json.dumps(rows,indent=2)+'\n')

@@ -1,0 +1,66 @@
+{
+  "date": "2026-09-15",
+  "source_candidate": "001b5285a5f5669911b6db40cd406fe7cbcd90c8",
+  "wheel_sha256": "0d8b09c7e178baa745ae5e3eae4e22ddcb7e1ae4f855b291f51185fcaaaf99fb",
+  "wheel_python_files_match_checkout": 365,
+  "frozen_inputs_match": {
+    "docs/evals/clang-semantic-step3b-harness.txt": "c93248bf30c8cc5ce9e864d26225f05ca4a39ffeb7085725d0dfdc2a3ef8bdd0",
+    "docs/evals/clang-semantic-step3b-supported.jsonl": "7d0eab5eaa5e33a04cfd706702c0d854057435946c88bbb541c4b159faf559fe",
+    "src/orchestrator/pkg/clang_includes.py": "92eec8d6068c041d18f60904e9d17711579f33190eacc1924b1b7b786d9a6cc7",
+    "src/orchestrator/pkg/clang_link.py": "3a36850829592560b08d2b32c18a86df6ecf333118e13fe8e530ecdc96d89b0c",
+    "src/orchestrator/pkg/extractor.py": "2f6478a3cb5643cfe72c611c17fe5db0ca9898ee6dede8b93d4602f5021f292e"
+  },
+  "metadata_extra_closure_correct": true,
+  "absent": {
+    "mode": "absent",
+    "import_path": "/private/tmp/spine-step4-absent/lib/python3.12/site-packages/orchestrator/pkg/extractor.py",
+    "python": "3.12.7",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "libclang": null,
+    "fingerprint": "ed53a1b8d5100daf",
+    "fixture_nodes": "c2839c3b23ca36737e3333068fd356e2043a27d8bc9c5032458aa47236cc4d05",
+    "fixture_report": {
+      "available": false,
+      "pending": 1,
+      "resolved": 0,
+      "total_tus": 1,
+      "parsed_tus": 0,
+      "failed_tus": 0,
+      "diagnostic_tus": 0,
+      "unresolved_reasons": {
+        "extra_unavailable": 1
+      }
+    }
+  },
+  "present": {
+    "mode": "present",
+    "import_path": "/private/tmp/spine-step4-present/lib/python3.12/site-packages/orchestrator/pkg/extractor.py",
+    "python": "3.12.7",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "libclang": "18.1.1",
+    "fingerprint": "19155156ca147cfd",
+    "fixture_nodes": "c2839c3b23ca36737e3333068fd356e2043a27d8bc9c5032458aa47236cc4d05",
+    "fixture_report": {
+      "available": true,
+      "pending": 1,
+      "resolved": 1,
+      "total_tus": 1,
+      "parsed_tus": 1,
+      "failed_tus": 0,
+      "diagnostic_tus": 0,
+      "unresolved_reasons": {}
+    }
+  },
+  "c_cpp_corpus_roots": 7,
+  "corpus_added_grounded_calls": {
+    "c/function_pointers/expected.json:.repo": 0,
+    "c/header_unaffected/expected.json:.repo": 0,
+    "c/plain/expected.json:.repo": 0,
+    "cpp/header_classes/expected.json:.repo": 1,
+    "cpp/instance_calls/expected.json:.repo": 1,
+    "cpp/plain/expected.json:.repo": 0,
+    "cpp/shadowed_calls/expected.json:.repo": 0
+  },
+  "all_corpus_nodes_identical": true,
+  "all_cst_edges_preserved": true
+}

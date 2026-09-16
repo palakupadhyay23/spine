@@ -1,0 +1,31 @@
+import importlib, itertools, json, subprocess, sys
+from pathlib import Path
+modules=['c_extractor','cpp_extractor','clang_link','clang_includes','extractor']
+# Every module first, then forward and reverse dependency order: ten fresh starts per environment.
+orders=[]
+for seq in [modules,list(reversed(modules))]:
+    orders.extend(seq[i:]+seq[:i] for i in range(len(seq)))
+child=r'''
+import importlib,json,sys,tempfile
+from pathlib import Path
+for m in json.loads(sys.argv[1]): importlib.import_module('orchestrator.pkg.'+m)
+assert 'clang.cindex' not in sys.modules
+from orchestrator.pkg.extractor import RepoCodeExtractor
+from orchestrator.pkg.facts import EdgeKind
+with tempfile.TemporaryDirectory() as directory:
+ r=Path(directory);(r/'include/api').mkdir(parents=True)
+ (r/'include/api/worker.h').write_text('class Worker { public: void run() {} };\n')
+ (r/'main.cpp').write_text('#include <api/worker.h>\nvoid use(Worker& w) { w.run(); }\n')
+ e=RepoCodeExtractor();b=e.extract(r)
+ assert any(n.id=='cpp:Worker::run' and n.grounded for n in b.nodes)
+ assert e.clang_report.resolved==int(sys.argv[2]=='present')
+ assert (('cpp:use','cpp:Worker::run') in {(x.src,x.dst) for x in b.edges if x.kind is EdgeKind.CALLS})==(sys.argv[2]=='present')
+ print(json.dumps({'lazy_native_import':True,'header_routing':True,'resolved':e.clang_report.resolved}))
+'''
+rows=[]
+for mode in ['absent','present']:
+ for order in orders:
+  python=Path('/tmp')/f'spine-step4-{mode}'/'bin/python'
+  result=subprocess.run([str(python),'-c',child,json.dumps(order),mode],cwd='/tmp',text=True,capture_output=True,check=True,timeout=30)
+  rows.append({'mode':mode,'order':order,**json.loads(result.stdout)})
+print(json.dumps({'candidate':'0c39f6b74f21c9c64dd971f7b5dddcaad3a7cc56','cases':rows},indent=2))
