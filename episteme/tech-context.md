@@ -9,7 +9,7 @@
 | Migrations | yes |
 | Test runner | pytest |
 | Task type (default) | feature |
-| Version | `3.34.2` |
+| Version | `3.35.0` |
 | Requires Python | `>=3.12` |
 
 ## Infrastructure & runtime
