@@ -1224,7 +1224,9 @@ def pkg_export(
         typer.echo("note: --db is deprecated; use --out.")
         out = db
 
-    suffix = {"sqlite": "db", "graphml": "graphml", "dot": "dot", "json": "json"}[fmt]
+    # Bare subscript on purpose: a format reaching here that has no extension is a
+    # registration bug, and a silent fallback would ship files named `pkg-facts.None`.
+    suffix = {"sqlite": "db", "graphml": "graphml", "dot": "dot", "json": "json", "cypher": "cypher"}[fmt]
     target = out if out is not None else Path(f"pkg-facts.{suffix}")
 
     with _repo_arg(path) as (repo, _):
