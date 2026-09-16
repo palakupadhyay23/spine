@@ -604,6 +604,10 @@ in the recovery report and its linked machine-readable evidence.
 
 Step 3 final local suite: `3769 passed, 4 skipped, 51 deselected, 182 warnings in 220.58s (0:03:40)`. Phase gates, zero-regression accuracy, all four shapes and self-verification (0 errors, 1 warning) passed.
 
-## Confidence step 3b — planned
+## Confidence step 3b — measured
 
-The [Step 3b plan](../specs/parsing-and-the-pkg.md#step-3b--repository-include-roots-and-representative-validation) documents scope, D1–D6 boundaries, work order, regression cases, measurements and exit criteria. Execution has started with the frozen [evaluation manifest](clang-semantic-step3b-manifest.json); candidate results are pending. The existing Step 3 results remain the implementation baseline.
+The [Step 3b report](clang-semantic-step3b.md) contains all 45 completed comparisons
+on five pinned repositories, source audits, precision corrections and support
+recommendations. OpenCV recovers 2,597/135,633 sites at 300.296 s median; the five
+profiles show different benefits and costs. D1–D6 remain unchanged. The prior
+Step 3 measurements above are historical. Required local gates passed; see the Step 3b receipt.

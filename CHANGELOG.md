@@ -18,6 +18,12 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Changed
 
+- Clang derives additional repository include roots from literal include paths,
+  preserving existing precedence and refusing ambiguous or excluded resolutions.
+  Local lambda/class scopes can no longer collapse to their enclosing function;
+  actual declaration parents must agree with the existing grounded identity.
+  See the [Step 3b evaluation](docs/evals/clang-semantic-step3b.md).
+
 - Clang recovers calls inside grounded C++ file-static functions, exact destructors
   and call operators while retaining caller scope and source-file checks.
 

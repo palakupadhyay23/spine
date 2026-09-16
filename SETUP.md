@@ -59,9 +59,10 @@ Optional extras, added when you need them:
   not resolved; missing headers reduce coverage. Included in `[all]`, not `[languages]`.
   Install the C/C++ grammars alongside it, for example
   `pip install 'synaptixs-spine[c,cpp,clang]'`. No compilation database or host SDK
-  is consulted. Inspect the `resolved N of M ... in K of T TUs` summary before
-  relying on coverage: [measured recovery](docs/evals/clang-semantic-validation.md)
-  ranges from 0.51% to 30.17% on the two validation repositories.
+  is consulted. Literal includes can supply additional unambiguous repository roots.
+  Inspect the `resolved N of M ... in K of T TUs` summary before relying on coverage;
+  benefit and cost vary by repository. See the
+  [five-repository evaluation](docs/evals/clang-semantic-step3b.md).
 - `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or

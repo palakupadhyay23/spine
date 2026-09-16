@@ -427,3 +427,63 @@ def test_additional_caller_shapes_still_refuse_unrepresentable_identities(usr: s
     from orchestrator.pkg.clang_link import _caller_usr_to_id
 
     assert _caller_usr_to_id(usr, language="cpp", rel="src/a.cpp") is None
+
+
+@pytest.mark.parametrize(
+    "usr",
+    [
+        "c:@S@Runner@F@run#@Sa@F@operator()#1",
+        "c:@S@Runner@F@run#@S@Local@F@run#",
+        "c:@N@api@F@run#I#@S@Local@F@method#",
+    ],
+)
+def test_usr_refuses_local_declaration_scope_after_parameters(usr: str) -> None:
+    assert usr_to_id(usr, language="cpp", rel="main.cpp") is None
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "auto work = []() {};\nwork();",
+        "struct Local { void run() {} }; Local item; item.run();",
+    ],
+)
+def test_local_callables_cannot_become_enclosing_self_calls(
+    tmp_path: Path, clang_ready: None, body: str
+) -> None:
+    (tmp_path / "main.cpp").write_text(f"struct Runner {{ void run() {{ {body} }} }};\n")
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert any(n.id == "cpp:Runner::run" and n.grounded for n in batch.nodes)
+    assert ("cpp:Runner::run", "cpp:Runner::run") not in _calls(batch)
+
+
+def test_local_class_body_cannot_borrow_enclosing_caller(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "main.cpp").write_text(
+        "struct Target { void go() {} };\n"
+        "struct Runner { void run() {\n"
+        "  struct Local { void method(Target& t) { t.go(); } };\n"
+        "} };\n"
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert ("cpp:Runner::run", "cpp:Target::go") not in _calls(batch)
+
+
+def test_scope_validation_preserves_transparent_linkage_blocks(tmp_path: Path, clang_ready: None) -> None:
+    (tmp_path / "main.cpp").write_text(
+        'extern "C" { struct Worker { void work() {} }; }\n'
+        'namespace api { extern "C" { void use(Worker& w) { w.work(); } } }\n'
+    )
+    from clang import cindex
+
+    from orchestrator.pkg.clang_link import _declaration_scope_matches
+
+    # Linkage blocks are transparent semantic scopes even though the CST does
+    # not currently emit these block-form declarations. Test the native guard.
+    tu = cindex.Index.create().parse(
+        str(tmp_path / "main.cpp"), args=["-x", "c++", "-std=c++17", "-nostdinc"]
+    )
+    declarations = {
+        c.spelling: c for c in tu.cursor.walk_preorder() if c.kind.name in {"CXX_METHOD", "FUNCTION_DECL"}
+    }
+    assert _declaration_scope_matches(declarations["work"], "cpp:Worker::work", "cpp", "main.cpp")
+    assert _declaration_scope_matches(declarations["use"], "cpp:api::use", "cpp", "main.cpp")

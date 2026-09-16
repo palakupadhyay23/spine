@@ -716,7 +716,13 @@ class RepoCodeExtractor:
         pending: list[PendingMemberCall] = []
         for extractor in used:
             pending.extend(getattr(extractor, "unresolved_member_calls", ()))
-        batch = link_clang(batch, root_path, pending=pending, report=self.clang_report)
+        batch = link_clang(
+            batch,
+            root_path,
+            pending=pending,
+            report=self.clang_report,
+            admitted_files={path.relative_to(root_path).as_posix() for path in paths},
+        )
         return link_imports(batch, root_path)
 
     def _iter_files(self, root: Path) -> Iterator[Path]:

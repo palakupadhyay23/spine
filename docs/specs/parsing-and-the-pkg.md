@@ -260,15 +260,24 @@ conflicting candidates are refused. The pass never changes the node set.
 The report states recovered sites, total pending sites, parsed/total TUs,
 diagnostic/failed TUs, and a partition of unresolved sites by the furthest stage
 observed. These are coverage observations, not proof of complete resolution or
-attribution of every miss to missing headers. Latest measured recovery is 0.51%
-in the OpenCV fork and 30.17% in TinyXML-2, with the full denominators and runtime
-in the [validation record](../evals/clang-semantic-validation.md).
+attribution of every miss to missing headers. See the
+[Step 3b evaluation](../evals/clang-semantic-step3b.md) for the expanded five-repository
+comparison and the [validation record](../evals/clang-semantic-validation.md) for
+historical results. Literal include suffixes can supply additional roots from
+admitted repository headers. Existing search precedence is retained; conflicting
+new resolutions are refused. Caller and target projections must also agree with
+clang's actual namespace/record parents; a local lambda or class cannot borrow
+its enclosing function's ID through a USR parameter suffix. Path canonicalization
+is cached per extraction to avoid repeating filesystem work for header cursors
+in many translation units. Within each parsed TU, functions outside the wanted
+files and their actual clang include ancestors are skipped; unknown paths remain
+conservative. This changes traversal cost, not the source-TU selection.
 
 #### Step 3b — repository include roots and representative validation
 
-**Status: in progress; evaluation inputs frozen.** Documented 2026-09-15 at the
+**Status: complete; implementation, evaluation and local gates passed.** Documented 2026-09-15 at the
 user's request. This is a follow-up to confidence Step 3, not a replacement for
-P0–P6 or a claim that additional recovery has been implemented. The implementation
+P0–P6. See the [completed measurements and source audit](../evals/clang-semantic-step3b.md). The implementation
 baseline is `4950899`; [Step 3 evidence](../evals/clang-semantic-recovery.md) remains
 historical. Execution authorized by the user; the evaluation manifest is frozen before candidate implementation.
 
@@ -306,11 +315,11 @@ generated headers may continue to limit recovery after this change.
 | Work item | Planned action | Completion evidence |
 |---|---|---|
 | **3b.1 — Freeze evaluation inputs** | Record the baseline implementation hash, environment and repository pins. Retain OpenCV and TinyXML-2; select three additional repositories covering self-contained C++, template/STL-heavy code and macro/generated-header-heavy code. Record names, commit hashes, selection reasons and input manifests before observing candidate results. | Committed evaluation manifest; all five repositories selected before tuning. Selection and pins are recorded in [the manifest](../evals/clang-semantic-step3b-manifest.json). |
-| **3b.2 — Prove the include-root gap** | Add minimal failing fixtures under pytest temporary directories or `.repo/`. Cover prefixed angle/quoted includes, transitive includes and headers whose parent directory is insufficient. Record the current failure before changing production flags. | A reproducible supported call that baseline clang misses despite both function nodes already being grounded. |
-| **3b.3 — Implement bounded root synthesis** | Derive roots from exact literal include suffixes matched to admitted repository header paths. Define deterministic precedence and ambiguity handling; verify the complete search-path list cannot silently shadow another header. Preserve existing successful relative-include behavior and repository boundaries. | Focused positive/negative tests and a reviewable flag derivation. Record the chosen algorithm and any deviation from this plan before broad evaluation. |
-| **3b.4 — Measure contribution and cost** | Run the three configurations below on each pinned repository, in fresh processes, with three runs per configuration and a recorded interleaved order. Keep fixtures, environment and source inputs fixed; separate diagnostic collection from timing. | Machine-readable per-repository measurements, graph differences, flags, source hashes and repeatability assertions. |
-| **3b.5 — Review correctness** | Recheck the fixed Step 2 audit and Step 3 additions; inspect every removed/retargeted semantic edge. Review new additions from source using the bounded audit rule below. | Per-edge verdicts with caller, receiver and target evidence; all demonstrated regressions resolved. |
-| **3b.6 — Define supported use cases** | Complete applicable repository gates and summarize results by repository profile. State limitations and the cost/benefit of opt-in support separately from any future default-enablement proposal. | Evaluation report, passing gates and an explicit support/release recommendation; no automatic release or merge. |
+| **3b.2 — Prove the include-root gap** | Add minimal failing fixtures under pytest temporary directories or `.repo/`. Cover prefixed angle/quoted includes, transitive includes and headers whose parent directory is insufficient. Record the current failure before changing production flags. | Four prefixed-include cases failed before the change; all pass afterward (`test_prefixed_include_root_recovers_grounded_call`). |
+| **3b.3 — Implement bounded root synthesis** | Derive roots from exact literal include suffixes matched to admitted repository header paths. Define deterministic precedence and ambiguity handling; verify the complete search-path list cannot silently shadow another header. Preserve existing successful relative-include behavior and repository boundaries. | `clang_includes.py`; 94 focused tests pass. Algorithm, performance adjustments and source-audit-driven P1 restriction recorded in the evaluation report. |
+| **3b.4 — Measure contribution and cost** | Run the three configurations below on each pinned repository, in fresh processes, with three runs per configuration and a recorded interleaved order. Keep fixtures, environment and source inputs fixed; separate diagnostic collection from timing. | All 45 runs complete; `clang-semantic-step3b-results.json` records flags, timings, graph hashes and passing preservation/repeatability assertions. |
+| **3b.5 — Review correctness** | Recheck the fixed Step 2 audit and Step 3 additions; inspect every removed/retargeted semantic edge. Review new additions from source using the bounded audit rule below. | Fixed 200 OpenCV additions: 198 retained, 2 wrong lambda calls fixed/refused; all 54 GoogleTest additions correct. All removals reviewed; five known correct OpenCV losses disclosed. Old negative cases remain absent; all 27 Step 3 additions retained. |
+| **3b.6 — Define supported use cases** | Complete applicable repository gates and summarize results by repository profile. State limitations and the cost/benefit of opt-in support separately from any future default-enablement proposal. | Evaluation report recommends profile-dependent optional use; no general coverage claim. Required local gates passed; MR #379 remains draft. |
 
 Required regression coverage for 3b.3:
 
@@ -330,7 +339,9 @@ Required regression coverage for 3b.3:
 
 Compare **A: baseline clang off**, **B: baseline clang on** and **C: candidate
 clang on**. B versus A measures the existing contribution; C versus B isolates
-the include-root change. Rerun these current comparisons, not the original
+the complete candidate, including documented performance fixes and the stricter
+refusal of local declaration scopes discovered during the source audit. These
+fixes preserve D1–D6 and do not broaden P1's accepted identities. Rerun these current comparisons, not the original
 roadmap's already-recorded probes or baseline. Use the existing A/B harness as
 the starting point and record the extension for the third configuration.
 

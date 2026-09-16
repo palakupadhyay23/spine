@@ -14,6 +14,7 @@ import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -28,7 +29,11 @@ _CPP_FUNCTION = re.compile(rf"c:((?:@(?:N|S)@{_IDENTIFIER})*)@F@({_IDENTIFIER})"
 # LLVM 18 USRGeneration.cpp: parameters precede a final '#', followed by
 # static/CVR/ref method qualifiers. Parameter types are opaque here: the graph
 # keys functions by name, and this input comes from a resolved clang declaration.
-_CPP_SIGNATURE = re.compile(r"(?:[^\s#]+#)*S?[1-7]?(?:&{1,2})?")
+# A segment starting '@' introduces another declaration scope after the function
+# (e.g. a local class or lambda), not a parameter type. It must not collapse to
+# the enclosing function. Qualified parameter types start with type encodings
+# such as '$', '*', or '&', so their embedded '@' scopes remain supported.
+_CPP_SIGNATURE = re.compile(r"(?:[^@\s#][^\s#]*#)*S?[1-7]?(?:&{1,2})?")
 _CPP_CALLER_FUNCTION = re.compile(
     rf"c:([^@]+)?((?:@(?:N|S)@{_IDENTIFIER})*)@F@(~?{_IDENTIFIER}|operator\(\))"
 )
@@ -153,6 +158,29 @@ def _caller_usr_to_id(usr: str, *, language: str, rel: str) -> str | None:
     return "cpp:" + "::".join([*parents, match[3]])
 
 
+def _declaration_scope_matches(cursor: Cursor, identity: str, language: str, rel: str) -> bool:
+    """Verify the projected name against clang's actual declaration parents.
+
+    Function/local/lambda contexts cannot be smuggled through an opaque USR
+    parameter encoding. Only the existing namespace/record name scopes qualify.
+    """
+    parents: list[str] = []
+    parent = cursor.semantic_parent
+    while parent is not None and parent.kind.name != "TRANSLATION_UNIT":
+        if parent.kind.name == "LINKAGE_SPEC":
+            parent = parent.semantic_parent
+            continue
+        if parent.kind.name not in {"NAMESPACE", "CLASS_DECL", "STRUCT_DECL"} or not parent.spelling:
+            return False
+        parents.append(parent.spelling)
+        parent = parent.semantic_parent
+    if parent is None:
+        return False
+    if language == "c":
+        return not parents and identity in {f"c:{cursor.spelling}", f"c:{rel}::{cursor.spelling}"}
+    return identity == "cpp:" + "::".join([*reversed(parents), cursor.spelling])
+
+
 def _caller_matches(
     caller: Cursor | None, site: PendingMemberCall, node: Node, language: str, root: Path
 ) -> bool:
@@ -168,6 +196,8 @@ def _caller_matches(
         return False
     rel = _repo_file(caller.location.file.name, root)
     if _caller_usr_to_id(caller.get_usr(), language=language, rel=rel or "") != site.caller:
+        return False
+    if not _declaration_scope_matches(caller, site.caller, language, rel or ""):
         return False
     if node.provenance.file == rel:
         return True
@@ -187,6 +217,7 @@ def link_clang(
     *,
     pending: list[PendingMemberCall],
     report: ClangReport | None = None,
+    admitted_files: set[str] | None = None,
 ) -> FactBatch:
     """Enrich grounded CST facts with bounded, optional semantic CALLS edges.
 
@@ -227,11 +258,23 @@ def link_clang(
         report.available = False
         return batch
     root = root.resolve()
+
+    @cache
+    def repo_file(path: str) -> str | None:
+        # Header cursors repeat across TUs. Resolve each path once per extraction,
+        # retaining symlink/boundary checks without repeating filesystem work.
+        return _repo_file(path, root)
+
     grounded = {n.id: n for n in batch.nodes if n.grounded and n.kind.value == "Function"}
     declared = declared_ids(batch)
     header_dirs = sorted(
         {str((root / f).parent) for f in files if Path(f).suffix in {".h", ".hpp", ".hh", ".hxx"}}
     )
+    if admitted_files is not None:
+        from orchestrator.pkg.clang_includes import infer_include_roots
+
+        extra_roots = infer_include_roots(root, admitted_files & files, header_dirs)
+        header_dirs.extend(str(root / rel) for rel in extra_roots)
     resolved: set[tuple[str, int, int]] = set()
     # A shared header may be parsed in multiple TUs. Conflicting static targets
     # are refused rather than letting TU iteration order choose the graph.
@@ -276,6 +319,7 @@ def link_clang(
         wanted = {key for rel in reachable for key in sites_by_file.get(rel, ())}
         if not wanted:
             continue
+        wanted_files = {key[0] for key in wanted}
         report.parsed_tus += 1
         args = [
             "-x",
@@ -293,19 +337,44 @@ def link_clang(
             report.failed_tus += 1
             continue
         report.diagnostic_tus += bool(list(tu.diagnostics))
+        # A function body in another header cannot contain a wanted site unless
+        # that file can include a wanted file. Use this TU's actual inclusions
+        # (including computed includes), not the CST graph used for TU selection.
+        # Unknown/outside paths merge at None, conservatively retaining parents.
+        parents: dict[str | None, set[str | None]] = {}
+        for inclusion in tu.get_includes():
+            parent = repo_file(inclusion.source.name) if inclusion.source else None
+            child = repo_file(inclusion.include.name)
+            parents.setdefault(child, set()).add(parent)
+        containing_files: set[str | None] = set(wanted_files)
+        ancestors: list[str | None] = list(wanted_files)
+        while ancestors:
+            for parent in parents.get(ancestors.pop(), ()):
+                if parent not in containing_files:
+                    containing_files.add(parent)
+                    ancestors.append(parent)
         cursors: list[tuple[Cursor, Cursor | None]] = [(tu.cursor, None)]
         while cursors:
             cursor, caller = cursors.pop()
             if cursor.kind == cindex.CursorKind.LAMBDA_EXPR:
                 continue
             if cursor.kind in function_kinds:
+                if cursor.location.file:
+                    function_file = repo_file(cursor.location.file.name)
+                    if function_file is not None and function_file not in containing_files:
+                        continue
                 caller = cursor
             elif cursor.kind in record_kinds:
                 caller = None
             if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.location.file:
-                rel = _repo_file(cursor.location.file.name, root)
-                key = (rel or "", cursor.extent.start.offset, cursor.extent.end.offset)
-                if key in wanted:
+                rel = repo_file(cursor.location.file.name)
+                call_key = (
+                    (rel, cursor.extent.start.offset, cursor.extent.end.offset)
+                    if rel is not None and rel in wanted_files
+                    else None
+                )
+                if call_key is not None and call_key in wanted:
+                    key = call_key
                     progress[key] = max(progress[key], 1)
                     target = cursor.referenced
                     if (
@@ -314,11 +383,13 @@ def link_clang(
                         and target.location.file
                     ):
                         progress[key] = max(progress[key], 2)
-                        target_rel = _repo_file(target.location.file.name, root)
+                        target_rel = repo_file(target.location.file.name)
                         if target_rel in files:
                             progress[key] = max(progress[key], 3)
                             target_id = usr_to_id(target.get_usr(), language=language, rel=target_rel or "")
-                            if target_id is not None:
+                            if target_id is not None and _declaration_scope_matches(
+                                target, target_id, language, target_rel or ""
+                            ):
                                 progress[key] = max(progress[key], 4)
                                 site = sites[key]
                                 if site.caller in grounded:

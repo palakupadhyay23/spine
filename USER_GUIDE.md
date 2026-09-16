@@ -248,7 +248,9 @@ is: `orchestrator understand .` → commit `episteme/`, then re-run whenever the
 > For C/C++, the optional `[clang]` extra adds member-call edges between grounded
 > symbols; included `.h` files use C++ routing when reached from a C++ source file.
 > Check the reported recovered-site and parsed-TU counts: missing headers can
-> leave most calls unresolved. See [measured limits](docs/evals/clang-semantic-validation.md).
+> leave most calls unresolved. Repository include roots are inferred conservatively;
+> benefit and runtime vary by codebase. See the
+> [five-repository evaluation](docs/evals/clang-semantic-step3b.md).
 > Python needs no parser extra. SQL uses SQLite by default; `[sql-postgres]` adds
 > Docker-backed Postgres validation. See the dedicated [PHP](#php-code-generation)
 > and [Perl](#perl-code-generation) sections below for brownfield behavior.

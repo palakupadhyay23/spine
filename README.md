@@ -63,10 +63,11 @@ an arm without the graph and tickets that already name their target file. Read t
 and [external replication](https://github.com/synaptixs/spine/blob/main/docs/specs/external-repo-grounding-results.md)
 for the models, commands, counts and limits.
 
-C/C++ semantic recovery varies widely: the current validation recovered 0.51% of
-pending call sites in the OpenCV fork and 30.17% in TinyXML-2. These are recovery
-fractions of unresolved sites, not whole-repository recall. See the
-[validation report](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-validation.md).
+C/C++ semantic recovery and runtime vary widely by repository. Repository-local
+include roots can improve resolution, while missing standard/generated headers
+and unsupported identities still limit it. Recovered pending-site fractions are
+not whole-repository recall. See the
+[five-repository evaluation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-step3b.md).
 
 ## What's new
 
