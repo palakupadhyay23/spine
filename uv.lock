@@ -3722,7 +3722,7 @@ wheels = [
 
 [[package]]
 name = "synaptixs-spine"
-version = "3.34.2"
+version = "3.35.0"
 source = { editable = "." }
 dependencies = [
     { name = "aioboto3" },
