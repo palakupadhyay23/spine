@@ -262,8 +262,9 @@ diagnostic/failed TUs, and a partition of unresolved sites by the furthest stage
 observed. These are coverage observations, not proof of complete resolution or
 attribution of every miss to missing headers. See the
 [Step 3b evaluation](../evals/clang-semantic-step3b.md) for the expanded five-repository
-comparison and the [validation record](../evals/clang-semantic-validation.md) for
-historical results. Literal include suffixes can supply additional roots from
+comparison, the [small-repository control](../evals/clang-semantic-small-repo-validation.md)
+for why recovery tracks standard-library density rather than repository size, and the
+[validation record](../evals/clang-semantic-validation.md) for historical results. Literal include suffixes can supply additional roots from
 admitted repository headers. Existing search precedence is retained; conflicting
 new resolutions are refused. Caller and target projections must also agree with
 clang's actual namespace/record parents; a local lambda or class cannot borrow
