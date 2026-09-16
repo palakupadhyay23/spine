@@ -8,6 +8,14 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Added
 
+- `orchestrator pkg export --format cypher` — a sixth projection, loading the graph
+  into Neo4j, Memgraph or any openCypher store for the traversal questions the flat
+  projections cannot answer: transitive closure, cycles, shortest path. Relationships
+  carry `file`/`line` in their MERGE key deliberately, because one `CALLS` fact is one
+  call site while a graph database identifies a relationship by `(start, type, end)`
+  alone — the idiomatic form drops 4,054 of 45,058 edges (9.00%) on this repository.
+  The emitted row count reconciles exactly against `--format json`'s edge count. See
+  the [projection table](docs/specs/knowledge-graph-architecture.md).
 - Optional C/C++ semantic `CALLS` enrichment with `[clang]`, included in `[all]`.
   Wheel-bundled libclang adds edges only between existing grounded symbols and
   reports recovered call sites and parsed translation units. Ordinary overloads

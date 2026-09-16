@@ -1135,7 +1135,7 @@ def pkg_export(
         str,
         typer.Option(
             "--format",
-            help="sqlite | graphml | dot | json | obsidian. GraphML/DOT open in Gephi/yEd.",
+            help="sqlite | graphml | dot | json | cypher | obsidian. GraphML/DOT open in Gephi/yEd.",
         ),
     ] = "sqlite",
     out: Annotated[
@@ -1167,7 +1167,9 @@ def pkg_export(
 
     `sqlite` is the ontomesh-ready kind-per-table projection. `graphml` and `dot` open in
     Gephi, yEd, Cytoscape and Graphviz; `json` carries nodes AND edges (unlike
-    `pkg extract --json`, which is nodes plus a summary). `obsidian` writes an Obsidian vault
+    `pkg extract --json`, which is nodes plus a summary). `cypher` loads into Neo4j, Memgraph
+    or any openCypher store, for the traversal questions the flat projections cannot answer —
+    transitive closure, cycles, shortest path. `obsidian` writes an Obsidian vault
     — a COPY of the repo's existing `episteme/` with wikilink syntax, so run `understand`
     first; it reads the knowledge base rather than re-extracting, and never edits it in place.
 
