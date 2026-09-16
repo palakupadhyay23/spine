@@ -130,14 +130,14 @@ _12 of the symbols other code depends on here have no test path the graph can se
 [`scripts/sdlc_shapes.py:264`](../../scripts/sdlc_shapes.py#L264)
 
 - **Called by** (1): [`run_shape`](../../scripts/sdlc_shapes.py#L329)
-- **Calls** (3): [`ShapeError`](../../scripts/sdlc_shapes.py#L66), [`load_repo_config`](../../src/orchestrator/pkg/repos.py#L207), [`repo_state`](../../src/orchestrator/pkg/persistence.py#L144)
+- **Calls** (3): [`ShapeError`](../../scripts/sdlc_shapes.py#L66), [`load_repo_config`](../../src/orchestrator/pkg/repos.py#L207), [`repo_state`](../../src/orchestrator/pkg/persistence.py#L145)
 
 ### `check_merged_graph`
 
 [`scripts/sdlc_shapes.py:278`](../../scripts/sdlc_shapes.py#L278)
 
 - **Called by** (1): [`run_shape`](../../scripts/sdlc_shapes.py#L329)
-- **Calls** (3): [`ShapeError`](../../scripts/sdlc_shapes.py#L66), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L368), [`load_repo_config`](../../src/orchestrator/pkg/repos.py#L207)
+- **Calls** (3): [`ShapeError`](../../scripts/sdlc_shapes.py#L66), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L377), [`load_repo_config`](../../src/orchestrator/pkg/repos.py#L207)
 
 ### `check_plan_is_deterministic`
 
