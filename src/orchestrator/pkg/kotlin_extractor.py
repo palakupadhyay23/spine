@@ -872,7 +872,9 @@ class KotlinExtractor:
         self._ktor.clear()
         link_actuals(out)
         self._settle_calls(out)
-        self.unresolved_calls, _joined = join_to_endpoints(self._client, out)
+        # [0] is the unmatched calls; the join *count* is the other half of the return and
+        # is what `test_kotlin_http` asserts, but nothing here needs it.
+        self.unresolved_calls = join_to_endpoints(self._client, out)[0]
         return out
 
     def _settle_calls(self, batch: FactBatch) -> None:

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestrator.sdlc import android
+from orchestrator.sdlc import android, testrunner
 from orchestrator.sdlc.language_guidance import kotlin_guidance
 from orchestrator.sdlc.layout import _resolve_kotlin_layout, detect_jvm_test_library
 from orchestrator.sdlc.testenv import android_toolchain_available, kotlin_project_error
@@ -346,7 +346,9 @@ def test_a_placeable_android_project_has_no_error(tmp_path: Path, monkeypatch: p
 # ---- the runner --------------------------------------------------------------
 
 
-def test_an_android_module_is_tested_with_its_variant_task(tmp_path: Path) -> None:
+def test_an_android_module_is_tested_with_its_variant_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """`test` on an Android module runs every variant's unit tests — the same assertions
     two or four times over, for no extra signal."""
     _android_repo(tmp_path)
@@ -359,19 +361,14 @@ def test_an_android_module_is_tested_with_its_variant_task(tmp_path: Path) -> No
             "?? core/model/src/test/java/com/x/core/model/MT.kt\n"
         )
 
-    runner = GradleTestRunner()
-    import orchestrator.sdlc.testrunner as tr
-
-    original = tr._exec_capture
-    tr._exec_capture = fake_exec
-    try:
-        tasks = asyncio.run(runner._changed_module_tasks(str(tmp_path)))
-    finally:
-        tr._exec_capture = original
+    monkeypatch.setattr(testrunner, "_exec_capture", fake_exec)
+    tasks = asyncio.run(GradleTestRunner()._changed_module_tasks(str(tmp_path)))
     assert tasks == [":core:data:testDebugUnitTest", ":core:model:test"]
 
 
-def test_a_brand_new_test_directory_is_still_attributed_to_its_module(tmp_path: Path) -> None:
+def test_a_brand_new_test_directory_is_still_attributed_to_its_module(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """git collapses a wholly-new untracked directory to the directory itself, and a generated
     test is very often the first file in a directory that did not exist. Asking for the
     collapsed form would make the change look like it touches no source at all, and the runner
@@ -383,14 +380,8 @@ def test_a_brand_new_test_directory_is_still_attributed_to_its_module(tmp_path: 
         seen["argv"] = argv
         return 0, "?? core/data/src/test/java/com/x/core/data/NewTest.kt\n"
 
-    import orchestrator.sdlc.testrunner as tr
-
-    original = tr._exec_capture
-    tr._exec_capture = fake_exec
-    try:
-        tasks = asyncio.run(GradleTestRunner()._changed_module_tasks(str(tmp_path)))
-    finally:
-        tr._exec_capture = original
+    monkeypatch.setattr(testrunner, "_exec_capture", fake_exec)
+    tasks = asyncio.run(GradleTestRunner()._changed_module_tasks(str(tmp_path)))
     assert "-uall" in seen["argv"], "untracked directories would stay collapsed without it"
     assert tasks == [":core:data:testDebugUnitTest"]
 
