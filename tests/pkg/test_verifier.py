@@ -139,6 +139,11 @@ _SOURCES: dict[str, tuple[str, str, str]] = {
         "app.ts",
         "export function greet(name: string): string {\n  return `hi ${name}`;\n}\n",
     ),
+    ".kt": (
+        "tree_sitter_kotlin",
+        "App.kt",
+        'package app\n\nclass App {\n    fun greet(): String = "hi"\n}\n',
+    ),
     ".java": (
         "tree_sitter_java",
         "App.java",

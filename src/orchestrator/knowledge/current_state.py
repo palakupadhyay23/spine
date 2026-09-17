@@ -24,7 +24,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from orchestrator.knowledge.areas import area_of_name, zone_of
+from orchestrator.knowledge.areas import (
+    area_of_file,
+    area_of_name,
+    build_module_paths,
+    multiplatform_modules,
+    store_namespace_prefix,
+    zone_of,
+)
 from orchestrator.knowledge.infrastructure import Infrastructure, detect_infrastructure
 from orchestrator.pkg.doc_link import doc_drift, symbolish_drift
 from orchestrator.pkg.facts import EdgeKind, FactBatch, Node, NodeKind
@@ -212,11 +219,6 @@ def compute_current_state(
 
     layers = Counter(_layer(n) for n in types if not _is_generated(n))
 
-    area_types: Counter[str] = Counter()
-    for e in contains:
-        s, d = by_id.get(e.src), by_id.get(e.dst)
-        if s and s.kind is NodeKind.MODULE and d and d.kind is NodeKind.TYPE and not _is_generated(d):
-            area_types[_area(s.name)] += 1
     # A function's area is the component it *lives in* (its owning module's path or
     # namespace), resolved by walking CONTAINS upward — not its bare symbol id. C/C++
     # function ids are symbols (`cpp:HSL2RGB`, `cpp:A::A`, `c:widget_score`), so
@@ -236,21 +238,53 @@ def compute_current_state(
             cur = p.id
         return None
 
+    # A Gradle build states its own architecture: `settings.gradle.kts` declares the
+    # modules and each script declares what it depends on. Where that exists it beats
+    # any grouping inferred from names — and for Android it is the difference between
+    # a useful answer and a useless one, because reverse-DNS packages put every module
+    # in one area (`com.google`) while the build has 27 of them (D11).
+    _module_paths = build_module_paths(nodes)
+    # A Gradle module with a `commonMain` source set is multiplatform, and its source
+    # sets are its real components (D17): `commonMain` holds the contract and each
+    # platform set implements it. Read off provenance paths, so no build script has to
+    # be interpreted and no ordinary Android module is affected.
+    _multiplatform = multiplatform_modules({n.provenance.file for n in nodes if n.provenance}, _module_paths)
+
+    # The reverse-DNS prefix this project's modules share, resolved once from the whole
+    # first-party module set (§9.4). Without it every module of a reverse-DNS application
+    # groups under `com.google` — one area holding the entire app.
+    _namespace_prefix = store_namespace_prefix(nodes)
+
     def _area_of(n: Node) -> str:
         # The component a node lives in: its owning module's name (dotted namespace /
         # file path). When that can't be resolved — e.g. a C++ method whose class is
         # declared in a `.h` parsed as C, so no `cpp:` type node owns it — fall back to
         # the source file it's defined in, never the bare symbol id (which for C/C++ is
         # a symbol like `cpp:HSL2RGB`, not a location, so it'd be its own component).
+        if _module_paths and n.provenance is not None:
+            declared = area_of_file(n.provenance.file, _module_paths, _multiplatform)
+            if declared is not None:
+                return declared
         mod = _owning_module_name(n.id)
         if mod is None and n.provenance is not None:
             mod = n.provenance.file
-        return _area(mod) if mod else _area(n.id.split(":", 1)[-1])
+        return _area(mod or n.id.split(":", 1)[-1], _namespace_prefix)
 
     area_funcs: Counter[str] = Counter()
     for n in nodes:
         if n.kind is NodeKind.FUNCTION and not _is_generated(n):
             area_funcs[_area_of(n)] += 1
+
+    # Types are grouped the same way. This used to key on the *owning module's name*,
+    # which is a namespace — and under a reverse-DNS convention every module shares the
+    # first two segments, so all 271 types in the validation app landed in one area
+    # called `com.google`. Resolving the type itself lets a Gradle build answer with its
+    # real modules and leaves every other language on the same path as before.
+    area_types: Counter[str] = Counter()
+    for e in contains:
+        s, d = by_id.get(e.src), by_id.get(e.dst)
+        if s and s.kind is NodeKind.MODULE and d and d.kind is NodeKind.TYPE and not _is_generated(d):
+            area_types[_area_of(d)] += 1
 
     controllers = [n for n in types if n.name.endswith("Controller") and not _is_generated(n)]
     ctrl_ids = {c.id for c in controllers}
@@ -260,10 +294,44 @@ def compute_current_state(
             ep_by_ctrl[e.src] += 1
     busiest = [(by_id[cid].name, n) for cid, n in ep_by_ctrl.most_common(8)]
 
+    def _test_covered_areas() -> set[str]:
+        """Areas a test file imports into, read from provenance rather than from areas.
+
+        On a Gradle build an area *is* a module directory — `core/data`, `app` — and a
+        module holds its own tests under `src/test/`, so no area is ever named "test" and
+        `is_test_area` can never fire. `coupling` is module-to-module for the same build,
+        so the test→source edge it would need does not exist there either: the result was
+        `tested_areas: 0` for **every** Gradle repository, including a fully tested one,
+        and a report that said "no automated tests detected" about a repo with tests.
+
+        Provenance answers it directly and in the same vocabulary as every other area
+        here: a node whose file is a test path, importing something, marks the imported
+        thing's area as having a test that reaches it.
+        """
+        out: set[str] = set()
+        for edge in batch.edges:
+            if edge.kind is not EdgeKind.IMPORTS:
+                continue
+            src_node, dst_node = by_id.get(edge.src), by_id.get(edge.dst)
+            if src_node is None or dst_node is None or src_node.provenance is None:
+                continue
+            if _is_test_path(src_node.provenance.file):
+                out.add(_area_of(dst_node))
+        return out
+
     coupling: Counter[tuple[str, str]] = Counter()
     external: Counter[str] = Counter()
     for e in batch.edges:
         if e.kind is not EdgeKind.IMPORTS:
+            continue
+        # A Gradle build states its dependencies directly, module to module, so those
+        # edges ARE the coupling — no need to infer it from what each file imports.
+        # Reading them as-is is also the only way the arrows come out as
+        # `app -> core/data` rather than one self-loop on `com.google`.
+        if e.src.startswith("gradle:") and e.dst.startswith("gradle:"):
+            sa, da = e.src[len("gradle:") :], e.dst[len("gradle:") :]
+            if sa != da:
+                coupling[(sa, da)] += 1
             continue
         src = by_id.get(e.src)
         if not src:
@@ -271,8 +339,14 @@ def compute_current_state(
         dst_name = e.dst.split(":", 1)[-1]
         if _is_framework(dst_name) or dst_name.split(".")[0] not in internal:
             external[".".join(dst_name.split(".")[:2])] += 1
-        else:
-            sa, da = _area(src.name), _area(dst_name)
+        elif not _module_paths:
+            # With a Gradle module graph present, per-file imports would double-count
+            # the same architecture in a second, coarser vocabulary.
+            # With the prefix, like every other area in this function. Without it, a
+            # reverse-DNS repository grouped its coupling under `com.google` while its
+            # areas were named `core.data` — so no arrow matched any node and the whole
+            # "System architecture" section rendered empty.
+            sa, da = _area(src.name, _namespace_prefix), _area(dst_name, _namespace_prefix)
             if sa != da:
                 coupling[(sa, da)] += 1
 
@@ -300,7 +374,7 @@ def compute_current_state(
     # started joining (`pkg/import_link.py`); before that no test→source edge existed.
     all_areas = set(area_types) | set(area_funcs)
     production = {a for a in all_areas if not is_test_area(a)}
-    covered = {dst for (src, dst) in coupling if is_test_area(src)} & production
+    covered = ({dst for (src, dst) in coupling if is_test_area(src)} | _test_covered_areas()) & production
     tested_areas = len(covered)
     untested_top = [(a, c) for a, c in area_types.most_common() if a in production and a not in covered][:5]
 

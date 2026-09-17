@@ -15,13 +15,14 @@ import pytest
 
 from orchestrator.pkg.scope import NOT_APPLICABLE, WALKERS, scopes_for_source
 
-_SUFFIX = {"typescript": ".ts", "go": ".go", "csharp": ".cs", "cpp": ".cpp", "c": ".c"}
+_SUFFIX = {"typescript": ".ts", "go": ".go", "csharp": ".cs", "cpp": ".cpp", "c": ".c", "kotlin": ".kt"}
 _EXTRA = {
     "typescript": "tree_sitter_typescript",
     "go": "tree_sitter_go",
     "csharp": "tree_sitter_c_sharp",
     "cpp": "tree_sitter_cpp",
     "c": "tree_sitter_c",
+    "kotlin": "tree_sitter_kotlin",
 }
 
 
@@ -228,3 +229,37 @@ def test_every_walker_declares_both_halves_of_the_contract() -> None:
     for language, walker in WALKERS.items():
         assert walker.scope_nodes, language
         assert walker.call_nodes, language
+
+
+# ---- §11 finding 11: the oracle must not share the extractor's blind spot ----
+
+
+def test_kotlin_for_loop_variable_shadows_a_bare_call() -> None:
+    """`for (helper in fns) { helper() }` binds `helper`.
+
+    This walker is the *oracle* for D9, so a binding it misses is a fabrication it cannot
+    report — and the extractor had the identical gap, which meant the invention check
+    certified the invented edge as clean. `_CFamily` has always walked `for_range_loop`;
+    this module's docstring names exactly this failure ("a detector that agrees with the
+    extractor by construction").
+    """
+    src = (
+        "package p\n\nfun go(fns: List<() -> Unit>) {\n"
+        "    for (helper in fns) { helper() }\n}\nfun helper() {}\n"
+    )
+    assert "helper" in _shadowed("kotlin", src, 4)
+
+
+def test_kotlin_catch_parameter_shadows_a_bare_call() -> None:
+    """The same rule for `catch (report: Throwable) { report() }`."""
+    src = (
+        "package p\n\nfun go() {\n"
+        "    try { x() } catch (report: Throwable) { report() }\n}\nfun report() {}\n"
+    )
+    assert "report" in _shadowed("kotlin", src, 4)
+
+
+def test_kotlin_is_walked_rather_than_excused() -> None:
+    """Kotlin has one namespace and an `invoke` convention, so it cannot be NOT_APPLICABLE."""
+    assert "kotlin" in WALKERS
+    assert "kotlin" not in NOT_APPLICABLE

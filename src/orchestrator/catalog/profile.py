@@ -40,6 +40,11 @@ _LANG_BY_SUFFIX = {
     ".pl": "perl",
     ".pm": "perl",
     ".t": "perl",
+    # `.kts` is deliberately absent: a Gradle build script is a DSL, not Kotlin
+    # source, and it gets its own reader (kotlin-support-roadmap.md D11/D12).
+    # It is detected as a *marker* below instead, which is what makes a Gradle
+    # project's build system visible without inventing a module per script.
+    ".kt": "kotlin",
 }
 
 
@@ -131,6 +136,14 @@ def _read_markers(root: Path) -> str:
         "package.json",
         "pom.xml",
         "build.gradle",
+        # The Kotlin Gradle DSL, which is the Android and modern-JVM default and
+        # which nothing read before: a Gradle-Kotlin repo reported `languages: []`
+        # and no framework at all because only the Groovy `build.gradle` was read
+        # (kotlin-support-roadmap.md D12). The version catalog carries the
+        # dependency coordinates a multi-module build keeps out of the scripts.
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "gradle/libs.versions.toml",
         "go.mod",
         "composer.json",
         "cpanfile",
@@ -176,6 +189,14 @@ def _detect_framework(markers: str, languages: frozenset[str]) -> str | None:
         ('"react"', "react"),
         ("microsoft.aspnetcore", "aspnet"),
         ("microsoft.net.sdk.web", "aspnet"),
+        ("io.ktor", "ktor"),
+        # Android is named by the Gradle plugin id or by any AndroidX/Compose
+        # coordinate. Checked after the server frameworks on purpose: a Spring or
+        # Ktor service is a provider of routes, an Android app is a consumer of
+        # them (D10), and the framework name is what tells the two apart.
+        ("com.android.application", "android"),
+        ("com.android.library", "android"),
+        ("androidx", "android"),
         ('"laravel/framework"', "laravel"),
         ('"symfony/', "symfony"),
         ("mojolicious", "mojolicious"),

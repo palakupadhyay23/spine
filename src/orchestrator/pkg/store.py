@@ -114,6 +114,34 @@ class FactStore:
         ids = [e.src for e in self._edges if e.kind is EdgeKind.EXPOSES and e.dst == node_id]
         return [self._nodes[i] for i in ids if i in self._nodes]
 
+    def injection_reach_of(self, node_id: str) -> list[Node]:
+        """Where a DI-bound implementation's dependents actually live (D15).
+
+        ``PROVIDES`` is the one edge here that has to be followed **outbound**, and
+        the reason is the direction dependency injection runs in. Asking "what
+        breaks if I change ``OfflineFirstTopicsRepository``" finds nothing inbound:
+        nothing calls the implementation, because every call site was handed the
+        *interface*. The dependents are one hop the other way — the implementation
+        provides ``TopicsRepository``, and it is that interface's methods that the
+        screens and use-cases call.
+
+        So this returns the provided type **and its members**, which is what lets the
+        ordinary inbound ``CALLS`` walk continue from there and reach the real
+        dependents. Measured on the validation app: without it, the blast radius of
+        a repository implementation is empty; with it, it reaches the use-case, the
+        view model and the sync worker that use it.
+
+        Two providers for one type both appear — Dagger qualifiers are recorded but
+        never resolved, so the honest answer is both rather than a guess.
+        """
+        provided = [e.dst for e in self._edges if e.kind is EdgeKind.PROVIDES and e.src == node_id]
+        reached: list[Node] = []
+        for target in provided:
+            if target in self._nodes:
+                reached.append(self._nodes[target])
+            reached.extend(self.children_of(target))
+        return reached
+
     def consumers_of(self, node_id: str) -> list[Node]:
         """What calls this endpoint — the other half of :meth:`exposers_of`.
 
@@ -144,6 +172,12 @@ class FactStore:
         ``CONSUMES`` continues that walk one hop further, to the client. Changing a
         handler reaches the endpoint it serves and then the code that calls it — which is
         the whole point of the join, and useless if only the first hop is followed.
+
+        ``PROVIDES`` is followed **outbound**, via :meth:`injection_reach_of`, because
+        dependency injection inverts the direction: nothing calls an implementation, so
+        its dependents are only reachable through the interface it is bound to. See that
+        method for why the walk expands to the interface's members rather than stopping
+        at the interface itself.
         """
         from collections import deque
 
@@ -158,6 +192,7 @@ class FactStore:
                 [site.caller for site in self.callers_of(nid)]
                 + self.exposers_of(nid)
                 + self.consumers_of(nid)
+                + self.injection_reach_of(nid)
             )
             for node in inbound:
                 if node.id not in seen:

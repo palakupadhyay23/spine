@@ -22,6 +22,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import sys
 from collections import Counter
 from pathlib import Path
@@ -219,6 +220,71 @@ class PhpPreflightRunner:
             return PreflightResult(True, f"PHP lint green: {len(files)} changed file(s)")
         except (OSError, ValueError, RuntimeError) as exc:
             return PreflightResult(False, str(exc))
+
+
+class GradlePreflightRunner:
+    """``./gradlew check`` — but only when the build actually configures a linter.
+
+    P8 of docs/specs/kotlin-support-roadmap.md. ``check`` is Gradle's umbrella lifecycle
+    task: with ktlint or detekt applied it runs them, and **without either it is just
+    ``test`` again**. Running it unconditionally would double every Kotlin run's build
+    time to re-report the result the test stage already has, and — worse — a preflight
+    that fails for the same reason the tests failed reads as two independent problems.
+
+    So the build scripts are read first. No linter plugin, no preflight: it reports
+    *skipped*, which is the honest word for "there was nothing here to check" and is
+    distinguishable from "checked and clean". Same reasoning as the Python runner's
+    ``no pyproject.toml — preflight skipped``.
+
+    The wrapper is preferred over a PATH ``gradle`` for the reason it always is: it pins
+    the version the project was written against.
+    """
+
+    #: Plugin ids that make `check` mean something more than `test`. Matched as substrings
+    #: of the build scripts because a plugin can be applied by id, by alias through a version
+    #: catalog (`alias(libs.plugins.ktlint)`), or in a `plugins {}` block in either spelling.
+    _LINTERS = ("ktlint", "detekt")
+
+    def __init__(self, gradle: str = "gradle", *, capture: ExecCapture | None = None) -> None:
+        self._gradle = gradle
+        self._capture = capture or exec_capture
+
+    async def run(self, *, path: str, baseline: Baseline | None = None) -> PreflightResult:
+        root = Path(path)
+        linter = self._configured_linter(root)
+        if linter is None:
+            return PreflightResult(True, "no ktlint/detekt in the Gradle build — preflight skipped")
+        argv = self._invocation(root)
+        if argv is None:
+            return PreflightResult(
+                True, f"{linter} is configured but Gradle is unavailable — preflight skipped"
+            )
+        rc, out = await self._capture(
+            (*argv, "check", "--console=plain"), cwd=str(root), timeout=_TOOL_TIMEOUT
+        )
+        if rc:
+            return PreflightResult(False, f"gradle check failed ({linter})\n{out}"[-_MAX_OUTPUT_CHARS:])
+        return PreflightResult(True, f"gradle check green ({linter})")
+
+    def _configured_linter(self, root: Path) -> str | None:
+        """The first linter plugin named by any Gradle script in the build, else ``None``."""
+        scripts = [*root.rglob("build.gradle.kts"), *root.rglob("build.gradle")]
+        scripts.extend(p for p in (root / "settings.gradle.kts", root / "settings.gradle") if p.is_file())
+        for script in scripts:
+            try:
+                text = script.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for linter in self._LINTERS:
+                if linter in text:
+                    return linter
+        return None
+
+    def _invocation(self, root: Path) -> tuple[str, ...] | None:
+        wrapper = root / "gradlew"
+        if wrapper.is_file():
+            return (str(wrapper),)
+        return (self._gradle,) if shutil.which(self._gradle) else None
 
 
 class SubprocessPreflightRunner:

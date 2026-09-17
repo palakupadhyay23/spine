@@ -115,6 +115,12 @@ _FIXTURES: dict[str, tuple[str, str]] = {
         "import { readFile } from 'fs';\n\nexport interface Named { name: string }\n\n"
         "export class Thing implements Named {\n  name = 'x';\n  go() { readFile('p', () => {}); }\n}\n",
     ),
+    "kotlin": (
+        "Sample.kt",
+        "package demo\n\nimport kotlin.math.abs\n\n"
+        "class Sample(private val name: String) {\n"
+        "    fun go(): Int = abs(name.length)\n}\n",
+    ),
     "java": (
         "Sample.java",
         "package demo;\n\nimport java.util.List;\n\npublic class Sample {\n"

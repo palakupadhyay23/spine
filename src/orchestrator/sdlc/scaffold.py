@@ -194,6 +194,79 @@ def _java_files(layout: TargetLayout) -> dict[str, str]:
     }
 
 
+_KOTLIN_SETTINGS = """\
+rootProject.name = "{artifact}"
+"""
+
+# `kotlin("jvm")` brings the compiler, so nothing on the machine needs to be Kotlin-aware.
+# `kotlin("test")` is the multiplatform-friendly assertion library and needs no version:
+# the plugin supplies one matching the compiler, which is the whole reason to prefer it
+# over pinning a JUnit release that then has to be kept in step by hand.
+_KOTLIN_BUILD = """\
+plugins {{
+    kotlin("jvm") version "{kotlin_version}"
+}}
+
+repositories {{
+    mavenCentral()
+}}
+
+dependencies {{
+    testImplementation(kotlin("test"))
+}}
+
+kotlin {{
+    jvmToolchain({jvm_toolchain})
+}}
+
+tasks.test {{
+    useJUnitPlatform()
+}}
+"""
+
+_KOTLIN_GITIGNORE = """\
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+*.class
+"""
+
+#: Pinned, not "latest". A scaffold that resolves a floating version builds differently on
+#: two days and is not reproducible; bumping this is a deliberate edit with a test run.
+_KOTLIN_VERSION = "2.0.21"
+
+#: 17 rather than the newest LTS: it is what Android and Spring Boot 3 both target, so a
+#: scaffold that compiles here also compiles in the places Kotlin code actually ships.
+_KOTLIN_JVM_TOOLCHAIN = 17
+
+
+def _kotlin_files(layout: TargetLayout) -> dict[str, str]:
+    """A greenfield Kotlin/JVM project Gradle can build and test as-is (P8, D13).
+
+    No wrapper is written. ``gradlew`` needs ``gradle-wrapper.jar``, a binary this scaffold
+    has no honest way to produce, and a ``gradlew`` script without its jar fails in a way
+    that reads like a broken project rather than a missing tool. ``GradleTestRunner`` says
+    exactly that instead, and ``gradle wrapper`` adds a real one in a second.
+    """
+    artifact = layout.package_name.rpartition(".")[2] or layout.package_name
+    return {
+        "settings.gradle.kts": _KOTLIN_SETTINGS.format(artifact=artifact),
+        "build.gradle.kts": _KOTLIN_BUILD.format(
+            kotlin_version=_KOTLIN_VERSION, jvm_toolchain=_KOTLIN_JVM_TOOLCHAIN
+        ),
+        # Kotlin has no package-marker file; keep the empty source + test dirs in git.
+        f"{layout.source_dir}/.gitkeep": "",
+        f"{layout.tests_dir}/.gitkeep": "",
+        "README.md": _README_TEMPLATE.format(
+            package=layout.package_name,
+            source_dir=layout.source_dir,
+            tests_dir=layout.tests_dir,
+        ),
+        ".gitignore": _KOTLIN_GITIGNORE,
+    }
+
+
 def _typescript_files(layout: TargetLayout) -> dict[str, str]:
     # package.json built via json.dumps so it's always valid JSON; the `test`
     # script runs Vitest, which the package manager invokes via `<pm> test`.

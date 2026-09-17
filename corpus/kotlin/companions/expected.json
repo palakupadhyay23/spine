@@ -1,0 +1,38 @@
+{
+  "language": "kotlin",
+  "case": "companions",
+  "why": "D5. A `companion object`'s members fold onto the enclosing type: `make()` is `java:shop.make.Widget.make`, not `…Widget.Companion.make`. The justification is what call sites actually write — `Widget.make()` from outside and a bare `make()` from inside both name the class, and nothing anywhere writes `Companion`, so a separate node would be a name the graph invented rather than read. The fixture exercises **all three** call forms — `Widget.make()` from outside, a bare `make()` from inside, and the explicit `Companion.make()` — so all three have to land on the same id, and it includes a `const val` in the companion because constants fold the same way. §6 assigned three forms to this case and the fixture long carried only two; the missing one is the form most likely to mint the very phantom D5 exists to prevent, because `Companion` is a bare capitalised name that no file declares. `Widget()` inside `make()` is the constructor case: instantiation is a call to the Type.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.make", "kind": "Module" },
+    { "id": "java:shop.make.Widget", "kind": "Type" },
+    { "id": "java:shop.make.Caller", "kind": "Type" },
+    { "id": "java:shop.make.Widget.rebuild", "kind": "Function" },
+    { "id": "java:shop.make.Widget.reboot", "kind": "Function" },
+    { "id": "java:shop.make.Widget.make", "kind": "Function" },
+    { "id": "java:shop.make.Caller.go", "kind": "Function" },
+    { "id": "java:shop.make.Widget.KIND", "kind": "Field" }
+  ],
+  "edges": [
+    { "src": "java:shop.make", "dst": "java:shop.make.Widget", "kind": "CONTAINS" },
+    { "src": "java:shop.make", "dst": "java:shop.make.Caller", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.rebuild", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.reboot", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.make", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget", "dst": "java:shop.make.Widget.KIND", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Caller", "dst": "java:shop.make.Caller.go", "kind": "CONTAINS" },
+    { "src": "java:shop.make.Widget.rebuild", "dst": "java:shop.make.Widget.make", "kind": "CALLS" },
+    { "src": "java:shop.make.Widget.reboot", "dst": "java:shop.make.Widget.make", "kind": "CALLS" },
+    { "src": "java:shop.make.Caller.go", "dst": "java:shop.make.Widget.make", "kind": "CALLS" },
+    { "src": "java:shop.make.Widget.make", "dst": "java:shop.make.Widget", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "refusals": [
+    {
+      "edge": { "src": "java:shop.make.Widget.reboot", "dst": "java:shop.make.Companion.make", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. `Companion` is a capitalised bare name that no file declares, so the ordinary `Type.member()` path resolves it under the enclosing package and produces `java:shop.make.Companion.make` — a class the source never mentions, carrying the member D5 says belongs to `Widget`. This is the fabrication D5 exists to prevent, and it is the reason this call form belongs in the fixture rather than only in the prose."
+    }
+  ],
+  "excluded": [],
+  "open_questions": []
+}

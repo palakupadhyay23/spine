@@ -50,8 +50,9 @@ VISIBILITY_RULES = {
 def is_public(node: Node) -> bool | None:
     """Is this symbol part of the surface another project could use?
 
-    Returns ``None`` when the language gives no signal the graph can read — Java and
-    C# express visibility with keywords the front-ends don't record, and guessing
+    Returns ``None`` when the language gives no signal the graph can read — Java, Kotlin
+    and C# express visibility with keywords the front-ends don't record (Kotlin's default
+    is public, and `private`/`internal` are modifiers D6 does not store), and guessing
     would be worse than declining to answer.
 
     Per language:

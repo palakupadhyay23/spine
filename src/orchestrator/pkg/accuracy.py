@@ -29,6 +29,9 @@ abstract:
   invention with a reason so a low number is legible; they do not suppress it. Both are
   validated as consistent with ``edges`` on load, because an exemption that quietly moved the
   number would be worse than no annotation at all.
+- **``refusals`` are the opposite of ``false_positives`` and are enforced.** A refusal names an
+  edge a plausible reader *would* emit and this one must not; if the extractor ever emits it,
+  the case fails to load rather than quietly losing a little precision.
 """
 
 from __future__ import annotations
@@ -200,10 +203,12 @@ def _load_case(case_dir: Path) -> tuple[dict[str, Any], Path]:
             raise CorpusError(f"{path}: known_gaps names an edge absent from 'edges': {key}")
 
     # A declared false positive is by definition not a true fact, so it must NOT be labelled.
-    for fp in spec.get("false_positives", []):
-        key = _edge_key(fp.get("edge", {}), path)
-        if key in expected_edges:
-            raise CorpusError(f"{path}: false_positives names an edge that is also in 'edges': {key}")
+    # Same for a refusal — it is the edge a plausible reader would wrongly emit.
+    for field in ("false_positives", "refusals"):
+        for entry in spec.get(field, []):
+            key = _edge_key(entry.get("edge", {}), path)
+            if key in expected_edges:
+                raise CorpusError(f"{path}: {field} names an edge that is also in 'edges': {key}")
 
     return spec, root
 
@@ -274,6 +279,20 @@ def score_case(case_dir: Path, *, sql_dialect: str | None = None) -> CaseReport:
 
     missing = (expected_nodes - emitted_nodes) | (expected_edges - emitted_edges)
     unlabelled = (emitted_nodes - expected_nodes) | (emitted_edges - expected_edges)
+
+    # A `refusals` entry is a claim about the *extractor*, not only about the fixture, so it
+    # is checked rather than filed. Broken refusals do already cost precision, but as an
+    # anonymous number; naming the edge turns "precision fell" into "this rule stopped
+    # holding". Entries were previously kept in `false_positives`, whose README definition
+    # is the opposite — "edges the front-end emits that are not true" — so a reader counting
+    # that field concluded Kotlin invented eleven edges it had in fact correctly refused.
+    broken = sorted(
+        _edge_key(entry.get("edge", {}), path)
+        for entry in spec.get("refusals", [])
+        if _edge_key(entry.get("edge", {}), path) in emitted_edges
+    )
+    if broken:
+        raise CorpusError(f"{path}: refusals names edge(s) the extractor does emit: {broken}")
 
     # Provenance is compared only where a label opted in with an "at". No expected fact
     # carries one today, so this reports 0 checked rather than a silent 1.0.
@@ -620,6 +639,23 @@ def localization_entry(report: Any = None) -> dict[str, Any]:
     }
 
 
+def _corpus_repos(corpus_root: Path | str) -> list[Path]:
+    """Every corpus fixture repository, in a deterministic order."""
+    root = Path(corpus_root)
+    if not root.is_dir():
+        return []
+    repos = []
+    for case in sorted(p.parent for p in root.rglob(CASE_FILE)):
+        try:
+            spec = json.loads((case / CASE_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        repo = case / spec.get("root", ".repo")
+        if repo.is_dir():
+            repos.append(repo)
+    return repos
+
+
 def build_scoreboard(
     corpus_root: Path | str = "corpus",
     repo: Path | str = ".",
@@ -635,7 +671,7 @@ def build_scoreboard(
     ``runtime`` is opt-in because the runtime oracle *executes the repository's test suite*,
     and a command CI runs by default must not do that.
     """
-    from orchestrator.pkg.invention import score_invention
+    from orchestrator.pkg.invention import score_invention_over
 
     # A corpus is Spine's own ground truth and most repositories have none. That is not an
     # error: parity and invention need only the source, so a scoreboard is still worth having
@@ -652,7 +688,10 @@ def build_scoreboard(
             }
 
     parity = score_parity(repo)
-    invention = score_invention(repo)
+    # This repository **and** every corpus fixture. On its own this tree is pure Python, so
+    # the per-language invention map had one row and every other front-end's zero came from
+    # never having been looked at. The fixtures are committed, offline and one per language.
+    invention = score_invention_over([repo, *_corpus_repos(corpus_root)])
     drift = score_drift(repo)
     provenance = score_comprehension(repo)
 

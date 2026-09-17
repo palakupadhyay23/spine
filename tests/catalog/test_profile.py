@@ -83,6 +83,54 @@ def test_perl_mojolicious_with_prove(tmp_path: Path) -> None:
     assert prof.test_runner == "prove"
 
 
+def test_kotlin_android_with_the_gradle_kotlin_dsl(tmp_path: Path) -> None:
+    """D12: a Gradle-Kotlin repo reported `languages: []` because only the Groovy
+    `build.gradle` was read and `.kt` mapped to nothing — measured on the validation
+    app, which is 263 Kotlin files and 33 `.kts` scripts."""
+    _write(
+        tmp_path,
+        "core/data/src/main/java/com/demo/TopicRepository.kt",
+        "package com.demo\n\nclass TopicRepository {\n    fun topics() = emptyList<String>()\n}\n",
+    )
+    _write(
+        tmp_path,
+        "build.gradle.kts",
+        'plugins { id("com.android.application") }\n'
+        'dependencies {\n  implementation("androidx.core:core-ktx:1.13.1")\n'
+        '  testImplementation("junit:junit:4.13.2")\n}\n',
+    )
+    _write(tmp_path, "settings.gradle.kts", 'include(":core:data")\n')
+    prof = ProjectProfile.from_repo(tmp_path)
+    assert "kotlin" in prof.languages
+    assert prof.framework == "android"
+    assert prof.test_runner == "junit"
+
+
+def test_kotlin_spring_service_is_not_mistaken_for_android(tmp_path: Path) -> None:
+    """The framework name is what separates a route *provider* from a consumer (D10)."""
+    _write(
+        tmp_path,
+        "src/main/kotlin/com/demo/OwnerController.kt",
+        "package com.demo\n\nclass OwnerController\n",
+    )
+    _write(
+        tmp_path,
+        "build.gradle.kts",
+        'plugins { kotlin("jvm") }\n'
+        'dependencies { implementation("org.springframework.boot:spring-boot-starter-web") }\n',
+    )
+    prof = ProjectProfile.from_repo(tmp_path)
+    assert "kotlin" in prof.languages
+    assert prof.framework == "spring"
+
+
+def test_kts_build_script_alone_is_a_marker_not_a_language(tmp_path: Path) -> None:
+    """D11/D12: a Gradle script is a build file. It must not make the repo "Kotlin"."""
+    _write(tmp_path, "build.gradle.kts", 'plugins { id("com.android.library") }\n')
+    prof = ProjectProfile.from_repo(tmp_path)
+    assert "kotlin" not in prof.languages
+
+
 def test_greenfield_empty_repo(tmp_path: Path) -> None:
     prof = ProjectProfile.from_repo(tmp_path)
     assert prof.languages == frozenset()

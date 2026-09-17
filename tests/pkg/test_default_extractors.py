@@ -64,6 +64,27 @@ def test_default_includes_perl_when_available() -> None:
     assert ("perl" in langs) == have_perl
 
 
+def test_default_includes_kotlin_when_available() -> None:
+    have_kotlin = importlib.util.find_spec("tree_sitter_kotlin") is not None
+    langs = {e.language for e in default_extractors()}
+    assert ("kotlin" in langs) == have_kotlin
+
+
+def test_default_includes_gradle_when_kotlin_is_available() -> None:
+    """The Gradle reader rides the Kotlin grammar, so it registers with it (D11)."""
+    have_kotlin = importlib.util.find_spec("tree_sitter_kotlin") is not None
+    langs = {e.language for e in default_extractors()}
+    assert ("gradle" in langs) == have_kotlin
+
+
+def test_kotlin_and_gradle_split_the_suffixes_between_them(tmp_path: Path) -> None:
+    """`.kt` is source and `.kts` is build configuration — different readings."""
+    pytest.importorskip("tree_sitter_kotlin", reason="install the 'kotlin' extra")
+    by_language = {e.language: e.suffixes for e in default_extractors()}
+    assert by_language["kotlin"] == (".kt",)
+    assert by_language["gradle"] == (".kts",)
+
+
 def test_repo_extractor_default_handles_go(tmp_path: Path) -> None:
     pytest.importorskip("tree_sitter_go", reason="install the 'go' extra")
     pkg = tmp_path / "trace"
@@ -158,3 +179,17 @@ def test_repo_extractor_default_handles_perl(tmp_path: Path) -> None:
     batch = RepoCodeExtractor().extract(tmp_path)
     types = {n.name for n in batch.nodes if n.kind is NodeKind.TYPE and n.language == "perl"}
     assert "Demo::Widget" in types
+
+
+def test_repo_extractor_default_handles_kotlin(tmp_path: Path) -> None:
+    pytest.importorskip("tree_sitter_kotlin", reason="install the 'kotlin' extra")
+    src = tmp_path / "src" / "main" / "java" / "com" / "demo"
+    src.mkdir(parents=True)
+    (src / "Widget.kt").write_text(
+        "package com.demo\n\nclass Widget(val id: String) {\n    fun score(): Int = 1\n}\n",
+        encoding="utf-8",
+    )
+    # Default RepoCodeExtractor (no explicit extractors) must now pick up .kt.
+    batch = RepoCodeExtractor().extract(tmp_path)
+    types = {n.name for n in batch.nodes if n.kind is NodeKind.TYPE and n.language == "kotlin"}
+    assert "Widget" in types

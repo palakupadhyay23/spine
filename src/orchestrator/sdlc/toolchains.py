@@ -81,6 +81,18 @@ def _node_runner(env: TestEnvironment) -> TestRunner:
     )
 
 
+def _jvm_runner(env: TestEnvironment) -> TestRunner:
+    """Maven or Gradle for a Java project, chosen from what the layout detected.
+
+    §9.3's exit criterion — "the existing Java greenfield test passes on a Gradle
+    scaffold" — needs this and nothing else: `GradleTestRunner` was built in P8 and then
+    only Kotlin was wired to it, so a Java Gradle project still ran `mvn test` against a
+    build that has no `pom.xml`.
+    """
+    name = "GradleTestRunner" if getattr(env, "build_tool", "maven") == "gradle" else "MavenTestRunner"
+    return cast("TestRunner", _load("testrunner", name)())
+
+
 def _native_runner(env: TestEnvironment) -> TestRunner:
     name = "MesonTestRunner" if getattr(env, "build_tool", "cmake") == "meson" else "CTestRunner"
     return cast("TestRunner", _load("testrunner", name)())
@@ -114,6 +126,15 @@ def _probe(name: str, *, with_build_tool: bool = False) -> Callable[[str], bool]
 
 def _always_available(build_tool: str) -> bool:
     return True
+
+
+def _project_probe(name: str) -> Callable[[Path, TargetLayout], str | None]:
+    """A per-repository check that explains itself — see ``Toolchain.project_error``."""
+
+    def check(root: Path, layout: TargetLayout) -> str | None:
+        return cast("str | None", _load("testenv", name)(root, layout))
+
+    return check
 
 
 def _identity_layout(layout: TargetLayout) -> TargetLayout:
@@ -185,8 +206,18 @@ class Toolchain:
     runner: Callable[[TestEnvironment], TestRunner]
     prompts: PromptSet
     guidance: str
-    conventions_skill_id: str | None
     available: Callable[[str], bool] = field(default=_always_available)
+    #: A second probe that gets the worktree **root**, for a toolchain a repository can
+    #: carry with it. Gradle is the case: a committed `./gradlew` downloads the version
+    #: the project pins, so a wrapper-only repo is perfectly buildable on a machine with
+    #: no Gradle at all — and a PATH-only probe would reject the majority of real Gradle
+    #: projects. Checked *after* `available`, so it narrows rather than replaces it.
+    # A per-repository check, as opposed to ``available``'s machine-wide one. Whether the
+    # language's toolchain is installed is a different question from whether *this* checkout
+    # can be built: Gradle ships in the repo, the Android SDK is external, and module
+    # placement depends on the target package. Each needs its own sentence to be actionable,
+    # so this returns the message rather than a bool.
+    project_error: Callable[[Path, TargetLayout], str | None] | None = None
     preflight: Callable[..., PreflightRunner] = _preflight("StubPreflightRunner")
     conventions: Callable[[Path, TargetLayout | None], str] = field(default=_conventions)
     prepare_layout: Callable[[TargetLayout], TargetLayout] = field(default=_identity_layout)
@@ -206,6 +237,8 @@ class Toolchain:
         if not self.native_label:
             if not self.available(layout.build_tool):
                 return self.missing_hint.format(build_tool=layout.build_tool or "npm")
+            if self.project_error is not None:
+                return self.project_error(root, layout)
             return None
         label = self.native_label
         build_tool = layout.build_tool if layout.mode == "existing" else "cmake"
@@ -243,7 +276,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _python_runner,
             _prompts(),
             "python_guidance",
-            "python-conventions",
             preflight=_preflight("SubprocessPreflightRunner", argument="python"),
             requires_pytest=True,
         ),
@@ -251,11 +283,10 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             "java",
             _layout("_resolve_java_layout"),
             _scaffold("_java_files"),
-            _environment("JavaToolEnvironment"),
-            _runner("MavenTestRunner"),
+            _environment("JavaToolEnvironment", "maven"),
+            _jvm_runner,
             _prompts("_JAVA"),
             "java_guidance",
-            "java-conventions",
             available=_probe("java_toolchain_available"),
             auto_priority=0,
             missing_hint="Java codegen needs a JDK + Maven on PATH (install both, then retry).",
@@ -268,7 +299,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _node_runner,
             _prompts("_TS"),
             "typescript_guidance",
-            "typescript-conventions",
             available=_probe("node_toolchain_available", with_build_tool=True),
             auto_priority=1,
             missing_hint=(
@@ -283,7 +313,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _runner("DotnetTestRunner"),
             _prompts("_CSHARP"),
             "csharp_guidance",
-            "csharp-conventions",
             available=_probe("dotnet_toolchain_available"),
             prepare_layout=_dotnet_layout,
             build_ignores=("bin", "obj"),
@@ -298,7 +327,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _native_runner,
             _prompts("_C"),
             "c_guidance",
-            "c-conventions",
             available=_probe("c_toolchain_available"),
             build_ignores=("build",),
             auto_priority=6,
@@ -312,7 +340,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _native_runner,
             _prompts("_CPP"),
             "cpp_guidance",
-            "cpp-conventions",
             available=_probe("cpp_toolchain_available"),
             build_ignores=("build",),
             auto_priority=5,
@@ -326,10 +353,34 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _runner("GoTestRunner"),
             _prompts("_GO"),
             "go_guidance",
-            "go-conventions",
             available=_probe("go_toolchain_available"),
             auto_priority=4,
             missing_hint="Go codegen needs the Go toolchain (`go`) on PATH (install it, then retry).",
+        ),
+        "kotlin": Toolchain(
+            "kt",
+            _layout("_resolve_kotlin_layout"),
+            _scaffold("_kotlin_files"),
+            _environment("KotlinToolEnvironment"),
+            _runner("GradleTestRunner"),
+            _prompts("_KOTLIN"),
+            "kotlin_guidance",
+            preflight=_preflight("GradlePreflightRunner", argument="gradle"),
+            available=_probe("kotlin_toolchain_available"),
+            # Gradle is checked against the worktree, not PATH: a committed `./gradlew`
+            # makes a project buildable on a machine with no Gradle installed at all, and
+            # that is how most real Kotlin repositories ship (D13, P8).
+            project_error=_project_probe("kotlin_project_error"),
+            # After Java: a mixed JVM repository with both `.java` and `.kt` is a Java
+            # repository that adopted Kotlin, and its codegen conventions are Java's until
+            # someone says otherwise. Kotlin wins only where Java is absent.
+            auto_priority=5,
+            missing_hint=(
+                "Kotlin codegen needs a JDK plus Gradle — either a committed ./gradlew in "
+                "the repo or `gradle` on PATH (add the wrapper with `gradle wrapper`, or "
+                "install Gradle, then retry)."
+            ),
+            build_ignores=(".gradle", "build"),
         ),
         "php": Toolchain(
             "php",
@@ -339,7 +390,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _php_runner,
             _prompts("_PHP"),
             "php_guidance",
-            "php-conventions",
             available=_probe("php_toolchain_available"),
             preflight=_preflight("PhpPreflightRunner", argument="php"),
             conventions=_php_conventions,
@@ -354,7 +404,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _runner("ProveTestRunner"),
             _prompts("_PERL"),
             "perl_guidance",
-            "perl-conventions",
             available=_probe("perl_toolchain_available"),
             preflight=_preflight("PerlPreflightRunner", argument="perl"),
             conventions=_perl_conventions,
@@ -371,7 +420,6 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             _sql_runner,
             _prompts("_SQL", tests_suffix=""),
             "sql_guidance",
-            None,
             author_tests=False,
         ),
     }

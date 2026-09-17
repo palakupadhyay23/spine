@@ -13,7 +13,9 @@ third-party (``os``, ``react``, ``fmt``) and is left alone.
 
 Only the matching rule is per-language:
 
-- **python / java / csharp** — dotted names: the longest dotted prefix that is
+- **python / java / csharp** (and **kotlin**, which shares Java's ``java:`` prefix by
+  D2 of kotlin-support-roadmap.md and so needs no matcher of its own) — dotted names:
+  the longest dotted prefix that is
   a first-party module wins. Exact ids already join via the ``FactBatch``
   dedup (a grounded node upgrades the placeholder); the prefix walk covers the
   rest — re-exports (``from click import echo`` where ``echo`` lives in

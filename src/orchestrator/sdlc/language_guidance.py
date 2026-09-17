@@ -19,6 +19,82 @@ def java_guidance(layout: TargetLayout) -> str:
     )
 
 
+def kotlin_guidance(layout: TargetLayout) -> str:
+    """Layout guidance for Kotlin/JVM codegen (P8, D13).
+
+    Two things differ from Java and both bite a model that assumes Java's rules. Kotlin
+    has **no one-public-class-per-file rule**, so the file is named for what it holds
+    rather than for a single class; and the test dependency is ``kotlin("test")``, whose
+    ``kotlin.test.Test`` maps onto whichever engine the build uses — so a generated test
+    that reaches for ``org.junit.jupiter`` compiles against a dependency the scaffold
+    never declared.
+    """
+    build_file = "build.gradle.kts" if layout.build_tool != "maven" else "pom.xml"
+    if layout.module:
+        # In a 28-module build the root script configures the build, not this module's
+        # dependencies; editing it declares the dependency for nothing.
+        build_file = f"{layout.module}/{build_file}"
+    # Whichever library the repo's tests already use — a generated `import kotlin.test.Test`
+    # does not compile in a project that depends on JUnit and nothing else, and the Spring
+    # validation repo is exactly that. Greenfield has no existing tests, so the scaffold's
+    # own `kotlin("test")` is the default.
+    if layout.module and not layout.test_library:
+        # The module has no test dependency and no tests to copy a convention from. Saying
+        # "use kotlin.test" here produces `Unresolved reference: test`, so the dependency has
+        # to be part of the instruction rather than an assumption.
+        test_rule = (
+            "using `kotlin.test` (`import kotlin.test.Test`, "
+            "`import kotlin.test.assertEquals`) — and note that this module declares **no** "
+            f'test dependency yet, so you must also add `testImplementation(kotlin("test"))` '
+            f"to `{build_file}` or the test will not compile"
+        )
+    elif layout.test_library == "junit4":
+        test_rule = (
+            "using JUnit 4 (`import org.junit.Test`, `import org.junit.Assert`) — this module's "
+            "tests are written against JUnit 4"
+        )
+    elif layout.test_library == "junit5":
+        test_rule = (
+            "using JUnit 5 (`import org.junit.jupiter.api.Test`, "
+            "`import org.junit.jupiter.api.Assertions`) — this project depends on JUnit "
+            "and NOT on `kotlin.test`, so a `kotlin.test` import will not compile"
+        )
+    else:
+        test_rule = (
+            "using `kotlin.test` (`import kotlin.test.Test`, "
+            "`import kotlin.test.assertEquals`), which is what this project's tests are "
+            "written against"
+        )
+    # P9, D13. Two rules an Android module needs that a Kotlin/JVM one does not, and both
+    # decide whether the generated suite can run at all rather than merely where it sits.
+    android_rules = ""
+    if layout.android:
+        android_rules = (
+            f"- This is an Android module (`:{layout.module.replace('/', ':')}`). Tests here "
+            "run on the JVM, with no emulator and no device.\n"
+            "- Write a plain JVM unit test. Do NOT write an instrumented test: no "
+            "`src/androidTest/`, no `@RunWith(AndroidJUnit4::class)`, no Espresso, no "
+            "`androidx.test.*`. Those need a device and will not be run.\n"
+            "- Keep the code under test free of Android framework types (`Context`, `Log`, "
+            "`SharedPreferences`, …). In a unit test the framework is a stub whose methods "
+            "return defaults, so logic that touches it is not actually verified. Put the "
+            "logic in a plain class, ViewModel or repository and test that.\n"
+            "- If the feature genuinely needs UI verification, say so as an explicit "
+            "`// TODO: UI test` comment next to the code — do not quietly leave it untested.\n"
+        )
+    return (
+        "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
+        + android_rules
+        + f"- Kotlin package is `{layout.package_name}`. Put new code at "
+        f"`{layout.source_dir}/<Name>.kt`, starting with `package {layout.package_name}` "
+        "(no trailing semicolon). A Kotlin file may hold several declarations and "
+        "top-level functions; name the file after what it holds, not after one class.\n"
+        f"- Put tests at `{layout.tests_dir}/<Name>Test.kt` in the same package, {test_rule}.\n"
+        f"- Declare any new dependency in `{build_file}` (edit it); don't invent unrelated "
+        "paths.\n\n"
+    )
+
+
 def typescript_guidance(layout: TargetLayout) -> str:
     return (
         "PROJECT LAYOUT (authoritative — overrides any default path guidance):\n"
