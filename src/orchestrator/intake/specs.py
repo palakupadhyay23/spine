@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +32,8 @@ _SYSTEM_PROMPT = (
     "engineer to implement. Be concrete and testable.\n\n"
     "Output a single JSON object, no prose, no code fences:\n"
     "{"
-    '"summary": "<2-4 sentence what + why>", '
+    '"summary": "<2-4 sentence what + why, naming the files, identifiers, env vars and '
+    'endpoints the intent names, VERBATIM>", '
     '"user_story": "As a <role>, I want <capability>, so that <benefit>", '
     '"acceptance_criteria": ["<testable, Given/When/Then or checklist>"], '
     '"technical_notes": "<approach, affected components, risks>", '
@@ -68,7 +70,14 @@ _SUBMIT_TOOL = ToolSpec(
     parameters={
         "type": "object",
         "properties": {
-            "summary": {"type": "string", "description": "2-4 sentence what + why."},
+            "summary": {
+                "type": "string",
+                "description": (
+                    "2-4 sentence what + why. Name the files, identifiers, env vars and endpoints "
+                    "the intent names, verbatim — 'the API client' instead of "
+                    "'EBSOrderApiClient.cs' loses the file the author specified."
+                ),
+            },
             "user_story": {
                 "type": "string",
                 "description": "As a <role>, I want <capability>, so that <benefit>.",
@@ -96,6 +105,13 @@ class FeatureSpec(BaseModel):
     intent_id: str
     title: str
     summary: str = ""
+    # The intent's own description and scope, carried through unchanged. The extractor is
+    # bound to keep the source's identifiers verbatim in exactly these two fields — and until
+    # they were carried, the only prose that survived into design and retrieval was
+    # ``summary``, a second paraphrase under no such rule. NSS-1231: the file the ticket named
+    # in its first sentence was gone by the time anything searched for it.
+    description: str = ""
+    scope: str = ""
     user_story: str = ""
     acceptance_criteria: list[str] = Field(default_factory=list)
     # Criteria the model produced that the source never stated. Kept apart from
@@ -176,6 +192,8 @@ class SpecWriter:
                 intent_id=intent.id,
                 title=intent.title,
                 summary=intent.description,
+                description=intent.description,
+                scope=intent.scope,
                 acceptance_criteria=list(intent.acceptance_criteria),
                 nfrs=list(intent.nfrs),
                 dependencies=list(intent.dependencies),
@@ -185,18 +203,89 @@ class SpecWriter:
         stated, proposed = _merge_criteria(
             intent.acceptance_criteria, _str_list(payload.get("acceptance_criteria"))
         )
+        summary = str(payload.get("summary") or intent.description).strip()
+        # The prompt asks for identifiers verbatim; NSS-1231 is the measured case of a model
+        # not doing it — 40 identifiers gone, the named file among them, and retrieval then
+        # searching the paraphrase. A rule a model can ignore is not a rule: whatever the
+        # source named and the spec dropped is carried here, deterministically.
+        notes = _carry_identifiers(
+            str(payload.get("technical_notes") or "").strip(),
+            present_in=summary,
+            source=f"{intent.description}\n{intent.scope}",
+        )
         return FeatureSpec(
             intent_id=intent.id,
             title=intent.title,
-            summary=str(payload.get("summary") or intent.description).strip(),
+            summary=summary,
+            description=intent.description,
+            scope=intent.scope,
             user_story=str(payload.get("user_story") or "").strip(),
             acceptance_criteria=stated,
             proposed_criteria=proposed,
-            technical_notes=str(payload.get("technical_notes") or "").strip(),
+            technical_notes=notes,
             nfrs=_str_list(payload.get("nfrs")) or list(intent.nfrs),
             dependencies=_str_list(payload.get("dependencies")) or list(intent.dependencies),
             estimate=str(payload.get("estimate") or "").strip().upper(),
         )
+
+
+#: What a ticket author means as an identifier, in the order a reader would notice them.
+#: Backticks first: whatever the author fenced is an identifier by declaration. Then the shapes
+#: prose cannot produce by accident — a URL, a filename with a source extension, SCREAMING_SNAKE
+#: with at least one underscore, CamelCase with a lowercase→uppercase hump somewhere after the
+#: first letter (``EBSOrderApiClient`` has ``rA``; ``Hot`` and ``OAuth2`` have none), a dotted
+#: name with at least two dots. All-caps acronyms (``HTTP``, ``OIC``) are deliberately not
+#: matched: too many are English.
+_IDENT_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"`([^`\n]{2,120})`"),
+    re.compile(r"\bhttps?://[^\s)\]>\"'`]+"),
+    re.compile(
+        r"\b[\w][\w./-]*\.(?:cs|razor|cshtml|py|ts|tsx|js|jsx|java|kt|go|php|pl|pm|sql|md|json|ya?ml|toml)\b"
+    ),
+    re.compile(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b"),
+    re.compile(r"\b[A-Z](?=[A-Za-z0-9]*[a-z][A-Z])[A-Za-z0-9]{2,}\b"),
+    re.compile(r"\b[A-Za-z_]\w*(?:\.[A-Za-z_]\w*){2,}\b"),
+)
+#: Bounded honestly (invariant 7): a ticket that pastes a stack trace names hundreds.
+_MAX_CARRIED = 24
+
+
+def _identifiers(text: str) -> list[str]:
+    """The identifiers ``text`` names, first-appearance order, deduplicated, longest-wins.
+
+    A candidate that is a substring of one already kept is dropped: ``EBSOrderApiClient``
+    inside ``EBSOrderApiClient.cs`` is the same fact, and carrying both would read as two.
+    Pure and deterministic — same text in, same list out.
+    """
+    found: list[tuple[int, str]] = []
+    for pattern in _IDENT_PATTERNS:
+        for m in pattern.finditer(text):
+            token = (m.group(1) if m.groups() else m.group(0)).strip().rstrip(".,;:")
+            if token:
+                found.append((m.start(), token))
+    found.sort(key=lambda pair: (pair[0], -len(pair[1])))
+    kept: list[str] = []
+    for _, token in found:
+        if any(token == k or token in k for k in kept):
+            continue
+        kept.append(token)
+    return kept
+
+
+def _carry_identifiers(technical_notes: str, *, present_in: str, source: str) -> str:
+    """``technical_notes``, extended with every identifier ``source`` names that neither it nor
+    ``present_in`` still mentions. Labelled as carried, so a reader knows the model did not
+    write that line — and so ``design._stated_paths`` and retrieval can read it regardless of
+    what the model chose to keep.
+    """
+    haystack = f"{present_in}\n{technical_notes}"
+    missing = [i for i in _identifiers(source) if i not in haystack]
+    if not missing:
+        return technical_notes
+    shown = missing[:_MAX_CARRIED]
+    more = f" (+{len(missing) - len(shown)} more)" if len(missing) > len(shown) else ""
+    line = "Identifiers the source names, carried verbatim: " + ", ".join(shown) + more
+    return f"{technical_notes}\n\n{line}" if technical_notes else line
 
 
 def _merge_criteria(stated: list[str], produced: list[str]) -> tuple[list[str], list[str]]:
