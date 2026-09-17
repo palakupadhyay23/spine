@@ -11,7 +11,10 @@ report a green suite that never compiled anything.
 from __future__ import annotations
 
 import asyncio
+import shutil
 from pathlib import Path
+
+import pytest
 
 from orchestrator.catalog.catalog import _SEED
 from orchestrator.catalog.models import CapabilityKind
@@ -169,9 +172,28 @@ def test_no_wrapper_and_no_gradle_fails_with_a_hint(tmp_path: Path) -> None:
     assert "gradle" in result.output.lower() and "wrapper" in result.output.lower()
 
 
-def test_gradle_is_available_through_a_committed_wrapper(tmp_path: Path) -> None:
-    assert gradle_available(tmp_path) is False
+def test_gradle_is_available_through_a_committed_wrapper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A committed `./gradlew` counts **even though Gradle itself is absent** — it downloads
+    the version the project pins, which is the whole point of committing it.
+
+    `gradle` is removed from PATH for the duration, because that absence is half the rule
+    and the test cannot state it otherwise. Without this the first assertion silently means
+    "this machine has no Gradle installed": it passed on a developer laptop and failed on a
+    CI runner, where the image ships Gradle — an environment reading of the machine rather
+    than a reading of the repository, which is the thing under test.
+    """
+    monkeypatch.setattr(shutil, "which", lambda name, *a, **kw: None if name == "gradle" else "/usr/bin/x")
+    assert gradle_available(tmp_path) is False, "no wrapper and no Gradle on PATH"
     (tmp_path / "gradlew").write_text("#!/bin/sh\n", encoding="utf-8")
+    assert gradle_available(tmp_path) is True, "the wrapper alone is enough"
+
+
+def test_gradle_on_path_is_enough_without_a_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The other half of the `or`, which nothing pinned: a repo with no wrapper is still
+    buildable on a machine that has Gradle installed."""
+    monkeypatch.setattr(shutil, "which", lambda name, *a, **kw: "/usr/bin/gradle")
     assert gradle_available(tmp_path) is True
 
 
