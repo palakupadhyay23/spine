@@ -1,9 +1,9 @@
 # Spec index — every design record, and where it stands
 
 **Generated 2026-08-15 against 3.18.1; refreshed 2026-08-21 for the completed GraphIR
-programme; recounted 2026-09-11 at 3.33.2 for perl-support-roadmap.md and perl-codegen-roadmap.md; count re-verified 2026-09-16 at the 3.35.0 cut — still 90, no specs added (that release's plans were kept outside the checkout).**
-`docs/specs/` holds **90** markdown files —
-**82 specs** plus three navigation documents ([README](README.md), this index,
+programme; recounted 2026-09-11 at 3.33.2 for perl-support-roadmap.md and perl-codegen-roadmap.md; count re-verified 2026-09-16 at the 3.35.0 cut (that release's plans were kept outside the checkout); recounted again 2026-09-16 for kotlin-support-roadmap.md, the one spec added since.**
+`docs/specs/` holds **91** markdown files —
+**83 specs** plus three navigation documents ([README](README.md), this index,
 [STATE-OF-SPINE](STATE-OF-SPINE.md)) — with 6 archived and 10 build documents. The count read
 *63* until 2026-08-21, and **five specs were not listed at all**, including this file's own
 companion matrix and both measurements it cites as evidence. An inventory that silently omits
@@ -11,7 +11,7 @@ things is the failure it was built to catch, so the count is now stated as a der
 can re-run:
 
 ```
-ls docs/specs/*.md | wc -l          # 90
+ls docs/specs/*.md | wc -l          # 91
 ```
 
 **It rotted anyway.** The line read *70* from 2026-08-21 until 2026-08-28 while the directory
@@ -81,6 +81,7 @@ Graphify-gap series only. This file is the complete inventory.
 | [perl-support-roadmap](perl-support-roadmap.md) | ✅ **All six phases done, merged to `develop` 2026-09-12** ([#359](https://github.com/synaptixs/spine/pull/359)) (10th front-end: every `package`/5.38 `class` as `Type`, inheritance across five spellings, `CALLS` across six shapes incl. D10's verified-only default-export resolution (never `@ISA` — a bare call never dispatches through inheritance in real Perl), Mojolicious/Lite/Dancer2 routes as `Endpoint`+`EXPOSES`, typed-receiver `CALLS`, DBIx::Class `Entity`/`Field`/`REFERENCES` via `__PACKAGE__->table(...)`, P5's `roadmap-status.py`/`validate-frontend.py`/language-track template, P6's two review passes — every confirmed finding fixed with a regression test); full-repo validation on both validation repos still pending, MR blocked on PAT scope | Open the MR (needs `pull_requests: write`); branch `feat/perl-support` |
 | [php-codegen-roadmap](php-codegen-roadmap.md) | P0–P5 complete; merge PR #350 | Composer/PHAR PHPUnit, legacy layouts, aiemr validation |
 | [perl-codegen-roadmap](perl-codegen-roadmap.md) | C-0 through C-5 DONE 2026-09-13 — characterization improves dispatch mutation detection from 4/8 to 8/8; `feat/perl-codegen` off `develop`; Perl codegen enabled with the full machinery | MR #365 review; do not merge |
+| [kotlin-support-roadmap](kotlin-support-roadmap.md) | 🟢 **P0–P11 done 2026-09-16** — complete, ready to merge; 11th front-end: comprehension (85 modules / 271 types / 713 functions / 488 fields on the validation app), typed-receiver `CALLS` (2,221 edges on the validation app, **0 invented** — maintainer review found and removed 72 fabricated edges and recovered 126 true ones, §11), 14 corpus cases at **precision 1.00 on every kind** (`CALLS` recall 0.94), Room entities + DAO `READS`/`WRITES` parsed with sqlglot, Retrofit calls making an Android app the first **mobile consumer** in `pkg joins`, Compose navigation as `NAV` endpoints, **`EdgeKind.PROVIDES`** — the 12th edge kind — carrying Hilt/Dagger wiring that `IMPLEMENTS` cannot, a Gradle `.kts` reader whose module graph replaces package-name guessing in `state`, and Ktor + Spring MVC routes making a Kotlin service a **provider** (petclinic 18 endpoints, ktor-samples 67) — through a shared `jvm_routes.py` that gave the **Java** front-end Spring for the first time, and **Multiplatform source sets** with `expect`/`actual` given distinct ids joined by `IMPLEMENTS` (KaMPKit: 2 → 7 components), and **codegen for Kotlin/JVM and Android** — `GradleTestRunner` (which also unblocks Java on Gradle), greenfield proven green+red, brownfield 3/3 on spring-petclinic-kotlin, and 4/4 into the Android app's own `core/data` module, placed by package and run through the flavoured unit-test task Gradle actually has; plus the generic work every later track reuses — the roadmap-currency gate given the two checks it was specified to have (and put into CI), `validate-frontend.py` proven on Kotlin, and reverse-DNS area grouping that turns one `com.google` area holding 258 of 273 types into 39 real components | **Scope: the whole language, one MR.** P11 review + MR |
 | [php-support-roadmap](php-support-roadmap.md) | ✅ **All four phases done** — 9th front-end: comprehension, `CALLS` (incl. typed receivers), Laravel/Slim/Symfony routes, Eloquent/Doctrine entities | Codegen implemented in the follow-on below |
 | [java-codegen](java-codegen.md) | 2a (1.8.0), 2b + 2c (1.9.0) | Remaining slices |
 | [typescript-codegen](typescript-codegen.md) | Slice 1 comprehension (1.11.0) | Codegen slices |

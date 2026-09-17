@@ -126,8 +126,8 @@ def test_a_story_that_lands_nowhere_still_proceeds() -> None:
 
 def _binding(*criteria: str) -> Any:
     """A real `CriteriaBinding` against a graph holding one symbol. No fake to drift."""
+    from orchestrator.pkg.criteria_binding import bind_criteria
     from orchestrator.pkg.facts import FactBatch, Node, NodeKind, Provenance
-    from orchestrator.sdlc.criteria_binding import bind_criteria
 
     batch = FactBatch()
     batch.add_node(Node("py:report", NodeKind.MODULE, "report.py", "python", Provenance("report.py", 1)))

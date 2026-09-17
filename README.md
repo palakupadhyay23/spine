@@ -13,8 +13,10 @@ inspect the graph and a build plan before spending model tokens, build locally,
 then choose when to push a pull request for human review.
 
 The product is **Spine**, its package is **`synaptixs-spine`**, and its command is
-**`orchestrator`**. Comprehension supports ten front-ends: Python, Java, TypeScript,
-C#, C, C++, Go, PHP, Perl and SQL, with the matching parser extras installed.
+**`orchestrator`**. Comprehension supports twelve front-ends: Python, Java, TypeScript,
+C#, C, C++, Go, PHP, Perl, Kotlin and SQL — plus a Gradle reader that turns `.kts`
+build scripts into the module graph an Android app is assembled from — with the
+matching parser extras installed.
 
 ```bash
 uv tool install synaptixs-spine
@@ -76,7 +78,16 @@ and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/do
 
 ## What's new
 
-**3.35.0 (current)** — two additive features. An optional C/C++ semantic pass
+**3.36.0 (current)** — **Kotlin**, as the 11th language and the 12th front-end: `.kt`
+comprehension and a typed-receiver call graph, Room entities and Retrofit calls (so an Android
+app joins a backend as a cross-repo consumer), Compose navigation as routes, Hilt wiring through
+a new `PROVIDES` edge kind, Ktor and Spring MVC routes — the Spring half shared with the Java
+front-end, which had read JAX-RS only — Kotlin Multiplatform source sets, and codegen for both
+Kotlin/JVM and Android on a new Gradle test runner that also gives *Java* codegen its first
+Gradle support. `.kts` build scripts are read as a module graph rather than parsed as source.
+Install with `pip install 'synaptixs-spine[kotlin]'`.
+
+**3.35.0** — two additive features. An optional C/C++ semantic pass
 (`pip install 'synaptixs-spine[clang]'`) resolves member calls the CST cannot, adding edges
 only between symbols already in the graph — ids, nodes and determinism unchanged; the
 standard library stays out of reach. And `pkg export --format cypher` loads the graph into
@@ -116,15 +127,16 @@ in [CLI_REFERENCE.md](https://github.com/synaptixs/spine/blob/main/CLI_REFERENCE
 | Local feature build, live PR, review feedback, post-merge tracker completion | ✅ | `sdlc feature --safe` / `--live`, `address-review`, `complete` |
 | Durable multi-feature pipeline and approval dashboard | ✅ | `sdlc run`, `up`; [Operations](https://github.com/synaptixs/spine/blob/main/OPERATIONS.md) |
 | Inspect the execution graph, node results and selected workflow | ✅ | `sdlc explain`, `sdlc workflow` |
-| Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl comprehension/codegen | ✅ | `pkg extract`, `sdlc feature --language`; [toolchains](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#10-language-support--toolchains) |
+| Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and Kotlin comprehension/codegen | ✅ | `pkg extract`, `sdlc feature --language`; [toolchains](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#10-language-support--toolchains) |
 | Optional C/C++ member-call enrichment between grounded symbols; measured coverage limits | 🟡 | `[clang]` (also in `[all]`); [validation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-validation.md) |
 | SQL schema/query/procedure comprehension, migration folding, UTF-16 and SQL Server `GO` batches | ✅ | `[sql]`; `pkg extract`, `understand` |
 | SQL migration codegen validated in SQLite or opt-in Docker Postgres | ✅ | `sdlc feature --language sql`; `[sql-postgres]` |
-| Framework endpoints and data-layer edges, including JAX-RS, ASP.NET Core and EF Core | ✅ | [Knowledge Graph](https://github.com/synaptixs/spine/blob/main/KNOWLEDGE_GRAPH.md) |
+| Framework endpoints and data-layer edges, including JAX-RS, Spring MVC, Ktor, ASP.NET Core and EF Core | ✅ | [Knowledge Graph](https://github.com/synaptixs/spine/blob/main/KNOWLEDGE_GRAPH.md) |
 | C/C++ include graphs, C++ routing for included `.h` files and header/source merging; CMake or brownfield Meson builds | ✅ | `sdlc feature --language c` / `cpp` |
 | Go packages, calls and interface satisfaction; multi-module build/test selection | ✅ | `sdlc feature --language go` |
 | PHP namespaces/traits/calls, Laravel/Slim/Symfony routes, Eloquent/Doctrine entities; Composer/PHAR PHPUnit | ✅ | [PHP workflow](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md#php-code-generation) |
 | Perl packages/inheritance/fields/calls, routes and data layer; syntax checks and `prove` | ✅ | [Perl workflow](https://github.com/synaptixs/spine/blob/main/USER_GUIDE.md#perl-code-generation) |
+| Kotlin classes/objects/companions/extensions and typed-receiver calls; Room entities and DAO reads/writes; Retrofit calls as cross-repo consumers; Compose navigation routes; Hilt/Dagger wiring via `PROVIDES`; Gradle `.kts` module graph; **Ktor and Spring MVC server routes**; **Multiplatform source sets and `expect`/`actual`** | 🟡 comprehension only, no codegen | `[kotlin]`; [Kotlin roadmap](https://github.com/synaptixs/spine/blob/main/docs/specs/kotlin-support-roadmap.md) |
 | Multi-repo graph across HTTP calls, shared tables and library imports; evidence-derived joins | ✅ | `.spine/repos.yaml`; `pkg joins --propose` / `--check`, `investigate --repos` |
 | Markdown, reST, text and HTML docs bound to code; PDF and Word/Excel with extras | ✅ | `understand`, `state`, `pkg docs`; `[docs]`, `[office]` |
 | OCR diagrams and transcribe audio/video into reviewed `.spine-media/` artifacts | ✅ opt-in | `media extract`; `[media]` + Tesseract, `[asr]` for local Whisper |
@@ -178,14 +190,26 @@ The autonomous multi-feature pipeline + web dashboard needs Temporal + Postgres 
 see the [Setup guide](https://github.com/synaptixs/spine/blob/main/SETUP.md).
 
 **Which languages and models?**
-Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl** — each
+Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and
+Kotlin** — each
 front-end going beyond structure into what that stack actually does (Java and C# REST
 endpoints, EF Core entities, C's `#include` graph, C++ templates and namespaces, Go
 interface satisfaction by method-set matching). **PHP** adds a call graph too (namespaces,
 classes, interfaces, traits, `CALLS`), plus Composer/PHAR PHPUnit codegen with changed-file lint.
 **Perl** adds a call graph too (packages, inheritance across its five spellings,
 `$self`/`SUPER::`/qualified/bare `CALLS`) — codegen uses `perl -c` then `prove`,
-with optional `cpanm` for dependencies. **SQL** adds data-layer comprehension plus
+with optional `cpanm` for dependencies. **Kotlin** covers comprehension and the data layer
+(classes and objects in every flavour, companions folded onto their class,
+extension and top-level functions, constructor properties, a `CALLS` graph built
+on Kotlin's declared types — `dao.getTopics()` resolves exactly, with no
+inference — plus **Room** entities, DAO reads/writes parsed from the SQL, and
+**Retrofit** calls that make an Android app a *consumer* in the multi-repo join).
+A Kotlin **service** is read the other way round: **Ktor** and **Spring MVC** routes
+become `Endpoint`s, so a Kotlin backend is a *provider* the same join can pair against.
+Spring is read by a module the **Java** front-end shares, which is how Java gained
+Spring endpoints at the same time — it had only ever read JAX-RS. `sdlc feature --language kotlin`
+generates and tests code in Kotlin/JVM **and Android** projects, picking the Gradle module from
+the target package and running that module's own unit tests — never an emulator. **SQL** adds data-layer comprehension plus
 greenfield migration codegen validated against an ephemeral database. **Docs** fold in
 automatically; **media** (diagrams, screenshots, recorded reviews) via the opt-in
 `media extract`. Any LiteLLM provider — Anthropic, OpenAI, Bedrock — or a local Ollama

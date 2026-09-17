@@ -65,6 +65,7 @@ number exists to prove.
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -419,6 +420,57 @@ def score_invention(repo: Path | str, *, sql_dialect: str | None = None) -> Inve
     return find_invented_calls(RepoCodeExtractor(sql_dialect=sql_dialect).extract(root), root)
 
 
+def score_invention_over(repos: Iterable[Path | str], *, sql_dialect: str | None = None) -> InventionReport:
+    """One report over several repositories, merged per language.
+
+    The invention oracle has only ever been pointed at Spine's own tree, which is pure
+    Python — so its per-language map held exactly one row and **no other front-end's
+    invention was held at zero by anything in CI**. The corpus fixture repositories are the
+    obvious second input: they are small, committed, offline, and there is one per language
+    by construction, so pointing the oracle at them gives every front-end the gate Python
+    already had.
+
+    Merged rather than reported per repository because the gate is per *language*: a
+    front-end is clean or it is not, and which fixture found the fabrication is detail. A
+    language is ``measured`` only when it was measured everywhere it appeared — one
+    unwalked repository makes the whole row unwalked, so a zero can never come from a
+    front-end nothing looked at.
+    """
+    rows: dict[str, LanguageInvention] = {}
+    invented: list[InventedCall] = []
+    totals = [0, 0, 0, 0]
+    for repo in repos:
+        report = score_invention(repo, sql_dialect=sql_dialect)
+        invented.extend(report.invented)
+        for index, value in enumerate(
+            (report.total_calls, report.external_calls, report.candidates, report.unexamined)
+        ):
+            totals[index] += value
+        for entry in report.by_language:
+            prior = rows.get(entry.language)
+            if prior is None:
+                rows[entry.language] = entry
+                continue
+            rows[entry.language] = LanguageInvention(
+                language=entry.language,
+                status=entry.status if entry.status == prior.status else UNWALKED,
+                reason=prior.reason or entry.reason,
+                invented=prior.invented + entry.invented,
+                total_calls=prior.total_calls + entry.total_calls,
+                examined=prior.examined + entry.examined,
+                unexamined=prior.unexamined + entry.unexamined,
+                shadowable=prior.shadowable + entry.shadowable,
+            )
+    return InventionReport(
+        invented=tuple(invented),
+        total_calls=totals[0],
+        external_calls=totals[1],
+        candidates=totals[2],
+        unexamined=totals[3],
+        by_language=tuple(rows[k] for k in sorted(rows)),
+    )
+
+
 __all__ = [
     "MEASURED",
     "NOT_APPLICABLE",
@@ -429,4 +481,5 @@ __all__ = [
     "find_invented_calls",
     "sample_edges",
     "score_invention",
+    "score_invention_over",
 ]

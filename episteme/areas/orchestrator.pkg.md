@@ -3,7 +3,7 @@
 
 [← Episteme](../README.md) · [Architecture](../architecture.md)
 
-**`orchestrator.pkg`** is one of 60 areas in this repo, in the `orchestrator` zone. It holds 55 modules — 116 types and 467 functions. It sits in the middle of the graph: 1 area below it, 18 above. Changes here can reach both ways.
+**`orchestrator.pkg`** is one of 61 areas in this repo, in the `orchestrator` zone. It holds 66 modules — 136 types and 601 functions. It sits in the middle of the graph: 1 area below it, 18 above. Changes here can reach both ways.
 
 ```mermaid
 flowchart LR
@@ -40,6 +40,7 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.clang_includes`](../../src/orchestrator/pkg/clang_includes.py#L1)
 - [`orchestrator.pkg.clang_link`](../../src/orchestrator/pkg/clang_link.py#L1)
 - [`orchestrator.pkg.cpp_extractor`](../../src/orchestrator/pkg/cpp_extractor.py#L1)
+- [`orchestrator.pkg.criteria_binding`](../../src/orchestrator/pkg/criteria_binding.py#L1)
 - [`orchestrator.pkg.csharp_extractor`](../modules/orchestrator.pkg.csharp_extractor.md)
 - [`orchestrator.pkg.data_layer_link`](../../src/orchestrator/pkg/data_layer_link.py#L1)
 - [`orchestrator.pkg.doc_link`](../../src/orchestrator/pkg/doc_link.py#L1)
@@ -49,8 +50,9 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1)
 - [`orchestrator.pkg.facts`](../../src/orchestrator/pkg/facts.py#L1)
 - [`orchestrator.pkg.finalize_names`](../../src/orchestrator/pkg/finalize_names.py#L1)
-- [`orchestrator.pkg.go_extractor`](../modules/orchestrator.pkg.go_extractor.md)
+- [`orchestrator.pkg.go_extractor`](../../src/orchestrator/pkg/go_extractor.py#L1)
 - [`orchestrator.pkg.go_routes`](../../src/orchestrator/pkg/go_routes.py#L1)
+- [`orchestrator.pkg.gradle_extractor`](../../src/orchestrator/pkg/gradle_extractor.py#L1)
 - [`orchestrator.pkg.graph_export`](../../src/orchestrator/pkg/graph_export.py#L1)
 - [`orchestrator.pkg.import_link`](../../src/orchestrator/pkg/import_link.py#L1)
 - [`orchestrator.pkg.intent_link`](../../src/orchestrator/pkg/intent_link.py#L1)
@@ -58,14 +60,23 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.java_extractor`](../modules/orchestrator.pkg.java_extractor.md)
 - [`orchestrator.pkg.join_link`](../../src/orchestrator/pkg/join_link.py#L1)
 - [`orchestrator.pkg.joins_propose`](../../src/orchestrator/pkg/joins_propose.py#L1)
+- [`orchestrator.pkg.jvm_routes`](../../src/orchestrator/pkg/jvm_routes.py#L1)
+- [`orchestrator.pkg.kotlin_di`](../../src/orchestrator/pkg/kotlin_di.py#L1)
+- [`orchestrator.pkg.kotlin_extractor`](../modules/orchestrator.pkg.kotlin_extractor.md)
+- [`orchestrator.pkg.kotlin_http`](../../src/orchestrator/pkg/kotlin_http.py#L1)
+- [`orchestrator.pkg.kotlin_kmp`](../../src/orchestrator/pkg/kotlin_kmp.py#L1)
+- [`orchestrator.pkg.kotlin_names`](../modules/orchestrator.pkg.kotlin_names.md)
+- [`orchestrator.pkg.kotlin_nav`](../modules/orchestrator.pkg.kotlin_nav.md)
+- [`orchestrator.pkg.kotlin_room`](../modules/orchestrator.pkg.kotlin_room.md)
+- [`orchestrator.pkg.kotlin_routes`](../modules/orchestrator.pkg.kotlin_routes.md)
 - [`orchestrator.pkg.media`](../../src/orchestrator/pkg/media.py#L1)
 - [`orchestrator.pkg.media_asr`](../../src/orchestrator/pkg/media_asr.py#L1)
-- [`orchestrator.pkg.media_extract`](../modules/orchestrator.pkg.media_extract.md)
+- [`orchestrator.pkg.media_extract`](../../src/orchestrator/pkg/media_extract.py#L1)
 - [`orchestrator.pkg.migrations`](../../src/orchestrator/pkg/migrations.py#L1)
 - [`orchestrator.pkg.overview`](../../src/orchestrator/pkg/overview.py#L1)
 - [`orchestrator.pkg.perl_extractor`](../modules/orchestrator.pkg.perl_extractor.md)
 - [`orchestrator.pkg.perl_orm`](../../src/orchestrator/pkg/perl_orm.py#L1)
-- [`orchestrator.pkg.perl_routes`](../modules/orchestrator.pkg.perl_routes.md)
+- [`orchestrator.pkg.perl_routes`](../../src/orchestrator/pkg/perl_routes.py#L1)
 - [`orchestrator.pkg.persistence`](../modules/orchestrator.pkg.persistence.md)
 - [`orchestrator.pkg.php_extractor`](../modules/orchestrator.pkg.php_extractor.md)
 - [`orchestrator.pkg.php_names`](../../src/orchestrator/pkg/php_names.py#L1)
@@ -73,7 +84,7 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.php_routes`](../modules/orchestrator.pkg.php_routes.md)
 - [`orchestrator.pkg.python_client`](../../src/orchestrator/pkg/python_client.py#L1)
 - [`orchestrator.pkg.python_orm`](../modules/orchestrator.pkg.python_orm.md)
-- [`orchestrator.pkg.python_routes`](../modules/orchestrator.pkg.python_routes.md)
+- [`orchestrator.pkg.python_routes`](../../src/orchestrator/pkg/python_routes.py#L1)
 - [`orchestrator.pkg.rdf`](../../src/orchestrator/pkg/rdf.py#L1)
 - [`orchestrator.pkg.repos`](../../src/orchestrator/pkg/repos.py#L1)
 - [`orchestrator.pkg.retrieval`](../../src/orchestrator/pkg/retrieval.py#L1)

@@ -68,6 +68,13 @@ class EdgeKind(str, Enum):
     # symbol→the Intent it was built for. The second edge kind carrying meaning rather than
     # mechanism, and the only one whose evidence is git history rather than source text.
     SERVES = "SERVES"
+    # provider→the type it makes available to dependency injection. Added for Hilt/Dagger
+    # (kotlin-support-roadmap.md D15), where it carries a fact no existing edge does:
+    # `@Binds fun b(impl: OfflineRepo): Repo` says *which* implementation is actually wired
+    # behind `Repo`. `IMPLEMENTS` cannot say it — it is already true of every implementation,
+    # including the two test fakes — so reusing it would answer "what breaks if I change
+    # OfflineRepo" with every binding in the repository, wired or not.
+    PROVIDES = "PROVIDES"
 
 
 # The kinds that are *symbols* — a named thing inside a file — as opposed to a container
@@ -89,7 +96,7 @@ class Provenance:
     sites parse this string back with ``split(":", 1)[0]`` to recover the file path::
 
         sdlc/design.py            sdlc/builddoc.py (x2)
-        sdlc/autorun.py           sdlc/criteria_binding.py
+        sdlc/autorun.py           pkg/criteria_binding.py
                                   sdlc/evidence.py
 
     Adding a segment makes every one of them return the *repo name* where a path is expected —

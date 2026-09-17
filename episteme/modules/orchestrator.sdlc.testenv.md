@@ -5,22 +5,22 @@
 
 **Source:** [`src/orchestrator/sdlc/testenv.py`](../../src/orchestrator/sdlc/testenv.py)
 
-10 types · 25 functions · python
+11 types · 29 functions · python
 
 ## Changing this safely
 
-**Tested by** (8): `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_perl_codegen`, `tests.sdlc.test_perl_integration`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_sql_build`, `tests.sdlc.test_testenv`, `tests.sdlc.test_typescript_integration`
+**Tested by** (10): `tests.sdlc.test_android_codegen`, `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_kotlin_codegen`, `tests.sdlc.test_perl_codegen`, `tests.sdlc.test_perl_integration`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_sql_build`, +2 more
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
-- [`_autoheal_allowed`](../../src/orchestrator/sdlc/testenv.py#L591) — reaches **11** symbols
-- [`parse_missing_module`](../../src/orchestrator/sdlc/testenv.py#L585) — reaches **11** symbols
-- [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L598) — reaches **11** symbols
-- [`make_test_environment`](../../src/orchestrator/sdlc/testenv.py#L565) — reaches **9** symbols
-- [`make_test_runner`](../../src/orchestrator/sdlc/testenv.py#L574) — reaches **9** symbols
-- [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L511) — reaches **2** symbols
-- [`_run`](../../src/orchestrator/sdlc/testenv.py#L638) — reaches **2** symbols · **no test path visible**
-- [`_test_group_deps`](../../src/orchestrator/sdlc/testenv.py#L681) — reaches **2** symbols
+- [`_autoheal_allowed`](../../src/orchestrator/sdlc/testenv.py#L703) — reaches **11** symbols
+- [`parse_missing_module`](../../src/orchestrator/sdlc/testenv.py#L697) — reaches **11** symbols
+- [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L710) — reaches **11** symbols
+- [`make_test_environment`](../../src/orchestrator/sdlc/testenv.py#L677) — reaches **9** symbols
+- [`make_test_runner`](../../src/orchestrator/sdlc/testenv.py#L686) — reaches **9** symbols
+- [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L623) — reaches **2** symbols
+- [`_run`](../../src/orchestrator/sdlc/testenv.py#L750) — reaches **2** symbols · **no test path visible**
+- [`_test_group_deps`](../../src/orchestrator/sdlc/testenv.py#L793) — reaches **2** symbols
 
 _4 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
@@ -32,7 +32,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `CToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:229`](../../src/orchestrator/sdlc/testenv.py#L229)
+[`src/orchestrator/sdlc/testenv.py:341`](../../src/orchestrator/sdlc/testenv.py#L341)
 
 - **Called by** (0 production · 4 test): [`test_c_env_install_is_noop_and_python_unavailable`](../../tests/sdlc/test_testenv.py#L429), [`test_make_test_environment_and_runner_for_cpp`](../../tests/sdlc/test_testenv.py#L555), [`test_make_test_runner_picks_ctest_for_c`](../../tests/sdlc/test_testenv.py#L422), [`test_make_test_runner_picks_meson_when_build_tool_is_meson`](../../tests/sdlc/test_testenv.py#L499)
 - **Fields**: `build_tool`, `declared`
@@ -40,7 +40,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `DotnetToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:202`](../../src/orchestrator/sdlc/testenv.py#L202)
+[`src/orchestrator/sdlc/testenv.py:214`](../../src/orchestrator/sdlc/testenv.py#L214)
 
 - **Called by** (0 production · 2 test): [`test_dotnet_env_install_is_noop_and_python_unavailable`](../../tests/sdlc/test_testenv.py#L313), [`test_make_test_runner_picks_dotnet_for_csharp`](../../tests/sdlc/test_testenv.py#L306)
 - **Fields**: `declared`
@@ -48,7 +48,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `GoToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:435`](../../src/orchestrator/sdlc/testenv.py#L435)
+[`src/orchestrator/sdlc/testenv.py:547`](../../src/orchestrator/sdlc/testenv.py#L547)
 
 - **Called by** (0 production · 2 test): [`test_go_env_install_is_noop_and_python_unavailable`](../../tests/sdlc/test_testenv.py#L587), [`test_make_test_environment_and_runner_for_go`](../../tests/sdlc/test_testenv.py#L579)
 - **Fields**: `declared`
@@ -56,15 +56,23 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `JavaToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:153`](../../src/orchestrator/sdlc/testenv.py#L153)
+[`src/orchestrator/sdlc/testenv.py:154`](../../src/orchestrator/sdlc/testenv.py#L154)
 
 - **Called by** (0 production · 2 test): [`test_java_env_install_is_noop_and_python_unavailable`](../../tests/sdlc/test_testenv.py#L169), [`test_make_test_runner_picks_maven_for_java`](../../tests/sdlc/test_testenv.py#L161)
+- **Fields**: `build_tool`, `declared`
+- **Documented in**: `docs/specs/java-codegen.md#build-spec-java-codegen-multi-language-slice-2`, `docs/specs/java-codegen.md#feature-runner`, `docs/specs/java-codegen.md#phasing-each-shippable`, `docs/specs/java-codegen.md#test-runner-env`, `docs/specs/kotlin-support-roadmap.md#93-gradletestrunner-gradle-aware-javatoolenvironment-the-jvm-codegen-gap`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
+
+### `KotlinToolEnvironment`
+
+[`src/orchestrator/sdlc/testenv.py:241`](../../src/orchestrator/sdlc/testenv.py#L241)
+
+- **Called by** (0 production · 1 test): [`test_the_tool_environment_has_no_python_interpreter`](../../tests/sdlc/test_kotlin_codegen.py#L215)
 - **Fields**: `declared`
-- **Documented in**: `docs/specs/java-codegen.md#build-spec-java-codegen-multi-language-slice-2`, `docs/specs/java-codegen.md#feature-runner`, `docs/specs/java-codegen.md#phasing-each-shippable`, `docs/specs/java-codegen.md#test-runner-env`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
+- **Documented in**: `docs/specs/kotlin-support-roadmap.md#0-decisions-surfaced-up-front`, `docs/specs/kotlin-support-roadmap.md#35-the-added-scopes-fact-mapping`, `docs/specs/kotlin-support-roadmap.md#5-phases-the-living-table`, `docs/specs/kotlin-support-roadmap.md#7-files-to-change`
 
 ### `LocalTestEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:84`](../../src/orchestrator/sdlc/testenv.py#L84)
+[`src/orchestrator/sdlc/testenv.py:85`](../../src/orchestrator/sdlc/testenv.py#L85)
 
 - **Called by** (0 production · 2 test): [`test_local_env_install_is_noop`](../../tests/sdlc/test_testenv.py#L137), [`test_make_test_runner_picks_maven_for_java`](../../tests/sdlc/test_testenv.py#L161)
 - **Fields**: `declared`
@@ -72,7 +80,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `NodeToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:174`](../../src/orchestrator/sdlc/testenv.py#L174)
+[`src/orchestrator/sdlc/testenv.py:186`](../../src/orchestrator/sdlc/testenv.py#L186)
 
 - **Called by** (0 production · 4 test): [`_scaffold_and_install`](../../tests/sdlc/test_typescript_integration.py#L29), [`test_make_test_runner_picks_node_for_typescript`](../../tests/sdlc/test_testenv.py#L229), [`test_node_env_ensure_runs_install`](../../tests/sdlc/test_testenv.py#L260), [`test_node_env_install_is_noop_and_python_unavailable`](../../tests/sdlc/test_testenv.py#L237)
 - **Fields**: `declared`, `package_manager`
@@ -80,7 +88,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `PerlToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:373`](../../src/orchestrator/sdlc/testenv.py#L373)
+[`src/orchestrator/sdlc/testenv.py:485`](../../src/orchestrator/sdlc/testenv.py#L485)
 
 - **Called by** (0 production · 3 test): [`test_perl_install_is_best_effort`](../../tests/sdlc/test_perl_codegen.py#L107), [`test_perl_missing_cpanm_warns_and_continues`](../../tests/sdlc/test_perl_codegen.py#L90), [`test_perl_xs_is_rejected_before_install`](../../tests/sdlc/test_perl_codegen.py#L120)
 - **Fields**: `declared`, `setup_note`
@@ -88,7 +96,7 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `PhpToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:254`](../../src/orchestrator/sdlc/testenv.py#L254)
+[`src/orchestrator/sdlc/testenv.py:366`](../../src/orchestrator/sdlc/testenv.py#L366)
 
 - **Called by** (0 production · 4 test): [`test_composer_install_and_missing_phpunit`](../../tests/sdlc/test_php_codegen.py#L239), [`test_environment_honors_php_version_pin`](../../tests/sdlc/test_php_codegen.py#L230), [`test_environment_selects_compatible_phar`](../../tests/sdlc/test_php_codegen.py#L213), [`test_real_composer_and_phar`](../../tests/sdlc/test_php_codegen.py#L280)
 - **Fields**: `declared`, `php`, `phpunit`, `setup_note`, `version`
@@ -96,14 +104,14 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `SqlToolEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:472`](../../src/orchestrator/sdlc/testenv.py#L472)
+[`src/orchestrator/sdlc/testenv.py:584`](../../src/orchestrator/sdlc/testenv.py#L584)
 
 - **Fields**: `declared`, `dialect`
 - **Documented in**: `docs/specs/sql-support-roadmap.md#phases`
 
 ### `VenvTestEnvironment`
 
-[`src/orchestrator/sdlc/testenv.py:104`](../../src/orchestrator/sdlc/testenv.py#L104)
+[`src/orchestrator/sdlc/testenv.py:105`](../../src/orchestrator/sdlc/testenv.py#L105)
 
 - **Fields**: `_python`, `_uv`, `declared`
 - **Documented in**: `docs/specs/SPEC-INDEX.md#complete-shipped`, `docs/specs/sandboxed-test-execution.md#build-plan-reliable-isolated-autonomous-execution`, `docs/specs/sandboxed-test-execution.md#file-level-change-list`, `docs/specs/sandboxed-test-execution.md#first-step`, `docs/specs/sandboxed-test-execution.md#new-testenvironment-sdlctestenvpy`, `docs/specs/sandboxed-test-execution.md#phasing`
@@ -112,141 +120,171 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `_autoheal_allowed`
 
-[`src/orchestrator/sdlc/testenv.py:591`](../../src/orchestrator/sdlc/testenv.py#L591)
+[`src/orchestrator/sdlc/testenv.py:703`](../../src/orchestrator/sdlc/testenv.py#L703)
 
-- **Called by** (1): [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L598)
+- **Called by** (1): [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L710)
 - **Calls** (1): `getenv`
 
 ### `_c_compiler_available`
 
-[`src/orchestrator/sdlc/testenv.py:511`](../../src/orchestrator/sdlc/testenv.py#L511)
+[`src/orchestrator/sdlc/testenv.py:623`](../../src/orchestrator/sdlc/testenv.py#L623)
 
-- **Called by** (2): [`c_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L519), [`meson_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L529)
+- **Called by** (2): [`c_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L631), [`meson_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L641)
 - **Calls** (1): `which`
 
 ### `_cpp_compiler_available`
 
-[`src/orchestrator/sdlc/testenv.py:515`](../../src/orchestrator/sdlc/testenv.py#L515)
+[`src/orchestrator/sdlc/testenv.py:627`](../../src/orchestrator/sdlc/testenv.py#L627)
 
-- **Called by** (1): [`cpp_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L524)
+- **Called by** (1): [`cpp_toolchain_available`](../../src/orchestrator/sdlc/testenv.py#L636)
 - **Calls** (1): `which`
 
 ### `_dist_name`
 
-[`src/orchestrator/sdlc/testenv.py:654`](../../src/orchestrator/sdlc/testenv.py#L654)
+[`src/orchestrator/sdlc/testenv.py:766`](../../src/orchestrator/sdlc/testenv.py#L766)
 
-- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L118)
+- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L119)
 - **Calls** (1): `split`
 
 ### `_ensure_phpunit_phar`
 
-[`src/orchestrator/sdlc/testenv.py:337`](../../src/orchestrator/sdlc/testenv.py#L337)
+[`src/orchestrator/sdlc/testenv.py:449`](../../src/orchestrator/sdlc/testenv.py#L449)
 
 - **Called by** (0 production · 1 test): [`test_phar_checksum_and_cache`](../../tests/sdlc/test_php_codegen.py#L255)
 - **Calls** (4): `NamedTemporaryFile`, `get`, `pathlib.Path`, `sha256`
 
 ### `_project_dependencies`
 
-[`src/orchestrator/sdlc/testenv.py:694`](../../src/orchestrator/sdlc/testenv.py#L694)
+[`src/orchestrator/sdlc/testenv.py:806`](../../src/orchestrator/sdlc/testenv.py#L806)
 
-- **Called by** (1 production · 6 test): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L118), [`test_dev_extra_is_installed_alongside_runtime_deps`](../../tests/sdlc/test_testenv.py#L687), [`test_heavyweight_extras_are_not_installed`](../../tests/sdlc/test_testenv.py#L707), [`test_include_group_tables_are_skipped_not_crashed_on`](../../tests/sdlc/test_testenv.py#L740), [`test_pep_735_dependency_groups_are_read`](../../tests/sdlc/test_testenv.py#L724), [`test_project_dependencies_parsed_from_pyproject`](../../tests/sdlc/test_testenv.py#L143), [`test_unreadable_pyproject_yields_no_deps`](../../tests/sdlc/test_testenv.py#L757)
-- **Calls** (2): [`_test_group_deps`](../../src/orchestrator/sdlc/testenv.py#L681), `loads`
+- **Called by** (1 production · 6 test): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L119), [`test_dev_extra_is_installed_alongside_runtime_deps`](../../tests/sdlc/test_testenv.py#L687), [`test_heavyweight_extras_are_not_installed`](../../tests/sdlc/test_testenv.py#L707), [`test_include_group_tables_are_skipped_not_crashed_on`](../../tests/sdlc/test_testenv.py#L740), [`test_pep_735_dependency_groups_are_read`](../../tests/sdlc/test_testenv.py#L724), [`test_project_dependencies_parsed_from_pyproject`](../../tests/sdlc/test_testenv.py#L143), [`test_unreadable_pyproject_yields_no_deps`](../../tests/sdlc/test_testenv.py#L757)
+- **Calls** (2): [`_test_group_deps`](../../src/orchestrator/sdlc/testenv.py#L793), `loads`
 
 ### `_run`
 
-[`src/orchestrator/sdlc/testenv.py:638`](../../src/orchestrator/sdlc/testenv.py#L638)
+[`src/orchestrator/sdlc/testenv.py:750`](../../src/orchestrator/sdlc/testenv.py#L750)
 
-- **Called by** (2): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L118), [`install`](../../src/orchestrator/sdlc/testenv.py#L140)
+- **Called by** (2): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L119), [`install`](../../src/orchestrator/sdlc/testenv.py#L141)
 - **Calls** (1): `create_subprocess_exec`
 
 ### `_run_in`
 
-[`src/orchestrator/sdlc/testenv.py:646`](../../src/orchestrator/sdlc/testenv.py#L646)
+[`src/orchestrator/sdlc/testenv.py:758`](../../src/orchestrator/sdlc/testenv.py#L758)
 
-- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L190)
+- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L202)
 - **Calls** (1): `create_subprocess_exec`
 
 ### `_test_group_deps`
 
-[`src/orchestrator/sdlc/testenv.py:681`](../../src/orchestrator/sdlc/testenv.py#L681)
+[`src/orchestrator/sdlc/testenv.py:793`](../../src/orchestrator/sdlc/testenv.py#L793)
 
-- **Called by** (1): [`_project_dependencies`](../../src/orchestrator/sdlc/testenv.py#L694)
+- **Called by** (1): [`_project_dependencies`](../../src/orchestrator/sdlc/testenv.py#L806)
 
 ### `_tests_use_mocker`
 
-[`src/orchestrator/sdlc/testenv.py:659`](../../src/orchestrator/sdlc/testenv.py#L659)
+[`src/orchestrator/sdlc/testenv.py:771`](../../src/orchestrator/sdlc/testenv.py#L771)
 
-- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L118)
+- **Called by** (1): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L119)
+
+### `android_toolchain_available`
+
+[`src/orchestrator/sdlc/testenv.py:276`](../../src/orchestrator/sdlc/testenv.py#L276)
+
+- **Called by** (0 production · 2 test): [`test_a_machine_with_no_sdk_reports_none`](../../tests/sdlc/test_android_codegen.py#L484), [`test_android_home_locates_the_sdk`](../../tests/sdlc/test_android_codegen.py#L476)
+- **Calls** (1): [`android_sdk_root`](../../src/orchestrator/sdlc/android.py#L192)
+- **Documented in**: `docs/specs/kotlin-support-roadmap.md#35-the-added-scopes-fact-mapping`, `docs/specs/kotlin-support-roadmap.md#5-phases-the-living-table`
 
 ### `c_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:519`](../../src/orchestrator/sdlc/testenv.py#L519)
+[`src/orchestrator/sdlc/testenv.py:631`](../../src/orchestrator/sdlc/testenv.py#L631)
 
 - **Called by** (0 production · 1 test): [`test_c_toolchain_available`](../../tests/sdlc/test_testenv.py#L440)
-- **Calls** (2): [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L511), `which`
+- **Calls** (2): [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L623), `which`
 
 ### `cpp_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:524`](../../src/orchestrator/sdlc/testenv.py#L524)
+[`src/orchestrator/sdlc/testenv.py:636`](../../src/orchestrator/sdlc/testenv.py#L636)
 
 - **Called by** (0 production · 1 test): [`test_cpp_toolchain_available`](../../tests/sdlc/test_testenv.py#L564)
-- **Calls** (2): [`_cpp_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L515), `which`
+- **Calls** (2): [`_cpp_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L627), `which`
 - **Documented in**: `docs/specs/language-support-roadmap.md#track-3-c-cpp-cc-cxx-hpp-hh-hxx-do-third-builds-on-c`
 
 ### `detect_dotnet_tfm`
 
-[`src/orchestrator/sdlc/testenv.py:534`](../../src/orchestrator/sdlc/testenv.py#L534)
+[`src/orchestrator/sdlc/testenv.py:646`](../../src/orchestrator/sdlc/testenv.py#L646)
 
 - **Called by** (0 production · 2 test): [`test_detect_dotnet_tfm`](../../tests/sdlc/test_testenv.py#L336), [`test_detect_dotnet_tfm_falls_back_without_dotnet`](../../tests/sdlc/test_testenv.py#L347)
 - **Calls** (3): `match`, `run`, `which`
 
 ### `dotnet_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:506`](../../src/orchestrator/sdlc/testenv.py#L506)
+[`src/orchestrator/sdlc/testenv.py:618`](../../src/orchestrator/sdlc/testenv.py#L618)
 
 - **Called by** (0 production · 1 test): [`test_dotnet_toolchain_available`](../../tests/sdlc/test_testenv.py#L324)
 - **Calls** (1): `which`
 
 ### `go_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:560`](../../src/orchestrator/sdlc/testenv.py#L560)
+[`src/orchestrator/sdlc/testenv.py:672`](../../src/orchestrator/sdlc/testenv.py#L672)
 
 - **Called by** (0 production · 1 test): [`test_go_toolchain_available`](../../tests/sdlc/test_testenv.py#L598)
 - **Calls** (1): `which`
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
+### `gradle_available`
+
+[`src/orchestrator/sdlc/testenv.py:267`](../../src/orchestrator/sdlc/testenv.py#L267)
+
+- **Called by** (1 production · 2 test): [`kotlin_project_error`](../../src/orchestrator/sdlc/testenv.py#L292), [`test_gradle_is_available_through_a_committed_wrapper`](../../tests/sdlc/test_kotlin_codegen.py#L175), [`test_gradle_on_path_is_enough_without_a_wrapper`](../../tests/sdlc/test_kotlin_codegen.py#L193)
+- **Calls** (2): `pathlib.Path`, `which`
+
 ### `java_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:224`](../../src/orchestrator/sdlc/testenv.py#L224)
+[`src/orchestrator/sdlc/testenv.py:236`](../../src/orchestrator/sdlc/testenv.py#L236)
 
 - **Calls** (1): `which`
 
+### `kotlin_project_error`
+
+[`src/orchestrator/sdlc/testenv.py:292`](../../src/orchestrator/sdlc/testenv.py#L292)
+
+- **Called by** (0 production · 5 test): [`test_a_placeable_android_project_has_no_error`](../../tests/sdlc/test_android_codegen.py#L338), [`test_a_project_without_gradle_says_which_thing_is_missing`](../../tests/sdlc/test_android_codegen.py#L281), [`test_an_android_project_without_an_sdk_says_so`](../../tests/sdlc/test_android_codegen.py#L290), [`test_an_unplaceable_package_lists_the_candidate_modules`](../../tests/sdlc/test_android_codegen.py#L305), [`test_the_flags_the_error_names_are_flags_that_exist`](../../tests/sdlc/test_android_codegen.py#L318)
+- **Calls** (5): [`android_sdk_root`](../../src/orchestrator/sdlc/android.py#L192), [`gradle_available`](../../src/orchestrator/sdlc/testenv.py#L267), [`gradle_modules`](../../src/orchestrator/sdlc/android.py#L90), [`is_android_project`](../../src/orchestrator/sdlc/android.py#L187), `pathlib.Path`
+- **Documented in**: `docs/specs/kotlin-support-roadmap.md#35-the-added-scopes-fact-mapping`, `docs/specs/kotlin-support-roadmap.md#5-phases-the-living-table`
+
+### `kotlin_toolchain_available`
+
+[`src/orchestrator/sdlc/testenv.py:329`](../../src/orchestrator/sdlc/testenv.py#L329)
+
+- **Calls** (1): `which`
+- **Documented in**: `docs/specs/kotlin-support-roadmap.md#5-phases-the-living-table`, `docs/specs/kotlin-support-roadmap.md#6-corpus-cases-p2p3`
+
 ### `make_test_environment`
 
-[`src/orchestrator/sdlc/testenv.py:565`](../../src/orchestrator/sdlc/testenv.py#L565)
+[`src/orchestrator/sdlc/testenv.py:677`](../../src/orchestrator/sdlc/testenv.py#L677)
 
-- **Called by** (1 production · 13 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`test_dispatch_and_php_source_recognition`](../../tests/sdlc/test_php_codegen.py#L123), [`test_engine_env_selects_postgres_runner`](../../tests/sdlc/test_sql_build.py#L118), [`test_factories_wire_sql_language`](../../tests/sdlc/test_sql_build.py#L88), [`test_make_test_environment_and_runner_for_cpp`](../../tests/sdlc/test_testenv.py#L555), [`test_make_test_environment_and_runner_for_go`](../../tests/sdlc/test_testenv.py#L579), [`test_make_test_environment_c`](../../tests/sdlc/test_testenv.py#L416), [`test_make_test_environment_c_carries_build_tool`](../../tests/sdlc/test_testenv.py#L490), [`test_make_test_environment_csharp`](../../tests/sdlc/test_testenv.py#L300), [`test_make_test_environment_default_is_venv`](../../tests/sdlc/test_testenv.py#L132), [`test_make_test_environment_java`](../../tests/sdlc/test_testenv.py#L155), [`test_make_test_environment_local`](../../tests/sdlc/test_testenv.py#L127), [`test_make_test_environment_typescript_threads_package_manager`](../../tests/sdlc/test_testenv.py#L220), [`test_perl_full_registration_and_source_test_classification`](../../tests/sdlc/test_perl_codegen.py#L136)
-- **Calls** (1): [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L381)
+- **Called by** (1 production · 13 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L632), [`test_dispatch_and_php_source_recognition`](../../tests/sdlc/test_php_codegen.py#L123), [`test_engine_env_selects_postgres_runner`](../../tests/sdlc/test_sql_build.py#L118), [`test_factories_wire_sql_language`](../../tests/sdlc/test_sql_build.py#L88), [`test_make_test_environment_and_runner_for_cpp`](../../tests/sdlc/test_testenv.py#L555), [`test_make_test_environment_and_runner_for_go`](../../tests/sdlc/test_testenv.py#L579), [`test_make_test_environment_c`](../../tests/sdlc/test_testenv.py#L416), [`test_make_test_environment_c_carries_build_tool`](../../tests/sdlc/test_testenv.py#L490), [`test_make_test_environment_csharp`](../../tests/sdlc/test_testenv.py#L300), [`test_make_test_environment_default_is_venv`](../../tests/sdlc/test_testenv.py#L132), [`test_make_test_environment_java`](../../tests/sdlc/test_testenv.py#L155), [`test_make_test_environment_local`](../../tests/sdlc/test_testenv.py#L127), [`test_make_test_environment_typescript_threads_package_manager`](../../tests/sdlc/test_testenv.py#L220), [`test_perl_full_registration_and_source_test_classification`](../../tests/sdlc/test_perl_codegen.py#L136)
+- **Calls** (1): [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L429)
 - **Documented in**: `docs/specs/perl-codegen-roadmap.md#3-phases-the-living-table`, `docs/specs/sandboxed-test-execution.md#wiring-sdlcfeature-runnerpy`, `docs/specs/sql-support-roadmap.md#phases`, `docs/specs/typescript-codegen.md#design-multi-language-support-typescript`, `docs/specs/typescript-codegen.md#test-runner-env`
 
 ### `make_test_runner`
 
-[`src/orchestrator/sdlc/testenv.py:574`](../../src/orchestrator/sdlc/testenv.py#L574)
+[`src/orchestrator/sdlc/testenv.py:686`](../../src/orchestrator/sdlc/testenv.py#L686)
 
-- **Called by** (1 production · 12 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`test_dispatch_and_php_source_recognition`](../../tests/sdlc/test_php_codegen.py#L123), [`test_engine_env_selects_postgres_runner`](../../tests/sdlc/test_sql_build.py#L118), [`test_factories_wire_sql_language`](../../tests/sdlc/test_sql_build.py#L88), [`test_make_test_environment_and_runner_for_cpp`](../../tests/sdlc/test_testenv.py#L555), [`test_make_test_environment_and_runner_for_go`](../../tests/sdlc/test_testenv.py#L579), [`test_make_test_runner_picks_ctest_for_c`](../../tests/sdlc/test_testenv.py#L422), [`test_make_test_runner_picks_dotnet_for_csharp`](../../tests/sdlc/test_testenv.py#L306), [`test_make_test_runner_picks_maven_for_java`](../../tests/sdlc/test_testenv.py#L161), [`test_make_test_runner_picks_meson_when_build_tool_is_meson`](../../tests/sdlc/test_testenv.py#L499), [`test_make_test_runner_picks_node_for_typescript`](../../tests/sdlc/test_testenv.py#L229), [`test_perl_full_registration_and_source_test_classification`](../../tests/sdlc/test_perl_codegen.py#L136), [`test_real_composer_and_phar`](../../tests/sdlc/test_php_codegen.py#L280)
-- **Calls** (1): [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L381)
+- **Called by** (1 production · 12 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L632), [`test_dispatch_and_php_source_recognition`](../../tests/sdlc/test_php_codegen.py#L123), [`test_engine_env_selects_postgres_runner`](../../tests/sdlc/test_sql_build.py#L118), [`test_factories_wire_sql_language`](../../tests/sdlc/test_sql_build.py#L88), [`test_make_test_environment_and_runner_for_cpp`](../../tests/sdlc/test_testenv.py#L555), [`test_make_test_environment_and_runner_for_go`](../../tests/sdlc/test_testenv.py#L579), [`test_make_test_runner_picks_ctest_for_c`](../../tests/sdlc/test_testenv.py#L422), [`test_make_test_runner_picks_dotnet_for_csharp`](../../tests/sdlc/test_testenv.py#L306), [`test_make_test_runner_picks_maven_for_java`](../../tests/sdlc/test_testenv.py#L161), [`test_make_test_runner_picks_meson_when_build_tool_is_meson`](../../tests/sdlc/test_testenv.py#L499), [`test_make_test_runner_picks_node_for_typescript`](../../tests/sdlc/test_testenv.py#L229), [`test_perl_full_registration_and_source_test_classification`](../../tests/sdlc/test_perl_codegen.py#L136), [`test_real_composer_and_phar`](../../tests/sdlc/test_php_codegen.py#L280)
+- **Calls** (1): [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L429)
 - **Documented in**: `docs/specs/java-codegen.md#build-spec-java-codegen-multi-language-slice-2`, `docs/specs/perl-codegen-roadmap.md#22-blast-radius-measured-from-the-pkg`, `docs/specs/php-codegen-roadmap.md#4-phases`, `docs/specs/sql-support-roadmap.md#phases`, `docs/specs/typescript-codegen.md#design-multi-language-support-typescript`, `docs/specs/typescript-codegen.md#test-runner-env`
 
 ### `meson_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:529`](../../src/orchestrator/sdlc/testenv.py#L529)
+[`src/orchestrator/sdlc/testenv.py:641`](../../src/orchestrator/sdlc/testenv.py#L641)
 
 - **Called by** (0 production · 1 test): [`test_meson_toolchain_available`](../../tests/sdlc/test_testenv.py#L507)
-- **Calls** (2): [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L511), `which`
+- **Calls** (2): [`_c_compiler_available`](../../src/orchestrator/sdlc/testenv.py#L623), `which`
 
 ### `node_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:555`](../../src/orchestrator/sdlc/testenv.py#L555)
+[`src/orchestrator/sdlc/testenv.py:667`](../../src/orchestrator/sdlc/testenv.py#L667)
 
 - **Called by** (0 production · 1 test): [`test_node_toolchain_available`](../../tests/sdlc/test_testenv.py#L248)
 - **Calls** (1): `which`
@@ -254,44 +292,44 @@ _4 of the symbols other code depends on here have no test path the graph can see
 
 ### `parse_missing_module`
 
-[`src/orchestrator/sdlc/testenv.py:585`](../../src/orchestrator/sdlc/testenv.py#L585)
+[`src/orchestrator/sdlc/testenv.py:697`](../../src/orchestrator/sdlc/testenv.py#L697)
 
-- **Called by** (1 production · 4 test): [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L598), [`test_dotted_takes_top_level`](../../tests/sdlc/test_testenv.py#L66), [`test_no_match`](../../tests/sdlc/test_testenv.py#L72), [`test_simple`](../../tests/sdlc/test_testenv.py#L63), [`test_underscore_module`](../../tests/sdlc/test_testenv.py#L69)
+- **Called by** (1 production · 4 test): [`run_with_autoheal`](../../src/orchestrator/sdlc/testenv.py#L710), [`test_dotted_takes_top_level`](../../tests/sdlc/test_testenv.py#L66), [`test_no_match`](../../tests/sdlc/test_testenv.py#L72), [`test_simple`](../../tests/sdlc/test_testenv.py#L63), [`test_underscore_module`](../../tests/sdlc/test_testenv.py#L69)
 - **Documented in**: `docs/specs/sandboxed-test-execution.md#auto-heal-loop-the-killer-fix`, `docs/specs/sandboxed-test-execution.md#file-level-change-list`, `docs/specs/sandboxed-test-execution.md#testing`
 
 ### `perl_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:431`](../../src/orchestrator/sdlc/testenv.py#L431)
+[`src/orchestrator/sdlc/testenv.py:543`](../../src/orchestrator/sdlc/testenv.py#L543)
 
-- **Called by** (1 production · 1 test): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L385), [`test_perl_toolchain_available`](../../tests/sdlc/test_perl_codegen.py#L81)
+- **Called by** (1 production · 1 test): [`ensure`](../../src/orchestrator/sdlc/testenv.py#L497), [`test_perl_toolchain_available`](../../tests/sdlc/test_perl_codegen.py#L81)
 - **Calls** (1): `which`
 - **Documented in**: `docs/specs/perl-codegen-roadmap.md#0-decisions-surfaced-up-front`, `docs/specs/perl-codegen-roadmap.md#11-c-2-execution-evidence`, `docs/specs/perl-codegen-roadmap.md#2-design`, `docs/specs/perl-codegen-roadmap.md#3-phases-the-living-table`, `docs/specs/perl-codegen-roadmap.md#7-risks-and-gotchas`
 
 ### `php_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:369`](../../src/orchestrator/sdlc/testenv.py#L369)
+[`src/orchestrator/sdlc/testenv.py:481`](../../src/orchestrator/sdlc/testenv.py#L481)
 
 - **Calls** (1): `which`
 - **Documented in**: `docs/specs/perl-codegen-roadmap.md#22-blast-radius-measured-from-the-pkg`, `docs/specs/php-codegen-roadmap.md#33-tool-environment-testenvpy-phptoolenvironment`, `docs/specs/php-codegen-roadmap.md#4-phases`, `docs/specs/php-codegen-roadmap.md#5-files-to-change`
 
 ### `run_with_autoheal`
 
-[`src/orchestrator/sdlc/testenv.py:598`](../../src/orchestrator/sdlc/testenv.py#L598)
+[`src/orchestrator/sdlc/testenv.py:710`](../../src/orchestrator/sdlc/testenv.py#L710)
 
-- **Called by** (3 production · 7 test): [`_repair_after_revision`](../../src/orchestrator/sdlc/feature_runner.py#L470), [`_satisfy_the_ticket`](../../src/orchestrator/sdlc/feature_runner.py#L370), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`test_autoheal_installs_safe_package_then_passes`](../../tests/sdlc/test_testenv.py#L76), [`test_autoheal_maps_module_to_package`](../../tests/sdlc/test_testenv.py#L84), [`test_declared_package_installs`](../../tests/sdlc/test_testenv.py#L113), [`test_real_failure_does_not_install`](../../tests/sdlc/test_testenv.py#L91), [`test_same_missing_module_installed_at_most_once`](../../tests/sdlc/test_testenv.py#L120), [`test_unlisted_allowed_with_optin`](../../tests/sdlc/test_testenv.py#L105), [`test_unlisted_package_blocked_without_optin`](../../tests/sdlc/test_testenv.py#L98)
-- **Calls** (2): [`_autoheal_allowed`](../../src/orchestrator/sdlc/testenv.py#L591), [`parse_missing_module`](../../src/orchestrator/sdlc/testenv.py#L585)
+- **Called by** (3 production · 7 test): [`_repair_after_revision`](../../src/orchestrator/sdlc/feature_runner.py#L470), [`_satisfy_the_ticket`](../../src/orchestrator/sdlc/feature_runner.py#L370), [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L632), [`test_autoheal_installs_safe_package_then_passes`](../../tests/sdlc/test_testenv.py#L76), [`test_autoheal_maps_module_to_package`](../../tests/sdlc/test_testenv.py#L84), [`test_declared_package_installs`](../../tests/sdlc/test_testenv.py#L113), [`test_real_failure_does_not_install`](../../tests/sdlc/test_testenv.py#L91), [`test_same_missing_module_installed_at_most_once`](../../tests/sdlc/test_testenv.py#L120), [`test_unlisted_allowed_with_optin`](../../tests/sdlc/test_testenv.py#L105), [`test_unlisted_package_blocked_without_optin`](../../tests/sdlc/test_testenv.py#L98)
+- **Calls** (2): [`_autoheal_allowed`](../../src/orchestrator/sdlc/testenv.py#L703), [`parse_missing_module`](../../src/orchestrator/sdlc/testenv.py#L697)
 - **Documented in**: `docs/specs/sandboxed-test-execution.md#file-level-change-list`, `docs/specs/sandboxed-test-execution.md#testrefine-loop-calls-run-with-autohealenv-runner-path-instead-of-runnerrun`
 
 ### `sql_toolchain_available`
 
-[`src/orchestrator/sdlc/testenv.py:501`](../../src/orchestrator/sdlc/testenv.py#L501)
+[`src/orchestrator/sdlc/testenv.py:613`](../../src/orchestrator/sdlc/testenv.py#L613)
 
 - **Called by** (0 production · 1 test): [`test_sql_toolchain_is_always_available`](../../tests/sdlc/test_sql_build.py#L82)
 
 ## Imports
 
-`__future__.annotations`, `asyncio`, `collections.abc.Callable`, `hashlib`, `httpx`, `logging`, [`orchestrator.sdlc.contracts`](../../src/orchestrator/sdlc/contracts.py#L1), [`orchestrator.sdlc.perl`](../../src/orchestrator/sdlc/perl.py#L1), [`orchestrator.sdlc.php`](../../src/orchestrator/sdlc/php.py#L1), [`orchestrator.sdlc.testrunner`](orchestrator.sdlc.testrunner.md), [`orchestrator.sdlc.toolchains`](orchestrator.sdlc.toolchains.md), `os`, `pathlib.Path`, `re`, `shutil`, `subprocess`, `sys`, `tempfile`, `tomllib`
+`__future__.annotations`, `asyncio`, `collections.abc.Callable`, `hashlib`, `httpx`, `logging`, [`orchestrator.sdlc.android`](orchestrator.sdlc.android.md), [`orchestrator.sdlc.contracts`](../../src/orchestrator/sdlc/contracts.py#L1), [`orchestrator.sdlc.perl`](../../src/orchestrator/sdlc/perl.py#L1), [`orchestrator.sdlc.php`](../../src/orchestrator/sdlc/php.py#L1), [`orchestrator.sdlc.testrunner`](orchestrator.sdlc.testrunner.md), [`orchestrator.sdlc.toolchains`](orchestrator.sdlc.toolchains.md), `os`, `pathlib.Path`, `re`, `shutil`, `subprocess`, `sys`, `tempfile`, `tomllib`
 
 ## Imported by
 
-[`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_perl_codegen`](../../tests/sdlc/test_perl_codegen.py#L1), [`tests.sdlc.test_perl_integration`](../../tests/sdlc/test_perl_integration.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_sql_build`](../../tests/sdlc/test_sql_build.py#L1), [`tests.sdlc.test_testenv`](../../tests/sdlc/test_testenv.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)
+[`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`tests.sdlc.test_android_codegen`](../../tests/sdlc/test_android_codegen.py#L1), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_kotlin_codegen`](../../tests/sdlc/test_kotlin_codegen.py#L1), [`tests.sdlc.test_perl_codegen`](../../tests/sdlc/test_perl_codegen.py#L1), [`tests.sdlc.test_perl_integration`](../../tests/sdlc/test_perl_integration.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_sql_build`](../../tests/sdlc/test_sql_build.py#L1), [`tests.sdlc.test_testenv`](../../tests/sdlc/test_testenv.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)

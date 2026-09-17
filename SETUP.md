@@ -75,7 +75,7 @@ Optional extras, added when you need them:
   validation. The tested native version is 18.1.1; the declared `>=18` dependency
   is not proof that every newer release behaves identically. See the
   [support and platform matrix](docs/evals/clang-semantic-release-readiness.md#support-contract).
-- `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[sql]` — language
+- `[java]`, `[typescript]`, `[csharp]`, `[c]`, `[cpp]`, `[go]`, `[php]`, `[perl]`, `[kotlin]`, `[sql]` — language
   parsers for comprehension + grounding (Python needs no extra). C# codegen also needs the **.NET
   SDK** (`dotnet`) on PATH; C / C++ codegen needs a C / C++ compiler plus **CMake** (greenfield) or
   **Meson + Ninja** (matching the target repo's build system); **Go** codegen needs the **`go`
@@ -86,6 +86,36 @@ Optional extras, added when you need them:
   codegen uses Composer or a pinned PHPUnit PHAR. `[perl]` adds `.pl`/`.pm`/`.t` comprehension
   (every package is its own type, inheritance across its five spellings)
   and codegen: install `perl` and `prove` on PATH; `cpanm` is optional for dependencies.
+  `[kotlin]` adds `.kt` comprehension + a call graph (classes and objects in every flavour,
+  companions folded onto their class, extension and top-level functions, constructor
+  properties, and typed-receiver `CALLS` — Kotlin declares every property and parameter
+  type, so `dao.getTopics()` resolves without inference), plus the Android data layer:
+  **Room** `@Entity` tables with their columns, `REFERENCES` from foreign keys and
+  `@Relation`, and DAO `READS`/`WRITES` obtained by **parsing** each `@Query` with
+  sqlglot (add `[sql]`; without it those edges are skipped rather than guessed).
+  **Retrofit** interfaces are read as HTTP *calls*, so an Android app joins to a
+  provider repo in `pkg joins` rather than pretending to serve the route — while a Kotlin
+  *service* is read the other way round: **Ktor** and **Spring MVC** routes become
+  `Endpoint`s, so the same join can pair an app's call with the service answering it (the
+  Spring reader is shared with the Java front-end, which read JAX-RS only). **Multiplatform**
+  source sets are read as components, with `expect`/`actual` declarations given distinct ids
+  and joined by `IMPLEMENTS`. Kotlin/JVM **codegen** needs a JDK plus Gradle — a committed
+  `./gradlew` suffices, and nothing on the machine has to know about Kotlin, because
+  `kotlin("jvm")` in the build script brings its own compiler. Tests run through
+  `./gradlew test`, scoped to the Gradle modules the change touched. **Compose**
+  navigation routes become `NAV` endpoints with the screen they show and the code that
+  navigates to them, and **Hilt/Dagger** `@Binds`/`@Provides` become `PROVIDES` edges —
+  which is what lets `blast_radius` on a repository implementation reach the screens that
+  inject its interface, something no call edge can show. Kotlin ids
+  share Java's namespace, so a mixed Kotlin/Java module is **one** graph. `.kts` Gradle
+  scripts get their own reader: `settings.gradle.kts` declares the modules and each script's
+  `project(":…")` dependencies become a module graph, which is what lets `state` show a real
+  `core/` ← `feature/` layering instead of guessing components from package names.
+  **Android** repositories are supported for codegen too: the Gradle module is chosen from the
+  target package (a 27-module app has no sources at its root), and tests run as that module's own
+  JVM unit-test task — `testDebugUnitTest`, or the flavoured name Gradle reports when product
+  flavours rename it. Set `ANDROID_HOME` (or install Android Studio); no emulator and no device is
+  needed, because instrumented tests are never run.
 - `[docs]` — **PDF** doc ingestion; `[office]` — **Word/Excel** (`.docx`/`.xlsx`) ingestion.
   Markdown, `.rst`, `.txt` and **HTML** need no extra. Without an extra those files are simply
   skipped, so a base install still ingests everything it can read.
@@ -115,7 +145,7 @@ the interpreter answering. Host plugin update/removal commands stay in
 git clone https://github.com/synaptixs/spine
 cd spine
 uv sync --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp \
-  --extra c --extra cpp --extra go --extra php --extra perl
+  --extra c --extra cpp --extra go --extra php --extra perl --extra kotlin
 uv run orchestrator --help
 ```
 
@@ -405,6 +435,7 @@ records — the *why* — are indexed at [docs/specs/README.md](docs/specs/READM
 | Worker does nothing | It reads the process env, not `.env` — `set -a; source .env; set +a` before starting it. |
 | `mcp list` shows no servers | Add an `mcpServers` file (`--config`, `$ORCHESTRATOR_MCP_CONFIG`, or `./mcp.json`). |
 | `mcp` commands fail to import | Install the extra: `pip install 'synaptixs-spine[mcp]'` (or `uv sync --extra mcp`). |
+| **macOS: `pytest`/`mypy` hang at ~0% CPU** | The checkout is under iCloud (*Desktop & Documents*) and the venv's files have been evicted, so every import is a network fetch. Confirm with `time (find .venv/lib/python3.12/site-packages/litellm -name '*.py' \| head -150 \| xargs cat > /dev/null)` — under a second when local, ~55s when evicted. Fix by keeping the environment out of the synced tree: `export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/spine"` before `uv sync`. To unblock the current one in place, pre-fetch it: `find .venv -name '*.py' \| xargs -P 48 -n 40 cat > /dev/null`. |
 | An MCP tool is "not allow-listed" / write-gated | Add it to the server's `allow`; for mutating tools set `write_enabled: true`. |
 | Agentic loop falls back to single-shot | Use a tool-calling model (see `orchestrator models`) and set `SDLC_CODEGEN=llm`. |
 | `orchestrator-mcp --http` refuses to start | Set `ORCHESTRATOR_MCP_TOKEN` or `…_INTROSPECTION_URL`, bind `127.0.0.1`, or pass `--allow-unauthenticated` on a trusted net. |
@@ -417,6 +448,7 @@ records — the *why* — are indexed at [docs/specs/README.md](docs/specs/READM
 | "live needs a repo to push to" | Pass `repo=...` or set `SDLC_REPO_URL`; ensure `GITHUB_TOKEN`/`GH_TOKEN` is set. |
 | A `live` call refuses to write | That's the gate — pass `confirm=true` together with `live=true`. |
 | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](AGENT_GUIDE.md#10-language-support--toolchains). |
+| Build fails for Kotlin | Needs a JDK and Gradle. Most repos ship `./gradlew`, which is used in preference and downloads the version the project pins; only a repo without one needs `gradle` on PATH. Android additionally needs the SDK (`ANDROID_HOME`) — but never an emulator or a connected device. |
 
 **`temporal-test-server` orphaned after a killed pytest** — `pkill -f temporal-test-server`.
 The time-skipping test server does not clean up after `SIGKILL`.

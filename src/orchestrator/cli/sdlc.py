@@ -478,7 +478,7 @@ def _terminal_gate() -> Any:
 
 @sdlc_app.command("approve")
 def sdlc_approve(
-    intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. SSPN-49.")],
+    intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. PROJ-123.")],
     path: Annotated[str, typer.Option("--path", help="Repo the plan was written for.")] = ".",
     by: Annotated[
         str | None, typer.Option("--by", help="Who is deciding (default: git config user.name).")
@@ -678,7 +678,9 @@ def sdlc_plan(
         Path | None,
         typer.Option("--out", help="Where the document goes (default: <repo>/.spine/plans)."),
     ] = None,
-    language: Annotated[str, typer.Option("--language", help="Target language for the prompt.")] = "python",
+    language: Annotated[
+        str, typer.Option("--language", help="Target language for the prompt (auto detects).")
+    ] = "auto",
     issue_type: Annotated[
         str,
         typer.Option(
@@ -699,7 +701,16 @@ def sdlc_plan(
     import asyncio
 
     from orchestrator.sdlc.builddoc import build_plan, load_approval, load_journey, persist
+    from orchestrator.sdlc.feature_runner import _resolve_language, unsupported_language_error
     from orchestrator.sdlc.spec_file import SpecFileError, load_spec_file
+
+    # `sdlc feature` has validated this since it gained the flag; `plan` never did, so a typo
+    # fell through every dispatch chain to the Python branch and scaffolded the wrong project
+    # silently. Refusing costs nothing and is the difference between a mistake and a defect.
+    lang_error = unsupported_language_error(language)
+    if lang_error is not None:
+        typer.echo(f"ERROR: {lang_error}", err=True)
+        raise typer.Exit(code=2)
 
     if not spec and not source:
         typer.echo("Give --spec <file.json> or --source <uri>.", err=True)
@@ -753,10 +764,13 @@ def sdlc_plan(
                 resolved_type = resolve_ticket_meta(plan_result, chosen).issue_type
 
         intent_key = str(resolved.get("intent_id") or "spec")
+        # Resolved against the repo being planned, not left as the literal "auto" — the
+        # codegen prompt, the layout and the test environment all read this, and the old
+        # `python` default handed a C# repository Python scaffolding without saying so.
         document = await build_plan(
             resolved,
             root=path,
-            language=language,
+            language=_resolve_language(Path(path), language),
             issue_type=resolved_type,
             # Rendered, never stored in the document: a plan that changed since it was
             # approved shows as stale rather than carrying an approval it outgrew.
@@ -819,7 +833,7 @@ def sdlc_feature(
         str | None,
         typer.Option(
             "--issue",
-            help="Adopt an existing tracker issue (e.g. SSPN-9) instead of creating one — the "
+            help="Adopt an existing tracker issue (e.g. PROJ-123) instead of creating one — the "
             "branch, PR, comment and transition all land on it.",
         ),
     ] = None,
@@ -841,7 +855,12 @@ def sdlc_feature(
     package_name: Annotated[
         str | None,
         typer.Option(
-            "--package-name", help="Override the scaffold package name (default: derived from repo)."
+            "--package-name",
+            help=(
+                "Override the scaffold package name (default: derived from repo). In a "
+                "multi-module Gradle/Android repo this also selects the module the change "
+                "belongs to."
+            ),
         ),
     ] = None,
     refresh: Annotated[
@@ -856,8 +875,8 @@ def sdlc_feature(
         typer.Option(
             "--language",
             help=(
-                "Target language: auto (detect), python, java, typescript, csharp, "
-                "c, cpp, go, php, perl, or sql."
+                "Target language: auto (detect), python, java, kotlin, typescript, "
+                "csharp, c, cpp, go, php, perl, or sql."
             ),
         ),
     ] = "auto",

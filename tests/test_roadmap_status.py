@@ -416,3 +416,89 @@ def test_a_genuinely_broken_link_in_an_out_of_tree_plan_still_fails(
     )
     status.set_extra_docs([plan])
     assert any("does not resolve" in p for p in status.check())
+
+
+# ---- the header's progress claim against its own table (checks 8-9) ----------
+
+
+_DONE_ROW = "| **P{n} Work** | w | 1d | exit | ✅ DONE | 2026-09-01 | 2026-09-02 | measured |"
+_OPEN_ROW = "| **P{n} Work** | w | 1d | exit | ⬜ |  |  |  |"
+
+
+def _track(status_line: str, done: int, open_: int = 0) -> str:
+    rows = [_DONE_ROW.format(n=n) for n in range(1, done + 1)]
+    rows += [_OPEN_ROW.format(n=n) for n in range(done + 1, done + 1 + open_)]
+    return f"**Status:** {status_line}\n**Branch:** x\n\n{_HEADER}\n{_SEP}\n" + "\n".join(rows) + "\n"
+
+
+def test_a_header_behind_its_own_table_is_caught(status: ModuleType) -> None:
+    """The defect this check exists for. This repository's Kotlin roadmap carried
+    "P0–P5 done · P6–P11 not started" while P6, P7 and P8 sat finished and evidenced twelve
+    lines below it — through three phases, with the gate green throughout."""
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P2 done** · P3–P4 not started", done=4))
+    problems = status.check()
+    assert any("P3, P4" in p and "behind its own table" in p for p in problems)
+
+
+def test_a_header_ahead_of_its_own_table_is_caught(status: ModuleType) -> None:
+    """The other direction: claiming a phase the table still shows open."""
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P3 done**", done=1, open_=2))
+    assert any("ahead of its own table" in p for p in status.check())
+
+
+def test_a_header_that_agrees_with_its_table_passes(status: ModuleType) -> None:
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P3 done** · P4 not started", done=3, open_=1))
+    assert not [p for p in status.check() if "its own table" in p]
+
+
+def test_a_status_line_stating_no_phase_claim_is_skipped_not_guessed_at(status: ModuleType) -> None:
+    """Precision over coverage: a roadmap may word its header however it likes, and the
+    generalised prose-classification version of this idea was withdrawn at 33% precision."""
+    _write(status.ROOT, "x-roadmap.md", _track("🟢 shipped and in production", done=2))
+    assert not [p for p in status.check() if "its own table" in p]
+
+
+def test_a_comma_separated_claim_is_read_the_same_as_a_range(status: ModuleType) -> None:
+    _write(status.ROOT, "x-roadmap.md", _track("**P1, P2 done**", done=2))
+    assert not [p for p in status.check() if "its own table" in p]
+    assert status.claimed_done("**P1, P2 done**") == {"P1", "P2"}
+
+
+def test_a_status_line_that_wraps_is_still_read(status: ModuleType) -> None:
+    """It used to be matched as `(.+?)\\.` on a single line, so a wrapped status line
+    matched nothing at all — and every roadmap in this repository wraps its own, which made
+    every check that reads it a silent no-op here."""
+    body = _track("🟡 **P1–P2 done** (comprehension;\ncall graph; routes) · P3 pending", done=2)
+    _write(status.ROOT, "x-roadmap.md", body)
+    text = (status.ROOT / "docs" / "specs" / "x-roadmap.md").read_text(encoding="utf-8")
+    match = status._TOP_STATUS.search(text)
+    assert match is not None
+    assert status.claimed_done(match.group(1)) == {"P1", "P2"}
+
+
+def test_the_index_and_the_spec_disagreeing_is_caught(status: ModuleType) -> None:
+    """ "P1+P2 done" in one file and "all four phases" in another is the case §9.1 names."""
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P2 done**", done=2))
+    _write(
+        status.ROOT,
+        "SPEC-INDEX.md",
+        "| [x-roadmap](x-roadmap.md) | 🟡 **P1–P4 done 2026-09-02** — shipped |\n",
+    )
+    assert any("they disagree" in p for p in status.check())
+
+
+def test_the_index_agreeing_with_the_spec_passes(status: ModuleType) -> None:
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P2 done**", done=2))
+    _write(
+        status.ROOT,
+        "SPEC-INDEX.md",
+        "| [x-roadmap](x-roadmap.md) | 🟡 **P1–P2 done 2026-09-02** — shipped |\n",
+    )
+    assert not [p for p in status.check() if "they disagree" in p]
+
+
+def test_an_index_row_written_as_prose_is_skipped(status: ModuleType) -> None:
+    """Only compared when both sides use the readable shorthand."""
+    _write(status.ROOT, "x-roadmap.md", _track("🟡 **P1–P2 done**", done=2))
+    _write(status.ROOT, "SPEC-INDEX.md", "| [x-roadmap](x-roadmap.md) | in progress |\n")
+    assert not [p for p in status.check() if "they disagree" in p]

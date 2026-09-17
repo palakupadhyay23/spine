@@ -37,9 +37,9 @@ truth, and an **observability + audit** rail that records every step.
 
 ### The Product Knowledge Graph — the substrate, not a box
 `pkg/` turns code **and** docs into a deterministic, `file:line`-grounded graph — **8 node kinds**
-(Module, Type, Function, Field, Endpoint, Entity, Doc, Intent) and **11 edge kinds** (IMPORTS,
-CONTAINS, CALLS, IMPLEMENTS, READS, WRITES, EXPOSES, CONSUMES, REFERENCES, MENTIONS, SERVES),
-across **8 language front-ends**. It is the **source of truth** every comprehension and delivery
+(Module, Type, Function, Field, Endpoint, Entity, Doc, Intent) and **12 edge kinds** (IMPORTS,
+CONTAINS, CALLS, IMPLEMENTS, READS, WRITES, EXPOSES, CONSUMES, REFERENCES, MENTIONS, SERVES,
+PROVIDES), across **11 language front-ends**. It is the **source of truth** every comprehension and delivery
 surface reads from — so in the diagram it's drawn as a foundation band spanning the middle, not a
 peer in a row.
 

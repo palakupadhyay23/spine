@@ -88,6 +88,23 @@ class TargetLayout:
     target_framework: str = ""
     test_suffix: str = "Test.php"
     test_bootstrap: str = ""
+    # Which assertion library the repo's tests already use ("kotlin.test", "junit5", …).
+    # Brownfield JVM codegen needs this: a generated `import kotlin.test.Test` does not
+    # compile in a project that depends on JUnit and nothing else, and the failure is a
+    # compile error the refine loop then has to spend a pass undoing. Empty → the
+    # language's greenfield default.
+    test_library: str = ""
+    # The Gradle module the generated files belong to, repo-relative and `/`-separated
+    # ("core/data"), or "" for a single-module build. P9, D13: an Android repo has no sources
+    # at its root at all — the validation app is 27 modules — so "which module" is a separate
+    # question from "which package", and the runner needs the answer to name a task
+    # (`:core:data:testDemoDebugUnitTest`) that exists.
+    module: str = ""
+    # True when that module is built by the Android Gradle Plugin. It changes what a generated
+    # *test* may contain, not just where it goes: an instrumented test needs a device and Spine
+    # never runs one, so the guidance has to rule them out rather than let the model reach for
+    # Espresso and produce a suite that cannot run.
+    android: bool = False
 
     def module_rel_path(self, module: str) -> str:
         """Worktree-relative path for a new source module/class (no leading dir)."""
@@ -205,6 +222,209 @@ def _resolve_java_layout(
         return TargetLayout(derived, src, tst, True, "existing", language="java", build_tool=build_tool)
     src, tst = _java_dirs(derived)
     return TargetLayout(derived, src, tst, True, "new", language="java", build_tool=build_tool)
+
+
+def detect_kotlin_layout(root: Path) -> tuple[str, str, str] | None:
+    """If a Kotlin source tree holds a package, return ``(package, source_dir, tests_dir)``.
+
+    Both Gradle spellings are searched, in the order a Kotlin project actually uses them:
+    ``src/main/kotlin`` for a Kotlin/JVM project, and ``src/main/java`` because Android and
+    every JVM project converted from Java keeps Kotlin files in the Java source root — the
+    validation app has 263 ``.kt`` files and not one of them is under ``src/main/kotlin``.
+    Looking only in the obvious place would find nothing in the common case.
+
+    The tests directory mirrors whichever root matched, so a ``src/main/kotlin`` project
+    gets ``src/test/kotlin`` and an Android-shaped one gets ``src/test/java``.
+    """
+    for source_root in ("kotlin", "java"):
+        main = root / "src" / "main" / source_root
+        if not main.is_dir():
+            continue
+        for dirpath, _dirs, files in os.walk(main):
+            if any(f.endswith(".kt") for f in files):
+                rel = Path(dirpath).relative_to(main)
+                package = str(rel).replace(os.sep, ".")
+                return (
+                    package,
+                    f"src/main/{source_root}/{rel.as_posix()}",
+                    f"src/test/{source_root}/{rel.as_posix()}",
+                )
+    return None
+
+
+def _kotlin_dirs(package: str) -> tuple[str, str]:
+    """Greenfield dirs. A new project gets ``src/main/kotlin`` — the Kotlin/JVM default —
+    even though a brownfield one is more often under ``src/main/java``."""
+    path = package.replace(".", "/")
+    return f"src/main/kotlin/{path}", f"src/test/kotlin/{path}"
+
+
+def detect_jvm_test_library(root: Path) -> str:
+    """Which assertion library this project's tests already use.
+
+    ``kotlin("test")`` in any build script means ``kotlin.test`` is on the test classpath;
+    a ``junit-jupiter`` dependency without it means JUnit 5 and *not* ``kotlin.test``.
+    The distinction is load-bearing for brownfield codegen: the Spring validation repo
+    declares ``junit-jupiter-api`` and no ``kotlin("test")``, so a generated
+    ``import kotlin.test.Test`` fails to compile there.
+    """
+    texts: list[str] = []
+    scripts = [*root.rglob("build.gradle.kts"), *root.rglob("build.gradle")]
+    # Android's dominant idiom hides the test dependency from every build script that uses it:
+    # the validation app declares `kotlin("test")` once, inside a convention plugin in
+    # `build-logic/`, and each module then applies `id("<product>.android.library")`.
+    # Reading only `build.gradle*` sees no test library anywhere in a repo that has one.
+    for conventions in (root / "build-logic", root / "buildSrc"):
+        if conventions.is_dir():
+            scripts.extend(conventions.rglob("*.kt"))
+    for script in scripts:
+        try:
+            texts.append(script.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            continue
+    joined = "\n".join(texts)
+    if 'kotlin("test")' in joined or "kotlin-test" in joined:
+        return "kotlin.test"
+    if "junit-jupiter" in joined or "junit.jupiter" in joined:
+        return "junit5"
+    return ""
+
+
+def _module_layout(
+    root: Path, *, package_name: str | None, derived: str, build_tool: str, test_library: str
+) -> TargetLayout | None:
+    """Placement inside a multi-module Gradle build (P9, D13), or ``None`` if not one.
+
+    Returns a layout whose ``module`` is ``""`` when the build *is* multi-module but no module
+    claims the package. That is not the same as "not applicable": it is an unresolved placement,
+    and ``kotlin_project_error`` turns it into an actionable message naming the candidates.
+    Guessing instead would write a repository into a module nobody would look in, where it
+    compiles and its test passes.
+    """
+    from orchestrator.sdlc import android
+
+    modules = [m for m in android.gradle_modules(root) if m != root]
+    if not modules:
+        return None
+    target = package_name or derived
+    module = android.module_for_package(root, target)
+    if module is None and package_name is None:
+        # No package was asked for and the repo-derived one matches nothing. A build with a
+        # single Kotlin module still has exactly one honest answer; more than one does not.
+        with_kotlin = [m for m in modules if android.base_package(m)]
+        module = with_kotlin[0] if len(with_kotlin) == 1 else None
+        if module is not None:
+            # …and the package is that module's, not the repo-derived one. Found in
+            # review: falling back to the single Kotlin module while keeping the
+            # derived name wrote `app/src/main/java/org/example/myrepo` into a module
+            # rooted at `com.acme.app` — a package invented for a brownfield repo,
+            # which is exactly what D13/P9 says the placement must never do. Every
+            # placement test passed `--package-name` explicitly, so nothing covered
+            # the default path this fallback exists to serve.
+            target = android.base_package(module)
+    if module is None:
+        return TargetLayout(
+            package_name=target,
+            source_dir="",
+            tests_dir="",
+            src_layout=True,
+            mode="existing",
+            language="kotlin",
+            build_tool=build_tool,
+            test_library=test_library,
+        )
+    rel = module.relative_to(root).as_posix()
+    placed = android.package_dir(module, target)
+    if placed is None:
+        # The module was matched on a package prefix, so the exact package is new. Spell the new
+        # directories inside the source root the module already uses rather than the Kotlin/JVM
+        # default: an Android module keeps Kotlin under `src/main/java`, and a second root would
+        # compile only if the build script also declared it.
+        base = android.base_package(module)
+        existing_dirs = android.package_dir(module, base) if base else None
+        source_root = "java"
+        if existing_dirs is not None:
+            source_root = existing_dirs[0].split("/")[2]
+        path = target.replace(".", "/")
+        placed = (f"src/main/{source_root}/{path}", f"src/test/{source_root}/{path}")
+    source_dir, tests_dir = placed
+    # Per module, not per repository. In the validation app `core/data` gets `kotlin("test")`
+    # from a convention plugin while `core/model`, a plain `id("kotlin")` library in the same
+    # build, declares no test dependency at all — so one repo-wide answer compiles in the first
+    # and fails with `Unresolved reference: test` in the second.
+    return TargetLayout(
+        package_name=target,
+        source_dir=f"{rel}/{source_dir}",
+        tests_dir=f"{rel}/{tests_dir}",
+        src_layout=True,
+        mode="existing",
+        language="kotlin",
+        build_tool=build_tool,
+        test_library=android.module_test_library(root, module),
+        module=rel,
+        android=android.is_android_module(module),
+    )
+
+
+def _resolve_kotlin_layout(
+    root: Path, *, mode: str, package_name: str | None, repo: str | None
+) -> TargetLayout:
+    """Where Kotlin code goes (P8, D13; multi-module placement P9). Gradle always — Kotlin has
+    no Maven era."""
+    existing = detect_kotlin_layout(root)
+    test_library = detect_jvm_test_library(root)
+    derived = package_name or derive_java_package(repo or str(root))
+    # Kotlin projects are Gradle projects. `_detect_build_tool` can still say "maven" for a
+    # polyglot repo with a pom.xml, and that is worth keeping rather than overriding: the runner
+    # needs to know, and a Kotlin module inside a Maven build is a real if rare shape.
+    build_tool = _detect_build_tool(root) or "gradle"
+    if mode != "new":
+        if existing is not None:
+            pkg, source_dir, tests_dir = existing
+            return TargetLayout(
+                package_name=package_name or pkg,
+                source_dir=source_dir,
+                tests_dir=tests_dir,
+                src_layout=True,
+                mode="existing",
+                language="kotlin",
+                build_tool=build_tool,
+                test_library=test_library,
+            )
+        # No sources at the root. Either this is a multi-module build — the Android shape, where
+        # every source file lives in a submodule — or an empty repo to scaffold into.
+        placed = _module_layout(
+            root,
+            package_name=package_name,
+            derived=derived,
+            build_tool=build_tool,
+            test_library=test_library,
+        )
+        if placed is not None:
+            return placed
+        if mode == "existing":
+            src, tst = _kotlin_dirs(derived)
+            return TargetLayout(
+                derived,
+                src,
+                tst,
+                True,
+                "existing",
+                language="kotlin",
+                build_tool=build_tool,
+                test_library=test_library,
+            )
+    src, tst = _kotlin_dirs(derived)
+    return TargetLayout(
+        derived,
+        src,
+        tst,
+        True,
+        "new",
+        language="kotlin",
+        build_tool=build_tool,
+        test_library=test_library,
+    )
 
 
 def derive_npm_package(name: str) -> str:

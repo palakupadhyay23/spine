@@ -96,10 +96,19 @@ orchestrator investigate . \
 - `render_finish` (Function, 1 caller)     — src/click/_termui_impl.py:156
 
 Likely areas: click._termui_impl, click.core, click.formatting
+
+## Not verified
+- Retrieval is **lexical**, not semantic: these symbols matched the ticket's words. A landing
+  site that uses different words for the same thing is not here.
+- No `episteme/` was read, so committed project knowledge is absent, not empty.
 ```
 
 From a prose bug report to **the five functions that actually render the bar**, each with a line
 number and a caller count. No grepping, no guessing — and again, no LLM.
+
+Note the last section. Every brief states what it did *not* establish, derived from its own run
+rather than boilerplate — here, that the match was lexical, which is exactly the limitation that
+makes a brief miss a screen whose code calls it something else.
 
 ## Step 4 — What breaks if I change it?
 
@@ -175,17 +184,19 @@ Every step above trusted the graph. That trust should be earned with a number, n
 orchestrator pkg accuracy
 ```
 
-It scores the extractor against a committed corpus of 47 hand-labelled cases covering
-all 10 of Spine's front-ends. **Precision is 1.00 on every node kind and every edge kind, in every language** —
+It scores the extractor against a committed corpus of 64 hand-labelled cases covering
+all 12 of Spine's front-ends. **Precision is 1.00 on every node kind and every edge kind, in every language** —
 so nothing you saw in steps 3–6 was invented. Recall is 1.00 on everything except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
-| `c` `sql` | 1.00 |
+| `c` `cpp` `sql` | 1.00 |
+| `kotlin` | 0.94 |
 | `perl` | 0.89 |
+| `typescript` | 0.86 |
+| `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
-| `cpp` `csharp` `go` `java` | 0.67 |
-| `typescript` | 0.50 |
+| `java` | 0.67 |
 
 That asymmetry is the point. The blast radius in step 4 may be **incomplete**, but it is not
 **wrong** — every caller it named is a real caller. A missing edge makes you look further; a

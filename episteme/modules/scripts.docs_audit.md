@@ -133,7 +133,7 @@ _23 of the symbols other code depends on here have no test path the graph can se
 
 - **Called by** (1): [`main`](../../scripts/docs_audit.py#L473)
 - **Calls** (2): [`_read`](../../scripts/docs_audit.py#L146), `findall`
-- **Documented in**: `docs/evals/clang-semantic-review.md#manual-implementationchecklist-review`, `docs/reviewing/docs-matrix.md#counts-that-rot`, `docs/reviewing/language-frontend-checklist.md#registration-src`, `docs/reviewing/language-frontend-checklist.md#semantic-post-passes`, `docs/specs/parsing-and-the-pkg.md#optional-clang-semantic-pass`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
+- **Documented in**: `docs/evals/clang-semantic-review.md#manual-implementationchecklist-review`, `docs/reviewing/docs-matrix.md#counts-that-rot`, `docs/reviewing/language-frontend-checklist.md#registration-src`, `docs/reviewing/language-frontend-checklist.md#semantic-post-passes`, `docs/specs/kotlin-support-roadmap.md#11-risks-and-gotchas`, `docs/specs/kotlin-support-roadmap.md#5-phases-the-living-table`
 
 ### `github_slug`
 

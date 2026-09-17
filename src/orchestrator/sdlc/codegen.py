@@ -563,6 +563,51 @@ _REFINE_SYSTEM_JAVA = (
     "green. Same path rules — relative, no '..'."
 )
 
+# Kotlin/JVM (Gradle + kotlin.test) variants — selected when the layout's language is
+# "kotlin" (P8, D13). Deliberately not Java's with the nouns swapped: Kotlin has no
+# one-public-class-per-file rule, its build file is `build.gradle.kts`, and its test
+# annotations come from `kotlin.test` rather than JUnit's own package — a model that
+# assumes Java's rules writes a file that does not compile against this scaffold.
+_IMPLEMENT_SYSTEM_KOTLIN = (
+    "You are a senior engineer. Implement the feature described by the SPEC as "
+    "runnable Kotlin inside the given Gradle project (the worktree).\n\n"
+    "Output ONE JSON object, no prose, no code fences:\n"
+    f"{_FILE_FORMS}\n"
+    "Rules: paths are relative to the worktree root — no leading slash, no '..'. "
+    "Write source files only (NO test files here). Start every file with the `package` "
+    "declaration shown in the layout (no trailing semicolon). A file may hold several "
+    "declarations and top-level functions — name it for what it holds, not for one "
+    "class. Prefer `val`, data classes and expression bodies over Java-shaped getters "
+    "and setters. Use only the standard library or deps already in `build.gradle.kts` — "
+    "to add one, edit `build.gradle.kts`. Every file must be complete and compilable."
+)
+
+_TESTS_SYSTEM_KOTLIN = (
+    "You write `kotlin.test` tests for an already-implemented feature. You are given "
+    "the SPEC and the CURRENT SOURCE FILES.\n\n"
+    "Output ONE JSON object, no prose, no code fences:\n"
+    f"{_FILE_FORMS}\n"
+    "Rules: write test files only, under the tests dir shown in the layout, named "
+    "`<Name>Test.kt` in the same package as the code under test. Import from "
+    "`kotlin.test` (`kotlin.test.Test`, `kotlin.test.assertEquals`, "
+    "`kotlin.test.assertFailsWith`) — NOT `org.junit.jupiter`, which this project does "
+    "not depend on. A test function may use a backtick-quoted descriptive name. Each "
+    "acceptance criterion maps to at least one assertion. Tests must pass against the "
+    "given source."
+)
+
+_REFINE_SYSTEM_KOTLIN = (
+    "You are fixing a failing Gradle build / Kotlin tests. You are given the SPEC, the "
+    "CURRENT FILES, and the Gradle FAILURE OUTPUT.\n\n"
+    "Output ONE JSON object, no prose, no code fences:\n"
+    f"{_FILE_FORMS}\n"
+    "Rules: files you created earlier this session may be resent in full via "
+    "`content`; any other existing file must be changed via `edits` (including "
+    "`build.gradle.kts` to add a dependency). Kotlin compiler errors name the file and "
+    "line — read them before rewriting. Make the smallest change that turns the build "
+    "green. Same path rules — relative, no '..'."
+)
+
 # TypeScript (Vitest) variants — selected when the layout's language is "typescript".
 _IMPLEMENT_SYSTEM_TS = (
     "You are a senior engineer. Implement the feature described by the SPEC as "

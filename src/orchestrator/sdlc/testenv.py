@@ -31,6 +31,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from orchestrator.sdlc.contracts import TestEnvironment as TestEnvironment
+from orchestrator.sdlc.contracts import ToolchainLayout
 from orchestrator.sdlc.testrunner import TestRunner, TestRunResult
 
 # Import module name (as seen in "No module named 'X'") → PyPI package name when
@@ -151,11 +152,21 @@ class VenvTestEnvironment:
 
 
 class JavaToolEnvironment:
-    """Java build toolchain (Maven). Dependencies come from ``pom.xml``, not pip —
-    so ``install`` (auto-heal) is a no-op and ``ensure`` does nothing (Maven
-    resolves on ``mvn test``). ``python`` is unavailable by design."""
+    """Java build toolchain. Dependencies come from ``pom.xml`` or ``build.gradle``, not
+    pip — so ``install`` (auto-heal) is a no-op and ``ensure`` does nothing (the build
+    resolves on ``mvn test`` / ``gradle test``). ``python`` is unavailable by design.
+
+    ``build_tool`` is what the layout detected. It is carried here so the *runner* can be
+    chosen from it: `kotlin-support-roadmap.md` §9.3 is the whole reason `GradleTestRunner`
+    exists — "Java codegen on a Gradle project cannot run its tests today" — and until this
+    field existed the Java row still hardwired Maven, so the gap §9.3 was written to close
+    stayed open while the roadmap counted it delivered.
+    """
 
     declared: set[str] = set()
+
+    def __init__(self, build_tool: str = "maven") -> None:
+        self.build_tool = build_tool or "maven"
 
     @property
     def python(self) -> str:
@@ -165,10 +176,11 @@ class JavaToolEnvironment:
         return None
 
     async def install(self, packages: list[str]) -> bool:
-        return False  # Java deps are declared in pom.xml, not pip-installed
+        return False  # Java deps are declared in the build file, not pip-installed
 
     def describe(self) -> str:
-        return "java toolchain (Maven; deps resolved from pom.xml)"
+        source = "build.gradle" if self.build_tool == "gradle" else "pom.xml"
+        return f"java toolchain ({self.build_tool.capitalize()}; deps resolved from {source})"
 
 
 class NodeToolEnvironment:
@@ -224,6 +236,106 @@ class DotnetToolEnvironment:
 def java_toolchain_available() -> bool:
     """True if both ``mvn`` and ``java`` are on PATH (Java codegen prerequisite)."""
     return shutil.which("mvn") is not None and shutil.which("java") is not None
+
+
+class KotlinToolEnvironment:
+    """Kotlin/JVM build toolchain (Gradle). Dependencies are declared in
+    ``build.gradle.kts`` and resolved by the build, not pip-installed — so ``install``
+    (auto-heal) is a no-op and ``ensure`` does nothing. ``python`` is unavailable by design.
+
+    P8, D13. Kotlin has no compiler to find: ``kotlin("jvm")`` in the build script brings
+    its own, versioned with the project, which is why the probe looks for Gradle and a JDK
+    and never for ``kotlinc``.
+    """
+
+    declared: set[str] = set()
+
+    @property
+    def python(self) -> str:
+        raise RuntimeError("KotlinToolEnvironment has no Python interpreter")
+
+    async def ensure(self, worktree: Path | str) -> None:
+        return None
+
+    async def install(self, packages: list[str]) -> bool:
+        return False  # Kotlin deps are declared in build.gradle.kts, not pip-installed
+
+    def describe(self) -> str:
+        return "kotlin toolchain (Gradle; deps resolved from build.gradle.kts)"
+
+
+def gradle_available(root: Path | str = ".") -> bool:
+    """True when this project can run Gradle at all — a wrapper here, or ``gradle`` on PATH.
+
+    The wrapper counts even though Gradle itself is absent: ``./gradlew`` downloads the
+    version the project pins, which is the whole point of committing it.
+    """
+    return (Path(root) / "gradlew").is_file() or shutil.which("gradle") is not None
+
+
+def android_toolchain_available() -> bool:
+    """True when an Android SDK is installed (P9, D13).
+
+    The Android Gradle Plugin reads ``ANDROID_HOME`` itself and fails the *configuration*
+    phase without it — minutes into a build, with a message about a missing SDK directory
+    rather than about the machine being unprepared. Probing first turns that into one
+    sentence before anything is generated.
+
+    Deliberately no check for an emulator or a connected device: Spine runs JVM unit tests
+    and never instrumented ones (§10), so a headless machine with only the SDK is supported.
+    """
+    from orchestrator.sdlc.android import android_sdk_root
+
+    return android_sdk_root() is not None
+
+
+def kotlin_project_error(root: Path | str, layout: ToolchainLayout) -> str | None:
+    """Why Kotlin codegen cannot run against *this* checkout, or ``None`` if it can.
+
+    Three failures, three sentences. ``kotlin_toolchain_available`` has already answered the
+    machine-wide question (is there a JDK); every case here is a property of the repository,
+    and collapsing them into one hint would tell someone with a perfectly good JDK and Gradle
+    installed that they need a JDK and Gradle.
+    """
+    from orchestrator.sdlc import android
+
+    root = Path(root)
+    if not gradle_available(root):
+        return (
+            "Kotlin codegen needs Gradle: this project has no ./gradlew wrapper and there is "
+            "no `gradle` on PATH. Add the wrapper (`gradle wrapper`) or install Gradle, then "
+            "retry."
+        )
+    if android.is_android_project(root) and android.android_sdk_root() is None:
+        return (
+            "This is an Android project and no Android SDK was found. Install one (Android "
+            "Studio, or `sdkmanager`) and set ANDROID_HOME, then retry. Only JVM unit tests "
+            "are run, so no emulator or device is needed."
+        )
+    if layout.mode == "existing" and not layout.source_dir:
+        # A multi-module build where nothing claimed the package: `_module_layout` produced
+        # an empty placement on purpose rather than picking a module on a hunch.
+        modules = [m.relative_to(root).as_posix() for m in android.gradle_modules(root) if m != root]
+        listed = ", ".join(modules[:8]) + (", …" if len(modules) > 8 else "")
+        return (
+            f"This Gradle build has {len(modules)} modules and none of them holds the target "
+            "package, so there is no way to tell which one this feature belongs in. Re-run "
+            f"with --package-name <the module's package> (modules here: {listed}), or --layout new "
+            "to scaffold a standalone project instead."
+        )
+    return None
+
+
+def kotlin_toolchain_available() -> bool:
+    """True if a JDK is on PATH — the half of the prerequisite that is machine-wide.
+
+    Deliberately **not** a check for ``kotlinc``: the Kotlin compiler arrives as a Gradle
+    plugin pinned in the build script, so a machine with a JDK and Gradle can build Kotlin
+    without a Kotlin install anywhere on it. Gradle itself is checked per-repository by
+    :func:`gradle_available`, because a committed ``./gradlew`` makes a project buildable
+    on a machine that has no Gradle — and a PATH-only probe would reject most real ones.
+    """
+    return shutil.which("java") is not None
 
 
 class CToolEnvironment:

@@ -80,7 +80,7 @@ _22 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/php_extractor.py:752`](../../src/orchestrator/pkg/php_extractor.py#L752)
 
 - **Called by** (1): [`_scan_calls_in`](../../src/orchestrator/pkg/php_extractor.py#L571)
-- **Calls** (4): [`Edge`](../../src/orchestrator/pkg/facts.py#L137), [`Node`](../../src/orchestrator/pkg/facts.py#L121), [`Provenance`](../../src/orchestrator/pkg/facts.py#L81), [`_resolve_type_name`](../../src/orchestrator/pkg/php_names.py#L116)
+- **Calls** (4): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_resolve_type_name`](../../src/orchestrator/pkg/php_names.py#L116)
 
 ### `_field_text`
 
@@ -144,7 +144,7 @@ _22 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/php_extractor.py:571`](../../src/orchestrator/pkg/php_extractor.py#L571)
 
 - **Called by** (1): [`_emit_calls`](../../src/orchestrator/pkg/php_extractor.py#L488)
-- **Calls** (9): [`Edge`](../../src/orchestrator/pkg/facts.py#L137), [`Node`](../../src/orchestrator/pkg/facts.py#L121), [`Provenance`](../../src/orchestrator/pkg/facts.py#L81), [`_emit_receiver_call`](../../src/orchestrator/pkg/php_extractor.py#L752), [`_is_this_property`](../../src/orchestrator/pkg/php_extractor.py#L746), [`_resolve_type_name`](../../src/orchestrator/pkg/php_names.py#L116), [`_strip_sigil`](../../src/orchestrator/pkg/php_extractor.py#L938), [`_text`](../../src/orchestrator/pkg/php_names.py#L26), [`_to_dotted`](../../src/orchestrator/pkg/php_names.py#L32)
+- **Calls** (9): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_emit_receiver_call`](../../src/orchestrator/pkg/php_extractor.py#L752), [`_is_this_property`](../../src/orchestrator/pkg/php_extractor.py#L746), [`_resolve_type_name`](../../src/orchestrator/pkg/php_names.py#L116), [`_strip_sigil`](../../src/orchestrator/pkg/php_extractor.py#L938), [`_text`](../../src/orchestrator/pkg/php_names.py#L26), [`_to_dotted`](../../src/orchestrator/pkg/php_names.py#L32)
 
 ### `_string_content`
 

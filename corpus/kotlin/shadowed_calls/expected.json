@@ -1,0 +1,37 @@
+{
+  "language": "kotlin",
+  "case": "shadowed_calls",
+  "why": "D9, the one place Kotlin is genuinely harder than Java. Java is in `scope.NOT_APPLICABLE` because the JLS gives variables and methods separate namespaces, so a local can never shadow a method call. Kotlin has one namespace and an `invoke` convention: `val helper = ::other` then `helper()` calls **other**, not the member `helper()`. A front-end that resolved that bare call to the sibling method would fabricate an edge that reads perfectly plausibly. So the extractor emits nothing for it, and the `_Kotlin` walker in `scope.py` is the independent oracle that confirms the skip really happened. `audit()` is the control in the same body: not shadowed, so it must still resolve.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.scope", "kind": "Module" },
+    { "id": "java:shop.scope.Runner", "kind": "Type" },
+    { "id": "java:shop.scope.Runner.go", "kind": "Function" },
+    { "id": "java:shop.scope.Runner.helper", "kind": "Function" },
+    { "id": "java:shop.scope.Runner.audit", "kind": "Function" },
+    { "id": "java:shop.scope.Runner.other", "kind": "Function" }
+  ],
+  "edges": [
+    { "src": "java:shop.scope", "dst": "java:shop.scope.Runner", "kind": "CONTAINS" },
+    { "src": "java:shop.scope.Runner", "dst": "java:shop.scope.Runner.go", "kind": "CONTAINS" },
+    { "src": "java:shop.scope.Runner", "dst": "java:shop.scope.Runner.helper", "kind": "CONTAINS" },
+    { "src": "java:shop.scope.Runner", "dst": "java:shop.scope.Runner.audit", "kind": "CONTAINS" },
+    { "src": "java:shop.scope.Runner", "dst": "java:shop.scope.Runner.other", "kind": "CONTAINS" },
+    { "src": "java:shop.scope.Runner.go", "dst": "java:shop.scope.Runner.audit", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "refusals": [
+    {
+      "edge": {
+        "src": "java:shop.scope.Runner.go",
+        "dst": "java:shop.scope.Runner.helper",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `val helper = ::other` binds a local for the rest of `go`'s body, so `helper()` invokes the local through Kotlin's `invoke` convention — not the sibling method of the same name. Resolving it to `Runner.helper` is the exact fabrication D9 exists to catch, and it is the plausible-looking one a Java-trained reader would accept."
+    }
+  ],
+  "excluded": [
+    "`helper()` is labelled as reaching nothing at all. It does not reach `Runner.helper` (shadowed by the local, see false_positives) and it does not reach `Runner.other` either — that would mean resolving the `::other` reference stored in the local, which is inference. Both omissions are the decision, so neither is labelled as an edge to miss."
+  ],
+  "open_questions": []
+}

@@ -44,7 +44,7 @@ Set up your environment and run the platform.
 Prints the installed version **and the path it is running from**:
 
 ```
-Spine 3.35.0  (synaptixs-spine)
+Spine 3.36.0  (synaptixs-spine)
   running from /path/to/site-packages/orchestrator
 ```
 
@@ -533,15 +533,18 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 | `--tests` | Test target(s) for `--oracle runtime`; defaults to the repo's own. |
 | `--dialect` | SQL dialect (postgres\|mysql\|tsql\|oracle\|…); default: auto-detect. |
 
-**Current corpus results** (49 fixture cases — 45 single-language, 4 multi-repo — across
-all 10 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
+**Current corpus results** (64 fixture cases — 58 single-language, 6 multi-repo — across
+all 12 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
 **1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
 kind except `CALLS`:
 
 | language | `CALLS` recall |
 |---|---|
+| `kotlin` | 0.92 |
 | `c` `cpp` (with `clang`) `sql` | 1.00 |
 | `perl` | 0.89 |
+| `typescript` | 0.86 |
+| `cpp` `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
 | `csharp` `go` `php` | 0.75 |
 | `java` | 0.67 |
@@ -576,7 +579,7 @@ is not computable from a trace, and the report says so on every run.
 **Two coverage limits worth knowing before you quote a number:**
 
 - **`--oracle runtime` is Python-only.** It uses `sys.monitoring` (PEP 669), which has no
-  equivalent in the other nine front-ends. "Runtime-verified" means "runtime-verified for
+  equivalent in the other eleven front-ends. "Runtime-verified" means "runtime-verified for
   Python".
 - **`--oracle invention` only examines Python.** It resolves caller-scope bindings with
   Python's `ast`, so calls in other languages are counted as *unexaminable* rather than
@@ -794,7 +797,7 @@ Regression coverage: what a change should re-test, from the call graph.
 For a symbol you're about to change (`--symbol`) or a fault site (`--trace`),
 computes the blast radius and splits it into tests that already exercise it
 and production code in the radius with no covering test — the regression
-gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl).
+gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl/Kotlin).
 
 ```
 orchestrator regression [PATH] [OPTIONS]
@@ -957,7 +960,7 @@ orchestrator sdlc plan --spec ./SSPN-49.json --path .
 | `--intent` | Intent id to plan (default: the first). |
 | `--path` | Repo to reason about — the graph the plan is grounded in. (default: `.`) |
 | `--out` | Where the document goes (default: `<repo>/.spine/plans`). |
-| `--language` | Target language named in the codegen-prompt section. (default: `python`) |
+| `--language` | Target language named in the codegen-prompt section — it also selects the layout and test environment, so it is not cosmetic. `auto` detects it from `--path`. An unsupported value is refused, never silently treated as Python. (default: `auto`) |
 | `--issue-type` | Override the ticket's issue type (`Bug`, `Story`, …) — it decides whether the validity section requires the ticket to localize. Default: read it from the ticket; with `--spec` there is no ticket to read. |
 | `--quiet` | Write the document without printing it. |
 
@@ -1125,10 +1128,10 @@ orchestrator sdlc feature [OPTIONS]
 | `--issue` | Adopt an existing tracker issue (e.g. SSPN-9) instead of creating one — the branch, PR, comment and transition all land on it. |
 | `--base` | Branch to build on **and** open the PR into (default `$SDLC_PR_BASE`, else the repo's default branch). The worktree is cut from this — see `sdlc autorun` above. |
 | `--layout` | Target structure: auto (scaffold only empty repos), new (always scaffold a src/<pkg>/ skeleton), or existing (follow the repo's layout). (default: `auto`) |
-| `--package-name` | Override the scaffold package name (default: derived from repo). |
+| `--package-name` | Override the scaffold package name (default: derived from repo). In a multi-module Gradle/Android repo this also selects the module the change belongs to. |
 | `--spec` | Implement a hand-written spec (JSON) instead of deriving one from the source — see `sdlc autorun` above for the format. |
 | `--refresh` | Re-extract intents from the source (default: reuse the cached, deterministic backlog). |
-| `--language` | Target language: auto (detect), python, java, typescript, csharp, c, cpp, go, php, perl, or sql. (default: `auto`) |
+| `--language` | Target language: auto (detect), python, java, kotlin, typescript, csharp, c, cpp, go, php, perl, or sql. (default: `auto`) |
 
 Perl requires `perl` and `prove`; `cpanm` is optional. Greenfield uses `lib/`, `t/`
 and `cpanfile`; existing distributions keep their package layout and packaging files.

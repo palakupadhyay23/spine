@@ -9,7 +9,7 @@
 | Migrations | yes |
 | Test runner | pytest |
 | Task type (default) | feature |
-| Version | `3.35.0` |
+| Version | `3.36.0` |
 | Requires Python | `>=3.12` |
 
 ## Infrastructure & runtime
@@ -36,22 +36,22 @@ _How this system starts._
 - `main()` @ scripts/agentic_eval.py:100
 - `main()` @ scripts/audit_eval.py:54
 - `main()` @ scripts/bench_aggregate.py:94
+- `main()` @ scripts/brief-sections.py:95
 - `main()` @ scripts/codegen_ab.py:242
 - `main()` @ scripts/codegen_benchmark.py:1853
-- `main()` @ scripts/docs_audit.py:473
 
 ## Most-used external imports
 _Everything imported from outside this codebase, by how often — standard library and test dependencies included, so this is wider than the install list._
 
-- `__future__.annotations` — imported 713 times
-- `pathlib.Path` — imported 316 times
-- `typing.Any` — imported 264 times
-- `pytest` — imported 210 times
-- `dataclasses.dataclass` — imported 156 times
+- `__future__.annotations` — imported 741 times
+- `pathlib.Path` — imported 331 times
+- `typing.Any` — imported 270 times
+- `pytest` — imported 224 times
+- `dataclasses.dataclass` — imported 162 times
 - `json` — imported 154 times
-- `collections.abc` — imported 140 times
-- `os` — imported 111 times
+- `collections.abc` — imported 149 times
+- `os` — imported 112 times
+- `re` — imported 84 times
 - `httpx` — imported 83 times
-- `asyncio` — imported 80 times
 
-_Top 10 of 223._
+_Top 10 of 225._

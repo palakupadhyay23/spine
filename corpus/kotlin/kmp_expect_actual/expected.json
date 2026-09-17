@@ -1,0 +1,58 @@
+{
+  "language": "kotlin",
+  "case": "kmp_expect_actual",
+  "why": "D17. A multiplatform module declares one API in `commonMain` and implements it once per target, so `expect class Clock` in `commonMain` and `actual class Clock` in `androidMain` and `iosMain` are three declarations with the **same package-qualified name**. Under the package rule every other Kotlin declaration follows, that is one id — and `FactBatch` de-duplicates by id, so two of the three would simply vanish, taking their provenance with them, and nothing would report it.\n\nSo an `actual` declaration's id carries the source set that declares it. The `expect` keeps the plain id, which is the right way round: common code is written against the contract, so `describe()` calling `platformName()` resolves to `java:app.platformName` — the thing the source actually names — rather than to one platform's implementation picked by walk order.\n\n`IMPLEMENTS` runs actual → expect, because an `actual` fulfils a contract exactly as a class fulfils an interface and the graph already has an edge for that. It is emitted in `finalize`, since the `expect` is always in another file.\n\nThree refusals are pinned, and each one is a different way of not guessing. `androidOnly` sits in `androidMain` but carries no `actual` keyword, so it keeps its plain id: suffixing by *directory* would rename declarations that never collided. `orphanPlatform` is an `actual` with no `expect` in the tree, so it gets its id and **no** `IMPLEMENTS` — the contract may well be real, but this run has not seen it. And `Clock@iosMain.now` gets no contract edge of its own: only the declaration the source marked `actual` at the top level fulfils the contract, while a member inherits the suffix through its parent id without carrying the keyword.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:app", "kind": "Module" },
+    { "id": "java:app.Clock", "kind": "Type" },
+    { "id": "java:app.Clock.now", "kind": "Function" },
+    { "id": "java:app.platformName", "kind": "Function" },
+    { "id": "java:app.describe", "kind": "Function" },
+    { "id": "java:app.Clock@androidMain", "kind": "Type" },
+    { "id": "java:app.Clock@androidMain.now", "kind": "Function" },
+    { "id": "java:app.platformName@androidMain", "kind": "Function" },
+    { "id": "java:app.orphanPlatform@androidMain", "kind": "Function" },
+    { "id": "java:app.androidOnly", "kind": "Function" },
+    { "id": "java:app.Clock@iosMain", "kind": "Type" },
+    { "id": "java:app.Clock@iosMain.now", "kind": "Function" },
+    { "id": "java:app.platformName@iosMain", "kind": "Function" }
+  ],
+  "edges": [
+    { "src": "java:app", "dst": "java:app.Clock", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.platformName", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.describe", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.Clock@androidMain", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.platformName@androidMain", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.orphanPlatform@androidMain", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.androidOnly", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.Clock@iosMain", "kind": "CONTAINS" },
+    { "src": "java:app", "dst": "java:app.platformName@iosMain", "kind": "CONTAINS" },
+    { "src": "java:app.Clock", "dst": "java:app.Clock.now", "kind": "CONTAINS" },
+    { "src": "java:app.Clock@androidMain", "dst": "java:app.Clock@androidMain.now", "kind": "CONTAINS" },
+    { "src": "java:app.Clock@iosMain", "dst": "java:app.Clock@iosMain.now", "kind": "CONTAINS" },
+    { "src": "java:app.Clock@androidMain", "dst": "java:app.Clock", "kind": "IMPLEMENTS" },
+    { "src": "java:app.Clock@iosMain", "dst": "java:app.Clock", "kind": "IMPLEMENTS" },
+    { "src": "java:app.platformName@androidMain", "dst": "java:app.platformName", "kind": "IMPLEMENTS" },
+    { "src": "java:app.platformName@iosMain", "dst": "java:app.platformName", "kind": "IMPLEMENTS" },
+    { "src": "java:app.describe", "dst": "java:app.platformName", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "refusals": [
+    {
+      "edge": { "src": "java:app.orphanPlatform@androidMain", "dst": "java:app.orphanPlatform", "kind": "IMPLEMENTS" },
+      "why": "PREDICTED BEFORE SCORING. `orphanPlatform` is an `actual` whose `expect` is nowhere in this tree. The contract's id is trivially computable — strip the suffix — so emitting the edge and an external placeholder for the target is the tempting move. It would assert a declaration nobody has read, in a package this run *did* scan, which is the one place an external placeholder is not honest: absence here is evidence, not ignorance."
+    },
+    {
+      "edge": { "src": "java:app.Clock@iosMain.now", "dst": "java:app.Clock.now", "kind": "IMPLEMENTS" },
+      "why": "PREDICTED BEFORE SCORING. A member of an `actual` class inherits the source-set suffix through its parent id without carrying the keyword itself — and need not: Kotlin does not require `actual` on every member, and a platform class may add members the `expect` never declared. Linking every suffixed id to its stripped form would therefore claim contracts the source never wrote, and would also introduce a Function→Function `IMPLEMENTS`, an edge shape no other front-end emits."
+    }
+  ],
+  "excluded": [
+    "`androidOnly` is an ordinary function that happens to live in `androidMain`. It keeps its plain id and is here to pin that the suffix keys off the **keyword**, not the directory — see open_questions.",
+    "`describe` resolves its call to the `expect` (`java:app.platformName`), not to either implementation. That is the point of leaving the `expect` unsuffixed: common code names the contract, and a `CALLS` edge to one platform's copy would be a claim about which target is running.",
+    "The three files are all named `Platform.kt` and all declare `package app`, so they share one `Module` node whose provenance is whichever the sorted walk reached first. That is correct — they are one package — and it is why the source set has to live in the *declaration* id rather than the module id.",
+    "**Decided (was an open question).** An Android product flavour does NOT get the source-set treatment. D17 expected it to, and P7 measured that it does not follow: a flavour variant carries no keyword, so keying off the directory would rename declarations that never collided and leave calls into flavour code pointing at an id nothing declares. Closing it needs a collision-driven rule computed across the whole tree, which would make an id depend on what else the repository contains — a separate change with its own evidence, not a provisional label here."
+  ],
+  "open_questions": []
+}

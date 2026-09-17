@@ -171,6 +171,13 @@ class DocDriftFinding:
     line: int = 1
 
 
+#: A backticked token ending in one of these names a *file*, not a symbol. Incomplete by
+#: history rather than by design — `.java`, `.cs`, `.go` and `.ts` belong here too, and their
+#: absence is recorded in kotlin-support-roadmap.md §11 as a separate change, because adding
+#: them moves the measured drift numbers of three other language tracks at once.
+_FILE_SUFFIXES = (".py", ".md", ".ttl", ".json", ".yaml", ".toml", ".kt", ".kts")
+
+
 def extract_mentions(page: DocPage) -> list[DocMention]:
     """Code-intent mentions, de-duplicated, backticks taking precedence."""
     seen: dict[str, DocMention] = {}
@@ -182,7 +189,7 @@ def extract_mentions(page: DocPage) -> list[DocMention]:
 
     for raw in _BACKTICK_RE.findall(page.text):
         candidate = raw.strip().strip("()")
-        if "/" in candidate or candidate.endswith((".py", ".md", ".ttl", ".json", ".yaml", ".toml")):
+        if "/" in candidate or candidate.endswith(_FILE_SUFFIXES):
             _add(candidate, MentionKind.FILE)
         elif _IDENT_RE.fullmatch(candidate):
             _add(candidate, MentionKind.BACKTICK)

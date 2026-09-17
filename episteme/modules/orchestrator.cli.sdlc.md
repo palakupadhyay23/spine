@@ -9,15 +9,15 @@
 
 ## Changing this safely
 
-**No test module imports this.**
+**Tested by** (1): `tests.sdlc.test_android_codegen`
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
 - [`_run_address_review`](../../src/orchestrator/cli/sdlc.py#L180) — reaches **1** symbol · **no test path visible**
 - [`_run_sdlc`](../../src/orchestrator/cli/sdlc.py#L79) — reaches **1** symbol · **no test path visible**
-- [`_run_sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1091) — reaches **1** symbol · **no test path visible**
-- [`_run_sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L921) — reaches **1** symbol · **no test path visible**
-- [`_run_sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L1014) — reaches **1** symbol · **no test path visible**
+- [`_run_sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1110) — reaches **1** symbol · **no test path visible**
+- [`_run_sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L940) — reaches **1** symbol · **no test path visible**
+- [`_run_sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L1033) — reaches **1** symbol · **no test path visible**
 - [`_terminal_gate`](../../src/orchestrator/cli/sdlc.py#L442) — reaches **1** symbol · **no test path visible**
 
 _6 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
@@ -44,23 +44,23 @@ _6 of the symbols other code depends on here have no test path the graph can see
 
 ### `_run_sdlc_complete`
 
-[`src/orchestrator/cli/sdlc.py:1091`](../../src/orchestrator/cli/sdlc.py#L1091)
+[`src/orchestrator/cli/sdlc.py:1110`](../../src/orchestrator/cli/sdlc.py#L1110)
 
-- **Called by** (1): [`sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1065)
+- **Called by** (1): [`sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1084)
 - **Calls** (5): `Exit`, [`_print`](../../src/orchestrator/cli/_common.py#L34), [`complete_issue_for_pr`](../../src/orchestrator/sdlc/complete.py#L66), `echo`, [`load_local_env`](../../src/orchestrator/core/env.py#L20)
 
 ### `_run_sdlc_feature`
 
-[`src/orchestrator/cli/sdlc.py:921`](../../src/orchestrator/cli/sdlc.py#L921)
+[`src/orchestrator/cli/sdlc.py:940`](../../src/orchestrator/cli/sdlc.py#L940)
 
-- **Called by** (1): [`sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L779)
-- **Calls** (3): `Exit`, `echo`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616)
+- **Called by** (1): [`sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L793)
+- **Calls** (3): `Exit`, `echo`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L632)
 
 ### `_run_sdlc_remediate`
 
-[`src/orchestrator/cli/sdlc.py:1014`](../../src/orchestrator/cli/sdlc.py#L1014)
+[`src/orchestrator/cli/sdlc.py:1033`](../../src/orchestrator/cli/sdlc.py#L1033)
 
-- **Called by** (1): [`sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L972)
+- **Called by** (1): [`sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L991)
 - **Calls** (8): `Exit`, `echo`, `from_infodrift`, `loads`, `orchestrator.spine.MappingStore`, `orchestrator.spine.execute_remediations`, `orchestrator.spine.infer_entity_iris`, `pathlib.Path`
 
 ### `_terminal_gate`
@@ -79,7 +79,7 @@ _6 of the symbols other code depends on here have no test path the graph can see
 
 [`src/orchestrator/cli/sdlc.py:480`](../../src/orchestrator/cli/sdlc.py#L480)
 
-- **Calls** (9): `Exit`, [`PlanApproval`](../../src/orchestrator/sdlc/builddoc.py#L116), [`decided_by_default`](../../src/orchestrator/sdlc/builddoc.py#L175), [`derived_at`](../../src/orchestrator/sdlc/builddoc.py#L80), `echo`, `pathlib.Path`, [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134), [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1255), [`save_approval`](../../src/orchestrator/sdlc/builddoc.py#L168)
+- **Calls** (9): `Exit`, [`PlanApproval`](../../src/orchestrator/sdlc/builddoc.py#L117), [`decided_by_default`](../../src/orchestrator/sdlc/builddoc.py#L176), [`derived_at`](../../src/orchestrator/sdlc/builddoc.py#L81), `echo`, `pathlib.Path`, [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L135), [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1359), [`save_approval`](../../src/orchestrator/sdlc/builddoc.py#L169)
 
 ### `sdlc_autorun`
 
@@ -95,9 +95,9 @@ _6 of the symbols other code depends on here have no test path the graph can see
 
 ### `sdlc_complete`
 
-[`src/orchestrator/cli/sdlc.py:1065`](../../src/orchestrator/cli/sdlc.py#L1065)
+[`src/orchestrator/cli/sdlc.py:1084`](../../src/orchestrator/cli/sdlc.py#L1084)
 
-- **Calls** (2): [`_run_sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1091), `run`
+- **Calls** (2): [`_run_sdlc_complete`](../../src/orchestrator/cli/sdlc.py#L1110), `run`
 
 ### `sdlc_explain`
 
@@ -107,21 +107,21 @@ _6 of the symbols other code depends on here have no test path the graph can see
 
 ### `sdlc_feature`
 
-[`src/orchestrator/cli/sdlc.py:779`](../../src/orchestrator/cli/sdlc.py#L779)
+[`src/orchestrator/cli/sdlc.py:793`](../../src/orchestrator/cli/sdlc.py#L793)
 
-- **Calls** (6): `Exit`, [`_run_sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L921), `echo`, [`load_spec_file`](../../src/orchestrator/sdlc/spec_file.py#L35), `run`, [`unsupported_language_error`](../../src/orchestrator/sdlc/feature_runner.py#L591)
+- **Calls** (6): `Exit`, [`_run_sdlc_feature`](../../src/orchestrator/cli/sdlc.py#L940), `echo`, [`load_spec_file`](../../src/orchestrator/sdlc/spec_file.py#L35), `run`, [`unsupported_language_error`](../../src/orchestrator/sdlc/feature_runner.py#L607)
 
 ### `sdlc_plan`
 
 [`src/orchestrator/cli/sdlc.py:664`](../../src/orchestrator/cli/sdlc.py#L664)
 
-- **Calls** (4): `Exit`, `echo`, [`load_spec_file`](../../src/orchestrator/sdlc/spec_file.py#L35), `run`
+- **Calls** (5): `Exit`, `echo`, [`load_spec_file`](../../src/orchestrator/sdlc/spec_file.py#L35), `run`, [`unsupported_language_error`](../../src/orchestrator/sdlc/feature_runner.py#L607)
 
 ### `sdlc_remediate`
 
-[`src/orchestrator/cli/sdlc.py:972`](../../src/orchestrator/cli/sdlc.py#L972)
+[`src/orchestrator/cli/sdlc.py:991`](../../src/orchestrator/cli/sdlc.py#L991)
 
-- **Calls** (2): [`_run_sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L1014), `run`
+- **Calls** (2): [`_run_sdlc_remediate`](../../src/orchestrator/cli/sdlc.py#L1033), `run`
 
 ### `sdlc_run`
 
@@ -153,4 +153,4 @@ _6 of the symbols other code depends on here have no test path the graph can see
 
 ## Imported by
 
-[`orchestrator.cli`](../../src/orchestrator/cli/__init__.py#L1)
+[`orchestrator.cli`](../../src/orchestrator/cli/__init__.py#L1), [`tests.sdlc.test_android_codegen`](../../tests/sdlc/test_android_codegen.py#L1)

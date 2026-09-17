@@ -656,9 +656,9 @@ async def _research_pass(
     before validity so a parked run still leaves its Evidence behind — that artifact is what a
     human is being asked to judge the park on.
     """
+    from orchestrator.pkg.criteria_binding import bind_criteria
     from orchestrator.runtime.tool_registry import default_registry
     from orchestrator.sdlc.case import Case
-    from orchestrator.sdlc.criteria_binding import bind_criteria
     from orchestrator.sdlc.evidence import (
         evidence_from_parts,
         landing_files,

@@ -547,10 +547,10 @@ class PythonExtractor:
 def default_extractors(*, sql_dialect: str | None = None) -> list[LanguageExtractor]:
     """The language front-ends used when none are passed explicitly.
 
-    Always Python (stdlib ``ast``). Java, TypeScript, C#, C, C++, Go, PHP, and Perl are
-    added **only when their tree-sitter grammar is importable** (the ``java`` /
-    ``typescript`` / ``csharp`` / ``c`` / ``cpp`` / ``go`` / ``php`` / ``perl`` extras) so
-    the base install stays stdlib-only —
+    Always Python (stdlib ``ast``). Java, TypeScript, C#, C, C++, Go, PHP, Perl, and
+    Kotlin are added **only when their tree-sitter grammar is importable** (the ``java`` /
+    ``typescript`` / ``csharp`` / ``c`` / ``cpp`` / ``go`` / ``php`` / ``perl`` /
+    ``kotlin`` extras) so the base install stays stdlib-only —
     this is what makes
     ``understand`` / grounding / ``pkg extract`` multi-language without forcing
     the parser dependency on everyone. ``sql_dialect`` pins the SQL front-end to a
@@ -592,6 +592,14 @@ def default_extractors(*, sql_dialect: str | None = None) -> list[LanguageExtrac
         from orchestrator.pkg.perl_extractor import PerlExtractor
 
         extractors.append(PerlExtractor())
+    if has_tree_sitter and importlib.util.find_spec("tree_sitter_kotlin"):
+        from orchestrator.pkg.gradle_extractor import GradleExtractor
+        from orchestrator.pkg.kotlin_extractor import KotlinExtractor
+
+        extractors.append(KotlinExtractor())
+        # `.kts` build scripts ride the same grammar but are a different reading:
+        # Gradle configuration, not Kotlin source (kotlin-support-roadmap.md D11).
+        extractors.append(GradleExtractor())
     # SQL uses sqlglot (pure-Python, no tree-sitter) behind the ``sql`` extra.
     if importlib.util.find_spec("sqlglot"):
         from orchestrator.pkg.sql_extractor import SqlExtractor

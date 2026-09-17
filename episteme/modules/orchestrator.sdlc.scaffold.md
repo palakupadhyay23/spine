@@ -5,19 +5,19 @@
 
 **Source:** [`src/orchestrator/sdlc/scaffold.py`](../../src/orchestrator/sdlc/scaffold.py)
 
-0 types · 15 functions · python
+0 types · 16 functions · python
 
 ## Changing this safely
 
-**Tested by** (7): `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_perl_codegen`, `tests.sdlc.test_perl_integration`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_scaffold`, `tests.sdlc.test_typescript_integration`
+**Tested by** (8): `tests.sdlc.test_go_integration`, `tests.sdlc.test_java_integration`, `tests.sdlc.test_kotlin_codegen`, `tests.sdlc.test_perl_codegen`, `tests.sdlc.test_perl_integration`, `tests.sdlc.test_php_codegen`, `tests.sdlc.test_scaffold`, `tests.sdlc.test_typescript_integration`
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
 - [`_ensure_build_ignores`](../../src/orchestrator/sdlc/scaffold.py#L116) — reaches **9** symbols
 - [`scaffold`](../../src/orchestrator/sdlc/scaffold.py#L89) — reaches **9** symbols
-- [`_guid`](../../src/orchestrator/sdlc/scaffold.py#L298) — reaches **2** symbols · **no test path visible**
-- [`_go_ident`](../../src/orchestrator/sdlc/scaffold.py#L470) — reaches **1** symbol · **no test path visible**
-- [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L261) — reaches **1** symbol · **no test path visible**
+- [`_guid`](../../src/orchestrator/sdlc/scaffold.py#L371) — reaches **2** symbols · **no test path visible**
+- [`_go_ident`](../../src/orchestrator/sdlc/scaffold.py#L543) — reaches **1** symbol · **no test path visible**
+- [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L334) — reaches **1** symbol · **no test path visible**
 
 _3 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
@@ -29,21 +29,21 @@ _3 of the symbols other code depends on here have no test path the graph can see
 
 ### `_c_files`
 
-[`src/orchestrator/sdlc/scaffold.py:349`](../../src/orchestrator/sdlc/scaffold.py#L349)
+[`src/orchestrator/sdlc/scaffold.py:422`](../../src/orchestrator/sdlc/scaffold.py#L422)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_cpp_files`
 
-[`src/orchestrator/sdlc/scaffold.py:415`](../../src/orchestrator/sdlc/scaffold.py#L415)
+[`src/orchestrator/sdlc/scaffold.py:488`](../../src/orchestrator/sdlc/scaffold.py#L488)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_csharp_files`
 
-[`src/orchestrator/sdlc/scaffold.py:232`](../../src/orchestrator/sdlc/scaffold.py#L232)
+[`src/orchestrator/sdlc/scaffold.py:305`](../../src/orchestrator/sdlc/scaffold.py#L305)
 
-- **Calls** (1): [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L261)
+- **Calls** (1): [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L334)
 
 ### `_ensure_build_ignores`
 
@@ -53,23 +53,23 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_go_files`
 
-[`src/orchestrator/sdlc/scaffold.py:477`](../../src/orchestrator/sdlc/scaffold.py#L477)
+[`src/orchestrator/sdlc/scaffold.py:550`](../../src/orchestrator/sdlc/scaffold.py#L550)
 
-- **Calls** (1): [`_go_ident`](../../src/orchestrator/sdlc/scaffold.py#L470)
+- **Calls** (1): [`_go_ident`](../../src/orchestrator/sdlc/scaffold.py#L543)
 - **Documented in**: `docs/specs/go-support-roadmap.md#track-4-go-go`
 
 ### `_go_ident`
 
-[`src/orchestrator/sdlc/scaffold.py:470`](../../src/orchestrator/sdlc/scaffold.py#L470)
+[`src/orchestrator/sdlc/scaffold.py:543`](../../src/orchestrator/sdlc/scaffold.py#L543)
 
-- **Called by** (1): [`_go_files`](../../src/orchestrator/sdlc/scaffold.py#L477)
+- **Called by** (1): [`_go_files`](../../src/orchestrator/sdlc/scaffold.py#L550)
 - **Calls** (1): `sub`
 
 ### `_guid`
 
-[`src/orchestrator/sdlc/scaffold.py:298`](../../src/orchestrator/sdlc/scaffold.py#L298)
+[`src/orchestrator/sdlc/scaffold.py:371`](../../src/orchestrator/sdlc/scaffold.py#L371)
 
-- **Called by** (1): [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L261)
+- **Called by** (1): [`_sln`](../../src/orchestrator/sdlc/scaffold.py#L334)
 - **Calls** (1): `uuid5`
 
 ### `_java_files`
@@ -77,6 +77,12 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 [`src/orchestrator/sdlc/scaffold.py:179`](../../src/orchestrator/sdlc/scaffold.py#L179)
 
 - **Documented in**: `docs/specs/typescript-codegen.md#where-typescript-stands-today`
+
+### `_kotlin_files`
+
+[`src/orchestrator/sdlc/scaffold.py:244`](../../src/orchestrator/sdlc/scaffold.py#L244)
+
+- **Called by** (0 production · 3 test): [`test_the_scaffold_is_a_buildable_gradle_project`](../../tests/sdlc/test_kotlin_codegen.py#L133), [`test_the_scaffold_pins_its_kotlin_version`](../../tests/sdlc/test_kotlin_codegen.py#L143), [`test_the_scaffold_writes_no_wrapper_script`](../../tests/sdlc/test_kotlin_codegen.py#L150)
 
 ### `_perl_files`
 
@@ -86,7 +92,7 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_php_files`
 
-[`src/orchestrator/sdlc/scaffold.py:577`](../../src/orchestrator/sdlc/scaffold.py#L577)
+[`src/orchestrator/sdlc/scaffold.py:650`](../../src/orchestrator/sdlc/scaffold.py#L650)
 
 - **Calls** (3): `dumps`, `xml.sax.saxutils.escape`, `xml.sax.saxutils.quoteattr`
 - **Documented in**: `docs/specs/php-codegen-roadmap.md#32-scaffold-scaffoldpy-php-files`, `docs/specs/php-codegen-roadmap.md#4-phases`, `docs/specs/php-codegen-roadmap.md#5-files-to-change`
@@ -99,10 +105,10 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_sln`
 
-[`src/orchestrator/sdlc/scaffold.py:261`](../../src/orchestrator/sdlc/scaffold.py#L261)
+[`src/orchestrator/sdlc/scaffold.py:334`](../../src/orchestrator/sdlc/scaffold.py#L334)
 
-- **Called by** (1): [`_csharp_files`](../../src/orchestrator/sdlc/scaffold.py#L232)
-- **Calls** (1): [`_guid`](../../src/orchestrator/sdlc/scaffold.py#L298)
+- **Called by** (1): [`_csharp_files`](../../src/orchestrator/sdlc/scaffold.py#L305)
+- **Calls** (1): [`_guid`](../../src/orchestrator/sdlc/scaffold.py#L371)
 
 ### `_sql_files`
 
@@ -112,7 +118,7 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `_typescript_files`
 
-[`src/orchestrator/sdlc/scaffold.py:197`](../../src/orchestrator/sdlc/scaffold.py#L197)
+[`src/orchestrator/sdlc/scaffold.py:270`](../../src/orchestrator/sdlc/scaffold.py#L270)
 
 - **Calls** (1): `dumps`
 - **Documented in**: `docs/specs/typescript-codegen.md#scaffold-typescript-files-template-dispatch-by-language`, `docs/specs/typescript-codegen.md#where-typescript-stands-today`
@@ -121,8 +127,8 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 [`src/orchestrator/sdlc/scaffold.py:89`](../../src/orchestrator/sdlc/scaffold.py#L89)
 
-- **Called by** (1 production · 30 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616), [`_scaffold_and_install`](../../tests/sdlc/test_typescript_integration.py#L29), [`_scaffold_go`](../../tests/sdlc/test_go_integration.py#L22), [`_scaffold_java`](../../tests/sdlc/test_java_integration.py#L23), [`test_flat_layout_pythonpath`](../../tests/sdlc/test_scaffold.py#L273), [`test_perl_real_green_red_and_clean_checkout`](../../tests/sdlc/test_perl_integration.py#L19), [`test_perl_real_nested_suite_cannot_hide_red`](../../tests/sdlc/test_perl_integration.py#L81), [`test_real_composer_and_phar`](../../tests/sdlc/test_php_codegen.py#L280), [`test_scaffold_c_appends_build_ignore_to_existing_gitignore`](../../tests/sdlc/test_scaffold.py#L190), [`test_scaffold_c_cmake_project`](../../tests/sdlc/test_scaffold.py#L176), [`test_scaffold_c_is_idempotent`](../../tests/sdlc/test_scaffold.py#L198), [`test_scaffold_cpp_cmake_project`](../../tests/sdlc/test_scaffold.py#L214), [`test_scaffold_cpp_is_idempotent`](../../tests/sdlc/test_scaffold.py#L227), [`test_scaffold_creates_runnable_skeleton`](../../tests/sdlc/test_scaffold.py#L19), [`test_scaffold_csharp_appends_dotnet_ignores_to_existing_gitignore`](../../tests/sdlc/test_scaffold.py#L154), [`test_scaffold_csharp_guids_are_deterministic`](../../tests/sdlc/test_scaffold.py#L139), [`test_scaffold_csharp_honors_target_framework`](../../tests/sdlc/test_scaffold.py#L261), [`test_scaffold_csharp_is_idempotent`](../../tests/sdlc/test_scaffold.py#L149), [`test_scaffold_csharp_solution_project`](../../tests/sdlc/test_scaffold.py#L119), [`test_scaffold_go_is_idempotent`](../../tests/sdlc/test_scaffold.py#L256), [`test_scaffold_go_module`](../../tests/sdlc/test_scaffold.py#L243), [`test_scaffold_idempotent`](../../tests/sdlc/test_php_codegen.py#L70), [`test_scaffold_is_idempotent`](../../tests/sdlc/test_scaffold.py#L32), [`test_scaffold_java_is_idempotent`](../../tests/sdlc/test_scaffold.py#L70), [`test_scaffold_java_maven_project`](../../tests/sdlc/test_scaffold.py#L57), +6 more
-- **Calls** (3): [`_ensure_build_ignores`](../../src/orchestrator/sdlc/scaffold.py#L116), [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L381), `pathlib.Path`
+- **Called by** (1 production · 30 test): [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L632), [`_scaffold_and_install`](../../tests/sdlc/test_typescript_integration.py#L29), [`_scaffold_go`](../../tests/sdlc/test_go_integration.py#L22), [`_scaffold_java`](../../tests/sdlc/test_java_integration.py#L23), [`test_flat_layout_pythonpath`](../../tests/sdlc/test_scaffold.py#L273), [`test_perl_real_green_red_and_clean_checkout`](../../tests/sdlc/test_perl_integration.py#L19), [`test_perl_real_nested_suite_cannot_hide_red`](../../tests/sdlc/test_perl_integration.py#L81), [`test_real_composer_and_phar`](../../tests/sdlc/test_php_codegen.py#L280), [`test_scaffold_c_appends_build_ignore_to_existing_gitignore`](../../tests/sdlc/test_scaffold.py#L190), [`test_scaffold_c_cmake_project`](../../tests/sdlc/test_scaffold.py#L176), [`test_scaffold_c_is_idempotent`](../../tests/sdlc/test_scaffold.py#L198), [`test_scaffold_cpp_cmake_project`](../../tests/sdlc/test_scaffold.py#L214), [`test_scaffold_cpp_is_idempotent`](../../tests/sdlc/test_scaffold.py#L227), [`test_scaffold_creates_runnable_skeleton`](../../tests/sdlc/test_scaffold.py#L19), [`test_scaffold_csharp_appends_dotnet_ignores_to_existing_gitignore`](../../tests/sdlc/test_scaffold.py#L154), [`test_scaffold_csharp_guids_are_deterministic`](../../tests/sdlc/test_scaffold.py#L139), [`test_scaffold_csharp_honors_target_framework`](../../tests/sdlc/test_scaffold.py#L261), [`test_scaffold_csharp_is_idempotent`](../../tests/sdlc/test_scaffold.py#L149), [`test_scaffold_csharp_solution_project`](../../tests/sdlc/test_scaffold.py#L119), [`test_scaffold_go_is_idempotent`](../../tests/sdlc/test_scaffold.py#L256), [`test_scaffold_go_module`](../../tests/sdlc/test_scaffold.py#L243), [`test_scaffold_idempotent`](../../tests/sdlc/test_php_codegen.py#L70), [`test_scaffold_is_idempotent`](../../tests/sdlc/test_scaffold.py#L32), [`test_scaffold_java_is_idempotent`](../../tests/sdlc/test_scaffold.py#L70), [`test_scaffold_java_maven_project`](../../tests/sdlc/test_scaffold.py#L57), +6 more
+- **Calls** (3): [`_ensure_build_ignores`](../../src/orchestrator/sdlc/scaffold.py#L116), [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L429), `pathlib.Path`
 
 ## Imports
 
@@ -130,4 +136,4 @@ _No relationships extracted — nothing in the graph calls it or extends it._
 
 ## Imported by
 
-[`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_perl_codegen`](../../tests/sdlc/test_perl_codegen.py#L1), [`tests.sdlc.test_perl_integration`](../../tests/sdlc/test_perl_integration.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_scaffold`](../../tests/sdlc/test_scaffold.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)
+[`orchestrator.sdlc.feature_runner`](orchestrator.sdlc.feature_runner.md), [`tests.sdlc.test_go_integration`](../../tests/sdlc/test_go_integration.py#L1), [`tests.sdlc.test_java_integration`](../../tests/sdlc/test_java_integration.py#L1), [`tests.sdlc.test_kotlin_codegen`](../../tests/sdlc/test_kotlin_codegen.py#L1), [`tests.sdlc.test_perl_codegen`](../../tests/sdlc/test_perl_codegen.py#L1), [`tests.sdlc.test_perl_integration`](../../tests/sdlc/test_perl_integration.py#L1), [`tests.sdlc.test_php_codegen`](../../tests/sdlc/test_php_codegen.py#L1), [`tests.sdlc.test_scaffold`](../../tests/sdlc/test_scaffold.py#L1), [`tests.sdlc.test_typescript_integration`](../../tests/sdlc/test_typescript_integration.py#L1)

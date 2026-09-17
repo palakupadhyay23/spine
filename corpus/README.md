@@ -60,12 +60,24 @@ Labelling in the wrong vocabulary scores 0.00 and reads as a catastrophic front-
 | `go` | `go:package` | `go:cart.Cart` | `.` |
 | `php` | `php:App.Svc` | `php:App.Svc.Cart` | `.` |
 | `perl` | `perl:lib/Shop/Cart.pm` *(always a path)* | `perl:Shop.Cart` | `.` |
+| **`kotlin`** | **`java:package`** *(Java's prefix, not `kt:`)* | **`java:shop.Cart`** | `.` |
 | **`c`** | `c:src/cart.c` *(a path)* | — | **bare symbol: `c:subtotal`** |
 | **`cpp`** | `cpp:src/cart.cpp` *(a path)* | **bare: `cpp:Cart`** | **`::`** |
 | `sql` | `sql:schema.sql` | `sql:customer` *(an Entity)* | `.` |
 
 C and C++ ids are **bare symbols, not module-qualified** — a symbol, not a location. Python's
 scheme applied to either scores zero.
+
+**Kotlin labels in `java:`, not `kt:`** — the third exception this table has to explain, and the
+only case of a namespace deliberately shared between front-ends. Kotlin and Java share one JVM
+package namespace: `import com.x.Y` names the same class whether `Y` is a `.kt` or a `.java`
+file, and it cannot be both. So the Kotlin front-end mints `java:` ids and distinguishes itself
+with `language: kotlin` on the node, which is what `pkg accuracy` and the capability matrix key
+on. The payoff is the `mixed_java` case: a `.kt` beside a `.java` in one package — the normal
+Android layout — produces **one** graph, with `IMPLEMENTS` and `CALLS` crossing the language
+boundary onto real nodes. Under a separate prefix every one of those edges would dangle.
+Labelling a Kotlin case in `kt:` scores 0.00. See D2 in
+[kotlin-support-roadmap.md](../docs/specs/kotlin-support-roadmap.md).
 
 With the optional `clang` extra, the C++ `instance_calls` reference-parameter call
 is resolved by a semantic post-pass. At the P3 checkpoint, aggregate C++ CALLS was 4 expected / 4 emitted /
@@ -114,6 +126,7 @@ same syntax and different edges.
 | `edges` | `{src, dst, kind}` — every edge true of the fixture |
 | `known_gaps` | edges from `edges` the front-end is *known* to skip, each with a `why` |
 | `false_positives` | edges the front-end **emits that are not true** — invention, held visible |
+| `refusals` | edges a plausible reader **would** emit and this one must not — predicted before scoring, and **enforced**: if the extractor emits one, the case fails to load |
 | `excluded` | what is deliberately not labelled, and on what grounds |
 | `open_questions` | vocabulary questions that must be decided before the label is meaningful |
 
@@ -143,6 +156,15 @@ recorded here rather than argued again per case.
 costing it. The field records the defect and its reasoning so a low precision number is
 legible rather than mysterious — it never suppresses the penalty. Same contract as
 `known_gaps`: recording a fact must not change the score.
+
+**`refusals` are the opposite of `false_positives`, and the distinction is not pedantry.**
+A refusal is an edge a *plausible* reader emits and this one deliberately does not — the
+tempting fabrication the case was built around. Eighteen such entries were filed under
+`false_positives`, whose definition one row above is "edges the front-end **emits** that are
+not true", so a reader counting the field concluded Kotlin invented eleven edges it had in
+fact correctly refused. They are also the only annotation here that is **checked**: a
+refusal the extractor starts emitting fails the case on load, rather than showing up as an
+anonymous dip in a precision number.
 
 ## Writing a case
 

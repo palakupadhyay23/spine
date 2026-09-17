@@ -29,9 +29,8 @@
   "false_positives": [],
   "excluded": [
     "`this.items.get(id)` — a method call on a class property, which needs the property's type. The front-end documents instance calls on a typed variable as skipped; `instance_calls` is the case that measures that directly.",
-    "`new Map()` — construction of a built-in with no node in the scanned tree."
+    "`new Map()` — construction of a built-in with no node in the scanned tree.",
+    "**Resolved (was an open question).** Generic type parameters are stripped from node ids: `ts:app/repo.Repo`, not `ts:app/repo.Repo<T>`. The id scheme is `{module}.{name}` and a type parameter is not part of the declared name. The case scores as labelled, which is the observation that settles it."
   ],
-  "open_questions": [
-    "Do generic type parameters appear in node ids (`ts:app/repo.Repo<T>`) or are they stripped (`ts:app/repo.Repo`)? Stripped is predicted, because the id scheme is `{module}.{name}` and a type parameter is not part of the declared name — but if the front-end takes the whole declaration text, every id in this case is wrong and the case will read as 0.0 recall rather than as a vocabulary error."
-  ]
+  "open_questions": []
 }

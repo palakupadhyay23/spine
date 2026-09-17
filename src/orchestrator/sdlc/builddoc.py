@@ -34,12 +34,13 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.pkg.accuracy import measured_recall
+from orchestrator.sdlc import brief
 
-# The four provenance labels of docs/specs/build-document.md §1.
-STATED = "stated"
-DETERMINISTIC = "derived · deterministic"
-MODEL = "derived · model"
-HUMAN = "human"
+# The four provenance labels of docs/specs/build-document.md §1. Re-exported from
+# `brief`, not redeclared: this document and the briefs say the same four things, and two
+# copies of one vocabulary is the defect that track exists to close. Names kept so every
+# existing import of `builddoc.STATED` keeps working.
+from orchestrator.sdlc.brief import DETERMINISTIC, HUMAN, MODEL, STATED  # noqa: E402
 
 # Bounds. Every aggregation caps its output and says what it elided (invariant 7):
 # a clipped diagram that implies completeness is worse than a small honest one.
@@ -444,7 +445,7 @@ def _confidence_block(
             "",
         ),
         (
-            "Where it lands",
+            brief.LANDS.title,
             True,
             bool(signals.get("brief_agrees")),
             "the brief and the design name the same files",
@@ -538,9 +539,11 @@ def _root_cause_block(report: Any) -> str:
     if exception:
         lines.append(f"**Exception:** `{exception}`\n")
     if site:
-        lines.append(f"**Fault site:** {site}" + (f" (in `{module}`)" if module else "") + "\n")
+        lines.append(f"**{brief.FAULT_SITE.title}:** {site}" + (f" (in `{module}`)" if module else "") + "\n")
     elif module:
-        lines.append(f"**Fault site:** `{module}` — named by the ticket, not localized to a line.\n")
+        lines.append(
+            f"**{brief.FAULT_SITE.title}:** `{module}` — named by the ticket, not localized to a line.\n"
+        )
     if getattr(report, "recently_changed", False):
         lines.append("⚠ This module changed recently — a regression is the leading hypothesis.\n")
 
@@ -641,9 +644,110 @@ def _mermaid_blast(bd: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+#: Path or module segments that name test code in some language's convention. Matched
+#: whole, never as a substring, so `contest` and `latest` are not tests.
+_TEST_SEGMENTS = frozenset(
+    {"test", "tests", "testing", "unittest", "unittests", "conftest", "spec", "specs", "__tests__"}
+)
+
+#: .NET names a test class for what it tests: `GetProductsFunctionTests`. Anchored on a
+#: lower-case-then-`T` boundary so it reads a PascalCase suffix and not the tail of an
+#: ordinary word — `Contests` and `Protests` are left alone.
+_PASCAL_TEST_SUFFIX = re.compile(r"[a-z0-9]Tests?$")
+
+
 def _is_test_module(name: str) -> bool:
+    """Is this module test code?
+
+    **The prose that uses this is language-neutral; this rule was not.** The original four
+    clauses are all Python shapes, so on a .NET repository
+    `UnitTests/Functions/GetProductsFunctionTests.cs` was counted as *product* code and
+    inflated "the neighbourhood reaches N non-test module(s)".
+
+    Segments, not substrings: a name here is either a dotted module (`tests.pkg.foo`) or a
+    path a non-Python front-end emitted, so `.`, `/` and `\\` all end a segment.
+
+    Additive by construction — the original clauses run first and unchanged, so no name that
+    was a test yesterday stops being one today. A convention none of these cover is
+    *under*-counted, which is the direction the caveat beneath already warns about.
+    """
     n = str(name)
-    return n.startswith("test") or n.startswith("tests.") or ".test" in n or "_test" in n
+    if n.startswith("test") or n.startswith("tests.") or ".test" in n or "_test" in n:
+        return True
+    segments = [s for s in re.split(r"[./\\]", n) if s]
+    return any(s.lower() in _TEST_SEGMENTS for s in segments) or any(
+        _PASCAL_TEST_SUFFIX.search(s) for s in segments
+    )
+
+
+#: How many importer names the containment *sentence* spells out before eliding. Distinct
+#: from `_MAX_IMPORTERS`, which bounds the diagram: prose can carry more names than a
+#: readable graph can, and the two have always differed. One name for both would silently
+#: move whichever bound it was not written for.
+_MAX_CONTAINMENT_NAMES = 8
+
+
+def _more(names: list[str]) -> str:
+    """The elision clause, or nothing. Invariant 7: a clipped list says how much it clipped.
+
+    Stating the count and then listing eight of it is a sentence that reads as complete and
+    is not — a reader counts the names and gets a different number from the one we printed.
+    """
+    return f" (+{len(names) - _MAX_CONTAINMENT_NAMES} more)" if len(names) > _MAX_CONTAINMENT_NAMES else ""
+
+
+def _names_were_capped_upstream(modules: list[dict[str, Any]]) -> bool:
+    """Did any module contribute fewer importer *names* than it has importers?
+
+    `impact.py` caps `importer_names` per module before this renderer ever sees them, so the
+    count in the containment sentence is a count of names that survived, not of modules that
+    import. That cap is invisible here — the list simply arrives short — which is how
+    "reaches N non-test module(s)" came to be a floor presented as a total. Comparing each
+    module's true `importers` against the names it actually carries is the only way to
+    detect it downstream, and saying so is cheaper than plumbing the real figure up.
+    """
+    return any(int(m.get("importers") or 0) > len(m.get("importer_names") or []) for m in modules)
+
+
+def _languages_of(bd: dict[str, Any], fallback: str) -> list[str]:
+    """The front-ends that built this blast radius, else the caller's language.
+
+    **Which language the caveat names is a property of the graph, not of the run.**
+    ``fallback`` is `--language`, whose job is to pick the *codegen* target; using it to
+    label a measurement of the extractor is a category error, and `sdlc plan` defaults it to
+    the literal ``python``, so a C# repository planned without the flag published Python's
+    recall figure against a graph Python had not touched.
+
+    The fallback survives for a blast radius serialised before `languages` existed — an old
+    `design.json` replayed today. That is the one case where the flag is the best we have.
+    """
+    declared = [str(x) for x in (bd.get("languages") or []) if str(x)]
+    return sorted(set(declared)) if declared else [fallback]
+
+
+def _recall_clause(languages: list[str]) -> str:
+    """Measured `CALLS` recall per language, with unmeasured ones named and not scored."""
+    measured = [(lang, measured_recall(lang)) for lang in languages]
+    scored = [(lang, r) for lang, r in measured if r is not None]
+    unscored = [lang for lang, r in measured if r is None]
+
+    source = "(against the extractor's own test corpus, not this repository)"
+    clause = ""
+    if len(scored) == 1:
+        lang, recall = scored[0]
+        clause += (
+            f" Measured `CALLS` recall for {lang} is **{recall:.2f}** {source} — "
+            "treat this list as a lower bound."
+        )
+    elif scored:
+        figures = ", ".join(f"{lang} **{recall:.2f}**" for lang, recall in scored)
+        clause += f" Measured `CALLS` recall: {figures} {source} — treat this list as a lower bound."
+    if unscored:
+        # Named, never dropped: silence reads as "no gap here", and an unmeasured front-end
+        # has not scored badly — it has not been scored.
+        names = ", ".join(unscored)
+        clause += f" No corpus measurement exists for {names}, so its recall is unknown, not perfect."
+    return clause
 
 
 def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
@@ -663,21 +767,25 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     )
 
     all_importers = [n for m in modules for n in (m.get("importer_names") or [])]
+    # "at least", not a total: the names reaching this renderer are already capped per module.
+    at_least = "at least " if _names_were_capped_upstream(modules) else ""
     if not all_importers:
         containment = (
             "**Containment:** nothing in the graph imports what changes. A change here "
             "cannot propagate outward."
         )
     elif all(_is_test_module(n) for n in all_importers):
+        tests = sorted(set(all_importers))
         containment = (
-            f"**Containment:** the only importers are tests ({', '.join(sorted(set(all_importers))[:8])}). "
-            "Nothing in the product depends on what changes."
+            f"**Containment:** the only importers are tests ({', '.join(tests[:_MAX_CONTAINMENT_NAMES])}"
+            f"{_more(tests)}). Nothing in the product depends on what changes."
         )
     else:
         product = sorted({n for n in all_importers if not _is_test_module(n)})
         containment = (
-            f"**Containment:** the neighbourhood reaches {len(product)} non-test module(s): "
-            f"{', '.join(product[:8])}. A change here is visible to them."
+            f"**Containment:** the neighbourhood reaches {at_least}{len(product)} non-test "
+            f"module(s): {', '.join(product[:_MAX_CONTAINMENT_NAMES])}{_more(product)}. "
+            "A change here is visible to them."
         )
 
     if not bd.get("call_graph_available"):
@@ -687,7 +795,7 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
         )
     else:
         caveat = (
-            "**Caveat:** method calls through an instance emit no `CALLS` edge (SSPN-48), so "
+            "**Caveat:** method calls through an instance emit no `CALLS` edge, so "
             "per-method counts under-report. Module-function counts are exact."
         )
         # The measured version of the same caveat. "Counts under-report" tells a reader to be
@@ -697,15 +805,9 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
         # The parenthetical is load-bearing: this is measured against the extractor's own
         # fixtures, NOT against the repository being described. A reader who takes it as a
         # statement about their own code has been misled by us. None means the language was
-        # never measured — six of eight front-ends have no corpus — and an unmeasured language
-        # has not scored zero, so it gets no clause at all.
-        recall = measured_recall(language)
-        if recall is not None:
-            caveat += (
-                f" Measured `CALLS` recall for {language} is **{recall:.2f}** "
-                "(against the extractor's own test corpus, not this repository) — "
-                "treat this list as a lower bound."
-            )
+        # never measured — an unmeasured language has not scored zero, so it is named
+        # without a figure rather than dropped, which would read as having no gap at all.
+        caveat += _recall_clause(_languages_of(bd, language))
 
     unverified = bd.get("unverified_references") or []
     if unverified:
@@ -825,9 +927,11 @@ def _evidence_block(ev: dict[str, Any]) -> str:
     if regression:
         shown = ", ".join(f"`{t}`" for t in regression[:8])
         more = f" (+{len(regression) - 8} more)" if len(regression) > 8 else ""
-        lines.append(f"- *Regression surface:* {shown}{more} import what changes — run these.\n")
+        lines.append(
+            f"- *{brief.REGRESSION_SURFACE.title}:* {shown}{more} import what changes — run these.\n"
+        )
     else:
-        lines.append("- *Regression surface:* no test module imports what changes.\n")
+        lines.append(f"- *{brief.REGRESSION_SURFACE.title}:* no test module imports what changes.\n")
 
     history = ev.get("history") or []
     if history:

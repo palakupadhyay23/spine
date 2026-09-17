@@ -1,0 +1,72 @@
+{
+  "language": "kotlin",
+  "case": "compose_nav",
+  "why": "D14. An in-app Compose route is the same shape as an HTTP route with the app on both ends, so it reuses the vocabulary instead of adding a node kind: an `Endpoint` with the pseudo-verb `NAV`, `EXPOSES` to the screen it shows, `CONSUMES` from the function that navigates. `NAV` cannot collide with an HTTP verb, so an in-app route never joins to a real one in `pkg joins`.\n\nThe case is built around the three spellings real navigation code uses, because only the first is obvious and the other two are what the validation app actually writes. `cartRoute` is a **constant reference** — routes are named once and imported, so a reader that accepts only string literals finds almost nothing. `\"item_route/{$itemIdArg}\"` interpolates a constant *into* a literal, and pairs with a call writing `\"item_route/$id\"`: both normalise to `item_route/{}` for matching while the endpoint keeps the readable `item_route/{itemId}` as its name. Without that normalisation the declaration and the call never pair and every route looks unused.\n\nTwo refusals are pinned. `splitScreen` shows two screens, so it gets an `Endpoint` and **no** `EXPOSES` — the closure rule, because picking one of two would be a guess about which is 'the' screen. `computedScreen` builds its route from a function call, so it yields nothing at all: no endpoint, no edges, not even a guess at the name.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.nav", "kind": "Module" },
+    { "id": "java:shop.nav.navigateToCart", "kind": "Function" },
+    { "id": "java:shop.nav.navigateToItem", "kind": "Function" },
+    { "id": "java:shop.nav.cartScreen", "kind": "Function" },
+    { "id": "java:shop.nav.itemScreen", "kind": "Function" },
+    { "id": "java:shop.nav.splitScreen", "kind": "Function" },
+    { "id": "java:shop.nav.computedScreen", "kind": "Function" },
+    { "id": "java:shop.nav.CartRoute", "kind": "Function" },
+    { "id": "java:shop.nav.ItemRoute", "kind": "Function" },
+    { "id": "java:shop.nav.LeftPane", "kind": "Function" },
+    { "id": "java:shop.nav.RightPane", "kind": "Function" },
+    { "id": "java:shop.nav.HiddenRoute", "kind": "Function" },
+    { "id": "java:shop.nav.buildRoute", "kind": "Function" },
+    { "id": "java:endpoint:NAV cart_route", "kind": "Endpoint" },
+    { "id": "java:endpoint:NAV item_route/{itemId}", "kind": "Endpoint" },
+    { "id": "java:endpoint:NAV split_route", "kind": "Endpoint" }
+  ],
+  "edges": [
+    { "src": "java:shop.nav", "dst": "java:shop.nav.navigateToCart", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.navigateToItem", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.cartScreen", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.itemScreen", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.splitScreen", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.computedScreen", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.CartRoute", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.ItemRoute", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.LeftPane", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.RightPane", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.HiddenRoute", "kind": "CONTAINS" },
+    { "src": "java:shop.nav", "dst": "java:shop.nav.buildRoute", "kind": "CONTAINS" },
+    { "src": "java:endpoint:NAV cart_route", "dst": "java:shop.nav.CartRoute", "kind": "EXPOSES" },
+    { "src": "java:endpoint:NAV item_route/{itemId}", "dst": "java:shop.nav.ItemRoute", "kind": "EXPOSES" },
+    { "src": "java:shop.nav.navigateToCart", "dst": "java:endpoint:NAV cart_route", "kind": "CONSUMES" },
+    { "src": "java:shop.nav.navigateToItem", "dst": "java:endpoint:NAV item_route/{itemId}", "kind": "CONSUMES" },
+    { "src": "java:shop.nav.cartScreen", "dst": "java:shop.nav.CartRoute", "kind": "CALLS" },
+    { "src": "java:shop.nav.itemScreen", "dst": "java:shop.nav.ItemRoute", "kind": "CALLS" },
+    { "src": "java:shop.nav.splitScreen", "dst": "java:shop.nav.LeftPane", "kind": "CALLS" },
+    { "src": "java:shop.nav.splitScreen", "dst": "java:shop.nav.RightPane", "kind": "CALLS" },
+    { "src": "java:shop.nav.computedScreen", "dst": "java:shop.nav.HiddenRoute", "kind": "CALLS" },
+    { "src": "java:shop.nav.computedScreen", "dst": "java:shop.nav.buildRoute", "kind": "CALLS" },
+    { "src": "java:shop.nav.cartScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
+    { "src": "java:shop.nav.itemScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
+    { "src": "java:shop.nav.splitScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
+    { "src": "java:shop.nav.computedScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
+    { "src": "java:shop.nav.navigateToCart", "dst": "java:androidx.navigation.NavController.navigate", "kind": "CALLS" },
+    { "src": "java:shop.nav.navigateToItem", "dst": "java:androidx.navigation.NavController.navigate", "kind": "CALLS" },
+    { "src": "java:shop.nav", "dst": "java:androidx.navigation.NavController", "kind": "IMPORTS" },
+    { "src": "java:shop.nav", "dst": "java:androidx.navigation.NavGraphBuilder", "kind": "IMPORTS" },
+    { "src": "java:shop.nav", "dst": "java:androidx.navigation.compose.composable", "kind": "IMPORTS" }
+  ],
+  "known_gaps": [],
+  "refusals": [
+    {
+      "edge": { "src": "java:endpoint:NAV split_route", "dst": "java:shop.nav.LeftPane", "kind": "EXPOSES" },
+      "why": "PREDICTED BEFORE SCORING. `splitScreen`'s lambda shows two screens. Emitting EXPOSES to the first one read is the closure rule's failure mode — the order the walk happens to visit them in is not evidence about which screen the route is for. The Endpoint is still correct and still emitted; only the EXPOSES is withheld."
+    }
+  ],
+  "excluded": [
+    "`this.navigate(...)` inside `fun NavController.navigateToCart()` **is** a labelled CALLS edge, not an omission: `this` is the extension's receiver, whose type the signature states and line 3 imports, so `NavController.navigate` is read from the source rather than inferred. Recorded because both edges were missing from an earlier version of this file while `typed_receivers` scored the identical shape — labels are read off the source, never off the output (corpus/README.md).",
+    "`computedScreen` yields NO endpoint at all — its route is a function call, so the path cannot be known and inventing a name for it would be worse than silence. Its body's CALLS edges are still emitted, because those are ordinary calls and have nothing to do with navigation.",
+    "`composable` is an explicitly imported function, so calling it is an ordinary resolved CALLS edge (P2) and is labelled as one. Navigation reading and call resolution are independent passes over the same call site — the route reading does not suppress the call, and should not.",
+    "`cartRoute` and `itemIdArg` are top-level properties, deliberately not Fields (D6), so they are not labelled as such.",
+    "The three `java:androidx.navigation.*` import targets are external and stay out of the node ratio; the IMPORTS edges to them still count."
+  ],
+  "open_questions": []
+}

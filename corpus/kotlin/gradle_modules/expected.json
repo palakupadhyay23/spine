@@ -1,0 +1,24 @@
+{
+  "language": "kotlin",
+  "case": "gradle_modules",
+  "why": "D11. A Gradle build states the architecture of an Android app, and nothing else in the repository does: `settings.gradle.kts` declares what the modules *are*, and each script declares what its module depends on. Read as Kotlin source these files would instead yield a phantom component per module and a phantom function per DSL block, which is why `.kts` has a dedicated reader rather than riding the Kotlin front-end.\n\nModules keep their own `gradle:` prefix and the id **is** the directory path, because a Gradle module is a directory and not a namespace — it has no package, and several modules routinely publish into the same one. That is also what lets a source file be attributed to its module by path alone, with no ownership edge invented.\n\nThe refusals are the point of the case. `libs.kotlinx.datetime` is a version-catalog coordinate for a third-party artifact: no node, no edge. `project(shared)` passes a variable, so the dependency exists but its target is not knowable from this file — it yields nothing rather than a guess resolved from the `val` above it. `testImplementation` **does** produce an edge, because a test dependency is a real dependency that a change to `core:model` can break.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "gradle:core/model", "kind": "Module" },
+    { "id": "gradle:core/data", "kind": "Module" },
+    { "id": "gradle:feature/topic", "kind": "Module" }
+  ],
+  "edges": [
+    { "src": "gradle:core/data", "dst": "gradle:core/model", "kind": "IMPORTS" },
+    { "src": "gradle:feature/topic", "dst": "gradle:core/data", "kind": "IMPORTS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "excluded": [
+    "`implementation(libs.kotlinx.datetime)` and `implementation(libs.androidx.core.ktx)` are third-party version-catalog coordinates. They are deliberately not nodes and not edges — a Gradle module graph is about first-party modules, and an artifact coordinate is a dependency of a different kind.",
+    "`implementation(project(shared))` names a variable. The dependency is real but its target cannot be read from this file, so nothing is emitted; resolving the `val` above it would be inference, and the same expression could be built anywhere.",
+    "The root project (`gradle:<root>`) has no build script of its own in this fixture, so it is not declared and is not labelled.",
+    "`testImplementation(project(\":core:model\"))` is the same edge as the `implementation` above it — edges de-duplicate by (src, dst, kind, provenance) and these differ only by line, so the relation is labelled once. §3.5 proposed tagging test configurations in provenance so `state` could separate them; `Provenance` has no field for that, so the distinction is not representable today and is recorded in the roadmap rather than faked."
+  ],
+  "open_questions": []
+}

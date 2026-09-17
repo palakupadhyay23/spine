@@ -1,0 +1,46 @@
+{
+  "language": "multirepo",
+  "case": "http_join_kotlin_consumer",
+  "requires": ["java", "kotlin"],
+  "roots": {
+    "api": ".api",
+    "mobile": ".mobile"
+  },
+  "joins": [
+    {
+      "kind": "http",
+      "consumer": "mobile",
+      "provider": "api"
+    }
+  ],
+  "why": "The first **mobile** consumer in the multi-repo graph, and the payoff of D10. `mobile` is an Android app: it serves nothing and calls two paths. `api` is a JAX-RS service that serves one of them. The join has to cross both a repository boundary and a language boundary — a Kotlin Retrofit annotation on one side, a Java JAX-RS annotation on the other — so it answers 'which screens break if this service drops GET /v1/topics', which no front-end could answer before.\n\nIt is also the case that would catch the tempting wrong reading: if the Kotlin front-end emitted an `Endpoint` for `@GET(\"v1/topics\")` instead of a `CONSUMES` candidate, the app would appear to *serve* the route, `mobile` would look like a provider, and the join would pair two providers and propose nothing. The control is `getUnserved`: nothing serves `/v1/unserved`, so the correct number of edges from it is zero — a matcher that joins on verb alone, or on any-path-to-any-endpoint, loses precision here.\n\nBoth repositories mint `java:` ids (D2 — Kotlin shares Java's JVM namespace), so this doubles as the proof that the shared prefix does not collide across repositories: the repo scope key, not the language prefix, is what separates them.",
+  "nodes": [
+    { "id": "java:mobile@shop.net", "kind": "Module" },
+    { "id": "java:mobile@shop.net.ShopApi", "kind": "Type" },
+    { "id": "java:mobile@shop.net.ShopApi.getTopics", "kind": "Function" },
+    { "id": "java:mobile@shop.net.ShopApi.getUnserved", "kind": "Function" },
+    { "id": "java:api@shop.api", "kind": "Module" },
+    { "id": "java:api@shop.api.TopicResource", "kind": "Type" },
+    { "id": "java:api@shop.api.TopicResource.listTopics", "kind": "Function" },
+    { "id": "java:api@endpoint:GET /v1/topics", "kind": "Endpoint" }
+  ],
+  "edges": [
+    { "src": "java:mobile@shop.net", "dst": "java:mobile@shop.net.ShopApi", "kind": "CONTAINS" },
+    { "src": "java:mobile@shop.net.ShopApi", "dst": "java:mobile@shop.net.ShopApi.getTopics", "kind": "CONTAINS" },
+    { "src": "java:mobile@shop.net.ShopApi", "dst": "java:mobile@shop.net.ShopApi.getUnserved", "kind": "CONTAINS" },
+    { "src": "java:api@shop.api", "dst": "java:api@shop.api.TopicResource", "kind": "CONTAINS" },
+    { "src": "java:api@shop.api.TopicResource", "dst": "java:api@shop.api.TopicResource.listTopics", "kind": "CONTAINS" },
+    { "src": "java:api@endpoint:GET /v1/topics", "dst": "java:api@shop.api.TopicResource.listTopics", "kind": "EXPOSES" },
+    { "src": "java:mobile@shop.net", "dst": "java:retrofit2.http.GET", "kind": "IMPORTS" },
+    { "src": "java:api@shop.api", "dst": "java:jakarta.ws.rs.GET", "kind": "IMPORTS" },
+    { "src": "java:api@shop.api", "dst": "java:jakarta.ws.rs.Path", "kind": "IMPORTS" },
+    { "src": "java:mobile@shop.net.ShopApi.getTopics", "dst": "java:api@endpoint:GET /v1/topics", "kind": "CONSUMES" }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "excluded": [
+    "`getUnserved` calling GET /v1/unserved is NOT excluded and NOT labelled: nothing serves it, so no edge is the correct answer. It is the control, the same shape as `check_health` in the http_join case.",
+    "`java:retrofit2.http.GET`, `java:jakarta.ws.rs.GET` and `java:jakarta.ws.rs.Path` are external and unscoped — no repository declares them — so they stay out of the node ratio; the IMPORTS edges to them still count."
+  ],
+  "open_questions": []
+}

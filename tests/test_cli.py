@@ -99,6 +99,28 @@ def test_sdlc_feature_rejects_unknown_language(runner: CliRunner) -> None:
     assert "not supported" in result.output and "rust" in result.output
 
 
+def test_sdlc_plan_rejects_unknown_language(runner: CliRunner) -> None:
+    """`feature` has validated this for releases; `plan` never did.
+
+    Unvalidated, a typo fell through every dispatch chain to the Python branch and produced
+    a Python-shaped document for a repository in another language, silently.
+    """
+    result = runner.invoke(app, ["sdlc", "plan", "--source", "jira://X-1", "--language", "cshapr"])
+    assert result.exit_code == 2
+    assert "not supported" in result.output and "cshapr" in result.output
+
+
+def test_sdlc_plan_defaults_language_to_auto(runner: CliRunner) -> None:
+    """The default was the literal "python", so every non-Python repo was planned as Python.
+
+    `language` reaches the codegen prompt, the layout and the test environment — not just
+    the prose — so the wrong default is a wrong *document*, not a cosmetic label.
+    """
+    result = runner.invoke(app, ["sdlc", "plan", "--help"])
+    assert "auto" in result.output
+    assert "[default: python]" not in result.output
+
+
 def test_sdlc_feature_accepts_go_language(
     runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

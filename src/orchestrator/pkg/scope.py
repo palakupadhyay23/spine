@@ -130,6 +130,11 @@ class _Lang(Protocol):
     def declares(self, node: TSNode, src: bytes) -> Iterable[str]:
         """Names this node binds in the *enclosing* scope — locals, loop vars, catch targets."""
 
+    # Optional. Every grammar here but Kotlin's puts the callee in a ``function``
+    # field, so ``collect`` reads that by default; a walker whose grammar spells it
+    # differently overrides this instead of forcing a field name the parser lacks.
+    # Returning "" means "not a bare call", which is what a qualified callee is.
+
 
 def _text(node: TSNode | None, src: bytes) -> str:
     return "" if node is None else src[node.start_byte : node.end_byte].decode("utf-8", "replace")
@@ -168,9 +173,15 @@ def collect(root: TSNode, src: bytes, lang: _Lang) -> FileScopes:
             from_line = node.end_point[0] + 2
             current.bindings.extend(Binding(n, from_line) for n in lang.declares(node, src))
             if node.type in lang.call_nodes:
-                fn = node.child_by_field_name("function")
-                if fn is not None and fn.type == "identifier":
-                    calls.append(BareCall(node.start_point[0] + 1, _text(fn, src)))
+                bare = getattr(lang, "callee", None)
+                if bare is not None:
+                    name = bare(node, src)
+                    if name:
+                        calls.append(BareCall(node.start_point[0] + 1, name))
+                else:
+                    fn = node.child_by_field_name("function")
+                    if fn is not None and fn.type == "identifier":
+                        calls.append(BareCall(node.start_point[0] + 1, _text(fn, src)))
         for child in node.named_children:
             visit(child, scope)
 
@@ -310,6 +321,100 @@ class _Go:
         if node.type == "type_switch_statement":
             return _idents(node.child_by_field_name("alias"), src, frozenset({"identifier"}))
         return []
+
+
+# ---- Kotlin -----------------------------------------------------------------
+
+
+def _own_name(node: TSNode, src: bytes) -> list[str]:
+    """The declared name of a Kotlin binding — its first *direct* identifier child.
+
+    ``_idents`` cannot be used here: it descends a whole subtree, and its safety
+    note ("a pattern's type is a sibling field, never a child") does not hold for
+    this grammar — ``parameter`` puts ``topic: Topic`` in one node, so a subtree
+    walk would bind the *type name* ``Topic`` as if it were a variable.
+    """
+    for child in node.named_children:
+        if child.type == "identifier":
+            return [_text(child, src)]
+    return []
+
+
+class _Kotlin:
+    """Kotlin *can* shadow a call, which is why it is walked rather than excused.
+
+    Java is in ``NOT_APPLICABLE`` because the JLS gives variables and methods
+    separate namespaces — ``helper`` the field and ``helper()`` the method cannot
+    collide. Kotlin has one namespace and an ``invoke`` convention, so::
+
+        val helper = ::other      // a function reference in a local
+        helper()                  // calls `other`, NOT the member `helper()`
+
+    is a genuine ambiguity at the call site, and a front-end that resolved the
+    bare call to the member would fabricate an edge. The extractor skips it; this
+    walker is the independent oracle that says whether it really did.
+
+    ``lambda_literal`` and ``anonymous_function`` open scopes because a lambda
+    parameter — including the implicit ``it`` — binds inside the lambda only.
+    """
+
+    # `for_statement` and `catch_block` are **scopes**, not declarations: their name binds
+    # inside their own span, where a `val` binds only from the line after it ends. Both
+    # were missing entirely, and that mattered more than a missing binding usually does —
+    # this walker is the *oracle* for D9, so a name it fails to bind is a name it cannot
+    # report the extractor for fabricating, and the extractor had the identical gap. So
+    # `for (helper in fns) { helper() }` produced an invented edge that the invention check
+    # then certified as clean. This module's own docstring forbids exactly that ("a
+    # detector that agrees with the extractor by construction"), and `_CFamily` has always
+    # walked `for_range_loop` for the same reason.
+    scope_nodes = frozenset(
+        {"function_declaration", "lambda_literal", "anonymous_function", "for_statement", "catch_block"}
+    )
+    call_nodes = frozenset({"call_expression"})
+
+    def params(self, node: TSNode, src: bytes) -> Iterable[str]:
+        if node.type == "for_statement":
+            return [
+                n for c in node.named_children if c.type == "variable_declaration" for n in _own_name(c, src)
+            ]
+        if node.type == "catch_block":
+            name = next((c for c in node.named_children if c.type == "identifier"), None)
+            return [_text(name, src)] if name is not None else []
+        out: list[str] = []
+        for holder in node.named_children:
+            if holder.type not in ("function_value_parameters", "lambda_parameters"):
+                continue
+            for decl in holder.named_children:
+                if decl.type in ("parameter", "variable_declaration"):
+                    out.extend(_own_name(decl, src))
+        if node.type == "lambda_literal":
+            # The implicit receiver of a lambda with no declared parameters. It is
+            # bound even though nothing writes it down, so a call to `it()` is not
+            # a bare call to anything this file declares.
+            out.append("it")
+        return out
+
+    def declares(self, node: TSNode, src: bytes) -> Iterable[str]:
+        if node.type != "property_declaration":
+            return []
+        out: list[str] = []
+        for child in node.named_children:
+            if child.type == "variable_declaration":
+                out.extend(_own_name(child, src))
+            elif child.type == "multi_variable_declaration":  # `val (a, b) = pair`
+                for inner in child.named_children:
+                    if inner.type == "variable_declaration":
+                        out.extend(_own_name(inner, src))
+        return out
+
+    def callee(self, node: TSNode, src: bytes) -> str:
+        """Kotlin's ``call_expression`` has no ``function`` field — the callee is first.
+
+        Only an unqualified ``identifier`` is a bare call. A ``navigation_expression``
+        callee (``dao.load()``) is qualified and cannot be shadowed by a local.
+        """
+        first = next(iter(node.named_children), None)
+        return _text(first, src) if first is not None and first.type == "identifier" else ""
 
 
 # ---- C# ---------------------------------------------------------------------
@@ -453,6 +558,7 @@ WALKERS: dict[str, _Lang] = {
     "csharp": _CSharp(),
     "c": _C,
     "cpp": _CPP,
+    "kotlin": _Kotlin(),
 }
 
 #: Languages excluded on purpose, with the reason, so "no finding" is legible.
@@ -490,6 +596,10 @@ def _parser_for(language: str, suffix: str) -> Any:
         from orchestrator.pkg.c_extractor import _c_parser
 
         return _c_parser()
+    if language == "kotlin":
+        from orchestrator.pkg.kotlin_extractor import _kotlin_parser
+
+        return _kotlin_parser()
     raise KeyError(language)
 
 

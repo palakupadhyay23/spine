@@ -156,6 +156,18 @@ NATIVE_SKILLS: tuple[Skill, ...] = (
         "(not panics), and co-located table-driven tests.",
     ),
     Skill(
+        "kotlin-conventions",
+        "Match the repo's Kotlin conventions. Put code where the repo already puts it — "
+        "most Kotlin lives under src/main/java, not src/main/kotlin, so follow the tree "
+        "rather than the language default. Prefer val over var, data classes over "
+        "hand-written equals/hashCode, expression bodies, and named arguments at call "
+        "sites with more than two parameters. Express absence with nullable types and "
+        "?:/?. rather than sentinel values, and never with !!. A file may hold several "
+        "declarations — name it for what it holds. Write tests with kotlin.test unless "
+        "neighbouring tests already use JUnit or a matcher library, and declare new "
+        "dependencies in build.gradle.kts.",
+    ),
+    Skill(
         "repo-pkg-grounding",
         "Reuse existing symbols — use the pkg_* tools to find them before writing code.",
     ),

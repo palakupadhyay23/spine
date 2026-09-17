@@ -29,6 +29,7 @@ _DRIFT_EXT = frozenset({
     "html", "md", "markdown", "rst", "txt", "json", "yaml", "yml", "toml", "ini", "cfg",
     "lock", "xml", "csv", "tsv", "png", "svg", "jpg", "jpeg", "gif", "pdf",
     "go", "py", "ts", "tsx", "js", "jsx", "css", "scss", "sh", "bat", "php", "pl", "pm",
+    "kt", "kts",
 })
 # fmt: on
 

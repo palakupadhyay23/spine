@@ -1,0 +1,53 @@
+{
+  "language": "kotlin",
+  "case": "plain",
+  "why": "The Kotlin control. One package, one explicit import, and every declaration shape the language has that P1 must map: an interface and a class (both `class_declaration` in the grammar, which is why the flavour is not recorded), a `data class`, an `enum class`, and an `object`. It also pins the three decisions a reader is most likely to get wrong by analogy with Java — ids carry the `java:` prefix while nodes carry `language: kotlin` (D2), a primary-constructor `val` is a Field but a bare parameter is not (D6), and the single supertype list becomes IMPLEMENTS regardless of whether Kotlin is extending or implementing (D7). The one CALLS edge is the no-guess case: a bare call to a sibling method of the enclosing type.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:shop.cart", "kind": "Module" },
+    { "id": "java:shop.cart.Priced", "kind": "Type" },
+    { "id": "java:shop.cart.Cart", "kind": "Type" },
+    { "id": "java:shop.cart.Line", "kind": "Type" },
+    { "id": "java:shop.cart.Status", "kind": "Type" },
+    { "id": "java:shop.cart.Registry", "kind": "Type" },
+    { "id": "java:shop.cart.Priced.price", "kind": "Function" },
+    { "id": "java:shop.cart.Cart.price", "kind": "Function" },
+    { "id": "java:shop.cart.Cart.subtotal", "kind": "Function" },
+    { "id": "java:shop.cart.Registry.reset", "kind": "Function" },
+    { "id": "java:shop.cart.Cart.table", "kind": "Field" },
+    { "id": "java:shop.cart.Cart.items", "kind": "Field" },
+    { "id": "java:shop.cart.Cart.name", "kind": "Field" },
+    { "id": "java:shop.cart.Line.sku", "kind": "Field" },
+    { "id": "java:shop.cart.Line.qty", "kind": "Field" },
+    { "id": "java:shop.cart.Status.OPEN", "kind": "Field" },
+    { "id": "java:shop.cart.Status.CLOSED", "kind": "Field" }
+  ],
+  "edges": [
+    { "src": "java:shop.cart", "dst": "java:shop.cart.Priced", "kind": "CONTAINS" },
+    { "src": "java:shop.cart", "dst": "java:shop.cart.Cart", "kind": "CONTAINS" },
+    { "src": "java:shop.cart", "dst": "java:shop.cart.Line", "kind": "CONTAINS" },
+    { "src": "java:shop.cart", "dst": "java:shop.cart.Status", "kind": "CONTAINS" },
+    { "src": "java:shop.cart", "dst": "java:shop.cart.Registry", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Priced", "dst": "java:shop.cart.Priced.price", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Cart.price", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Cart.subtotal", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Cart.table", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Cart.items", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Cart.name", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Line", "dst": "java:shop.cart.Line.sku", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Line", "dst": "java:shop.cart.Line.qty", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Status", "dst": "java:shop.cart.Status.OPEN", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Status", "dst": "java:shop.cart.Status.CLOSED", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Registry", "dst": "java:shop.cart.Registry.reset", "kind": "CONTAINS" },
+    { "src": "java:shop.cart.Cart", "dst": "java:shop.cart.Priced", "kind": "IMPLEMENTS" },
+    { "src": "java:shop.cart", "dst": "java:shop.tax.TaxTable", "kind": "IMPORTS" },
+    { "src": "java:shop.cart.Cart.price", "dst": "java:shop.cart.Cart.subtotal", "kind": "CALLS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "excluded": [
+    "java:shop.tax.TaxTable is external — nothing in this fixture declares it — so it stays out of the node ratio per corpus/README.md's rule; the IMPORTS edge to it still counts.",
+    "`label`, the bare primary-constructor parameter, is deliberately not a Field and is not labelled as one (D6): in Kotlin only a `val`/`var` constructor parameter declares a property, so this is a correct omission rather than a recall miss."
+  ],
+  "open_questions": []
+}

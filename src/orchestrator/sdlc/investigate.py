@@ -25,6 +25,8 @@ from pathlib import Path
 
 from orchestrator.pkg import FactStore
 from orchestrator.pkg.facts import NodeKind
+from orchestrator.sdlc import brief
+from orchestrator.sdlc.brief import Brief, Tier
 
 
 @dataclass(frozen=True)
@@ -182,13 +184,63 @@ def build_investigation(
     )
 
 
-def render_investigation_md(inv: Investigation) -> str:
-    """Render the brief as markdown. Honest when a section has nothing grounded."""
-    out: list[str] = [f"# Investigation — {inv.title or 'ticket'}\n"]
-    if inv.problem:
-        out.append(f"## Problem\n{inv.problem}\n")
+def _not_verified(inv: Investigation) -> str:
+    """What this brief did *not* establish, derived from its own state.
 
-    out.append("## Where it lands in the code")
+    The section is required, so the alternative to writing this is the placeholder — and
+    "nothing was deliberately left unchecked" is false of every investigation: retrieval here
+    is lexical, the list is bounded, and three of the four sections degrade silently when
+    their source is absent. A limits section that is wrong is worse than none, because a
+    reader who sees one stops looking for the limits themselves.
+
+    Every line is conditional on real state. A brief with genuinely nothing to declare falls
+    back to the section's own copy rather than inventing a caveat.
+    """
+    notes: list[str] = []
+    if inv.landing:
+        notes.append(
+            "- Retrieval is **lexical**, not semantic: these symbols matched the ticket's "
+            "words. A landing site that uses different words for the same thing is not here."
+        )
+    if inv.elided:
+        notes.append(
+            f"- {inv.elided} further match(es) were not listed — the ranking is a bound, "
+            "not a judgement that the rest are irrelevant."
+        )
+    if not inv.knowledge:
+        notes.append("- No `episteme/` was read, so committed project knowledge is absent, not empty.")
+    if not inv.prior_notes:
+        notes.append(
+            "- Prior runs were not consulted (cross-run memory needs the registry DB) — "
+            "this ticket may have been attempted before."
+        )
+    if len(inv.repos) > 1:
+        notes.append(
+            f"- {len(inv.repos)} repositories were merged. Anything in a repository that was "
+            "not declared is invisible here, and reads the same as nothing to find."
+        )
+    if inv.landing and not any(hit.intents for hit in inv.landing):
+        notes.append(
+            "- No landing site carries a recorded intent, which is not the same as no prior "
+            "work having touched it."
+        )
+    return "\n".join(notes)
+
+
+def render_investigation_md(inv: Investigation) -> str:
+    """Render the brief as markdown. Honest when a section has nothing grounded.
+
+    Section titles and their order come from :mod:`orchestrator.sdlc.brief`, not from this
+    function — five modules spelled these by hand and had drifted to three spellings of
+    "next step" alone. The tier is EVIDENCE, so this renderer *cannot* emit a verdict or a
+    recommendation: an investigation must stay re-derivable from the graph, and the argument
+    on top of it belongs to `design`, which has an author behind it.
+    """
+    doc = Brief(f"Investigation — {inv.title or 'ticket'}", tier=Tier.EVIDENCE)
+    if inv.problem:
+        doc.add(brief.PROBLEM, inv.problem)
+
+    out: list[str] = []
     if inv.landing:
         out.append("_Lexically-retrieved from the knowledge graph — start here, confirm before trusting._\n")
         for hit in inv.landing:
@@ -237,27 +289,22 @@ def render_investigation_md(inv: Investigation) -> str:
             "_No symbols matched the ticket's terms — it may name new behavior, "
             "or use words the code doesn't._"
         )
-    out.append("")
+    doc.add(brief.LANDS, "\n".join(out))
+    doc.add(brief.KNOWLEDGE, inv.knowledge)
 
-    out.append("## Relevant project knowledge")
-    out.append(
-        inv.knowledge
-        if inv.knowledge
-        else "_No committed `episteme/` found — run `orchestrator understand .` to build one._"
-    )
-    out.append("")
-
-    out.append("## Prior art / related work")
     if inv.prior_notes:
-        out.append("_From cross-run memory (past runs on this repo):_\n")
-        out.extend(f"- {note}" for note in inv.prior_notes)
+        notes = ["_From cross-run memory (past runs on this repo):_\n"]
+        notes.extend(f"- {note}" for note in inv.prior_notes)
+        doc.add(brief.PRIOR_ART, "\n".join(notes))
     else:
-        out.append("_None surfaced (cross-run memory needs the registry DB; the CLI runs without it)._")
-    out.append("")
+        doc.add(brief.PRIOR_ART)
 
-    out.append("## Suggested next step")
-    out.append("Feed this into `orchestrator design` to produce a grounded, blast-radius-aware design.")
-    return "\n".join(out) + "\n"
+    doc.add(brief.NOT_VERIFIED, _not_verified(inv))
+    doc.add(
+        brief.NEXT_STEP,
+        "Feed this into `orchestrator design` to produce a grounded, blast-radius-aware design.",
+    )
+    return doc.render()
 
 
 __all__ = ["Investigation", "Landing", "build_investigation", "render_investigation_md"]
