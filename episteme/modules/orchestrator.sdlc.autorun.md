@@ -107,7 +107,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:503`](../../src/orchestrator/sdlc/autorun.py#L503)
 
 - **Called by** (1): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237)
-- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L603), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214)
+- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L603), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313)
 - **Documented in**: `docs/specs/perl-support-roadmap.md#7-blast-radius-measured-from-the-pkg-per-registration-site`
 
 ### `_research_pass`

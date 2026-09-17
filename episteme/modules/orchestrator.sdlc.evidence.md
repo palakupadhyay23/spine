@@ -62,7 +62,7 @@
 [`src/orchestrator/sdlc/evidence.py:367`](../../src/orchestrator/sdlc/evidence.py#L367)
 
 - **Called by** (1): [`build_evidence`](../../src/orchestrator/sdlc/evidence.py#L178)
-- **Calls** (2): [`blast_radius`](../../src/orchestrator/sdlc/impact.py#L142), [`to_dict`](../../src/orchestrator/sdlc/impact.py#L187)
+- **Calls** (2): [`blast_radius`](../../src/orchestrator/sdlc/impact.py#L150), [`to_dict`](../../src/orchestrator/sdlc/impact.py#L198)
 - **Documented in**: `docs/specs/graphir-sdlc-workflow.md#half-one-parallel-fan-out-measured-30ms-available-declined`
 
 ### `_tool_churn`
@@ -139,7 +139,7 @@
 [`src/orchestrator/sdlc/evidence.py:257`](../../src/orchestrator/sdlc/evidence.py#L257)
 
 - **Called by** (1 production · 1 test): [`_research_pass`](../../src/orchestrator/sdlc/autorun.py#L646), [`test_an_ungrounded_graph_says_so_rather_than_looking_clean`](../../tests/sdlc/test_evidence.py#L91)
-- **Calls** (1): [`render_md`](../../src/orchestrator/sdlc/impact.py#L216)
+- **Calls** (1): [`render_md`](../../src/orchestrator/sdlc/impact.py#L228)
 
 ### `to_dict`
 

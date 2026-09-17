@@ -5,7 +5,7 @@
 
 **Source:** [`src/orchestrator/sdlc/builddoc.py`](../../src/orchestrator/sdlc/builddoc.py)
 
-3 types · 31 functions · python
+3 types · 35 functions · python
 
 ## Changing this safely
 
@@ -13,7 +13,7 @@
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
-- [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1255) — reaches **17** symbols
+- [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1354) — reaches **17** symbols
 - [`approval_path`](../../src/orchestrator/sdlc/builddoc.py#L149) — reaches **11** symbols
 - [`PlanApproval`](../../src/orchestrator/sdlc/builddoc.py#L116) — reaches **10** symbols
 - [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134) — reaches **10** symbols
@@ -46,115 +46,141 @@ _1 of the symbols other code depends on here have no test path the graph can see
 
 ### `PlanNotApprovedError`
 
-[`src/orchestrator/sdlc/builddoc.py:1210`](../../src/orchestrator/sdlc/builddoc.py#L1210)
+[`src/orchestrator/sdlc/builddoc.py:1309`](../../src/orchestrator/sdlc/builddoc.py#L1309)
 
 - **Extends** (1): `Exception`
-- **Called by** (1): [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214)
+- **Called by** (1): [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313)
 
 ## Functions
 
 ### `_blast_prose`
 
-[`src/orchestrator/sdlc/builddoc.py:649`](../../src/orchestrator/sdlc/builddoc.py#L649)
+[`src/orchestrator/sdlc/builddoc.py:750`](../../src/orchestrator/sdlc/builddoc.py#L750)
 
-- **Called by** (1 production · 3 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926), [`test_an_unmeasured_language_keeps_the_original_wording`](../../tests/sdlc/test_builddoc.py#L814), [`test_the_caveat_says_what_the_number_was_measured_against`](../../tests/sdlc/test_builddoc.py#L803), [`test_the_caveat_states_measured_recall_for_a_measured_language`](../../tests/sdlc/test_builddoc.py#L790)
-- **Calls** (2): [`_is_test_module`](../../src/orchestrator/sdlc/builddoc.py#L644), [`measured_recall`](../../src/orchestrator/pkg/accuracy.py#L743)
+- **Called by** (1 production · 11 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025), [`test_a_blast_radius_from_before_languages_existed_falls_back_to_the_flag`](../../tests/sdlc/test_builddoc.py#L825), [`test_a_polyglot_blast_radius_scores_each_language`](../../tests/sdlc/test_builddoc.py#L805), [`test_an_unmeasured_language_is_named_rather_than_dropped`](../../tests/sdlc/test_builddoc.py#L815), [`test_an_unmeasured_language_keeps_the_original_wording`](../../tests/sdlc/test_builddoc.py#L941), [`test_containment_does_not_count_dotnet_tests_as_product_code`](../../tests/sdlc/test_builddoc.py#L909), [`test_containment_says_at_least_when_names_were_capped_upstream`](../../tests/sdlc/test_builddoc.py#L890), [`test_containment_says_how_many_importers_it_did_not_list`](../../tests/sdlc/test_builddoc.py#L875), [`test_the_caveat_cites_no_tracker_key`](../../tests/sdlc/test_builddoc.py#L861), [`test_the_caveat_names_the_language_that_built_the_graph`](../../tests/sdlc/test_builddoc.py#L790), [`test_the_caveat_says_what_the_number_was_measured_against`](../../tests/sdlc/test_builddoc.py#L850), [`test_the_caveat_states_measured_recall_for_a_measured_language`](../../tests/sdlc/test_builddoc.py#L837)
+- **Calls** (5): [`_is_test_module`](../../src/orchestrator/sdlc/builddoc.py#L656), [`_languages_of`](../../src/orchestrator/sdlc/builddoc.py#L709), [`_more`](../../src/orchestrator/sdlc/builddoc.py#L687), [`_names_were_capped_upstream`](../../src/orchestrator/sdlc/builddoc.py#L696), [`_recall_clause`](../../src/orchestrator/sdlc/builddoc.py#L725)
 - **Documented in**: `docs/specs/build-documents/PKG-ACC-6-build.md#10-codegen-prompt`, `docs/specs/build-documents/PKG-ACC-6-build.md#4-pkg-what-the-graph-knows`, `docs/specs/build-documents/PKG-ACC-6-build.md#7-files`, `docs/specs/build-documents/PKG-ACC-6-build.md#9-facts-the-generator-needs`
 
 ### `_confidence_block`
 
 [`src/orchestrator/sdlc/builddoc.py:414`](../../src/orchestrator/sdlc/builddoc.py#L414)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 - **Calls** (1): [`_measured_runs`](../../src/orchestrator/sdlc/builddoc.py#L320)
 
 ### `_cost_block`
 
 [`src/orchestrator/sdlc/builddoc.py:324`](../../src/orchestrator/sdlc/builddoc.py#L324)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 - **Calls** (4): [`_measured_runs`](../../src/orchestrator/sdlc/builddoc.py#L320), [`catalog`](../../src/orchestrator/core/llm/catalog.py#L84), [`describe`](../../src/orchestrator/core/llm/catalog.py#L74), [`resolve`](../../src/orchestrator/core/llm/catalog.py#L41)
 
 ### `_criteria_block`
 
-[`src/orchestrator/sdlc/builddoc.py:851`](../../src/orchestrator/sdlc/builddoc.py#L851)
+[`src/orchestrator/sdlc/builddoc.py:950`](../../src/orchestrator/sdlc/builddoc.py#L950)
 
-- **Called by** (1 production · 4 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926), [`test_already_met_criterion_keeps_its_place_and_its_evidence`](../../tests/sdlc/test_builddoc.py#L146), [`test_met_criteria_naming_an_unknown_criterion_is_surfaced`](../../tests/sdlc/test_builddoc.py#L161), [`test_proposed_criteria_are_labelled_model`](../../tests/sdlc/test_builddoc.py#L156), [`test_spec_with_no_criteria_says_the_judge_has_nothing_to_verify`](../../tests/sdlc/test_builddoc.py#L167)
+- **Called by** (1 production · 4 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025), [`test_already_met_criterion_keeps_its_place_and_its_evidence`](../../tests/sdlc/test_builddoc.py#L146), [`test_met_criteria_naming_an_unknown_criterion_is_surfaced`](../../tests/sdlc/test_builddoc.py#L161), [`test_proposed_criteria_are_labelled_model`](../../tests/sdlc/test_builddoc.py#L156), [`test_spec_with_no_criteria_says_the_judge_has_nothing_to_verify`](../../tests/sdlc/test_builddoc.py#L167)
 
 ### `_evidence_block`
 
-[`src/orchestrator/sdlc/builddoc.py:789`](../../src/orchestrator/sdlc/builddoc.py#L789)
+[`src/orchestrator/sdlc/builddoc.py:888`](../../src/orchestrator/sdlc/builddoc.py#L888)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
 ### `_file_rows`
 
-[`src/orchestrator/sdlc/builddoc.py:901`](../../src/orchestrator/sdlc/builddoc.py#L901)
+[`src/orchestrator/sdlc/builddoc.py:1000`](../../src/orchestrator/sdlc/builddoc.py#L1000)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
 ### `_is_test_module`
 
-[`src/orchestrator/sdlc/builddoc.py:644`](../../src/orchestrator/sdlc/builddoc.py#L644)
+[`src/orchestrator/sdlc/builddoc.py:656`](../../src/orchestrator/sdlc/builddoc.py#L656)
 
-- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L649)
+- **Called by** (1 production · 1 test): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750), [`test_test_detection_does_not_fire_on_ordinary_words`](../../tests/sdlc/test_builddoc.py#L928)
+- **Calls** (1): `split`
 
 ### `_journey_block`
 
 [`src/orchestrator/sdlc/builddoc.py:289`](../../src/orchestrator/sdlc/builddoc.py#L289)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 - **Calls** (1): [`_label`](../../src/orchestrator/sdlc/builddoc.py#L65)
 
 ### `_label`
 
 [`src/orchestrator/sdlc/builddoc.py:65`](../../src/orchestrator/sdlc/builddoc.py#L65)
 
-- **Called by** (3): [`_journey_block`](../../src/orchestrator/sdlc/builddoc.py#L289), [`_pending`](../../src/orchestrator/sdlc/builddoc.py#L75), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (3): [`_journey_block`](../../src/orchestrator/sdlc/builddoc.py#L289), [`_pending`](../../src/orchestrator/sdlc/builddoc.py#L75), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
+
+### `_languages_of`
+
+[`src/orchestrator/sdlc/builddoc.py:709`](../../src/orchestrator/sdlc/builddoc.py#L709)
+
+- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750)
 
 ### `_measured_runs`
 
 [`src/orchestrator/sdlc/builddoc.py:320`](../../src/orchestrator/sdlc/builddoc.py#L320)
 
-- **Called by** (3): [`_confidence_block`](../../src/orchestrator/sdlc/builddoc.py#L414), [`_cost_block`](../../src/orchestrator/sdlc/builddoc.py#L324), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (3): [`_confidence_block`](../../src/orchestrator/sdlc/builddoc.py#L414), [`_cost_block`](../../src/orchestrator/sdlc/builddoc.py#L324), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
 ### `_mermaid_blast`
 
 [`src/orchestrator/sdlc/builddoc.py:574`](../../src/orchestrator/sdlc/builddoc.py#L574)
 
-- **Called by** (1 production · 3 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926), [`test_mermaid_declares_every_node_before_its_edges`](../../tests/sdlc/test_builddoc.py#L197), [`test_mermaid_keeps_paths_readable`](../../tests/sdlc/test_builddoc.py#L190), [`test_no_diagram_rather_than_a_wrong_one`](../../tests/sdlc/test_builddoc.py#L212)
+- **Called by** (1 production · 3 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025), [`test_mermaid_declares_every_node_before_its_edges`](../../tests/sdlc/test_builddoc.py#L197), [`test_mermaid_keeps_paths_readable`](../../tests/sdlc/test_builddoc.py#L190), [`test_no_diagram_rather_than_a_wrong_one`](../../tests/sdlc/test_builddoc.py#L212)
+
+### `_more`
+
+[`src/orchestrator/sdlc/builddoc.py:687`](../../src/orchestrator/sdlc/builddoc.py#L687)
+
+- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750)
+
+### `_names_were_capped_upstream`
+
+[`src/orchestrator/sdlc/builddoc.py:696`](../../src/orchestrator/sdlc/builddoc.py#L696)
+
+- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750)
 
 ### `_pending`
 
 [`src/orchestrator/sdlc/builddoc.py:75`](../../src/orchestrator/sdlc/builddoc.py#L75)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 - **Calls** (1): [`_label`](../../src/orchestrator/sdlc/builddoc.py#L65)
+
+### `_recall_clause`
+
+[`src/orchestrator/sdlc/builddoc.py:725`](../../src/orchestrator/sdlc/builddoc.py#L725)
+
+- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750)
+- **Calls** (1): [`measured_recall`](../../src/orchestrator/pkg/accuracy.py#L743)
 
 ### `_recent_history`
 
-[`src/orchestrator/sdlc/builddoc.py:767`](../../src/orchestrator/sdlc/builddoc.py#L767)
+[`src/orchestrator/sdlc/builddoc.py:866`](../../src/orchestrator/sdlc/builddoc.py#L866)
 
-- **Called by** (1): [`collect_evidence`](../../src/orchestrator/sdlc/builddoc.py#L722)
+- **Called by** (1): [`collect_evidence`](../../src/orchestrator/sdlc/builddoc.py#L821)
 - **Calls** (1): `run`
 
 ### `_root_cause_block`
 
 [`src/orchestrator/sdlc/builddoc.py:521`](../../src/orchestrator/sdlc/builddoc.py#L521)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
 ### `_status_line`
 
 [`src/orchestrator/sdlc/builddoc.py:191`](../../src/orchestrator/sdlc/builddoc.py#L191)
 
-- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (1): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
 ### `append_journey`
 
 [`src/orchestrator/sdlc/builddoc.py:237`](../../src/orchestrator/sdlc/builddoc.py#L237)
 
-- **Called by** (1 production · 3 test): [`journal`](../../src/orchestrator/sdlc/autorun.py#L153), [`test_a_malformed_journey_line_is_skipped_not_fatal`](../../tests/sdlc/test_builddoc.py#L616), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_the_journey_is_append_only_on_disk`](../../tests/sdlc/test_builddoc.py#L604)
+- **Called by** (1 production · 3 test): [`journal`](../../src/orchestrator/sdlc/autorun.py#L153), [`test_a_malformed_journey_line_is_skipped_not_fatal`](../../tests/sdlc/test_builddoc.py#L616), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_the_journey_is_append_only_on_disk`](../../tests/sdlc/test_builddoc.py#L604)
 - **Calls** (3): `dataclasses.asdict`, `dumps`, [`journey_path`](../../src/orchestrator/sdlc/builddoc.py#L233)
 
 ### `approval_path`
@@ -162,22 +188,22 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/builddoc.py:149`](../../src/orchestrator/sdlc/builddoc.py#L149)
 
 - **Called by** (2 production · 1 test): [`load_approval`](../../src/orchestrator/sdlc/builddoc.py#L153), [`save_approval`](../../src/orchestrator/sdlc/builddoc.py#L168), [`test_a_corrupt_approval_is_not_an_approval`](../../tests/sdlc/test_builddoc.py#L496)
-- **Calls** (2): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1255)
+- **Calls** (2): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1354)
 
 ### `build_plan`
 
-[`src/orchestrator/sdlc/builddoc.py:1127`](../../src/orchestrator/sdlc/builddoc.py#L1127)
+[`src/orchestrator/sdlc/builddoc.py:1226`](../../src/orchestrator/sdlc/builddoc.py#L1226)
 
-- **Called by** (3 production · 6 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L714), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_build_plan_is_deterministic_and_touches_no_tracker`](../../tests/sdlc/test_builddoc.py#L775), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L831), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536), [`test_the_plugin_and_the_cli_render_the_same_document`](../../tests/plugin/test_server.py#L1177)
-- **Calls** (11): [`assess`](../../src/orchestrator/sdlc/validity.py#L455), [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L117), [`build_overview`](../../src/orchestrator/pkg/overview.py#L23), [`build_rca`](../../src/orchestrator/sdlc/rca.py#L207), [`collect_evidence`](../../src/orchestrator/sdlc/builddoc.py#L722), [`derived_at`](../../src/orchestrator/sdlc/builddoc.py#L80), `orchestrator.pkg.FactStore`, `orchestrator.pkg.load_or_extract`, `pathlib.Path`, [`produce_design`](../../src/orchestrator/sdlc/design.py#L295), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926)
+- **Called by** (3 production · 6 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L725), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_build_plan_is_deterministic_and_touches_no_tracker`](../../tests/sdlc/test_builddoc.py#L775), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L958), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536), [`test_the_plugin_and_the_cli_render_the_same_document`](../../tests/plugin/test_server.py#L1177)
+- **Calls** (11): [`assess`](../../src/orchestrator/sdlc/validity.py#L455), [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L117), [`build_overview`](../../src/orchestrator/pkg/overview.py#L23), [`build_rca`](../../src/orchestrator/sdlc/rca.py#L207), [`collect_evidence`](../../src/orchestrator/sdlc/builddoc.py#L821), [`derived_at`](../../src/orchestrator/sdlc/builddoc.py#L80), `orchestrator.pkg.FactStore`, `orchestrator.pkg.load_or_extract`, `pathlib.Path`, [`produce_design`](../../src/orchestrator/sdlc/design.py#L295), [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 - **Documented in**: `CHANGELOG.md`
 
 ### `collect_evidence`
 
-[`src/orchestrator/sdlc/builddoc.py:722`](../../src/orchestrator/sdlc/builddoc.py#L722)
+[`src/orchestrator/sdlc/builddoc.py:821`](../../src/orchestrator/sdlc/builddoc.py#L821)
 
-- **Called by** (1 production · 1 test): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1127), [`test_collect_evidence_reads_the_graph_for_the_changed_files`](../../tests/sdlc/test_builddoc.py#L364)
-- **Calls** (3): [`CoverageIndex`](../../src/orchestrator/sdlc/coverage.py#L66), [`_recent_history`](../../src/orchestrator/sdlc/builddoc.py#L767), [`is_test_node`](../../src/orchestrator/sdlc/coverage.py#L32)
+- **Called by** (1 production · 1 test): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1226), [`test_collect_evidence_reads_the_graph_for_the_changed_files`](../../tests/sdlc/test_builddoc.py#L364)
+- **Calls** (3): [`CoverageIndex`](../../src/orchestrator/sdlc/coverage.py#L66), [`_recent_history`](../../src/orchestrator/sdlc/builddoc.py#L866), [`is_test_node`](../../src/orchestrator/sdlc/coverage.py#L32)
 
 ### `decided_by_default`
 
@@ -190,7 +216,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 
 [`src/orchestrator/sdlc/builddoc.py:80`](../../src/orchestrator/sdlc/builddoc.py#L80)
 
-- **Called by** (3): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1127), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480)
+- **Called by** (3): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1226), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480)
 - **Calls** (1): `run`
 
 ### `design_disagreement`
@@ -205,64 +231,64 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/builddoc.py:233`](../../src/orchestrator/sdlc/builddoc.py#L233)
 
 - **Called by** (2 production · 1 test): [`append_journey`](../../src/orchestrator/sdlc/builddoc.py#L237), [`load_journey`](../../src/orchestrator/sdlc/builddoc.py#L252), [`test_a_malformed_journey_line_is_skipped_not_fatal`](../../tests/sdlc/test_builddoc.py#L616)
-- **Calls** (2): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1255)
+- **Calls** (2): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1354)
 
 ### `load_approval`
 
 [`src/orchestrator/sdlc/builddoc.py:153`](../../src/orchestrator/sdlc/builddoc.py#L153)
 
-- **Called by** (5 production · 2 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L714), [`plan_document`](../../src/orchestrator/plugin/resources.py#L95), [`plans_index`](../../src/orchestrator/plugin/resources.py#L72), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_corrupt_approval_is_not_an_approval`](../../tests/sdlc/test_builddoc.py#L496), [`test_an_approval_round_trips_through_disk`](../../tests/sdlc/test_builddoc.py#L488)
+- **Called by** (5 production · 2 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L725), [`plan_document`](../../src/orchestrator/plugin/resources.py#L95), [`plans_index`](../../src/orchestrator/plugin/resources.py#L72), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_corrupt_approval_is_not_an_approval`](../../tests/sdlc/test_builddoc.py#L496), [`test_an_approval_round_trips_through_disk`](../../tests/sdlc/test_builddoc.py#L488)
 - **Calls** (3): [`PlanApproval`](../../src/orchestrator/sdlc/builddoc.py#L116), [`approval_path`](../../src/orchestrator/sdlc/builddoc.py#L149), `loads`
 
 ### `load_journey`
 
 [`src/orchestrator/sdlc/builddoc.py:252`](../../src/orchestrator/sdlc/builddoc.py#L252)
 
-- **Called by** (3 production · 5 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L714), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_malformed_journey_line_is_skipped_not_fatal`](../../tests/sdlc/test_builddoc.py#L616), [`test_a_second_run_appends_rather_than_replacing_the_first`](../../tests/sdlc/test_autorun.py#L834), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_every_stage_appends_to_the_ticket_journey`](../../tests/sdlc/test_autorun.py#L821), [`test_the_journey_is_append_only_on_disk`](../../tests/sdlc/test_builddoc.py#L604)
+- **Called by** (3 production · 5 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L725), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_malformed_journey_line_is_skipped_not_fatal`](../../tests/sdlc/test_builddoc.py#L616), [`test_a_second_run_appends_rather_than_replacing_the_first`](../../tests/sdlc/test_autorun.py#L834), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_every_stage_appends_to_the_ticket_journey`](../../tests/sdlc/test_autorun.py#L821), [`test_the_journey_is_append_only_on_disk`](../../tests/sdlc/test_builddoc.py#L604)
 - **Calls** (3): [`JourneyEntry`](../../src/orchestrator/sdlc/builddoc.py#L211), [`journey_path`](../../src/orchestrator/sdlc/builddoc.py#L233), `loads`
 
 ### `persist`
 
-[`src/orchestrator/sdlc/builddoc.py:1272`](../../src/orchestrator/sdlc/builddoc.py#L1272)
+[`src/orchestrator/sdlc/builddoc.py:1371`](../../src/orchestrator/sdlc/builddoc.py#L1371)
 
-- **Called by** (2 production · 4 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L714), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_changed_document_keeps_what_it_replaced_keyed_by_commit`](../../tests/sdlc/test_builddoc.py#L426), [`test_persist_is_hidden_from_doc_ingestion`](../../tests/sdlc/test_builddoc.py#L404), [`test_persist_writes_to_a_stable_path_per_ticket`](../../tests/sdlc/test_builddoc.py#L397), [`test_rewriting_an_unchanged_document_keeps_no_history`](../../tests/sdlc/test_builddoc.py#L419)
-- **Calls** (3): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1255), `sha1`
+- **Called by** (2 production · 4 test): [`_go`](../../src/orchestrator/cli/sdlc.py#L725), [`run`](../../src/orchestrator/plugin/server.py#L826), [`test_a_changed_document_keeps_what_it_replaced_keyed_by_commit`](../../tests/sdlc/test_builddoc.py#L426), [`test_persist_is_hidden_from_doc_ingestion`](../../tests/sdlc/test_builddoc.py#L404), [`test_persist_writes_to_a_stable_path_per_ticket`](../../tests/sdlc/test_builddoc.py#L397), [`test_rewriting_an_unchanged_document_keeps_no_history`](../../tests/sdlc/test_builddoc.py#L419)
+- **Calls** (3): `pathlib.Path`, [`plan_dir`](../../src/orchestrator/sdlc/builddoc.py#L1354), `sha1`
 
 ### `plan_digest`
 
 [`src/orchestrator/sdlc/builddoc.py:134`](../../src/orchestrator/sdlc/builddoc.py#L134)
 
-- **Called by** (4 production · 9 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L926), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1214), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_a_rejection_is_rendered_with_its_reason`](../../tests/sdlc/test_builddoc.py#L480), [`test_a_run_appending_does_not_invalidate_its_own_approval`](../../tests/sdlc/test_builddoc.py#L581), [`test_an_approval_names_who_and_when`](../../tests/sdlc/test_builddoc.py#L457), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_approving_does_not_change_what_was_approved`](../../tests/sdlc/test_builddoc.py#L466), [`test_confidence_does_not_move_the_digest_between_renders`](../../tests/sdlc/test_builddoc.py#L764), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L831), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536)
+- **Called by** (4 production · 9 test): [`render_build_md`](../../src/orchestrator/sdlc/builddoc.py#L1025), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_a_rejection_is_rendered_with_its_reason`](../../tests/sdlc/test_builddoc.py#L480), [`test_a_run_appending_does_not_invalidate_its_own_approval`](../../tests/sdlc/test_builddoc.py#L581), [`test_an_approval_names_who_and_when`](../../tests/sdlc/test_builddoc.py#L457), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_approving_does_not_change_what_was_approved`](../../tests/sdlc/test_builddoc.py#L466), [`test_confidence_does_not_move_the_digest_between_renders`](../../tests/sdlc/test_builddoc.py#L764), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L958), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536)
 - **Calls** (1): `sha256`
 - **Documented in**: `docs/specs/build-document.md#phase-5-the-journey-built`
 
 ### `plan_dir`
 
-[`src/orchestrator/sdlc/builddoc.py:1255`](../../src/orchestrator/sdlc/builddoc.py#L1255)
+[`src/orchestrator/sdlc/builddoc.py:1354`](../../src/orchestrator/sdlc/builddoc.py#L1354)
 
-- **Called by** (7 production · 6 test): [`approval_path`](../../src/orchestrator/sdlc/builddoc.py#L149), [`journey_path`](../../src/orchestrator/sdlc/builddoc.py#L233), [`persist`](../../src/orchestrator/sdlc/builddoc.py#L1272), [`plan_document`](../../src/orchestrator/plugin/resources.py#L95), [`plans_index`](../../src/orchestrator/plugin/resources.py#L72), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_a_plan_id_cannot_escape_the_plans_dir`](../../tests/plugin/test_resources.py#L103), [`test_a_ticket_with_no_intent_id_journals_nothing`](../../tests/sdlc/test_autorun.py#L849), [`test_persist_can_be_turned_off`](../../tests/plugin/test_server.py#L1158), [`test_persist_writes_to_a_stable_path_per_ticket`](../../tests/sdlc/test_builddoc.py#L397), [`test_plans_index_and_document_with_and_without_an_approval`](../../tests/plugin/test_resources.py#L73), [`test_rewriting_an_unchanged_document_keeps_no_history`](../../tests/sdlc/test_builddoc.py#L419)
+- **Called by** (7 production · 6 test): [`approval_path`](../../src/orchestrator/sdlc/builddoc.py#L149), [`journey_path`](../../src/orchestrator/sdlc/builddoc.py#L233), [`persist`](../../src/orchestrator/sdlc/builddoc.py#L1371), [`plan_document`](../../src/orchestrator/plugin/resources.py#L95), [`plans_index`](../../src/orchestrator/plugin/resources.py#L72), [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_a_plan_id_cannot_escape_the_plans_dir`](../../tests/plugin/test_resources.py#L103), [`test_a_ticket_with_no_intent_id_journals_nothing`](../../tests/sdlc/test_autorun.py#L849), [`test_persist_can_be_turned_off`](../../tests/plugin/test_server.py#L1158), [`test_persist_writes_to_a_stable_path_per_ticket`](../../tests/sdlc/test_builddoc.py#L397), [`test_plans_index_and_document_with_and_without_an_approval`](../../tests/plugin/test_resources.py#L73), [`test_rewriting_an_unchanged_document_keeps_no_history`](../../tests/sdlc/test_builddoc.py#L419)
 - **Calls** (1): `pathlib.Path`
 
 ### `render_build_md`
 
-[`src/orchestrator/sdlc/builddoc.py:926`](../../src/orchestrator/sdlc/builddoc.py#L926)
+[`src/orchestrator/sdlc/builddoc.py:1025`](../../src/orchestrator/sdlc/builddoc.py#L1025)
 
-- **Called by** (1 production · 1 test): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1127), [`_render`](../../tests/sdlc/test_builddoc.py#L95)
-- **Calls** (14): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L649), [`_confidence_block`](../../src/orchestrator/sdlc/builddoc.py#L414), [`_cost_block`](../../src/orchestrator/sdlc/builddoc.py#L324), [`_criteria_block`](../../src/orchestrator/sdlc/builddoc.py#L851), [`_evidence_block`](../../src/orchestrator/sdlc/builddoc.py#L789), [`_file_rows`](../../src/orchestrator/sdlc/builddoc.py#L901), [`_journey_block`](../../src/orchestrator/sdlc/builddoc.py#L289), [`_label`](../../src/orchestrator/sdlc/builddoc.py#L65), [`_measured_runs`](../../src/orchestrator/sdlc/builddoc.py#L320), [`_mermaid_blast`](../../src/orchestrator/sdlc/builddoc.py#L574), [`_pending`](../../src/orchestrator/sdlc/builddoc.py#L75), [`_root_cause_block`](../../src/orchestrator/sdlc/builddoc.py#L521), [`_status_line`](../../src/orchestrator/sdlc/builddoc.py#L191), [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134)
+- **Called by** (1 production · 1 test): [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1226), [`_render`](../../tests/sdlc/test_builddoc.py#L95)
+- **Calls** (14): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L750), [`_confidence_block`](../../src/orchestrator/sdlc/builddoc.py#L414), [`_cost_block`](../../src/orchestrator/sdlc/builddoc.py#L324), [`_criteria_block`](../../src/orchestrator/sdlc/builddoc.py#L950), [`_evidence_block`](../../src/orchestrator/sdlc/builddoc.py#L888), [`_file_rows`](../../src/orchestrator/sdlc/builddoc.py#L1000), [`_journey_block`](../../src/orchestrator/sdlc/builddoc.py#L289), [`_label`](../../src/orchestrator/sdlc/builddoc.py#L65), [`_measured_runs`](../../src/orchestrator/sdlc/builddoc.py#L320), [`_mermaid_blast`](../../src/orchestrator/sdlc/builddoc.py#L574), [`_pending`](../../src/orchestrator/sdlc/builddoc.py#L75), [`_root_cause_block`](../../src/orchestrator/sdlc/builddoc.py#L521), [`_status_line`](../../src/orchestrator/sdlc/builddoc.py#L191), [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134)
 - **Documented in**: `docs/specs/build-documents/PKG-ACC-6-build.md#pkg-acc-6-build-document`
 
 ### `require_approved_plan`
 
-[`src/orchestrator/sdlc/builddoc.py:1214`](../../src/orchestrator/sdlc/builddoc.py#L1214)
+[`src/orchestrator/sdlc/builddoc.py:1313`](../../src/orchestrator/sdlc/builddoc.py#L1313)
 
-- **Called by** (1 production · 6 test): [`_require_plan`](../../src/orchestrator/sdlc/autorun.py#L503), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L831), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_a_rejected_plan`](../../tests/sdlc/test_builddoc.py#L516), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536), [`test_the_gate_refuses_when_no_plan_was_approved`](../../tests/sdlc/test_builddoc.py#L507)
-- **Calls** (5): [`PlanNotApprovedError`](../../src/orchestrator/sdlc/builddoc.py#L1210), [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1127), [`load_approval`](../../src/orchestrator/sdlc/builddoc.py#L153), [`load_journey`](../../src/orchestrator/sdlc/builddoc.py#L252), [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134)
+- **Called by** (1 production · 6 test): [`_require_plan`](../../src/orchestrator/sdlc/autorun.py#L503), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L958), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_a_rejected_plan`](../../tests/sdlc/test_builddoc.py#L516), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536), [`test_the_gate_refuses_when_no_plan_was_approved`](../../tests/sdlc/test_builddoc.py#L507)
+- **Calls** (5): [`PlanNotApprovedError`](../../src/orchestrator/sdlc/builddoc.py#L1309), [`build_plan`](../../src/orchestrator/sdlc/builddoc.py#L1226), [`load_approval`](../../src/orchestrator/sdlc/builddoc.py#L153), [`load_journey`](../../src/orchestrator/sdlc/builddoc.py#L252), [`plan_digest`](../../src/orchestrator/sdlc/builddoc.py#L134)
 
 ### `save_approval`
 
 [`src/orchestrator/sdlc/builddoc.py:168`](../../src/orchestrator/sdlc/builddoc.py#L168)
 
-- **Called by** (2 production · 7 test): [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_an_approval_round_trips_through_disk`](../../tests/sdlc/test_builddoc.py#L488), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L840), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L831), [`test_plans_index_and_document_with_and_without_an_approval`](../../tests/plugin/test_resources.py#L73), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_a_rejected_plan`](../../tests/sdlc/test_builddoc.py#L516), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536)
+- **Called by** (2 production · 7 test): [`run`](../../src/orchestrator/plugin/server.py#L873), [`sdlc_approve`](../../src/orchestrator/cli/sdlc.py#L480), [`test_an_approval_round_trips_through_disk`](../../tests/sdlc/test_builddoc.py#L488), [`test_approval_revalidation_includes_measured_run_history`](../../tests/sdlc/test_builddoc.py#L967), [`test_php_plan_approval_uses_php_language`](../../tests/sdlc/test_builddoc.py#L958), [`test_plans_index_and_document_with_and_without_an_approval`](../../tests/plugin/test_resources.py#L73), [`test_the_gate_passes_for_the_plan_that_was_read`](../../tests/sdlc/test_builddoc.py#L526), [`test_the_gate_refuses_a_rejected_plan`](../../tests/sdlc/test_builddoc.py#L516), [`test_the_gate_refuses_once_the_plan_has_moved_underneath_it`](../../tests/sdlc/test_builddoc.py#L536)
 - **Calls** (3): [`approval_path`](../../src/orchestrator/sdlc/builddoc.py#L149), `dataclasses.asdict`, `dumps`
 
 ## Imports

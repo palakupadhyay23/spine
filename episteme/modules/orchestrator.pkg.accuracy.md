@@ -17,10 +17,10 @@
 - [`KindScore`](../../src/orchestrator/pkg/accuracy.py#L58) — reaches **7** symbols
 - [`_edge_key`](../../src/orchestrator/pkg/accuracy.py#L151) — reaches **6** symbols
 - [`_require`](../../src/orchestrator/pkg/accuracy.py#L136) — reaches **6** symbols
-- [`measured_recall`](../../src/orchestrator/pkg/accuracy.py#L743) — reaches **6** symbols
 - [`CaseReport`](../../src/orchestrator/pkg/accuracy.py#L80) — reaches **5** symbols
 - [`DriftReport`](../../src/orchestrator/pkg/accuracy.py#L396) — reaches **5** symbols
 - [`ParityReport`](../../src/orchestrator/pkg/accuracy.py#L348) — reaches **5** symbols
+- [`_case_batch`](../../src/orchestrator/pkg/accuracy.py#L232) — reaches **5** symbols
 
 _1 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
@@ -178,7 +178,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 
 [`src/orchestrator/pkg/accuracy.py:743`](../../src/orchestrator/pkg/accuracy.py#L743)
 
-- **Called by** (1): [`_blast_prose`](../../src/orchestrator/sdlc/builddoc.py#L649)
+- **Called by** (1): [`_recall_clause`](../../src/orchestrator/sdlc/builddoc.py#L725)
 - **Calls** (1): `loads`
 - **Documented in**: `docs/specs/build-documents/PKG-ACC-6-build.md#7-files`
 

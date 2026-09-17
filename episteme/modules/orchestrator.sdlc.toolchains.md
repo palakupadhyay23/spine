@@ -15,7 +15,7 @@
 
 - [`get_toolchain`](../../src/orchestrator/sdlc/toolchains.py#L381) — reaches **26** symbols
 - [`_load`](../../src/orchestrator/sdlc/toolchains.py#L25) — reaches **18** symbols · **no test path visible**
-- [`detect_language`](../../src/orchestrator/sdlc/toolchains.py#L386) — reaches **11** symbols
+- [`detect_language`](../../src/orchestrator/sdlc/toolchains.py#L386) — reaches **12** symbols
 - [`PromptSet`](../../src/orchestrator/sdlc/toolchains.py#L160) — reaches **1** symbol · **no test path visible**
 - [`_conventions`](../../src/orchestrator/sdlc/toolchains.py#L135) — reaches **1** symbol · **no test path visible**
 - [`_probe`](../../src/orchestrator/sdlc/toolchains.py#L107) — reaches **1** symbol · **no test path visible**
