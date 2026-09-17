@@ -754,7 +754,13 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     """The three blocks the template requires, in order: reading, containment, caveat."""
     modules = bd.get("modules") or []
     shown = modules[:_MAX_MODULES]
-    total_importers = sum(int(m.get("importers") or 0) for m in modules)
+    # Two design paths inside one namespace resolve to the same module node, and its importers
+    # are one fact, not two. Summed per row, a three-file namespace reported its fan-in three
+    # times over. Per distinct module, it is reported once.
+    per_module: dict[str, int] = {}
+    for m in modules:
+        per_module.setdefault(str(m.get("module") or m.get("ref") or ""), int(m.get("importers") or 0))
+    total_importers = sum(per_module.values())
     total_hotspots = sum(len(m.get("hotspots") or []) for m in modules)
 
     elided = ""
