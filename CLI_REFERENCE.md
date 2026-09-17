@@ -957,7 +957,7 @@ orchestrator sdlc plan --spec ./SSPN-49.json --path .
 | `--intent` | Intent id to plan (default: the first). |
 | `--path` | Repo to reason about — the graph the plan is grounded in. (default: `.`) |
 | `--out` | Where the document goes (default: `<repo>/.spine/plans`). |
-| `--language` | Target language named in the codegen-prompt section. (default: `python`) |
+| `--language` | Target language named in the codegen-prompt section — it also selects the layout and test environment, so it is not cosmetic. `auto` detects it from `--path`. An unsupported value is refused, never silently treated as Python. (default: `auto`) |
 | `--issue-type` | Override the ticket's issue type (`Bug`, `Story`, …) — it decides whether the validity section requires the ticket to localize. Default: read it from the ticket; with `--spec` there is no ticket to read. |
 | `--quiet` | Write the document without printing it. |
 

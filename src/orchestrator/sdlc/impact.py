@@ -63,6 +63,14 @@ class BlastRadius:
     unresolved: tuple[str, ...]  # design refs that matched no module
     call_graph_available: bool
     grounded: bool  # the graph had any grounded nodes at all
+    #: The front-ends that actually produced these modules, sorted.
+    #:
+    #: Carried because the only other source of a language downstream is `--language`, a
+    #: *codegen* flag — and a statement about how complete the call graph is belongs to the
+    #: extractor that built it, not to the language we are about to write. On a C# repository
+    #: planned without the flag, that mismatch published Python's measured recall as though it
+    #: described a graph Python had no part in.
+    languages: tuple[str, ...] = ()
 
     @property
     def empty(self) -> bool:
@@ -150,6 +158,7 @@ def blast_radius(
     mods: list[ModuleImpact] = []
     unresolved: list[str] = []
     seen: set[str] = set()
+    langs: set[str] = set()
     for raw in files:
         ref = str(raw).strip()
         if not ref or ref in seen:
@@ -159,6 +168,8 @@ def blast_radius(
         if node is None:
             unresolved.append(ref)
             continue
+        if node.language:
+            langs.add(node.language)
         importers = store.importers_of(node.id)
         names = tuple(sorted({i.name for i in importers}))[:_MAX_IMPORTER_NAMES]
         hotspots = tuple(_hotspots(store, node, limit=max_symbols)) if call_graph else ()
@@ -172,7 +183,7 @@ def blast_radius(
                 hotspots=hotspots,
             )
         )
-    return BlastRadius(tuple(mods), tuple(unresolved), call_graph, grounded)
+    return BlastRadius(tuple(mods), tuple(unresolved), call_graph, grounded, tuple(sorted(langs)))
 
 
 def unverified_references(br: BlastRadius) -> list[str]:
@@ -189,6 +200,7 @@ def to_dict(br: BlastRadius) -> dict[str, Any]:
     return {
         "call_graph_available": br.call_graph_available,
         "grounded": br.grounded,
+        "languages": list(br.languages),
         "modules": [
             {
                 "ref": m.ref,

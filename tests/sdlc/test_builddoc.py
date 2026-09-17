@@ -787,6 +787,53 @@ async def test_build_plan_is_deterministic_and_touches_no_tracker(tmp_path: Path
 # ---- the measured caveat (phase 6) ---------------------------------------
 
 
+def test_the_caveat_names_the_language_that_built_the_graph() -> None:
+    """The reported defect: a C# repository told its reader Python's recall figure.
+
+    `--language` picks the *codegen* target and `sdlc plan` defaulted it to the literal
+    "python", so planning a C# repo without the flag published 0.73 — a number measured
+    against a front-end that produced none of these nodes. The graph knows better: every
+    module node carries the front-end that emitted it.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["csharp"]}, "python")
+    assert "recall for csharp is **0.75**" in prose
+    assert "python" not in prose
+
+
+def test_a_polyglot_blast_radius_scores_each_language() -> None:
+    """Naming only the dominant one would state a figure that is wrong for half the modules."""
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose(
+        {"call_graph_available": True, "modules": [], "languages": ["csharp", "typescript"]}, "python"
+    )
+    assert "recall: csharp **0.75**, typescript **0.86**" in prose
+
+
+def test_an_unmeasured_language_is_named_rather_than_dropped() -> None:
+    """Silence reads as "no gap here". Unmeasured is not zero, and it is not perfect either."""
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["rust"]}, "python")
+    assert "No corpus measurement exists for rust" in prose
+    assert "unknown, not perfect" in prose
+    assert "0.00" not in prose
+
+
+def test_a_blast_radius_from_before_languages_existed_falls_back_to_the_flag() -> None:
+    """An old `design.json` replayed today has no `languages` key.
+
+    The flag is a poor source for this — that is the whole defect — but on a document
+    serialised before the graph carried the answer it is the only source there is.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": []}, "go")
+    assert "recall for go is" in prose
+
+
 def test_the_caveat_states_measured_recall_for_a_measured_language() -> None:
     """Five phases of measurement only change an outcome if a reader sees the number.
 
@@ -809,6 +856,86 @@ def test_the_caveat_says_what_the_number_was_measured_against() -> None:
 
     prose = _blast_prose({"call_graph_available": True, "modules": []}, "python")
     assert "not this repository" in prose
+
+
+def test_the_caveat_cites_no_tracker_key() -> None:
+    """A reader outside this project cannot resolve our Jira keys.
+
+    The caveat carried `(SSPN-48)` into every build document, including documents describing
+    repositories whose owners have never seen that tracker. The sentence already states the
+    limitation in words, so the key was telling a reader to look something up they cannot.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": []}, "python")
+    assert "SSPN" not in prose
+    assert "emit no `CALLS` edge" in prose
+
+
+def test_containment_says_how_many_importers_it_did_not_list() -> None:
+    """Invariant 7: a clipped list must not read as a complete one.
+
+    The sentence printed the true count and then listed eight names, so a reader who counted
+    got a different number from the one we had just printed.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    names = [f"pkg.mod{i}" for i in range(13)]
+    module = {"ref": "a.py", "importers": 13, "importer_names": names}
+    prose = _blast_prose({"call_graph_available": True, "modules": [module]}, "python")
+    assert "reaches 13 non-test module(s)" in prose
+    assert "(+5 more)" in prose
+
+
+def test_containment_says_at_least_when_names_were_capped_upstream() -> None:
+    """`impact.py` caps importer names per module *before* this renderer sees them.
+
+    So the count here is of names that survived, not of modules that import — and the
+    sentence presented that floor as a total. The renderer cannot lift the cap, but it can
+    see it: a module reporting 20 importers and carrying 8 names has been truncated.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    capped = {"ref": "a.py", "importers": 20, "importer_names": [f"pkg.mod{i}" for i in range(8)]}
+    prose = _blast_prose({"call_graph_available": True, "modules": [capped]}, "python")
+    assert "reaches at least 8 non-test module(s)" in prose
+
+    whole = {"ref": "a.py", "importers": 2, "importer_names": ["pkg.a", "pkg.b"]}
+    exact = _blast_prose({"call_graph_available": True, "modules": [whole]}, "python")
+    assert "reaches 2 non-test module(s)" in exact
+    assert "at least" not in exact
+
+
+def test_containment_does_not_count_dotnet_tests_as_product_code() -> None:
+    """The prose is language-neutral; the test-detection rule was not.
+
+    On a .NET repository `UnitTests/Functions/GetProductsFunctionTests.cs` was counted among
+    the *product* modules a change is visible to — inflating the one number in the paragraph
+    a reader uses to judge containment.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    names = [
+        "Commercial.Secondary.Sales.Functions.Repositories",
+        "UnitTests/Functions/GetProductsFunctionTests.cs",
+    ]
+    module = {"ref": "a.cs", "importers": 2, "importer_names": names}
+    prose = _blast_prose({"call_graph_available": True, "modules": [module]}, "csharp")
+    assert "reaches 1 non-test module(s)" in prose
+    assert "GetProductsFunctionTests" not in prose
+
+
+def test_test_detection_does_not_fire_on_ordinary_words() -> None:
+    """`Contests` is not a test class, and an auction product may well have one."""
+    from orchestrator.sdlc.builddoc import _is_test_module
+
+    assert not _is_test_module("Auctions.Contests")
+    assert not _is_test_module("latest_run")
+    assert _is_test_module("UnitTests/Functions/GetProductsFunctionTests.cs")
+    assert _is_test_module("src/test/java/com/x/FooTest.java")
+    assert _is_test_module("app/foo.spec.ts")
+    # The original Python clauses, unchanged — this rule only ever adds.
+    assert _is_test_module("tests.sdlc.test_builddoc") and _is_test_module("foo_test")
 
 
 def test_an_unmeasured_language_keeps_the_original_wording() -> None:
