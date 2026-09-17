@@ -56,12 +56,15 @@ class _JiraMock:
         children: dict[str, list[str]] | None = None,
         project_issues: dict[str, list[str]] | None = None,
         total: int | None = None,
+        attachments: dict[str, bytes] | None = None,
     ) -> None:
         self.issues = issues
         self.children = children or {}
         self.project_issues = project_issues or {}
         self.total = total
+        self.attachments = attachments or {}  # content id → bytes
         self.searched: list[str] = []
+        self.downloaded: list[str] = []
 
     def _payload(self, key: str) -> dict[str, Any]:
         return {"id": key, "key": key, "fields": self.issues.get(key, {})}
@@ -93,6 +96,12 @@ class _JiraMock:
             if key not in self.issues:
                 return httpx.Response(404, json={"errorMessages": ["not found"]})
             return httpx.Response(200, json=self._payload(key))
+        if "/attachment/content/" in path:
+            content_id = path.rsplit("/", 1)[1]
+            self.downloaded.append(content_id)
+            if content_id not in self.attachments:
+                return httpx.Response(404, content=b"")
+            return httpx.Response(200, content=self.attachments[content_id])
         return httpx.Response(404, json={})
 
 
@@ -330,3 +339,90 @@ def test_jira_builder_unconfigured_raises(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(factory, "JiraConfig", lambda: JiraConfig(base_url="", email="", api_token=""))
     with pytest.raises(factory.IntakeNotConfiguredError, match="Jira source not configured"):
         factory.build_jira_service(dry_run=True)
+
+
+# ---- attachment content (D3 of the ticket-context track) --------------------------------
+#
+# A text-bearing attachment is read through `pkg.doc_source`'s readers; an image is named
+# only; a failure leaves the attachment named, as it was. Fetched on `fetch_document` — the
+# plan/feature path — and never on a JQL scan.
+
+
+def _attachment(name: str, content_id: str, *, size: int = 64) -> dict[str, Any]:
+    return {
+        "filename": name,
+        "size": size,
+        "content": f"https://acme.atlassian.net/rest/api/3/attachment/content/{content_id}",
+    }
+
+
+async def test_a_text_attachment_is_read_and_carried_under_its_name() -> None:
+    fields = _fields("Display HR as Hot Rolled")
+    fields["attachment"] = [_attachment("mapping.md", "1"), _attachment("screen.png", "2")]
+    mock = _JiraMock({"NSS-1209": fields}, attachments={"1": b"# Mapping\n\nHR: Hot Rolled\n"})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("NSS-1209")
+
+    assert "Attachments read (1):" in doc.body
+    assert "--- mapping.md ---" in doc.body and "HR: Hot Rolled" in doc.body
+    assert "names only — contents not read): screen.png" in doc.body
+    assert mock.downloaded == ["1"]  # the image was never requested
+
+
+async def test_an_attachment_the_server_refuses_stays_named_only() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("notes.txt", "missing")]
+    adapter, http = _adapter(_JiraMock({"K-1": fields}))
+    async with http:
+        doc = await adapter.fetch_document("K-1")  # no raise
+
+    assert "Attachments read" not in doc.body
+    assert "names only — contents not read): notes.txt" in doc.body
+
+
+async def test_an_oversize_attachment_costs_no_request() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("huge.txt", "9", size=50_000_000)]
+    mock = _JiraMock({"K-1": fields}, attachments={"9": b"never fetched"})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    assert mock.downloaded == []
+    assert "names only — contents not read): huge.txt" in doc.body
+
+
+async def test_attachment_text_is_bounded_and_says_so() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("long.txt", "1")]
+    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments={"1": b"x" * 9_000}))
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    assert "…[truncated, 9000 chars]" in doc.body
+
+
+async def test_at_most_five_attachments_are_read() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(7)]
+    mock = _JiraMock({"K-1": fields}, attachments={str(i): f"text {i}".encode() for i in range(7)})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    assert "Attachments read (5):" in doc.body
+    assert "names only — contents not read): f5.txt, f6.txt" in doc.body
+    assert mock.downloaded == ["0", "1", "2", "3", "4"]
+
+
+async def test_a_jql_scan_never_fetches_attachments() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("spec.md", "1")]
+    mock = _JiraMock({"K-1": fields}, attachments={"1": b"# spec"})
+    adapter, http = _adapter(mock)
+    async with http:
+        tree = await adapter.fetch_tree("jql/key = K-1")
+
+    assert mock.downloaded == []
+    assert "names only — contents not read): spec.md" in tree.documents[0].body

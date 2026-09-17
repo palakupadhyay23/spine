@@ -22,7 +22,10 @@ write side's ``_text_to_adf``.
 from __future__ import annotations
 
 import re
+import tempfile
 from collections import deque
+from collections.abc import Collection
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -48,7 +51,8 @@ _PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
 #: — which columns, for which users — is three comments down or in the epic it blocks. A
 #: spec derived from the description alone restates a summary; one that has read the thread
 #: can carry the constraint. `comment` and `issuelinks` are the two fields that hold it;
-#: `attachment` contributes filenames only (see :func:`_attachment_names`).
+#: `attachment` names every file and, on a single-issue fetch, carries the text of the ones the
+#: doc readers can open (see :meth:`JiraSourceAdapter._attachment_texts`).
 _FIELDS = "summary,description,issuetype,status,priority,labels,parent,comment,issuelinks,attachment"
 
 #: Comments carried into the body, most recent first. Bounded because a long-running ticket
@@ -59,6 +63,19 @@ _MAX_COMMENTS = 10
 #: Per-comment characters. A pasted stack trace or a quoted email chain is one comment and
 #: can be longer than every other comment combined.
 _MAX_COMMENT_CHARS = 1200
+
+#: Attachment *content* is fetched only for files the doc readers claim (``pkg.doc_source``:
+#: markdown, text, PDF, HTML, docx, xlsx…), and only when an issue is fetched on its own —
+#: the plan and feature path — never on a JQL scan of a hundred issues. An image is named,
+#: not read: reading one needs OCR, and the repository keeps model-using extraction on its
+#: own opt-in seam (``orchestrator media extract``) precisely so intake stays deterministic.
+_MAX_ATTACHMENTS = 5
+#: Jira reports ``size``, so an oversize file costs no request; the same cap is re-checked on
+#: the bytes that arrive, because ``size`` is the tracker's claim and not a promise.
+_MAX_ATTACHMENT_BYTES = 2_000_000
+#: Per-attachment characters. A 40-page PDF spec is one attachment and would otherwise be
+#: the whole document; the cut is stated inline, as a comment's is.
+_MAX_ATTACHMENT_CHARS = 8_000
 
 _MULTI_BLANK_RE = re.compile(r"\n{3,}")
 
@@ -210,22 +227,32 @@ def _links_text(fields: dict[str, Any]) -> str:
     return "\n".join(["Linked issues:", *lines]) if lines else ""
 
 
-def _attachment_names(fields: dict[str, Any]) -> str:
-    """Attachment *filenames* — never their contents.
+def _attachment_names(fields: dict[str, Any], *, exclude: Collection[str] = ()) -> str:
+    """Attachment *filenames* for whatever was not read — never their contents.
 
-    Naming them costs nothing and tells a reader there is material Spine has not read.
-    Fetching them is a different piece of work: a Jira attachment is arbitrary binary behind
-    an authenticated endpoint, with its own size, type and credential questions. Silence
-    would be the worst option — it reads as "there was nothing attached".
+    Naming them costs nothing and tells a reader there is material Spine has not read:
+    an image, a spreadsheet the ``[docs]`` extra is not installed for, a file that failed
+    to download. Silence would be the worst option — it reads as "there was nothing
+    attached". ``exclude`` is what :meth:`JiraSourceAdapter._attachment_texts` did read.
     """
     names = [
         str(a.get("filename"))
         for a in (fields.get("attachment") or [])
-        if isinstance(a, dict) and a.get("filename")
+        if isinstance(a, dict) and a.get("filename") and str(a.get("filename")) not in exclude
     ]
     if not names:
         return ""
     return "Attachments (names only — contents not read): " + ", ".join(names)
+
+
+def _attachments_read_text(texts: dict[str, str]) -> str:
+    """The attachments whose text was extracted, each under its own filename."""
+    if not texts:
+        return ""
+    lines = [f"Attachments read ({len(texts)}):"]
+    for name, text in texts.items():
+        lines.append(f"--- {name} ---\n{text}")
+    return "\n".join(lines)
 
 
 class JiraSourceAdapter:
@@ -238,18 +265,22 @@ class JiraSourceAdapter:
         self._client = http_client
         self._owns_client = http_client is None
 
-    def _issue_to_document(self, issue: dict[str, Any]) -> SourceDocument:
+    def _issue_to_document(
+        self, issue: dict[str, Any], *, attachment_texts: dict[str, str] | None = None
+    ) -> SourceDocument:
         key = str(issue.get("key", ""))
         fields = issue.get("fields") or {}
         summary = str(fields.get("summary") or "")
         labels = tuple(str(x) for x in (fields.get("labels") or []))
+        texts = attachment_texts or {}
         # A short metadata header gives the extractor context — a Bug reads
         # differently from a Story, and status tells done from open.
         header = issue_meta_header(fields)
         # Order is deliberate and is the ticket's own order of authority: what it *is*, what
-        # it says, what it is attached to, what was argued about it, and finally what exists
-        # but was not read. The description stays directly under the header so a bounded
-        # comment thread can never displace the one section that is certainly on topic.
+        # it says, what it is attached to, what was argued about it, what was attached and
+        # read, and finally what exists but was not read. The description stays directly
+        # under the header so a bounded comment thread can never displace the one section
+        # that is certainly on topic.
         body = _collapse(
             "\n\n".join(
                 p
@@ -258,7 +289,8 @@ class JiraSourceAdapter:
                     _description_text(fields.get("description")),
                     _links_text(fields),
                     _comments_text(fields),
-                    _attachment_names(fields),
+                    _attachments_read_text(texts),
+                    _attachment_names(fields, exclude=texts.keys()),
                 )
                 if p
             )
@@ -277,7 +309,79 @@ class JiraSourceAdapter:
 
     async def fetch_document(self, doc_id: str) -> SourceDocument:
         data = await self._get(f"/issue/{doc_id}", params={"fields": _FIELDS})
-        return self._issue_to_document(data)
+        texts = await self._attachment_texts(data.get("fields") or {})
+        return self._issue_to_document(data, attachment_texts=texts)
+
+    async def _attachment_texts(self, fields: dict[str, Any]) -> dict[str, str]:
+        """``filename → text`` for the text-bearing attachments that could be read.
+
+        Bounded three ways — at most ``_MAX_ATTACHMENTS``, none over ``_MAX_ATTACHMENT_BYTES``
+        (checked against Jira's ``size`` before any request and against the bytes after),
+        each text cut at ``_MAX_ATTACHMENT_CHARS`` with the cut stated. Any failure — HTTP,
+        a reader that yields nothing, an unreadable file — leaves that attachment named-only,
+        which is exactly what it was before. Never raises.
+
+        The readers are ``pkg.doc_source``'s, run over a temporary directory: the same PDF,
+        docx and markdown paths ``understand`` uses, with the same optional-extra behaviour.
+        """
+        from orchestrator.pkg.doc_source import is_doc_file, read_doc_pages
+        from orchestrator.pkg.media import MEDIA_SUFFIXES
+
+        out: dict[str, str] = {}
+        for a in fields.get("attachment") or []:
+            if len(out) >= _MAX_ATTACHMENTS:
+                break
+            if not isinstance(a, dict):
+                continue
+            name = Path(str(a.get("filename") or "")).name
+            url = str(a.get("content") or "")
+            if not name or not url or not is_doc_file(Path(name)):
+                continue
+            # `is_doc_file` claims images too, because `pkg.media` registers a reader for them —
+            # one that reads a *committed* transcript artifact, which a downloaded attachment can
+            # never have. Requesting the bytes would be guaranteed waste; the image stays named.
+            if Path(name).suffix.lower() in MEDIA_SUFFIXES:
+                continue
+            if int(a.get("size") or 0) > _MAX_ATTACHMENT_BYTES:
+                continue
+            try:
+                data = await self._get_bytes(url)
+                if len(data) > _MAX_ATTACHMENT_BYTES:
+                    continue
+                with tempfile.TemporaryDirectory() as tmp:
+                    (Path(tmp) / name).write_bytes(data)
+                    pages = read_doc_pages(tmp, sections=False)
+            except (httpx.HTTPError, IssueTrackerError, OSError, ValueError):
+                continue
+            text = "\n\n".join(p.text for p in pages).strip()
+            if not text:
+                continue
+            if len(text) > _MAX_ATTACHMENT_CHARS:
+                text = text[:_MAX_ATTACHMENT_CHARS].rstrip() + f" …[truncated, {len(text)} chars]"
+            out[name] = text
+        return out
+
+    async def _get_bytes(self, url: str) -> bytes:
+        """An authenticated binary GET of an absolute URL — an attachment's ``content`` link.
+
+        Jira answers with a redirect to a signed media URL, so redirects are followed; the
+        JSON getter above does not need that and does not do it.
+        """
+        if not self._read_ready():
+            raise IssueTrackerError(
+                "Jira not configured for reading (need JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN)."
+            )
+        client = self._client or httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+        try:
+            resp = await client.get(
+                url, auth=(self._config.email, self._config.api_token), follow_redirects=True
+            )
+        finally:
+            if self._owns_client and self._client is None:
+                await client.aclose()
+        if resp.status_code != httpx.codes.OK:
+            raise IssueTrackerError(f"GET {url} failed: HTTP {resp.status_code}")
+        return resp.content
 
     async def list_children(self, doc_id: str) -> list[SourceRef]:
         """Subtasks + epic children, via ``parent = <KEY>`` (both in modern Jira)."""
