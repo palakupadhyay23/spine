@@ -48,7 +48,7 @@ def test_prior_notes_passthrough_and_render() -> None:
     assert "# Investigation — authenticate bug" in md
     assert "## Where it lands in the code" in md and "`authenticate`" in md
     assert "## Prior art / related work" in md and "guard empty token" in md
-    assert "## Suggested next step" in md and "orchestrator design" in md
+    assert "## Next step" in md and "orchestrator design" in md
 
 
 def test_greenfield_is_honest() -> None:

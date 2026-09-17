@@ -150,6 +150,13 @@ jobs:
       # gate rather than the prose classification that was withdrawn at 33% precision.
       - name: Roadmap phase tables are current and agree with their own headers
         run: uv run python scripts/roadmap-status.py --check
+      # Five modules each spelled their own section titles and drifted to two spellings of
+      # "where it lands" and three of "next step". `sdlc/brief.py` gave them one vocabulary;
+      # nothing stops them drifting apart again, since the five spellings all started as one.
+      # This renders each brief and checks its headings against that vocabulary — the output,
+      # not the source, because the defect was what a reader received.
+      - name: Briefs render only the sections the vocabulary owns
+        run: uv run python scripts/brief-sections.py --check
 
       # Spine's own episteme has to describe Spine's own HEAD — but it is regenerated
       # *after* merge (.github/workflows/episteme.yml), not carried on branches. A PR

@@ -107,7 +107,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:503`](../../src/orchestrator/sdlc/autorun.py#L503)
 
 - **Called by** (1): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237)
-- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L603), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1313)
+- **Calls** (3): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_resolve_language`](../../src/orchestrator/sdlc/feature_runner.py#L603), [`require_approved_plan`](../../src/orchestrator/sdlc/builddoc.py#L1318)
 - **Documented in**: `docs/specs/perl-support-roadmap.md#7-blast-radius-measured-from-the-pkg-per-registration-site`
 
 ### `_research_pass`
@@ -115,7 +115,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:646`](../../src/orchestrator/sdlc/autorun.py#L646)
 
 - **Called by** (2 production · 17 test): [`_run`](../../scripts/phase2a_parity_gate.py#L88), [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237), [`test_a_bug_gets_rca_and_an_enhancement_does_not`](../../tests/sdlc/test_research_pass.py#L223), [`test_a_bug_that_localizes_nothing_still_says_so`](../../tests/sdlc/test_research_pass.py#L330), [`test_a_design_naming_invented_code_parks_the_run`](../../tests/sdlc/test_research_pass.py#L173), [`test_a_repo_with_no_history_says_nothing_rather_than_failing`](../../tests/sdlc/test_research_pass.py#L341), [`test_an_enhancement_runs_the_churn_node`](../../tests/sdlc/test_research_pass.py#L275), [`test_an_enhancements_evidence_says_rca_was_not_run_not_that_it_found_nothing`](../../tests/sdlc/test_research_pass.py#L314), [`test_an_unmapped_issue_type_uses_default_and_says_why`](../../tests/sdlc/test_research_pass.py#L246), [`test_broken_research_never_takes_the_run_down`](../../tests/sdlc/test_research_pass.py#L125), [`test_criteria_are_bound_and_written`](../../tests/sdlc/test_research_pass.py#L90), [`test_design_is_handed_the_evidence_blast_radius`](../../tests/sdlc/test_research_pass.py#L135), [`test_investigate_reads_the_evidence_instead_of_deriving_it_again`](../../tests/sdlc/test_research_pass.py#L64), [`test_the_bug_profile_has_no_churn_node_because_rca_answers_it`](../../tests/sdlc/test_research_pass.py#L286), [`test_the_case_is_written_on_every_path`](../../tests/sdlc/test_research_pass.py#L101), [`test_the_enhancement_rendering_does_not_borrow_rcas_regression_wording`](../../tests/sdlc/test_research_pass.py#L298), [`test_the_imperative_path_still_derives_its_own_view`](../../tests/sdlc/test_research_pass.py#L113), [`test_the_landing_facts_survive_the_stage_boundary`](../../tests/sdlc/test_research_pass.py#L76), [`test_the_research_nodes_run_for_real_and_land_in_the_case`](../../tests/sdlc/test_research_pass.py#L53)
-- **Calls** (15): [`Case`](../../src/orchestrator/sdlc/case.py#L59), [`IRValidator`](../../src/orchestrator/ir/validator.py#L49), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`bind_criteria`](../../src/orchestrator/pkg/criteria_binding.py#L196), [`default_registry`](../../src/orchestrator/runtime/tool_registry.py#L106), `dumps`, [`evidence_from_parts`](../../src/orchestrator/sdlc/evidence.py#L136), [`landing_files`](../../src/orchestrator/sdlc/evidence.py#L120), [`load_profile`](../../src/orchestrator/sdlc/profiles/__init__.py#L80), `monotonic`, [`profile_names`](../../src/orchestrator/sdlc/profiles/__init__.py#L50), [`rca_problem`](../../src/orchestrator/sdlc/evidence.py#L115), [`render_evidence_md`](../../src/orchestrator/sdlc/evidence.py#L257), [`select_profile`](../../src/orchestrator/sdlc/profile_select.py#L137), [`to_dict`](../../src/orchestrator/sdlc/evidence.py#L228)
+- **Calls** (15): [`Case`](../../src/orchestrator/sdlc/case.py#L59), [`IRValidator`](../../src/orchestrator/ir/validator.py#L49), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`bind_criteria`](../../src/orchestrator/pkg/criteria_binding.py#L196), [`default_registry`](../../src/orchestrator/runtime/tool_registry.py#L106), `dumps`, [`evidence_from_parts`](../../src/orchestrator/sdlc/evidence.py#L137), [`landing_files`](../../src/orchestrator/sdlc/evidence.py#L121), [`load_profile`](../../src/orchestrator/sdlc/profiles/__init__.py#L80), `monotonic`, [`profile_names`](../../src/orchestrator/sdlc/profiles/__init__.py#L50), [`rca_problem`](../../src/orchestrator/sdlc/evidence.py#L116), [`render_evidence_md`](../../src/orchestrator/sdlc/evidence.py#L258), [`select_profile`](../../src/orchestrator/sdlc/profile_select.py#L137), [`to_dict`](../../src/orchestrator/sdlc/evidence.py#L229)
 - **Documented in**: `docs/specs/graphir-sdlc-workflow.md#phase-3-issue-type-shaped-workflows-and-profiles-a-repo-can-carry`
 
 ### `_spent`
@@ -129,7 +129,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:963`](../../src/orchestrator/sdlc/autorun.py#L963)
 
 - **Called by** (1 production · 2 test): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237), [`test_a_design_naming_invented_code_parks_the_run`](../../tests/sdlc/test_research_pass.py#L173), [`test_design_is_handed_the_evidence_blast_radius`](../../tests/sdlc/test_research_pass.py#L135)
-- **Calls** (7): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`digest_of`](../../src/orchestrator/core/digest.py#L46), `monotonic`, [`produce_design`](../../src/orchestrator/sdlc/design.py#L295), [`render_design_md`](../../src/orchestrator/sdlc/design.py#L272), [`validate_design`](../../src/orchestrator/sdlc/design_validator.py#L179)
+- **Calls** (7): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`digest_of`](../../src/orchestrator/core/digest.py#L46), `monotonic`, [`produce_design`](../../src/orchestrator/sdlc/design.py#L300), [`render_design_md`](../../src/orchestrator/sdlc/design.py#L272), [`validate_design`](../../src/orchestrator/sdlc/design_validator.py#L179)
 - **Documented in**: `docs/specs/graphir-sdlc-workflow.md#research-is-not-wired-as-research-four-defects`
 
 ### `_stage_implement`
@@ -137,7 +137,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:1031`](../../src/orchestrator/sdlc/autorun.py#L1031)
 
 - **Called by** (1): [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237)
-- **Calls** (5): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_spent`](../../src/orchestrator/sdlc/autorun.py#L472), [`design_disagreement`](../../src/orchestrator/sdlc/builddoc.py#L270), `nullcontext`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616)
+- **Calls** (5): [`AutorunError`](../../src/orchestrator/sdlc/autorun.py#L46), [`_spent`](../../src/orchestrator/sdlc/autorun.py#L472), [`design_disagreement`](../../src/orchestrator/sdlc/builddoc.py#L271), `nullcontext`, [`run_feature`](../../src/orchestrator/sdlc/feature_runner.py#L616)
 - **Documented in**: `docs/specs/recorded-intent-tier.md#41-what-phases-2-and-3-look-like-in-practice`
 
 ### `_stage_intake`
@@ -152,7 +152,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/sdlc/autorun.py:844`](../../src/orchestrator/sdlc/autorun.py#L844)
 
 - **Called by** (2 production · 5 test): [`_run`](../../scripts/phase2a_parity_gate.py#L88), [`autorun`](../../src/orchestrator/sdlc/autorun.py#L237), [`test_a_design_naming_invented_code_parks_the_run`](../../tests/sdlc/test_research_pass.py#L173), [`test_design_is_handed_the_evidence_blast_radius`](../../tests/sdlc/test_research_pass.py#L135), [`test_investigate_reads_the_evidence_instead_of_deriving_it_again`](../../tests/sdlc/test_research_pass.py#L64), [`test_the_imperative_path_still_derives_its_own_view`](../../tests/sdlc/test_research_pass.py#L113), [`test_the_landing_facts_survive_the_stage_boundary`](../../tests/sdlc/test_research_pass.py#L76)
-- **Calls** (4): [`_adopt_evidence`](../../src/orchestrator/sdlc/autorun.py#L877), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L117), [`render_investigation_md`](../../src/orchestrator/sdlc/investigate.py#L185)
+- **Calls** (4): [`_adopt_evidence`](../../src/orchestrator/sdlc/autorun.py#L877), [`_imperative`](../../src/orchestrator/sdlc/autorun.py#L641), [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L119), [`render_investigation_md`](../../src/orchestrator/sdlc/investigate.py#L230)
 - **Documented in**: `docs/specs/graphir-sdlc-workflow.md#phase-1-the-tool-node-type-the-evidence-artifact-and-the-sdlc-ir-in-shadow`
 
 ### `_stage_review`

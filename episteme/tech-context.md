@@ -36,18 +36,18 @@ _How this system starts._
 - `main()` @ scripts/agentic_eval.py:100
 - `main()` @ scripts/audit_eval.py:54
 - `main()` @ scripts/bench_aggregate.py:94
+- `main()` @ scripts/brief-sections.py:95
 - `main()` @ scripts/codegen_ab.py:242
 - `main()` @ scripts/codegen_benchmark.py:1853
-- `main()` @ scripts/docs_audit.py:473
 
 ## Most-used external imports
 _Everything imported from outside this codebase, by how often — standard library and test dependencies included, so this is wider than the install list._
 
-- `__future__.annotations` — imported 713 times
-- `pathlib.Path` — imported 316 times
+- `__future__.annotations` — imported 716 times
+- `pathlib.Path` — imported 317 times
 - `typing.Any` — imported 264 times
-- `pytest` — imported 210 times
-- `dataclasses.dataclass` — imported 156 times
+- `pytest` — imported 211 times
+- `dataclasses.dataclass` — imported 157 times
 - `json` — imported 154 times
 - `collections.abc` — imported 140 times
 - `os` — imported 111 times

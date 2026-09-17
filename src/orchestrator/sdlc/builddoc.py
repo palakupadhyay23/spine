@@ -34,12 +34,13 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.pkg.accuracy import measured_recall
+from orchestrator.sdlc import brief
 
-# The four provenance labels of docs/specs/build-document.md §1.
-STATED = "stated"
-DETERMINISTIC = "derived · deterministic"
-MODEL = "derived · model"
-HUMAN = "human"
+# The four provenance labels of docs/specs/build-document.md §1. Re-exported from
+# `brief`, not redeclared: this document and the briefs say the same four things, and two
+# copies of one vocabulary is the defect that track exists to close. Names kept so every
+# existing import of `builddoc.STATED` keeps working.
+from orchestrator.sdlc.brief import DETERMINISTIC, HUMAN, MODEL, STATED  # noqa: E402
 
 # Bounds. Every aggregation caps its output and says what it elided (invariant 7):
 # a clipped diagram that implies completeness is worse than a small honest one.
@@ -444,7 +445,7 @@ def _confidence_block(
             "",
         ),
         (
-            "Where it lands",
+            brief.LANDS.title,
             True,
             bool(signals.get("brief_agrees")),
             "the brief and the design name the same files",
@@ -538,9 +539,11 @@ def _root_cause_block(report: Any) -> str:
     if exception:
         lines.append(f"**Exception:** `{exception}`\n")
     if site:
-        lines.append(f"**Fault site:** {site}" + (f" (in `{module}`)" if module else "") + "\n")
+        lines.append(f"**{brief.FAULT_SITE.title}:** {site}" + (f" (in `{module}`)" if module else "") + "\n")
     elif module:
-        lines.append(f"**Fault site:** `{module}` — named by the ticket, not localized to a line.\n")
+        lines.append(
+            f"**{brief.FAULT_SITE.title}:** `{module}` — named by the ticket, not localized to a line.\n"
+        )
     if getattr(report, "recently_changed", False):
         lines.append("⚠ This module changed recently — a regression is the leading hypothesis.\n")
 
@@ -924,9 +927,11 @@ def _evidence_block(ev: dict[str, Any]) -> str:
     if regression:
         shown = ", ".join(f"`{t}`" for t in regression[:8])
         more = f" (+{len(regression) - 8} more)" if len(regression) > 8 else ""
-        lines.append(f"- *Regression surface:* {shown}{more} import what changes — run these.\n")
+        lines.append(
+            f"- *{brief.REGRESSION_SURFACE.title}:* {shown}{more} import what changes — run these.\n"
+        )
     else:
-        lines.append("- *Regression surface:* no test module imports what changes.\n")
+        lines.append(f"- *{brief.REGRESSION_SURFACE.title}:* no test module imports what changes.\n")
 
     history = ev.get("history") or []
     if history:

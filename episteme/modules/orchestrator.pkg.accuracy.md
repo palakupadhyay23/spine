@@ -178,7 +178,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 
 [`src/orchestrator/pkg/accuracy.py:743`](../../src/orchestrator/pkg/accuracy.py#L743)
 
-- **Called by** (1): [`_recall_clause`](../../src/orchestrator/sdlc/builddoc.py#L725)
+- **Called by** (1): [`_recall_clause`](../../src/orchestrator/sdlc/builddoc.py#L728)
 - **Calls** (1): `loads`
 - **Documented in**: `docs/specs/build-documents/PKG-ACC-6-build.md#7-files`
 

@@ -37,6 +37,7 @@ from typing import Any
 
 from orchestrator.core.digest import SupportsRegister, digest_of
 from orchestrator.pkg import FactStore
+from orchestrator.sdlc import brief
 from orchestrator.sdlc.churn import DEFAULT_COMMITS as _CHURN_COMMITS
 from orchestrator.sdlc.churn import changed_recently
 
@@ -268,7 +269,7 @@ def render_evidence_md(ev: Evidence) -> str:
             "is clean.\n"
         )
 
-    out.append("## Where it lands")
+    out.append(brief.LANDS.heading)
     if ev.landing:
         for hit in ev.landing:
             loc = f" — `{hit.where}`" if hit.where else ""
@@ -291,7 +292,7 @@ def render_evidence_md(ev: Evidence) -> str:
     out.append("## Root cause")
     rca = ev.rca or {}
     if rca.get("fault_site"):
-        out.append(f"**Fault site:** {rca['fault_site']}")
+        out.append(f"**{brief.FAULT_SITE.title}:** {rca['fault_site']}")
         if rca.get("recently_changed"):
             out.append("\n⚠ This module changed recently — a regression is the leading hypothesis.")
     elif not rca:
@@ -309,7 +310,7 @@ def render_evidence_md(ev: Evidence) -> str:
         out.extend(f"{i}. **[{h['confidence']}]** {h['claim']}" for i, h in enumerate(hypotheses, 1))
     surface = rca.get("regression_surface") or []
     if surface:
-        out.append(f"\n_Regression surface ({len(surface)}):_")
+        out.append(f"\n_{brief.REGRESSION_SURFACE.title} ({len(surface)}):_")
         out.extend(f"- {s}" for s in surface[:10])
     out.append("")
 
