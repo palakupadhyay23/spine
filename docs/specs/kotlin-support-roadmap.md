@@ -727,6 +727,15 @@ indistinguishable from a library call, and every gate here checks consistency ra
 The structural fix is `finalize`: a target that was assumed rather than read is checked against
 what the repository actually declares, and dropped when nothing does.
 
+**The class is narrowed, not closed.** The check above applies to targets the repository
+*declares*. A second review round found the same rule applied one step short — to imported
+types, to undeclared types, and to names that are unique but unreachable — plus two recall
+losses where the fix drops a call it could resolve. Eight issues track them,
+[#397](https://github.com/synaptixs/spine/issues/397); on the validation app the remaining
+fabrication shapes measure **0 occurrences**, and the two recall losses (inherited member
+calls, same-file `IMPLEMENTS`) are ordinary Kotlin and are losing real edges today. Read the
+numbers below as "these eleven paths, measured" — not as "the front-end cannot fabricate".
+
 - **A same-package type guess reached `CALLS`, and a placeholder hid it.**
   *(Found 2026-09-17, review.)* `_resolve_type` fell back to `java:{package}.{name}` for any
   unresolved type, and `finalize` repointed `IMPLEMENTS` only — so `_calls` minted an external

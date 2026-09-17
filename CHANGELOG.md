@@ -4,97 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
-
-### Added
-
-- Every brief states **what it did not establish**. `investigate` and `root-cause` now close
-  with a `Not verified` section derived from the run itself — that retrieval was lexical
-  rather than semantic, how many matches were elided, that no `episteme/` was read, that
-  hypotheses were ranked from static evidence and never reproduced. It is conditional on
-  real state, not a disclaimer: a brief with nothing to declare says so instead.
-
-### Changed
-
-- The briefs share one section vocabulary (`sdlc/brief.py`). Five modules had each grown
-  their own and drifted to two spellings of "where it lands" and three of "next step";
-  `evidence.py` and `builddoc.py` re-emitted the others' labels by hand, so a rename in one
-  silently desynchronised a document nobody edited. Sections are now split by **provenance**:
-  a deterministic surface cannot render a verdict, a recommendation or an options table —
-  `investigate` and `rca` must stay re-derivable from the graph, and the argument on top of
-  them belongs to `design`. **One user-visible rename:** `## Suggested next step` is now
-  `## Next step`.
-- A root-cause report whose fix approach was written by a model now says so per section
-  (`derived · model` vs `derived · deterministic`) and types the document accordingly,
-  rather than presenting model text inside a deterministic report.
-- `scripts/brief-sections.py --check` runs in CI: a brief that renders a section the
-  vocabulary does not own, or renders them out of order, fails the build.
-
-### Fixed
-
-- **Kotlin: eleven fabrication paths, found in maintainer review** (§11 of
-  [the Kotlin roadmap](docs/specs/kotlin-support-roadmap.md)). One defect repeated: a reader that
-  could not answer a question returned a *plausible* answer instead of none, and the answer was
-  minted as an `external` placeholder — so nothing dangled, `pkg verify` reported clean, and the
-  invention oracle saw nothing. `s.uppercase()` became a call to a `String` class inside the
-  caller's own package; `topic.let { }` became a member of `Topic`; `route("/api/${cfg.version}")`
-  became the path `/api/`; `@Provides fun x(): Set<OkHttpClient>` provided a `Set` class in the DI
-  module's package; `@Entity(tableName = TOPICS)` claimed the class name as the table.
-
-  A target that was *assumed* rather than read is now checked in `finalize` against what the
-  repository actually declares, and dropped when nothing does. Measured on the validation app:
-  **72 fabricated edges over 36 invented ids → 0**, and 46 invented placeholder nodes gone. The
-  graph went *up*, not down — the same check that drops a guess recovers the true edge the guess
-  displaced, 126 of them here (`CALLS` 2,167 → 2,221) — and corpus `CALLS` recall is **0.92 →
-  0.94** with precision still 1.00.
-
-- **The invention gate covered one language.** `score_invention` had only ever been pointed at
-  this repository, which is pure Python, so its per-language map held one row and every other
-  front-end's zero meant "never examined". It now also runs over the corpus fixtures — committed,
-  offline, one per language — and every front-end has a row gated at zero.
-
-- **`state` and `understand` drew different architectures for the same commit.** They voted for
-  the shared namespace prefix over different module sets (tests included, tests excluded), and a
-  prefix is decided by a majority of the voters. Measured on this repository: 103 area labels one
-  way, 386 the other. One definition now serves all three callers. Two defects behind it: area
-  `coupling` was computed without the prefix, so on a reverse-DNS repository the whole "System
-  architecture" section rendered empty; and `tested_areas` was structurally `0` for **any** Gradle
-  repository, so a fully tested one reported "no automated tests detected".
-
-- **A Spring `@Value` placeholder was read as a literal path in the Java front-end** —
-  `@GetMapping("${api.base}/topics")` produced that endpoint verbatim. The rule was stated in
-  `jvm_routes`'s docstring and enforced only at the node type. Now shared by both JVM front-ends.
-
-- **Java codegen on a Gradle project still ran `mvn test`.** `GradleTestRunner` shipped with only
-  Kotlin wired to it, against a build with no `pom.xml`; the Java toolchain row now selects its
-  runner from the build tool the layout already detected.
-
-- **Codegen safety**: an emulator task (`connectedDebugAndroidTest`) was selectable by the
-  variant-task preference, repo-controlled Gradle output could reach `argv` as a flag, and
-  brownfield placement could invent a package for a repository that already had one.
-
-- The build document's blast-radius paragraph stated four things it could not back, all
-  of them visible on any non-Python repository.
-  - The caveat cited an issue key from Spine's own tracker, in documents describing other
-    people's repositories. The sentence already explains the limitation; the key only told
-    a reader to look up something they cannot reach. Two `--help` examples leaked the same
-    convention and now use `PROJ-123`.
-  - Measured `CALLS` recall was read from `--language`, a *codegen* flag that
-    `orchestrator sdlc plan` defaulted to the literal `python` — so a C# repository was told
-    Python's 0.73 against a graph Python had not touched. The blast radius now carries the
-    front-ends that actually built it, scores each of them, and names an unmeasured
-    front-end without a figure rather than dropping it.
-  - Containment printed a module count and then listed eight names, so a reader who counted
-    got a different number. Both branches now state what they elided, and say "at least N"
-    when the names were already capped upstream.
-  - Test detection was four Python-shaped clauses applied to language-neutral prose, so
-    `UnitTests/…Tests.cs` counted as product code and inflated the containment figure. The
-    rule is now segment-based across Python, .NET, Java and JS/TS conventions, and strictly
-    additive — nothing that was a test before stops being one.
-- `orchestrator sdlc plan --language` defaults to `auto` (was the literal `python`) and
-  refuses an unsupported value, matching `sdlc feature`. It selects the codegen prompt, the
-  layout and the test environment, so the old default gave non-Python repositories
-  Python scaffolding without saying so.
+## 3.36.0 — 2026-09-17
 
 ### Added
 
@@ -332,6 +242,13 @@ All notable changes to this project are documented here. Format loosely follows
   same invocation that runs `core/data` as `:core:data:testDemoDebugUnitTest`, which is the
   mixed-build case the per-module rules exist for.
 
+- Every brief states **what it did not establish**. `investigate` and `root-cause` now close
+  with a `Not verified` section derived from the run itself — that retrieval was lexical
+  rather than semantic, how many matches were elided, that no `episteme/` was read, that
+  hypotheses were ranked from static evidence and never reproduced. It is conditional on
+  real state, not a disclaimer: a brief with nothing to declare says so instead.
+
+
 - **The roadmap-currency gate now reads the half of a roadmap nobody was checking, and runs in
   CI.** Every language-track roadmap carries a living phase table whose rule is that Status,
   Started, Finished and Evidence move in the same commit as the work. The rule names the
@@ -374,6 +291,92 @@ All notable changes to this project are documented here. Format loosely follows
   skill itself did not exist, with every test green. The invariant it appeared to guard is real
   and now sits on the live path: a registered `<language>-conventions` capability must resolve to
   a defined skill. Not every language has one, and none is required — SQL ships without.
+
+- The build document's blast-radius paragraph stated four things it could not back, all
+  of them visible on any non-Python repository.
+  - The caveat cited an issue key from Spine's own tracker, in documents describing other
+    people's repositories. The sentence already explains the limitation; the key only told
+    a reader to look up something they cannot reach. Two `--help` examples leaked the same
+    convention and now use `PROJ-123`.
+  - Measured `CALLS` recall was read from `--language`, a *codegen* flag that
+    `orchestrator sdlc plan` defaulted to the literal `python` — so a C# repository was told
+    Python's 0.73 against a graph Python had not touched. The blast radius now carries the
+    front-ends that actually built it, scores each of them, and names an unmeasured
+    front-end without a figure rather than dropping it.
+  - Containment printed a module count and then listed eight names, so a reader who counted
+    got a different number. Both branches now state what they elided, and say "at least N"
+    when the names were already capped upstream.
+  - Test detection was four Python-shaped clauses applied to language-neutral prose, so
+    `UnitTests/…Tests.cs` counted as product code and inflated the containment figure. The
+    rule is now segment-based across Python, .NET, Java and JS/TS conventions, and strictly
+    additive — nothing that was a test before stops being one.
+- `orchestrator sdlc plan --language` defaults to `auto` (was the literal `python`) and
+  refuses an unsupported value, matching `sdlc feature`. It selects the codegen prompt, the
+  layout and the test environment, so the old default gave non-Python repositories
+  Python scaffolding without saying so.
+
+### Changed
+
+- The briefs share one section vocabulary (`sdlc/brief.py`). Five modules had each grown
+  their own and drifted to two spellings of "where it lands" and three of "next step";
+  `evidence.py` and `builddoc.py` re-emitted the others' labels by hand, so a rename in one
+  silently desynchronised a document nobody edited. Sections are now split by **provenance**:
+  a deterministic surface cannot render a verdict, a recommendation or an options table —
+  `investigate` and `rca` must stay re-derivable from the graph, and the argument on top of
+  them belongs to `design`. **One user-visible rename:** `## Suggested next step` is now
+  `## Next step`.
+- A root-cause report whose fix approach was written by a model now says so per section
+  (`derived · model` vs `derived · deterministic`) and types the document accordingly,
+  rather than presenting model text inside a deterministic report.
+- `scripts/brief-sections.py --check` runs in CI: a brief that renders a section the
+  vocabulary does not own, or renders them out of order, fails the build.
+
+### Fixed
+
+- **Kotlin: eleven fabrication paths, found in maintainer review** (§11 of
+  [the Kotlin roadmap](docs/specs/kotlin-support-roadmap.md)). One defect repeated: a reader that
+  could not answer a question returned a *plausible* answer instead of none, and the answer was
+  minted as an `external` placeholder — so nothing dangled, `pkg verify` reported clean, and the
+  invention oracle saw nothing. `s.uppercase()` became a call to a `String` class inside the
+  caller's own package; `topic.let { }` became a member of `Topic`; `route("/api/${cfg.version}")`
+  became the path `/api/`; `@Provides fun x(): Set<OkHttpClient>` provided a `Set` class in the DI
+  module's package; `@Entity(tableName = TOPICS)` claimed the class name as the table.
+
+  A target that was *assumed* rather than read is now checked in `finalize` against what the
+  repository actually declares, and dropped when nothing does. Measured on the validation app:
+  **72 fabricated edges over 36 invented ids → 0**, and 46 invented placeholder nodes gone. The
+  graph went *up*, not down — the same check that drops a guess recovers the true edge the guess
+  displaced, 126 of them here (`CALLS` 2,167 → 2,221) — and corpus `CALLS` recall is **0.92 →
+  0.94** with precision still 1.00.
+
+  **Narrowed, not closed.** The check applies to targets the repository declares; a second
+  review round found the same rule applied one step short for imported and undeclared types.
+  Tracked in [#397](https://github.com/synaptixs/spine/issues/397).
+
+- **The invention gate covered one language.** `score_invention` had only ever been pointed at
+  this repository, which is pure Python, so its per-language map held one row and every other
+  front-end's zero meant "never examined". It now also runs over the corpus fixtures — committed,
+  offline, one per language — and every front-end has a row gated at zero.
+
+- **`state` and `understand` drew different architectures for the same commit.** They voted for
+  the shared namespace prefix over different module sets (tests included, tests excluded), and a
+  prefix is decided by a majority of the voters. Measured on this repository: 103 area labels one
+  way, 386 the other. One definition now serves all three callers. Two defects behind it: area
+  `coupling` was computed without the prefix, so on a reverse-DNS repository the whole "System
+  architecture" section rendered empty; and `tested_areas` was structurally `0` for **any** Gradle
+  repository, so a fully tested one reported "no automated tests detected".
+
+- **A Spring `@Value` placeholder was read as a literal path in the Java front-end** —
+  `@GetMapping("${api.base}/topics")` produced that endpoint verbatim. The rule was stated in
+  `jvm_routes`'s docstring and enforced only at the node type. Now shared by both JVM front-ends.
+
+- **Java codegen on a Gradle project still ran `mvn test`.** `GradleTestRunner` shipped with only
+  Kotlin wired to it, against a build with no `pom.xml`; the Java toolchain row now selects its
+  runner from the build tool the layout already detected.
+
+- **Codegen safety**: an emulator task (`connectedDebugAndroidTest`) was selectable by the
+  variant-task preference, repo-controlled Gradle output could reach `argv` as a flag, and
+  brownfield placement could invent a package for a repository that already had one.
 
 - The build document's blast-radius paragraph stated four things it could not back, all
   of them visible on any non-Python repository.

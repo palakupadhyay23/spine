@@ -78,7 +78,16 @@ and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/do
 
 ## What's new
 
-**3.35.0 (current)** — two additive features. An optional C/C++ semantic pass
+**3.36.0 (current)** — **Kotlin**, as the 11th language and the 12th front-end: `.kt`
+comprehension and a typed-receiver call graph, Room entities and Retrofit calls (so an Android
+app joins a backend as a cross-repo consumer), Compose navigation as routes, Hilt wiring through
+a new `PROVIDES` edge kind, Ktor and Spring MVC routes — the Spring half shared with the Java
+front-end, which had read JAX-RS only — Kotlin Multiplatform source sets, and codegen for both
+Kotlin/JVM and Android on a new Gradle test runner that also gives *Java* codegen its first
+Gradle support. `.kts` build scripts are read as a module graph rather than parsed as source.
+Install with `pip install 'synaptixs-spine[kotlin]'`.
+
+**3.35.0** — two additive features. An optional C/C++ semantic pass
 (`pip install 'synaptixs-spine[clang]'`) resolves member calls the CST cannot, adding edges
 only between symbols already in the graph — ids, nodes and determinism unchanged; the
 standard library stays out of reach. And `pkg export --format cypher` loads the graph into
