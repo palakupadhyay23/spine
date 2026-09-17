@@ -29,6 +29,12 @@ Node ids are namespace-qualified (``csharp:Namespace.Type``) so partial classes
 split across files collapse onto one node. Entity nodes use a parallel
 ``csharp:entity:Namespace.Type`` id so the data graph is distinct from the type
 graph.
+
+**Blazor components** (``.razor``) are read too: :mod:`orchestrator.pkg.razor` rewrites
+one into line-aligned C# — ``@using``/``@namespace``/``@inject`` in place, markup blanked,
+``@code`` opened as a ``partial class`` named after the file — and it takes the path above
+from there, so every symbol carries its true ``.razor`` line. A component's module is its
+``@namespace`` when it declares one, else its path, exactly as an unnamespaced ``.cs``.
 """
 
 from __future__ import annotations
@@ -93,17 +99,27 @@ class CSharpExtractor:
     """C# front-end (tree-sitter). Install the ``csharp`` extra to use it."""
 
     language: str = "csharp"
-    suffixes: tuple[str, ...] = (".cs",)
+    # `.razor` too: a Blazor component is C# plus markup, and `pkg.razor` rewrites it into
+    # line-aligned C# before the parser sees it — the same shape as `php_extractor` branching on
+    # `.blade.php` by filename, with the opposite verdict (a component holds real logic).
+    suffixes: tuple[str, ...] = (".cs", ".razor")
 
     def module_name(self, path: Path, root: Path) -> str:
         # C#'s closest thing to a package is the (first) namespace, which lives in
-        # the file; fall back to the repo-relative path when there's none.
+        # the file; fall back to the repo-relative path when there's none. A component
+        # declares it as `@namespace`, and most do not — then, like an unnamespaced .cs
+        # file, its module is its path.
         try:
             # utf-8-sig strips a leading BOM, which is common in .NET files and would
             # otherwise defeat the ^namespace match.
-            m = _NAMESPACE_RE.search(path.read_text(encoding="utf-8-sig"))
+            text = path.read_text(encoding="utf-8-sig")
         except OSError:
-            m = None
+            return rel_module_name(path, root)
+        if path.suffix.lower() == ".razor":
+            from orchestrator.pkg.razor import component_namespace
+
+            return component_namespace(text) or rel_module_name(path, root)
+        m = _NAMESPACE_RE.search(text)
         return m.group(1) if m else rel_module_name(path, root)
 
     def finalize(self, batch: FactBatch) -> FactBatch:
@@ -141,8 +157,16 @@ class CSharpExtractor:
         return repointed
 
     def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
-        parser = _csharp_parser()
         source = path.read_bytes()
+        if path.suffix.lower() == ".razor":
+            from orchestrator.pkg.razor import razor_to_csharp
+
+            # Line-aligned, so every provenance below is a true `.razor` line number.
+            source = razor_to_csharp(source.decode("utf-8-sig", errors="replace"), rel).encode("utf-8")
+        return self._extract_source(source, module=module, rel=rel)
+
+    def _extract_source(self, source: bytes, *, module: str, rel: str) -> FactBatch:
+        parser = _csharp_parser()
         tree = parser.parse(source)
         batch = FactBatch()
         module_id = f"csharp:{module}" if module else "csharp:<root>"

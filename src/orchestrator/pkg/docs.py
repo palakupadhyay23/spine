@@ -175,7 +175,9 @@ class DocDriftFinding:
 #: history rather than by design — `.java`, `.cs`, `.go` and `.ts` belong here too, and their
 #: absence is recorded in kotlin-support-roadmap.md §11 as a separate change, because adding
 #: them moves the measured drift numbers of three other language tracks at once.
-_FILE_SUFFIXES = (".py", ".md", ".ttl", ".json", ".yaml", ".toml", ".kt", ".kts")
+#: `.razor` is here from the day the front-end emitted it, so it never joins that backlog: no
+#: doc in this repository mentioned one before, so its measured drift numbers do not move.
+_FILE_SUFFIXES = (".py", ".md", ".ttl", ".json", ".yaml", ".toml", ".kt", ".kts", ".razor")
 
 
 def extract_mentions(page: DocPage) -> list[DocMention]:
