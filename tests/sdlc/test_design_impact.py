@@ -211,3 +211,28 @@ def test_a_module_spanning_files_says_so_and_its_importers_are_counted_once() ->
     md = render_md(to_dict(br))
     assert "module `Shared.Enums` spans 3 file(s); imported by 1 module(s): Features.Grid" in md
     assert "2 module(s) change; 1 module(s) import them" in _blast_prose(to_dict(br))
+
+
+def test_a_new_path_in_another_directory_is_not_resolved_to_a_namesake() -> None:
+    """A design proposing a NEW `Payments/Client.cs` must stay unverified, not resolve to the
+    existing `Legacy/Client.cs` by basename — the honest answer was the old one."""
+    b = FactBatch()
+    ns = Node("csharp:Legacy", NodeKind.MODULE, "Legacy", "csharp", Provenance("Legacy/Soap/Client.cs", 1))
+    b.add_node(ns)
+    b.add_node(
+        Node(
+            "csharp:Legacy.Client", NodeKind.TYPE, "Client", "csharp", Provenance("Legacy/Soap/Client.cs", 3)
+        )
+    )
+    b.add_edge(Edge(ns.id, "csharp:Legacy.Client", EdgeKind.CONTAINS))
+    br = blast_radius(FactStore(b), ["Payments/Oauth/Client.cs", "Client.cs"])
+    assert unverified_references(br) == ["Payments/Oauth/Client.cs"]  # the bare name still resolves
+
+
+def test_an_ambiguous_bare_basename_is_not_guessed() -> None:
+    b = FactBatch()
+    for ns, file in (("A", "a/Product.cs"), ("B", "b/Product.cs")):
+        b.add_node(Node(f"csharp:{ns}", NodeKind.MODULE, ns, "csharp", Provenance(file, 1)))
+        b.add_node(Node(f"csharp:{ns}.Product", NodeKind.TYPE, "Product", "csharp", Provenance(file, 3)))
+        b.add_edge(Edge(f"csharp:{ns}", f"csharp:{ns}.Product", EdgeKind.CONTAINS))
+    assert unverified_references(blast_radius(FactStore(b), ["Product.cs"])) == ["Product.cs"]

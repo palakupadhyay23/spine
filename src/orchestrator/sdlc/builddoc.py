@@ -757,9 +757,12 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     # Two design paths inside one namespace resolve to the same module node, and its importers
     # are one fact, not two. Summed per row, a three-file namespace reported its fan-in three
     # times over. Per distinct module, it is reported once.
-    per_module: dict[str, int] = {}
+    # Keyed on (module, where): in a merged multi-repo graph two services both keyed `App.Models`
+    # are two modules, and the name alone would fold their importers into one.
+    per_module: dict[tuple[str, str], int] = {}
     for m in modules:
-        per_module.setdefault(str(m.get("module") or m.get("ref") or ""), int(m.get("importers") or 0))
+        key = (str(m.get("module") or m.get("ref") or ""), str(m.get("where") or ""))
+        per_module.setdefault(key, int(m.get("importers") or 0))
     total_importers = sum(per_module.values())
     total_hotspots = sum(len(m.get("hotspots") or []) for m in modules)
 
@@ -1059,7 +1062,9 @@ def render_build_md(
     blast = design.get("blast_radius") or {}
     changed, created, carried = _file_rows(files, root)
 
-    landing = list(getattr(investigation, "landing", []) or [])
+    landing = [
+        land for land in (getattr(investigation, "landing", []) or []) if not getattr(land, "weak", False)
+    ]
     landing_files = {str(getattr(land, "where", "")).split(":", 1)[0] for land in landing}
     agreed = sorted(landing_files & set(files))
 
@@ -1095,7 +1100,7 @@ def render_build_md(
         add(
             _label(
                 MODEL,
-                "the intent's description — the ticket's words as intake carried them, identifiers verbatim",
+                "a model's carry of the intent's description — identifiers required verbatim; not a quote",
             )
         )
         add(description + "\n")
@@ -1285,13 +1290,18 @@ async def build_plan(
     store = FactStore(batch)
     overview = build_overview(batch)
 
+    from orchestrator.sdlc.design import _query_text, _stated_paths
+
+    # The same text the design reads. Read from title + summary alone, the gate saw a ticket
+    # whose file was named in `description` as landing nowhere while §7 listed that file.
     investigation = build_investigation(
         str(spec.get("title") or ""),
-        str(spec.get("summary") or ""),
+        _query_text(spec, title=False),
         store=store,
         root=root_path,
     )
-    landing = []
+    # A path the ticket names is where it lands, whatever retrieval made of its prose.
+    landing = list(_stated_paths(spec, root_path))
     for land in getattr(investigation, "landing", []) or []:
         # The same floor the design applies: a hit on one shared word is not a landing site,
         # and handing the gate every weak hit is how an all-weak ticket read as located.

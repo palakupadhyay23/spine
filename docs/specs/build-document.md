@@ -38,8 +38,8 @@ it lends the authority of the first to the second.
 
 ## 2. Section map — where each part comes from
 
-Mapped against the SSPN-49 document. **Only two sections are stated; everything
-else is derived.**
+Mapped against the SSPN-49 document. **Only one section — 08, the criteria — is stated;
+everything else is derived.**
 
 | # | Section | Provenance | Source | Exists today |
 |---|---|---|---|---|

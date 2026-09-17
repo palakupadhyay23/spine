@@ -190,7 +190,7 @@ def _recent_areas(root: Path | None) -> list[tuple[str, int]]:
         return []
     if out.returncode != 0:
         return []
-    exts = (".cs", ".py", ".java", ".ts", ".tsx", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh")
+    exts = (".cs", ".razor", ".py", ".java", ".ts", ".tsx", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh")
     changed = Counter(
         "/".join(line.strip().split("/")[:2])
         for line in out.stdout.splitlines()

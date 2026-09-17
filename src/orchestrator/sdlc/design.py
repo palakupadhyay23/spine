@@ -119,6 +119,11 @@ def _query_text(spec: dict[str, Any], *, title: bool = True) -> str:
 
 
 def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
+    """The files the ticket lands in, weak hits dropped. See :func:`_landing_state`."""
+    return _landing_state(spec, store)[0]
+
+
+def _landing_state(spec: dict[str, Any], store: FactStore | None) -> tuple[list[str], bool]:
     """Where this *ticket* lands, from the same reading `investigate` does.
 
     The previous heuristic listed the overview's biggest modules, which is a fact about the
@@ -132,7 +137,7 @@ def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
     it is the same code answering.
     """
     if store is None:
-        return []
+        return [], False
     from orchestrator.sdlc.investigate import build_investigation
 
     investigation = build_investigation(
@@ -149,7 +154,8 @@ def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
         path = landing.where.split(":", 1)[0]
         if path and path not in files:
             files.append(path)
-    return files[:5]
+    all_weak = bool(investigation.landing) and all(land.weak for land in investigation.landing)
+    return files[:5], all_weak
 
 
 def _overview_files(spec: dict[str, Any], overview: dict[str, Any] | None) -> list[str]:
@@ -193,7 +199,10 @@ def _fallback_design(
     # at all rather than a guess. A path the ticket names is not a heuristic — inferring
     # around it is how a design ends up contradicting the spec it was built from.
     stated = _stated_paths(spec, root)
-    files = stated or _landing_files(spec, store) or _overview_files(spec, overview)
+    landed, all_weak = _landing_state(spec, store)
+    # An all-weak reading is an answer — "this does not localize" — not a miss to paper over
+    # with the overview's own keyword guess, which has no floor at all.
+    files = stated or landed or ([] if all_weak else _overview_files(spec, overview))
     ac = [str(a) for a in (spec.get("acceptance_criteria") or [])]
     # Say which it is. A consumer — a human reading design.md, or the codegen prompt now
     # carrying it — has to be able to tell a grounded reading from a shrug.
@@ -203,7 +212,13 @@ def _fallback_design(
         # from the ticket itself does not need to second-guess them the way a keyword match
         # deserves to be second-guessed.
         risks = ["Files taken from the paths this ticket names, not inferred from its words."]
-    if not files:
+    if not files and all_weak:
+        risks = [
+            "Heuristic design (no LLM): every symbol matching this ticket's words rests only on "
+            "words other files use too, so no files are proposed. Name the file, class or endpoint "
+            "involved rather than trusting this list."
+        ]
+    elif not files:
         risks = [
             "Heuristic design (no LLM) and nothing in the graph matched this ticket's words, "
             "so no files are proposed. Locate the change before building rather than trusting "

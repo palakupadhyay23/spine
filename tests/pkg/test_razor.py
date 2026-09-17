@@ -98,6 +98,8 @@ def test_a_component_s_symbols_report_their_true_razor_lines(tmp_path: Path) -> 
     grid = by_id["csharp:AuctionProductsGrid"]
     assert grid.kind is NodeKind.TYPE and grid.provenance is not None
     assert grid.provenance.file == rel
+    # The generated class is the file: markup is its render method's body.
+    assert (grid.provenance.line, grid.provenance.end_line) == (1, len(GRID.splitlines()))
     method = by_id["csharp:AuctionProductsGrid.DisplayGroup"]
     assert method.kind is NodeKind.FUNCTION
     assert method.provenance is not None and method.provenance.line == _line_of(
@@ -157,7 +159,8 @@ def test_nss_1209_the_grids_resolve_and_are_not_flagged_absent(tmp_path: Path) -
 
 def test_a_warm_cache_cannot_serve_a_razor_less_graph(tmp_path: Path) -> None:
     """D8: no grammar changed, so nothing in `_GRAMMAR_MODULES` did — the fingerprint must
-    still move, and it does, because it hashes every `pkg/` module's source."""
+    still move, and it does, because it hashes every `pkg/` module's source. Measured the
+    way it matters: a `pkg/` without `razor.py` — the pre-branch wheel — keys differently."""
     import shutil
 
     from orchestrator.pkg import persistence
@@ -165,10 +168,9 @@ def test_a_warm_cache_cannot_serve_a_razor_less_graph(tmp_path: Path) -> None:
     src = Path(persistence.__file__).parent
     copy = tmp_path / "pkg"
     shutil.copytree(src, copy, ignore=shutil.ignore_patterns("__pycache__"))
-    before = persistence.extractor_fingerprint(package_dir=copy)
-    with (copy / "razor.py").open("a", encoding="utf-8") as fh:
-        fh.write("\n# a one-byte change to the rewrite\n")
-    assert persistence.extractor_fingerprint(package_dir=copy) != before
+    with_razor = persistence.extractor_fingerprint(package_dir=copy)
+    (copy / "razor.py").unlink()
+    assert persistence.extractor_fingerprint(package_dir=copy) != with_razor
 
 
 def test_the_invention_oracle_scopes_the_rewrite_not_the_markup(tmp_path: Path) -> None:
@@ -190,3 +192,110 @@ def test_the_invention_oracle_scopes_the_rewrite_not_the_markup(tmp_path: Path) 
     row = next(r for r in report.by_language if r.language == "csharp")
     assert row.status == MEASURED and row.examined >= 1
     assert row.invented == ()
+
+
+# ---- what the rewrite refuses to invent (maintainer review of the branch) ---------------------
+
+
+def test_a_razor_comment_declares_nothing() -> None:
+    """Commented-out code — the old block kept for history — used to become grounded nodes."""
+    src = "@*\n@namespace Commented.Out\n@code {\n    int Ghost;\n}\n*@\n<p/>\n"
+    out = razor_to_csharp(src, "Widget.razor").splitlines()
+    assert component_namespace(src) == ""
+    assert "Ghost" not in "\n".join(out) and "Commented" not in "\n".join(out)
+    assert out[0] == "partial class Widget { }" and len(out) == 7
+
+
+def test_the_namespace_is_hoisted_so_it_qualifies_every_declaration() -> None:
+    """`@page` first, then `@namespace`, then markup — the documented ordering. C# applies a
+    file-scoped namespace only to what follows it, so the class must come after it."""
+    src = '@page "/x"\n@namespace My.App.Pages\n<h1>Hi</h1>\n'
+    out = razor_to_csharp(src, "Widget.razor").splitlines()
+    assert out[0] == "namespace My.App.Pages; partial class Widget { }"
+    assert out[1] == "" and out[2] == ""
+
+    src = "@inject IFoo Foo\n@namespace My.App.Pages\n@code {\n    int X;\n}\n"
+    out = razor_to_csharp(src, "Widget.razor").splitlines()
+    assert out[0] == "namespace My.App.Pages; partial class Widget { IFoo Foo; }"
+
+
+def test_a_brace_in_a_string_or_a_comment_ends_nothing() -> None:
+    src = (
+        "@code {\n"
+        '    private string Close() { return "}"; }\n'
+        "    // closes here: }\n"
+        "    private int Later() { return 1; }\n"
+        "}\n"
+        "<div class=card>{ not code }</div>\n"
+    )
+    out = razor_to_csharp(src, "A.razor").splitlines()
+    assert out[3] == "    private int Later() { return 1; }"
+    assert out[4] == "}" and out[5] == ""  # the markup after the real close is blank
+
+
+def test_line_fidelity_survives_characters_splitlines_would_break_on() -> None:
+    for src in ("<p/>\n\x0c\n@code {\n    int X;\n}\n", "<p>a\u2028b</p>\n@code {\n    int X;\n}\n"):
+        out = razor_to_csharp(src, "A.razor").splitlines()
+        assert out[src.split("\n").index("    int X;")] == "    int X;"
+
+
+def test_a_file_of_only_directives_declares_no_class() -> None:
+    """`_Imports.razor`: Blazor generates no class for it, and there is no line to put one on."""
+    src = "@using System\n@using My.App\n"
+    out = razor_to_csharp(src, "_Imports.razor").splitlines()
+    assert out == ["using System;", "using My.App;"]
+    src = "@using System\n"  # a component name, but still nothing to declare
+    assert razor_to_csharp(src, "Only.razor").splitlines() == ["using System;"]
+
+
+def test_an_inject_with_a_trailing_comment_keeps_its_brace() -> None:
+    out = razor_to_csharp("@inject IFoo Foo // the service\n", "A.razor").splitlines()
+    assert out[0] == "partial class A { IFoo Foo; }"
+
+
+def test_a_code_directive_is_only_the_directive() -> None:
+    out = razor_to_csharp("@code.Length\n@if (x) {\n Hello World\n}\n", "A.razor").splitlines()
+    assert "Hello" not in "\n".join(out) and out == ["partial class A { }", "", "", ""]
+
+
+def test_an_imports_file_yields_a_module_and_no_type(tmp_path: Path) -> None:
+    _needs_csharp()
+    (tmp_path / "_Imports.razor").write_text("@using System\n@using My.App\n", encoding="utf-8")
+    batch = RepoCodeExtractor().extract(tmp_path)
+    kinds = {n.kind for n in batch.nodes if n.provenance and n.provenance.file.endswith(".razor")}
+    assert kinds == {NodeKind.MODULE}
+    for n in batch.nodes:
+        if n.provenance and n.provenance.file.endswith(".razor"):
+            assert n.provenance.line <= 2
+
+
+def test_a_code_behind_partial_merges_onto_one_type(tmp_path: Path) -> None:
+    """`Grid.razor` + `Grid.razor.cs` is one class in the namespace only the second declares."""
+    _needs_csharp()
+    (tmp_path / "Grid.razor").write_text("@code {\n    int Shown;\n}\n", encoding="utf-8")
+    (tmp_path / "Grid.razor.cs").write_text(
+        "namespace My.App;\npublic partial class Grid { public int Behind; }\n", encoding="utf-8"
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    types = [n for n in batch.nodes if n.kind is NodeKind.TYPE and n.name == "Grid"]
+    assert [t.id for t in types] == ["csharp:My.App.Grid"]
+    ids = {n.id for n in batch.nodes}
+    assert {"csharp:My.App.Grid.Shown", "csharp:My.App.Grid.Behind"} <= ids
+
+
+def test_a_body_line_inside_code_has_an_enclosing_symbol(tmp_path: Path) -> None:
+    _needs_csharp()
+    from orchestrator.pkg import FactStore
+    from orchestrator.pkg.retrieval import GroundedRetriever
+
+    rel = "Grid.razor"
+    (tmp_path / rel).write_text(GRID, encoding="utf-8")
+    store = FactStore(RepoCodeExtractor().extract(tmp_path))
+    body_line = _line_of(GRID, "return ProductGroupHelper")
+    # Members record a start line only (as for every C# member), so the smallest span covering
+    # a body line is the component's — the whole file — which is what a diff there needs.
+    found = GroundedRetriever(store).enclosing_symbol(rel, body_line)
+    assert found is not None and found.name == "Grid"
+    markup_line = _line_of(GRID, "<h3>")
+    found = GroundedRetriever(store).enclosing_symbol(rel, markup_line)
+    assert found is not None and found.name == "Grid"

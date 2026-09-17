@@ -70,6 +70,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch
+from orchestrator.pkg.razor import razor_to_csharp
 
 _MAX_EXAMPLES = 15
 
@@ -291,8 +292,6 @@ def _walked_invention(language: str, calls: list[Edge], base: Path) -> LanguageI
             try:
                 source = path.read_bytes()
                 if path.suffix.lower() == ".razor":
-                    from orchestrator.pkg.razor import razor_to_csharp
-
                     # The oracle must scope what the front-end parsed — the line-aligned C#
                     # rewrite — or it reads raw markup with a C# grammar and every name a
                     # component binds looks invented.

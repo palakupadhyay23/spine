@@ -102,13 +102,14 @@ def _is_test_file(path: str) -> bool:
 class ScoredSymbol:
     """A retrieval hit with the evidence it rests on, so a consumer can tell strong from weak.
 
-    ``weak`` is the floor: **every** token the hit shares with the query also names symbols in
-    other files — it rests on nothing specific. NSS-1231's five proposed files all rested on
-    ``client`` (one word, shared by a Service Bus field, a blob client and two API clients), and
-    ``PsiHoldApiClient`` on ``api`` + ``client``, two such words; the score alone could not say
-    so once it left this module, because nothing downstream carried it. One token unique to the
-    hit's file — ``ebsorder``, ``exporter`` — is enough to make it strong: the ticket named one
-    thing and one thing matched.
+    ``weak`` is the floor: the words the hit shares with the query, **taken together**, also name
+    symbols in other files — it rests on nothing specific. NSS-1231's five proposed files all
+    rested on ``client`` (one word, in four files), and ``PsiHoldApiClient`` on ``api`` +
+    ``client``, a pair that co-occurs in two; the score alone could not say so once it left this
+    module, because nothing downstream carried it. Two things make a hit strong: a word or a
+    combination found in one file only (``ebsorder``, ``exporter``), or the query naming the
+    symbol's **whole** multi-word name — ``OrderService`` is a named thing even where ``order``
+    and ``service`` each appear in twenty files.
     """
 
     node: Node
@@ -192,17 +193,17 @@ class GroundedRetriever:
     def scored_symbols(self, text: str, *, limit: int = 8, include_tests: bool = False) -> list[ScoredSymbol]:
         """:meth:`relevant_symbols` with each hit's score, matched tokens and the ``weak`` floor.
 
-        "Names other symbols" is counted over distinct **files**, on the candidates the ranking
-        sees: a module and the function inside it sharing the file's name is one thing named
-        once, not a generic word — `exporter` in `src/exporter.py` is the thing a ticket meant,
-        `client` across four files is not. Measured against the graph in hand, not a constant,
-        so the rule holds on a ten-node fixture and a ten-thousand-node repository.
+        "Names other symbols" is counted over distinct **files**, over every grounded name in
+        the graph: a module and the function inside it sharing the file's name is one thing
+        named once, not a generic word — `exporter` in `src/exporter.py` is the thing a ticket
+        meant, `client` across four files is not. Measured against the graph in hand, not a
+        constant, so the rule holds on a ten-node fixture and a ten-thousand-node repository.
         """
         query = _tokens(text)
         if not query:
             return []
-        hits: list[tuple[float, str, Node, frozenset[str]]] = []
-        files_of: dict[str, set[str]] = {}
+        hits: list[tuple[float, str, Node, frozenset[str], frozenset[str]]] = []
+        file_tokens: dict[str, set[str]] = {}
         for node in self._store.nodes:
             if not node.grounded:
                 continue
@@ -211,21 +212,22 @@ class GroundedRetriever:
             name_tokens = _tokens(node.name)
             if not name_tokens:
                 continue
+            file = node.provenance.file if node.provenance is not None else node.id
+            file_tokens.setdefault(file, set()).update(name_tokens)
             overlap = frozenset(query & name_tokens)
             if not overlap:
                 continue
-            file = node.provenance.file if node.provenance is not None else node.id
-            for token in overlap:
-                files_of.setdefault(token, set()).add(file)
             score = 3.0 * (len(overlap) / len(name_tokens)) + 1.0 * len(overlap)
             if node.kind in (NodeKind.TYPE, NodeKind.FUNCTION):
                 score += 0.5
-            hits.append((score, node.id, node, overlap))
+            hits.append((score, node.id, node, overlap, frozenset(name_tokens)))
         hits.sort(key=lambda s: (-s[0], s[1]))
         out: list[ScoredSymbol] = []
-        for score, _, node, overlap in hits[:limit]:
-            matched = tuple(sorted(overlap))
-            weak = all(len(files_of.get(token, ())) >= 2 for token in matched)
+        for score, _, node, shared, own in hits[:limit]:
+            matched = tuple(sorted(shared))
+            whole_name = shared == own and len(own) >= 2
+            co_occurring = sum(1 for toks in file_tokens.values() if shared <= toks)
+            weak = not whole_name and co_occurring >= 2
             out.append(ScoredSymbol(node=node, score=score, matched=matched, weak=weak))
         return out
 

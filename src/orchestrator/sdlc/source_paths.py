@@ -60,12 +60,25 @@ def normalise(rel: str) -> str:
     return rel
 
 
+def _path_shaped(rel: str) -> bool:
+    """Refuse what the regex accepts but prose produces: ``3.c``, ``Fig. 2.c``, ``a.b.c``, ``v1.2.pl``.
+
+    A bare name's stem must start with a letter and hold no dot unless that dot introduces
+    another source suffix (``App.razor.cs`` is a code-behind file; ``a.b.c`` is not a file).
+    """
+    name = rel.rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0]
+    if not stem or not (stem[0].isalpha() or stem[0] == "_"):
+        return False
+    return "/" in rel or "." not in stem or stem.rsplit(".", 1)[-1] in SOURCE_SUFFIXES
+
+
 def named_paths(text: str) -> list[str]:
     """The paths ``text`` names, normalised, first-appearance order, deduplicated."""
     out: list[str] = []
     for raw in PATH_RE.findall(text):
         rel = normalise(raw)
-        if rel and rel not in out:
+        if rel and _path_shaped(rel) and rel not in out:
             out.append(rel)
     return out
 
@@ -99,9 +112,14 @@ def resolve(rel: str, root: Path) -> str | None:
     location; two locations is a guess, and a guessed target is worse than a missing one.
     """
     rel = normalise(rel)
-    if not rel:
+    if not rel or ".." in rel.split("/"):
         return None
-    if (root / rel).is_file():
+    candidate = root / rel
+    try:
+        candidate.resolve().relative_to(root.resolve())
+    except ValueError:
+        return None  # a path that leaves the root is not a path under it
+    if candidate.is_file():
         return rel
     if "/" in rel:
         return None

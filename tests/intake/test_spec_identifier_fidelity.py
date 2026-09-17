@@ -14,7 +14,7 @@ from typing import Any
 
 from orchestrator.core.llm import CompletionResult, LLMClient, Message, ToolSpec
 from orchestrator.intake.intents import Intent
-from orchestrator.intake.specs import FeatureSpec, SpecWriter, _identifiers
+from orchestrator.intake.specs import _MAX_CARRIED, FeatureSpec, SpecWriter, _carry_identifiers, _identifiers
 
 _TICKET = (
     "Replace the current HTTP Basic Auth (`EBS_API_USERNAME`/`EBS_API_PASSWORD`, used in "
@@ -126,8 +126,30 @@ async def test_unparseable_output_still_carries_description_and_scope() -> None:
 
 
 async def test_the_carried_line_is_bounded_and_says_what_it_left_out() -> None:
-    names = " ".join(f"`FILE_{i:02d}_KEY`" for i in range(30))
+    names = " ".join(f"`FILE_{i:02d}_KEY`" for i in range(_MAX_CARRIED + 6))
     intent = Intent(id="i", title="T", description=names)
     spec = await _writer({"summary": "nothing named", "acceptance_criteria": []}).write(intent)
     assert "(+6 more)" in spec.technical_notes
-    assert spec.technical_notes.count("FILE_") == 24
+    assert spec.technical_notes.count("FILE_") == _MAX_CARRIED
+
+
+def test_a_distinct_fenced_identifier_survives_whichever_sentence_comes_first() -> None:
+    assert _identifiers("Refactor `ShoppingCartService` to delegate to `Cart`.") == [
+        "ShoppingCartService",
+        "Cart",
+    ]
+    assert _identifiers("Delegate `Cart` work into `ShoppingCartService`.") == ["Cart", "ShoppingCartService"]
+    assert _identifiers("`EBSOrderApiClient.cs` holds `EBSOrderApiClient`") == ["EBSOrderApiClient.cs"]
+
+
+def test_a_longer_identifier_does_not_mask_a_shorter_one() -> None:
+    notes = _carry_identifiers(
+        "", present_in="EBSOrderApiClient does it", source="use `Client` via `EBSOrderApiClient`"
+    )
+    assert "Client" in notes.split("carried verbatim: ")[1]
+
+
+def test_digits_before_a_hump_and_windows_paths_are_identifiers() -> None:
+    found = _identifiers(r"OAuth2Client wraps Base64Encoder; edit Shared\Enums\ProductGroup.cs")
+    assert "OAuth2Client" in found and "Base64Encoder" in found
+    assert r"Shared\Enums\ProductGroup.cs" in found

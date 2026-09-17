@@ -20,6 +20,7 @@ so their absence is reported honestly rather than implied to be zero impact.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -138,34 +139,46 @@ def _match_module(
 ) -> Node | None:
     """Resolve a design's file/module reference to a MODULE node, best-effort.
 
-    Tries, in order: exact MODULE provenance path or path suffix, exact node name, MODULE
-    basename — then the same path and basename tests against **every** grounded file
-    (``by_file``, from :func:`_file_index`), so a file that shares its module node with
-    siblings still resolves to that module. ``modules`` is pre-sorted grounded-first, so the
-    first hit at each precedence level prefers real code.
+    Candidates are every MODULE node by its own provenance file (grounded-first, so a real
+    module wins an ambiguous exact match) and every grounded file by its owning module
+    (``by_file``, from :func:`_file_index`) — so a file that shares its module node with
+    siblings still resolves to that module. Four passes: exact provenance path; exact node
+    name; path suffix; bare basename. The last two follow ``source_paths.resolve``'s rules —
+    two distinct owners is a guess and resolves to nothing, and a ref that names a directory
+    is never matched on basename — or a NEW ``Payments/Client.cs`` would resolve to
+    ``Legacy/Client.cs`` and the honest "unverified" answer would go silent.
     """
-    ref_n = ref.replace("\\", "/").strip().lstrip("./")
+    from orchestrator.sdlc.source_paths import normalise
+
+    ref_n = normalise(ref)
     if not ref_n:
         return None
     base = _basename(ref_n)
-    for n in modules:
-        f = (n.provenance.file if n.provenance else "") or ""
-        if f and (f == ref_n or f.endswith("/" + ref_n)):
+    candidates: list[tuple[str, Node]] = [
+        ((n.provenance.file if n.provenance else "") or "", n) for n in modules
+    ]
+    candidates = [(f, n) for f, n in candidates if f] + list(by_file or ())
+
+    for f, n in candidates:
+        if f == ref_n:
             return n
     for n in modules:
         if n.name == ref_n or n.name == base:
             return n
-    for n in modules:
-        f = (n.provenance.file if n.provenance else "") or ""
-        if f and _basename(f) == base:
-            return n
-    for f, owner in by_file or ():
-        if f == ref_n or f.endswith("/" + ref_n):
-            return owner
-    for f, owner in by_file or ():
-        if _basename(f) == base:
-            return owner
+    suffix = _unique_owner(n for f, n in candidates if f.endswith("/" + ref_n))
+    if suffix is not None:
+        return suffix
+    if "/" not in ref_n:
+        return _unique_owner(n for f, n in candidates if _basename(f) == base)
     return None
+
+
+def _unique_owner(owners: Iterable[Node]) -> Node | None:
+    """The one distinct node among ``owners``, or None — a second candidate is a guess."""
+    distinct: dict[str, Node] = {}
+    for n in owners:
+        distinct.setdefault(n.id, n)
+    return next(iter(distinct.values())) if len(distinct) == 1 else None
 
 
 def _hotspots(store: FactStore, module: Node, *, limit: int) -> list[SymbolImpact]:

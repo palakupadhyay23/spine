@@ -73,3 +73,15 @@ def test_the_walk_skips_what_the_extractors_skip(tmp_path: Path) -> None:
     _tree(tmp_path, "src/Only.cs", "node_modules/Only.cs", ".hidden/Only.cs", "vendored/Only.cs")
     (tmp_path / "vendored" / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")  # a submodule
     assert find_by_basename(tmp_path, "Only.cs") == ["src/Only.cs"]
+
+
+def test_a_path_that_leaves_the_root_is_not_a_path_under_it(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir(exist_ok=True)
+    (outside / "secret.cs").write_text("//\n", encoding="utf-8")
+    assert resolve(f"../{outside.name}/secret.cs", tmp_path) is None
+
+
+def test_prose_shaped_tokens_are_not_paths() -> None:
+    assert named_paths("see section 3.c, Fig. 2.c, pip install a.b.c and v1.2.pl") == []
+    assert named_paths("the code-behind App.razor.cs and Program.cs") == ["App.razor.cs", "Program.cs"]

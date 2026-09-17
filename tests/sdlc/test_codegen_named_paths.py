@@ -14,6 +14,7 @@ def test_a_change_claim_naming_a_non_python_file_counts() -> None:
     assert _claims_a_change("Updated src/orchestrator/cli.py")
     assert not _claims_a_change("No changes needed in cli.py")  # names a path, claims nothing
     assert not _claims_a_change("Rewrote the docstring")  # claims, names no file
+    assert not _claims_a_change("Fixed per Fig. 2.c")  # a section reference is not a file
 
 
 def test_paths_come_from_every_field_the_identifiers_survive_in(tmp_path: Path) -> None:

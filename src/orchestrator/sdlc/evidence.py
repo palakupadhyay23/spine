@@ -154,7 +154,9 @@ def evidence_from_parts(
     same artifact, and the first divergence between them would be reported as a divergence in
     the *pipeline*, which is exactly the confusion the shadow comparison exists to remove.
     """
-    rows = list(investigate.get("landing") or [])
+    # Weak rows are dropped here as `landing_files` drops them: a hit on nothing specific is
+    # not a landing site, and the gate downstream must not be handed one as if it were.
+    rows = [row for row in (investigate.get("landing") or []) if not row.get("weak")]
     landing = tuple(
         LandingFact(
             name=str(row.get("name", "")),
@@ -354,6 +356,9 @@ def _tool_investigate(
                 "kind": hit.kind,
                 "callers": hit.callers,
                 "module": hit.module,
+                "score": hit.score,
+                "matched": list(hit.matched),
+                "weak": hit.weak,
             }
             for hit in inv.landing
         ],

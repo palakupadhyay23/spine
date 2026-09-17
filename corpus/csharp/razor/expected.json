@@ -1,7 +1,7 @@
 {
   "language": "csharp",
   "case": "razor",
-  "why": "A Blazor component beside the C# type it renders. The component declares no `@namespace`, so its module is its path, like an unnamespaced .cs; `@using App` imports the sibling module by its real id; `@inject` is a field; the members of `@code` are the class's, and a bare sibling call inside `@code` is a CALLS edge. Labelled from the source and the Razor directive reference, before any extraction.",
+  "why": "The control for the Razor rewrite, in the vocabulary the C# front-end already has: a Blazor component beside the C# type it renders. The component declares no `@namespace`, so its module is its path, like an unnamespaced .cs; `@using App` imports the sibling module by its real id; `@inject` is a field; the members of `@code` are the class's, and a bare sibling call inside `@code` is a CALLS edge. Every fact the vocabulary can express is labelled; the one it cannot is under `excluded` with its reason. A control scores 1.00/1.00 by design — the signal is any run where it does not.",
   "root": ".repo",
   "nodes": [
     {
@@ -90,8 +90,8 @@
   ],
   "known_gaps": [],
   "false_positives": [],
-  "excluded": [],
-  "open_questions": [
+  "excluded": [
     "`@Display(p.Group)` in the markup is a real call — the generated render method invokes it — but the vocabulary has no node for a component's render method, so there is no caller id to label it under. Inline markup expressions are not read by design (the ticket-context track's D9); when they are, this is the edge to add, with a caller the graph can name."
-  ]
+  ],
+  "open_questions": []
 }

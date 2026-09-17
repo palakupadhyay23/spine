@@ -12,7 +12,14 @@ import httpx
 import pytest
 
 from orchestrator.intake.jira import IssueTrackerError, JiraConfig
-from orchestrator.intake.jira_source import JiraSourceAdapter, _adf_to_text, _description_text
+from orchestrator.intake.jira_source import (
+    _MAX_ATTACHMENT_BYTES,
+    _MAX_ATTACHMENT_CHARS,
+    _MAX_ATTACHMENTS,
+    JiraSourceAdapter,
+    _adf_to_text,
+    _description_text,
+)
 
 
 def _config() -> JiraConfig:
@@ -348,11 +355,14 @@ def test_jira_builder_unconfigured_raises(monkeypatch: pytest.MonkeyPatch) -> No
 # plan/feature path — and never on a JQL scan.
 
 
-def _attachment(name: str, content_id: str, *, size: int = 64) -> dict[str, Any]:
+def _attachment(
+    name: str, content_id: str, *, size: Any = 64, host: str = "acme.atlassian.net"
+) -> dict[str, Any]:
     return {
+        "id": content_id,
         "filename": name,
         "size": size,
-        "content": f"https://acme.atlassian.net/rest/api/3/attachment/content/{content_id}",
+        "content": f"https://{host}/rest/api/3/attachment/content/{content_id}",
     }
 
 
@@ -366,7 +376,7 @@ async def test_a_text_attachment_is_read_and_carried_under_its_name() -> None:
 
     assert "Attachments read (1):" in doc.body
     assert "--- mapping.md ---" in doc.body and "HR: Hot Rolled" in doc.body
-    assert "names only — contents not read): screen.png" in doc.body
+    assert "names only — contents not read): screen.png (image, not read)" in doc.body
     assert mock.downloaded == ["1"]  # the image was never requested
 
 
@@ -378,42 +388,48 @@ async def test_an_attachment_the_server_refuses_stays_named_only() -> None:
         doc = await adapter.fetch_document("K-1")  # no raise
 
     assert "Attachments read" not in doc.body
-    assert "names only — contents not read): notes.txt" in doc.body
+    assert "names only — contents not read): notes.txt (download failed)" in doc.body
 
 
 async def test_an_oversize_attachment_costs_no_request() -> None:
     fields = _fields("T")
-    fields["attachment"] = [_attachment("huge.txt", "9", size=50_000_000)]
+    fields["attachment"] = [_attachment("huge.txt", "9", size=_MAX_ATTACHMENT_BYTES + 1)]
     mock = _JiraMock({"K-1": fields}, attachments={"9": b"never fetched"})
     adapter, http = _adapter(mock)
     async with http:
         doc = await adapter.fetch_document("K-1")
 
     assert mock.downloaded == []
-    assert "names only — contents not read): huge.txt" in doc.body
+    assert "names only — contents not read): huge.txt (over the 1 MB cap)" in doc.body
 
 
 async def test_attachment_text_is_bounded_and_says_so() -> None:
     fields = _fields("T")
     fields["attachment"] = [_attachment("long.txt", "1")]
-    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments={"1": b"x" * 9_000}))
+    adapter, http = _adapter(
+        _JiraMock({"K-1": fields}, attachments={"1": b"x" * (_MAX_ATTACHMENT_CHARS + 1_000)})
+    )
     async with http:
         doc = await adapter.fetch_document("K-1")
 
-    assert "…[truncated, 9000 chars]" in doc.body
+    assert f"…[truncated, {_MAX_ATTACHMENT_CHARS + 1_000} chars]" in doc.body
 
 
 async def test_at_most_five_attachments_are_read() -> None:
     fields = _fields("T")
-    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(7)]
-    mock = _JiraMock({"K-1": fields}, attachments={str(i): f"text {i}".encode() for i in range(7)})
+    n = _MAX_ATTACHMENTS + 2
+    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(n)]
+    mock = _JiraMock({"K-1": fields}, attachments={str(i): f"text {i}".encode() for i in range(n)})
     adapter, http = _adapter(mock)
     async with http:
         doc = await adapter.fetch_document("K-1")
 
-    assert "Attachments read (5):" in doc.body
-    assert "names only — contents not read): f5.txt, f6.txt" in doc.body
-    assert mock.downloaded == ["0", "1", "2", "3", "4"]
+    assert f"Attachments read ({_MAX_ATTACHMENTS}):" in doc.body
+    assert (
+        "names only — contents not read): f5.txt (bound of 5 reached), f6.txt (bound of 5 reached)"
+        in doc.body
+    )
+    assert mock.downloaded == [str(i) for i in range(_MAX_ATTACHMENTS)]
 
 
 async def test_a_jql_scan_never_fetches_attachments() -> None:
@@ -426,3 +442,53 @@ async def test_a_jql_scan_never_fetches_attachments() -> None:
 
     assert mock.downloaded == []
     assert "names only — contents not read): spec.md" in tree.documents[0].body
+
+
+async def test_a_body_larger_than_its_declared_size_is_abandoned_at_the_cap() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("lied.txt", "1", size=64)]
+    mock = _JiraMock({"K-1": fields}, attachments={"1": b"x" * (_MAX_ATTACHMENT_BYTES + 10)})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+    assert "Attachments read" not in doc.body
+    assert "lied.txt (over the 1 MB cap)" in doc.body
+
+
+async def test_credentials_never_follow_an_attachment_url_off_the_tracker_s_host() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("spec.md", "1", host="evil.example.com")]
+    mock = _JiraMock({"K-1": fields}, attachments={"1": b"# leak"})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+    assert mock.downloaded == []
+    assert "spec.md (not on the tracker's host)" in doc.body
+
+
+async def test_two_attachments_with_one_filename_are_both_read() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("spec.md", "1"), _attachment("spec.md", "2")]
+    mock = _JiraMock({"K-1": fields}, attachments={"1": b"# first", "2": b"# second"})
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+    assert "Attachments read (2):" in doc.body and "# first" in doc.body and "# second" in doc.body
+
+
+async def test_a_filename_with_a_directory_is_reported_once_as_read() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("docs/sub/a.md", "1")]
+    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments={"1": b"# a"}))
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+    assert "--- a.md ---" in doc.body and "names only" not in doc.body
+
+
+async def test_a_malformed_size_does_not_abort_the_fetch() -> None:
+    fields = _fields("T")
+    fields["attachment"] = [_attachment("odd.txt", "1", size="n/a")]
+    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments={"1": b"fine"}))
+    async with http:
+        doc = await adapter.fetch_document("K-1")  # no raise
+    assert "odd.txt (download failed)" in doc.body

@@ -1773,6 +1773,7 @@ _TESTABLE_SUFFIXES = frozenset(
         ".cpp",
         ".hpp",
         ".cs",
+        ".razor",
         ".ts",
         ".tsx",
         ".js",
@@ -1839,9 +1840,9 @@ def _claims_a_change(summary: str) -> bool:
     docstring" claims something but names no file this stage can check. Requiring both keeps
     a real no-op a no-op.
     """
-    from orchestrator.sdlc.source_paths import PATH_RE
+    from orchestrator.sdlc.source_paths import named_paths
 
-    return bool(_CHANGE_CLAIM.search(summary)) and bool(PATH_RE.search(summary))
+    return bool(_CHANGE_CLAIM.search(summary)) and bool(named_paths(summary))
 
 
 def _is_test_file(path: Path) -> bool:

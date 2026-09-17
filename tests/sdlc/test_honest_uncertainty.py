@@ -122,7 +122,7 @@ def test_the_brief_marks_weak_hits_and_says_when_every_hit_is_weak() -> None:
         "Implement OAuth2 client-credentials auth", _PARAPHRASE, store=_nss_1231_store()
     )
     md = render_investigation_md(inv)
-    assert all(land.weak for land in inv.landing)
+    assert inv.landing and all(land.weak for land in inv.landing)
     assert "weak: only `client`, which other files use too" in md
     assert "Every match rests only on words other files use too" in md
 
@@ -192,7 +192,7 @@ async def test_section_one_labels_the_description_as_carried_and_the_summary_as_
         },
         root=tmp_path,
     )
-    assert "derived · model — the intent's description" in carried
+    assert "derived · model — a model's carry of the intent's description" in carried
     assert "the ticket's own words" in carried
     assert "stated — the ticket body, quoted" not in carried
 
@@ -200,3 +200,68 @@ async def test_section_one_labels_the_description_as_carried_and_the_summary_as_
         {"title": "T", "summary": _PARAPHRASE, "acceptance_criteria": []}, root=tmp_path
     )
     assert "the spec writer's summary; the ticket's own words were not carried" in paraphrased
+
+
+# ---- what the maintainer review found ------------------------------------------------------
+
+
+def test_an_exact_name_of_common_words_is_a_named_thing() -> None:
+    """`OrderService` in a repo where `order` and `service` each span many files: the ticket
+    named the class; the floor must not read it as two generic words."""
+    b = FactBatch()
+    for name, file in (
+        ("OrderService", "Services/OrderService.cs"),
+        ("UserService", "Services/UserService.cs"),
+        ("Order", "Models/Order.cs"),
+        ("OrderController", "Api/OrderController.cs"),
+        ("IOrderService", "Services/IOrderService.cs"),
+    ):
+        b.add_node(Node(f"csharp:{name}", NodeKind.TYPE, name, "csharp", Provenance(file, 3)))
+    hits = GroundedRetriever(FactStore(b)).scored_symbols("OrderService returns wrong totals")
+    top = hits[0]
+    assert top.node.name == "OrderService" and not top.weak
+    assert next(h for h in hits if h.node.name == "Order").weak  # one common word, many files
+    design = _fallback_design(
+        {"title": "OrderService returns wrong totals", "summary": ""}, None, store=FactStore(b)
+    )
+    assert design["files_to_touch"][0] == "Services/OrderService.cs"
+
+
+def test_an_all_weak_ticket_does_not_fall_through_to_the_overview_guess() -> None:
+    overview = {"modules": [{"module": "App.Services", "nodes": 3}], "top_symbols": []}
+    spec: dict[str, Any] = {"title": "Implement OAuth2 client-credentials auth", "summary": _PARAPHRASE}
+    design = _fallback_design(spec, overview, store=_nss_1231_store())
+    assert design["files_to_touch"] == []
+    assert any("no files are proposed" in r and "other files use too" in r for r in design["risks"])
+
+
+def test_the_autorun_landing_rows_carry_weak_and_are_filtered() -> None:
+    from orchestrator.sdlc.evidence import _tool_investigate, landing_files
+
+    rows = _tool_investigate(
+        store=_nss_1231_store(), title="Implement OAuth2 client-credentials auth", problem=_PARAPHRASE
+    )["landing"]
+    assert rows and all(row["weak"] for row in rows) and "matched" in rows[0]
+    assert landing_files(rows) == ()
+
+
+async def test_a_ticket_that_names_its_file_is_located_by_the_gate_too(tmp_path: Path) -> None:
+    """The gate and the design read the same spec: a path named in `description` is a landing
+    site, so the document cannot list the file in §7 and say "names no file" above it."""
+    from orchestrator.sdlc.builddoc import build_plan
+
+    target = tmp_path / "FunctionsApp" / "Shared" / "Utils" / "EBSOrderApiClient.cs"
+    target.parent.mkdir(parents=True)
+    target.write_text("namespace Utils { public class EBSOrderApiClient { } }\n", encoding="utf-8")
+    doc = await build_plan(
+        {
+            "title": "Implement OAuth2 client-credentials auth",
+            "summary": _PARAPHRASE,
+            "description": "Replace Basic Auth in `EBSOrderApiClient.cs` with OAuth2.",
+            "acceptance_criteria": [],
+        },
+        root=tmp_path,
+        issue_type="Story",
+    )
+    assert "EBSOrderApiClient.cs" in doc
+    assert "names no file" not in doc

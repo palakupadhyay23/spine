@@ -229,21 +229,32 @@ class SpecWriter:
         )
 
 
+def _source_path_re() -> re.Pattern[str]:
+    """``sdlc.source_paths.PATH_RE``, imported lazily: `sdlc` imports `intake`, not the reverse."""
+    from orchestrator.sdlc.source_paths import PATH_RE
+
+    return PATH_RE
+
+
+_SOURCE_PATH_RE = _source_path_re()
+
+
 #: What a ticket author means as an identifier, in the order a reader would notice them.
 #: Backticks first: whatever the author fenced is an identifier by declaration. Then the shapes
 #: prose cannot produce by accident — a URL, a filename with a source extension, SCREAMING_SNAKE
-#: with at least one underscore, CamelCase with a lowercase→uppercase hump somewhere after the
-#: first letter (``EBSOrderApiClient`` has ``rA``; ``Hot`` and ``OAuth2`` have none), a dotted
+#: with at least one underscore, CamelCase with a lowercase-or-digit→uppercase hump somewhere
+#: after the first letter (``EBSOrderApiClient`` has ``rA``, ``OAuth2Client`` has ``2C``; ``Hot``
+#: and ``OAuth2`` have none), a dotted
 #: name with at least two dots. All-caps acronyms (``HTTP``, ``OIC``) are deliberately not
 #: matched: too many are English.
 _IDENT_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"`([^`\n]{2,120})`"),
     re.compile(r"\bhttps?://[^\s)\]>\"'`]+"),
-    re.compile(
-        r"\b[\w][\w./-]*\.(?:cs|razor|cshtml|py|ts|tsx|js|jsx|java|kt|go|php|pl|pm|sql|md|json|ya?ml|toml)\b"
-    ),
+    # Files: the one regex `sdlc.source_paths` keeps for every front-end suffix and either
+    # separator — a second copy here had already drifted (no C/C++, no Windows paths).
+    _SOURCE_PATH_RE,
     re.compile(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b"),
-    re.compile(r"\b[A-Z](?=[A-Za-z0-9]*[a-z][A-Z])[A-Za-z0-9]{2,}\b"),
+    re.compile(r"\b[A-Z](?=[A-Za-z0-9]*[a-z0-9][A-Z])[A-Za-z0-9]{2,}\b"),
     re.compile(r"\b[A-Za-z_]\w*(?:\.[A-Za-z_]\w*){2,}\b"),
 )
 #: Bounded honestly (invariant 7): a ticket that pastes a stack trace names hundreds.
@@ -266,10 +277,20 @@ def _identifiers(text: str) -> list[str]:
     found.sort(key=lambda pair: (pair[0], -len(pair[1])))
     kept: list[str] = []
     for _, token in found:
-        if any(token == k or token in k for k in kept):
+        if any(token == k or _same_fact(token, k) for k in kept):
             continue
         kept.append(token)
     return kept
+
+
+def _same_fact(short: str, longer: str) -> bool:
+    """``short`` names the same thing as ``longer``: its stem, or the file at the end of its path.
+
+    ``EBSOrderApiClient`` inside ``EBSOrderApiClient.cs`` is one fact; ``Cart`` inside
+    ``ShoppingCartService`` is not, and a bare substring test dropped it — or kept it — depending
+    on which sentence came first.
+    """
+    return longer.startswith(short + ".") or longer.endswith("/" + short) or longer.endswith("\\" + short)
 
 
 def _carry_identifiers(technical_notes: str, *, present_in: str, source: str) -> str:
@@ -279,7 +300,12 @@ def _carry_identifiers(technical_notes: str, *, present_in: str, source: str) ->
     what the model chose to keep.
     """
     haystack = f"{present_in}\n{technical_notes}"
-    missing = [i for i in _identifiers(source) if i not in haystack]
+    # Whole-identifier presence: `Client` is not present because `EBSOrderApiClient` is.
+    missing = [
+        i
+        for i in _identifiers(source)
+        if not re.search(r"(?<![\w./\\])" + re.escape(i) + r"(?![\w])", haystack)
+    ]
     if not missing:
         return technical_notes
     shown = missing[:_MAX_CARRIED]
