@@ -3,7 +3,7 @@
 
 [← Episteme](../README.md) · [Architecture](../architecture.md)
 
-**`orchestrator.pkg`** is one of 60 areas in this repo, in the `orchestrator` zone. It holds 55 modules — 116 types and 463 functions. It sits in the middle of the graph: 1 area below it, 18 above. Changes here can reach both ways.
+**`orchestrator.pkg`** is one of 60 areas in this repo, in the `orchestrator` zone. It holds 56 modules — 119 types and 470 functions. It sits in the middle of the graph: 1 area below it, 18 above. Changes here can reach both ways.
 
 ```mermaid
 flowchart LR
@@ -40,6 +40,7 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.clang_includes`](../../src/orchestrator/pkg/clang_includes.py#L1)
 - [`orchestrator.pkg.clang_link`](../../src/orchestrator/pkg/clang_link.py#L1)
 - [`orchestrator.pkg.cpp_extractor`](../../src/orchestrator/pkg/cpp_extractor.py#L1)
+- [`orchestrator.pkg.criteria_binding`](../../src/orchestrator/pkg/criteria_binding.py#L1)
 - [`orchestrator.pkg.csharp_extractor`](../modules/orchestrator.pkg.csharp_extractor.md)
 - [`orchestrator.pkg.data_layer_link`](../../src/orchestrator/pkg/data_layer_link.py#L1)
 - [`orchestrator.pkg.doc_link`](../../src/orchestrator/pkg/doc_link.py#L1)

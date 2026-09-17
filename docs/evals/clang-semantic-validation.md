@@ -582,7 +582,7 @@ records are unchanged. The prior measurements above are historical; current
 recovery is lower because unsafe or unsupported caller identities are refused.
 The independent source audit does not establish population-wide precision.
 Full evidence, acceptance checks, tradeoffs and regression receipts are in the
-audit report. Release remains pending in draft MR #379.
+audit report. Released in 3.35.0 via [MR #379](https://github.com/synaptixs/spine/pull/379).
 
 ## Confidence step 3 — diagnose misses and recover supported callers
 
@@ -617,7 +617,7 @@ Step 3 measurements above are historical. Required local gates passed; see the S
 The [Step 4 plan](../specs/parsing-and-the-pkg.md#step-4--release-readiness) defines
 the support contract, review of known correct-edge losses and runtime cost,
 final-candidate validation, and the maintainer decision. **4.1–4.4 complete on
-`0c39f6b`, including CI; 4.5 gap triage complete, maintainer acceptance pending.**
+`0c39f6b`, including CI; 4.5 complete — accepted and merged 2026-09-15, released in 3.35.0.**
 The [readiness record](clang-semantic-release-readiness.md) records execution and
 the [gap review](clang-semantic-step45-gap-review.md) records the follow-up probes.
 Step 3b supplies hash-matched measurements; readiness and merge/release approval

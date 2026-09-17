@@ -12,7 +12,7 @@ Of the fixed sample, **157 reviewed-correct edges remain**; 11 reviewed-correct
 edges are also conservatively refused. The sample was not refilled after filtering.
 No new edges appear outside the previous clang-on graph. This completes the audit
 and the demonstrated defect fixes, not a claim of perfect population-wide precision.
-Draft [MR #379](https://github.com/synaptixs/spine/pull/379) remains unreleased.
+[MR #379](https://github.com/synaptixs/spine/pull/379) was merged 2026-09-15 and ships in 3.35.0.
 
 | Fixed sample | Original correct | Original incorrect | Ambiguous | Correct retained after guard |
 |---|---:|---:|---:|---:|

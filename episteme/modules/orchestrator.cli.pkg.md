@@ -120,7 +120,7 @@ _11 of the symbols other code depends on here have no test path the graph can se
 
 ### `pkg_docs`
 
-[`src/orchestrator/cli/pkg.py:1284`](../../src/orchestrator/cli/pkg.py#L1284)
+[`src/orchestrator/cli/pkg.py:1288`](../../src/orchestrator/cli/pkg.py#L1288)
 
 - **Calls** (7): `Exit`, [`_repo_arg`](../../src/orchestrator/cli/_common.py#L39), `echo`, `orchestrator.pkg.DocPage`, `orchestrator.pkg.DocReconciler`, `orchestrator.pkg.load_or_extract`, `pathlib.Path`
 

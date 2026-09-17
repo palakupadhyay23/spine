@@ -89,9 +89,11 @@ losses; no new recovery or precision number is claimed.
 | Macro recovery, runtime, architecture refactor | Technical implementer, assigned when prioritized | Optional improvements unless the maintainer makes one blocking; preserve negative cases and revalidate affected graph/cost evidence |
 | Wider platform/version claims | Technical implementer, assigned before expanding support | Native runtime proof on the additional platform/version; wheel availability alone does not suffice |
 
-No further maintainer decision is inferred from “address any gaps.” Step 4.5 is
-**in progress**; the request authorizes this diagnosis and corrective evidence,
-not acceptance of unresolved tradeoffs or a release.
+No further maintainer decision was inferred from “address any gaps.” This review
+authorized diagnosis and corrective evidence only, not acceptance. **Step 4.5 has
+since closed: the maintainer accepted the tradeoffs, #379 merged 2026-09-15, and the
+pass ships in 3.35.0.** The rows above remain the open follow-ups, unchanged by that
+acceptance.
 
 ## Local validation of this review update
 

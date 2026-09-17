@@ -14,6 +14,13 @@ so this module reuses that extractor and that binder rather than defining a seco
 "names a symbol". Two definitions would be two things that can disagree, and the first
 disagreement would be reported as a defect in the pipeline.
 
+**Why it lives in `pkg/`, not `sdlc/`.** It imports `FactStore` and `pkg.docs` and nothing
+else — it was always a graph module sitting in the pipeline's directory. The move is what lets
+`intake` bind a criterion *while drafting it*, which is the point: today the binder runs
+downstream, judging criteria that were written by something that had not examined the
+repository. `sdlc` imports `intake` in seven modules, so the alternative — `intake` reaching
+into `sdlc` — would have closed an import cycle.
+
 **What parks a run, precisely.** Only a criterion that *makes a claim and gets it wrong*, and
 only on a ticket whose subject is code that already exists:
 

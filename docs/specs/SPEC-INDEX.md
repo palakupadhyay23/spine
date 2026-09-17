@@ -1,7 +1,7 @@
 # Spec index — every design record, and where it stands
 
 **Generated 2026-08-15 against 3.18.1; refreshed 2026-08-21 for the completed GraphIR
-programme; recounted 2026-09-15 at 3.34.2 for kotlin-support-roadmap.md.**
+programme; recounted 2026-09-11 at 3.33.2 for perl-support-roadmap.md and perl-codegen-roadmap.md; count re-verified 2026-09-16 at the 3.35.0 cut (that release's plans were kept outside the checkout); recounted again 2026-09-16 for kotlin-support-roadmap.md, the one spec added since.**
 `docs/specs/` holds **91** markdown files —
 **83 specs** plus three navigation documents ([README](README.md), this index,
 [STATE-OF-SPINE](STATE-OF-SPINE.md)) — with 6 archived and 10 build documents. The count read
@@ -134,7 +134,7 @@ Analysis, comparisons, test plans and assets. No completion state applies.
 | [KNOWLEDGE-VISION](KNOWLEDGE-VISION.md) · [PRODUCT-KNOWLEDGE-GRAPH](PRODUCT-KNOWLEDGE-GRAPH.md) | Vision / concept |
 | [capability-matrix](capability-matrix.md) | **The** capability matrix — 47 scored rows, 22 of them rows no competitor's public docs fill. Counts checked by `scripts/matrix-count.py --check` (2026-08-21) |
 | [codegen-model-comparison-results](codegen-model-comparison-results.md) · [external-repo-grounding-results](external-repo-grounding-results.md) | The two measurements behind the matrix's ⁴ rows — 200 and 60 ticket-runs (2026-08-16) |
-| [parsing-and-the-pkg](parsing-and-the-pkg.md) | How source becomes graph facts; optional C/C++ clang post-pass and coverage limits; Step 3b complete; [Step 4 — release readiness](parsing-and-the-pkg.md#step-4--release-readiness) 4.1–4.4 complete on `0c39f6b`; 4.5 gap triage complete, maintainer acceptance pending (updated 2026-09-15) |
+| [parsing-and-the-pkg](parsing-and-the-pkg.md) | How source becomes graph facts; optional C/C++ clang post-pass and coverage limits; Step 3b complete; [Step 4 — release readiness](parsing-and-the-pkg.md#step-4--release-readiness) **COMPLETE** — accepted, merged in #379, released in 3.35.0 (updated 2026-09-16) |
 | [document-ingestion-reference](document-ingestion-reference.md) | How *prose* becomes graph facts, format by format — the five stages, per-format behaviour, bounds, and the measured cost of losing headings (2026-08-29) |
 | [multi-repo-walkthrough](multi-repo-walkthrough.md) | What happens when you point Spine at three repositories: declare, extract, merge with scoped ids, join across the boundary, read. The mechanism at two pages, beside the roadmap's design record (2026-09-01) |
 | [secrets-vault-and-identity](secrets-vault-and-identity.md) | Scoped, not built | Separates what §8 bundled: **RBAC is built and already opt-in**; the secrets seam does not exist at all. One `get_secret` whose default is today's env vars, a vault behind an extra, and the read-path invariant made testable (2026-09-02) |

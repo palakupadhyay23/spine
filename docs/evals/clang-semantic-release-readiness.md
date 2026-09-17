@@ -1,9 +1,10 @@
 # Clang semantic support — release readiness
 
 Date: **2026-09-15**. Technical reviewer: **Codex (implementing agent)**, not an
-independent reviewer. Decision owner: **repository maintainer**; acceptance pending.
+independent reviewer. Decision owner: **repository maintainer**; **accepted — merged
+2026-09-15, released in 3.35.0**.
 [Step 4 plan](../specs/parsing-and-the-pkg.md#step-4--release-readiness) ·
-[draft MR #379](https://github.com/synaptixs/spine/pull/379).
+[MR #379](https://github.com/synaptixs/spine/pull/379).
 
 ## Candidate and status
 
@@ -22,7 +23,7 @@ revision and its remote gate results are recorded on MR #379.
 | 4.2 Correctness / five losses | Technical review complete; proposed limitations below await decision-owner acceptance |
 | 4.3 Operational cost | Technical review complete; profile-specific recommendation below awaits acceptance |
 | 4.4 Candidate validation | Local gates and isolated wheel checks passed; final remote gates recorded on MR #379 |
-| 4.5 Maintainer decision | In progress; gap review complete, tradeoff acceptance pending; no merge or release approval inferred |
+| 4.5 Maintainer decision | **Complete** — gap review done, tradeoffs accepted; merged 2026-09-15 and released in 3.35.0 |
 
 Technical recommendation: retain **optional, repository-dependent enrichment**
 with the limits below. All remote gates passed on `0c39f6b`. Readiness remains held

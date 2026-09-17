@@ -49,6 +49,29 @@ All notable changes to this project are documented here. Format loosely follows
   variant-task preference, repo-controlled Gradle output could reach `argv` as a flag, and
   brownfield placement could invent a package for a repository that already had one.
 
+- The build document's blast-radius paragraph stated four things it could not back, all
+  of them visible on any non-Python repository.
+  - The caveat cited an issue key from Spine's own tracker, in documents describing other
+    people's repositories. The sentence already explains the limitation; the key only told
+    a reader to look up something they cannot reach. Two `--help` examples leaked the same
+    convention and now use `PROJ-123`.
+  - Measured `CALLS` recall was read from `--language`, a *codegen* flag that
+    `orchestrator sdlc plan` defaulted to the literal `python` — so a C# repository was told
+    Python's 0.73 against a graph Python had not touched. The blast radius now carries the
+    front-ends that actually built it, scores each of them, and names an unmeasured
+    front-end without a figure rather than dropping it.
+  - Containment printed a module count and then listed eight names, so a reader who counted
+    got a different number. Both branches now state what they elided, and say "at least N"
+    when the names were already capped upstream.
+  - Test detection was four Python-shaped clauses applied to language-neutral prose, so
+    `UnitTests/…Tests.cs` counted as product code and inflated the containment figure. The
+    rule is now segment-based across Python, .NET, Java and JS/TS conventions, and strictly
+    additive — nothing that was a test before stops being one.
+- `orchestrator sdlc plan --language` defaults to `auto` (was the literal `python`) and
+  refuses an unsupported value, matching `sdlc feature`. It selects the codegen prompt, the
+  layout and the test environment, so the old default gave non-Python repositories
+  Python scaffolding without saying so.
+
 ### Added
 
 - **Kotlin comprehension and call graph — the 11th PKG front-end** (`[kotlin]` extra, P1+P2 of
@@ -327,6 +350,42 @@ All notable changes to this project are documented here. Format loosely follows
   skill itself did not exist, with every test green. The invariant it appeared to guard is real
   and now sits on the live path: a registered `<language>-conventions` capability must resolve to
   a defined skill. Not every language has one, and none is required — SQL ships without.
+
+- The build document's blast-radius paragraph stated four things it could not back, all
+  of them visible on any non-Python repository.
+  - The caveat cited an issue key from Spine's own tracker, in documents describing other
+    people's repositories. The sentence already explains the limitation; the key only told
+    a reader to look up something they cannot reach. Two `--help` examples leaked the same
+    convention and now use `PROJ-123`.
+  - Measured `CALLS` recall was read from `--language`, a *codegen* flag that
+    `orchestrator sdlc plan` defaulted to the literal `python` — so a C# repository was told
+    Python's 0.73 against a graph Python had not touched. The blast radius now carries the
+    front-ends that actually built it, scores each of them, and names an unmeasured
+    front-end without a figure rather than dropping it.
+  - Containment printed a module count and then listed eight names, so a reader who counted
+    got a different number. Both branches now state what they elided, and say "at least N"
+    when the names were already capped upstream.
+  - Test detection was four Python-shaped clauses applied to language-neutral prose, so
+    `UnitTests/…Tests.cs` counted as product code and inflated the containment figure. The
+    rule is now segment-based across Python, .NET, Java and JS/TS conventions, and strictly
+    additive — nothing that was a test before stops being one.
+- `orchestrator sdlc plan --language` defaults to `auto` (was the literal `python`) and
+  refuses an unsupported value, matching `sdlc feature`. It selects the codegen prompt, the
+  layout and the test environment, so the old default gave non-Python repositories
+  Python scaffolding without saying so.
+
+## 3.35.0 — 2026-09-16
+
+### Added
+
+- `orchestrator pkg export --format cypher` — a sixth projection, loading the graph
+  into Neo4j, Memgraph or any openCypher store for the traversal questions the flat
+  projections cannot answer: transitive closure, cycles, shortest path. Relationships
+  carry `file`/`line` in their MERGE key deliberately, because one `CALLS` fact is one
+  call site while a graph database identifies a relationship by `(start, type, end)`
+  alone — the idiomatic form drops 4,054 of 45,058 edges (9.00%) on this repository.
+  The emitted row count reconciles exactly against `--format json`'s edge count. See
+  the [projection table](docs/specs/knowledge-graph-architecture.md).
 - Optional C/C++ semantic `CALLS` enrichment with `[clang]`, included in `[all]`.
   Wheel-bundled libclang adds edges only between existing grounded symbols and
   reports recovered call sites and parsed translation units. Ordinary overloads

@@ -78,7 +78,14 @@ and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/do
 
 ## What's new
 
-**3.34.2 (current)** — maintainer tooling: a generic plan skeleton every development
+**3.35.0 (current)** — two additive features. An optional C/C++ semantic pass
+(`pip install 'synaptixs-spine[clang]'`) resolves member calls the CST cannot, adding edges
+only between symbols already in the graph — ids, nodes and determinism unchanged; the
+standard library stays out of reach. And `pkg export --format cypher` loads the graph into
+Neo4j, Memgraph or any openCypher store for the traversal questions the flat projections
+cannot answer — transitive closure, cycles, shortest path.
+
+**3.34.2** — maintainer tooling: a generic plan skeleton every development
 plan starts from, and a roadmap-currency gate that can check a plan kept outside the
 checkout. No engine changes.
 
