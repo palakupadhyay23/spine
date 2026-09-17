@@ -42,7 +42,23 @@ _ISSUE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 _PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
 
 #: The issue fields we pull — enough for the extractor without over-fetching.
-_FIELDS = "summary,description,issuetype,status,priority,labels"
+#:
+#: **The description is often not where the ticket is.** A real tracker entry reads
+#: "send list of columns or enable filter on all columns" and the decision that settles it
+#: — which columns, for which users — is three comments down or in the epic it blocks. A
+#: spec derived from the description alone restates a summary; one that has read the thread
+#: can carry the constraint. `comment` and `issuelinks` are the two fields that hold it;
+#: `attachment` contributes filenames only (see :func:`_attachment_names`).
+_FIELDS = "summary,description,issuetype,status,priority,labels,parent,comment,issuelinks,attachment"
+
+#: Comments carried into the body, most recent first. Bounded because a long-running ticket
+#: can hold hundreds and they would crowd out the description itself — the one part that is
+#: certainly on topic. Invariant 7: the elision is stated, never silent.
+_MAX_COMMENTS = 10
+
+#: Per-comment characters. A pasted stack trace or a quoted email chain is one comment and
+#: can be longer than every other comment combined.
+_MAX_COMMENT_CHARS = 1200
 
 _MULTI_BLANK_RE = re.compile(r"\n{3,}")
 
@@ -126,6 +142,92 @@ def _collapse(text: str) -> str:
     return _MULTI_BLANK_RE.sub("\n\n", text).strip()
 
 
+def _comments_text(fields: dict[str, Any]) -> str:
+    """Recent comments as prose, newest first, with what was left out stated.
+
+    **Newest first** because a decision supersedes the discussion that produced it, and when
+    the bound bites it is the early back-and-forth that is least worth keeping.
+
+    Each comment is attributed. An unattributed thread reads as one voice, and "we agreed to
+    do X" from the reporter and from an engineer are different kinds of claim.
+    """
+    block = fields.get("comment") or {}
+    raw = block.get("comments") if isinstance(block, dict) else None
+    if not isinstance(raw, list) or not raw:
+        return ""
+
+    ordered = list(reversed(raw))
+    shown, lines = ordered[:_MAX_COMMENTS], []
+    for entry in shown:
+        if not isinstance(entry, dict):
+            continue
+        author = str((entry.get("author") or {}).get("displayName") or "unknown")
+        when = str(entry.get("created") or "")[:10]
+        text = _description_text(entry.get("body"))
+        if len(text) > _MAX_COMMENT_CHARS:
+            # Say it inline: a comment that stops mid-sentence with no marker reads as a
+            # comment that ended there, which can invert its meaning.
+            text = text[:_MAX_COMMENT_CHARS].rstrip() + f" …[truncated, {len(text)} chars]"
+        if text:
+            lines.append(f"- {author}{f' ({when})' if when else ''}: {text}")
+    if not lines:
+        return ""
+
+    # `total` counts what Jira says exists, not what this page returned — a bound stated
+    # against a partial denominator is a second, quieter version of the same lie.
+    total = int(block.get("total") or len(raw)) if isinstance(block, dict) else len(raw)
+    head = f"Comments ({len(lines)} of {total}, most recent first):"
+    if total > len(lines):
+        head = f"Comments ({len(lines)} most recent of {total}):"
+    return "\n".join([head, *lines])
+
+
+def _links_text(fields: dict[str, Any]) -> str:
+    """Issue links and the parent/epic, as ``relation KEY — summary`` lines.
+
+    The subtree walk already follows ``parent``; this is the *sideways* half — blocks,
+    relates-to, duplicates — which a breadth-first walk over children never reaches, and
+    which is where a constraint imposed by another team usually lives.
+    """
+    lines: list[str] = []
+    parent = fields.get("parent")
+    if isinstance(parent, dict) and parent.get("key"):
+        summary = str((parent.get("fields") or {}).get("summary") or "")
+        lines.append(f"- parent {parent['key']}{f' — {summary}' if summary else ''}")
+
+    for link in fields.get("issuelinks") or []:
+        if not isinstance(link, dict):
+            continue
+        link_type = link.get("type") or {}
+        for side, verb_key in (("outwardIssue", "outward"), ("inwardIssue", "inward")):
+            other = link.get(side)
+            if not isinstance(other, dict) or not other.get("key"):
+                continue
+            verb = str(link_type.get(verb_key) or "relates to")
+            summary = str((other.get("fields") or {}).get("summary") or "")
+            lines.append(f"- {verb} {other['key']}{f' — {summary}' if summary else ''}")
+
+    return "\n".join(["Linked issues:", *lines]) if lines else ""
+
+
+def _attachment_names(fields: dict[str, Any]) -> str:
+    """Attachment *filenames* — never their contents.
+
+    Naming them costs nothing and tells a reader there is material Spine has not read.
+    Fetching them is a different piece of work: a Jira attachment is arbitrary binary behind
+    an authenticated endpoint, with its own size, type and credential questions. Silence
+    would be the worst option — it reads as "there was nothing attached".
+    """
+    names = [
+        str(a.get("filename"))
+        for a in (fields.get("attachment") or [])
+        if isinstance(a, dict) and a.get("filename")
+    ]
+    if not names:
+        return ""
+    return "Attachments (names only — contents not read): " + ", ".join(names)
+
+
 class JiraSourceAdapter:
     """SourceAdapter over Jira Cloud v3 (read-only)."""
 
@@ -144,7 +246,23 @@ class JiraSourceAdapter:
         # A short metadata header gives the extractor context — a Bug reads
         # differently from a Story, and status tells done from open.
         header = issue_meta_header(fields)
-        body = _collapse("\n\n".join(p for p in (header, _description_text(fields.get("description"))) if p))
+        # Order is deliberate and is the ticket's own order of authority: what it *is*, what
+        # it says, what it is attached to, what was argued about it, and finally what exists
+        # but was not read. The description stays directly under the header so a bounded
+        # comment thread can never displace the one section that is certainly on topic.
+        body = _collapse(
+            "\n\n".join(
+                p
+                for p in (
+                    header,
+                    _description_text(fields.get("description")),
+                    _links_text(fields),
+                    _comments_text(fields),
+                    _attachment_names(fields),
+                )
+                if p
+            )
+        )
         url = f"{self._config.base_url.rstrip('/')}/browse/{key}" if key else ""
         project = project_key_of(key)
         return SourceDocument(

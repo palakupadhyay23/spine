@@ -116,6 +116,72 @@ def test_description_text_handles_plain_and_none() -> None:
     assert "Crashes on login." in _description_text(_ADF)
 
 
+# ---- the thread, the links, the attachments ------------------------------
+
+
+def test_comments_are_newest_first_and_say_what_was_left_out() -> None:
+    """The decision is usually the last word, not the first.
+
+    A real ticket reads "send list of columns or enable filter on all columns"; which
+    columns, for which users, is settled three comments down. Pulling the description alone
+    produced specs that restated a summary.
+    """
+    from orchestrator.intake.jira_source import _comments_text
+
+    comments = [
+        {"author": {"displayName": f"P{i}"}, "created": f"2026-09-{i + 1:02d}T10:00:00", "body": f"c{i}"}
+        for i in range(14)
+    ]
+    text = _comments_text({"comment": {"total": 23, "comments": comments}})
+    assert text.startswith("Comments (10 most recent of 23):")
+    assert "P13" in text  # newest kept
+    assert "P0" not in text  # oldest elided, and the count says so
+
+
+def test_a_long_comment_is_marked_where_it_was_cut() -> None:
+    """A comment stopping mid-sentence with no marker reads as a comment that ended there."""
+    from orchestrator.intake.jira_source import _comments_text
+
+    long = "x" * 3000
+    text = _comments_text({"comment": {"total": 1, "comments": [{"body": long}]}})
+    assert "…[truncated, 3000 chars]" in text
+
+
+def test_links_carry_the_sideways_relations_the_child_walk_never_reaches() -> None:
+    """`fetch_tree` follows `parent`. Blocks/relates-to is the half it cannot see."""
+    from orchestrator.intake.jira_source import _links_text
+
+    text = _links_text(
+        {
+            "parent": {"key": "NSS-900", "fields": {"summary": "Action tracker"}},
+            "issuelinks": [
+                {
+                    "type": {"outward": "blocks"},
+                    "outwardIssue": {"key": "NSS-1300", "fields": {"summary": "Grid rollout"}},
+                }
+            ],
+        }
+    )
+    assert "- parent NSS-900 — Action tracker" in text
+    assert "- blocks NSS-1300 — Grid rollout" in text
+
+
+def test_attachments_are_named_but_never_claimed_to_be_read() -> None:
+    """Silence reads as "nothing was attached"; a filename says where to look."""
+    from orchestrator.intake.jira_source import _attachment_names
+
+    text = _attachment_names({"attachment": [{"filename": "columns.xlsx"}]})
+    assert "columns.xlsx" in text
+    assert "contents not read" in text
+
+
+def test_a_bare_ticket_gains_no_empty_sections() -> None:
+    """A ticket with no thread must read exactly as it did before this change."""
+    from orchestrator.intake.jira_source import _attachment_names, _comments_text, _links_text
+
+    assert _comments_text({}) == "" and _links_text({}) == "" and _attachment_names({}) == ""
+
+
 # ---- fetch_document -------------------------------------------------------
 async def test_fetch_document_maps_issue_to_document() -> None:
     mock = _JiraMock({"PROJ-1": _fields("Login fails", itype="Bug", desc=_ADF)})
