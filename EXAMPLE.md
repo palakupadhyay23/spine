@@ -96,10 +96,19 @@ orchestrator investigate . \
 - `render_finish` (Function, 1 caller)     — src/click/_termui_impl.py:156
 
 Likely areas: click._termui_impl, click.core, click.formatting
+
+## Not verified
+- Retrieval is **lexical**, not semantic: these symbols matched the ticket's words. A landing
+  site that uses different words for the same thing is not here.
+- No `episteme/` was read, so committed project knowledge is absent, not empty.
 ```
 
 From a prose bug report to **the five functions that actually render the bar**, each with a line
 number and a caller count. No grepping, no guessing — and again, no LLM.
+
+Note the last section. Every brief states what it did *not* establish, derived from its own run
+rather than boilerplate — here, that the match was lexical, which is exactly the limitation that
+makes a brief miss a screen whose code calls it something else.
 
 ## Step 4 — What breaks if I change it?
 

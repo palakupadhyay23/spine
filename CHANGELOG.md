@@ -6,6 +6,30 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+### Added
+
+- Every brief states **what it did not establish**. `investigate` and `root-cause` now close
+  with a `Not verified` section derived from the run itself — that retrieval was lexical
+  rather than semantic, how many matches were elided, that no `episteme/` was read, that
+  hypotheses were ranked from static evidence and never reproduced. It is conditional on
+  real state, not a disclaimer: a brief with nothing to declare says so instead.
+
+### Changed
+
+- The briefs share one section vocabulary (`sdlc/brief.py`). Five modules had each grown
+  their own and drifted to two spellings of "where it lands" and three of "next step";
+  `evidence.py` and `builddoc.py` re-emitted the others' labels by hand, so a rename in one
+  silently desynchronised a document nobody edited. Sections are now split by **provenance**:
+  a deterministic surface cannot render a verdict, a recommendation or an options table —
+  `investigate` and `rca` must stay re-derivable from the graph, and the argument on top of
+  them belongs to `design`. **One user-visible rename:** `## Suggested next step` is now
+  `## Next step`.
+- A root-cause report whose fix approach was written by a model now says so per section
+  (`derived · model` vs `derived · deterministic`) and types the document accordingly,
+  rather than presenting model text inside a deterministic report.
+- `scripts/brief-sections.py --check` runs in CI: a brief that renders a section the
+  vocabulary does not own, or renders them out of order, fails the build.
+
 ### Fixed
 
 - The build document's blast-radius paragraph stated four things it could not back, all
