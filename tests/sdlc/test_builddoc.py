@@ -787,6 +787,53 @@ async def test_build_plan_is_deterministic_and_touches_no_tracker(tmp_path: Path
 # ---- the measured caveat (phase 6) ---------------------------------------
 
 
+def test_the_caveat_names_the_language_that_built_the_graph() -> None:
+    """The reported defect: a C# repository told its reader Python's recall figure.
+
+    `--language` picks the *codegen* target and `sdlc plan` defaulted it to the literal
+    "python", so planning a C# repo without the flag published 0.73 — a number measured
+    against a front-end that produced none of these nodes. The graph knows better: every
+    module node carries the front-end that emitted it.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["csharp"]}, "python")
+    assert "recall for csharp is **0.75**" in prose
+    assert "python" not in prose
+
+
+def test_a_polyglot_blast_radius_scores_each_language() -> None:
+    """Naming only the dominant one would state a figure that is wrong for half the modules."""
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose(
+        {"call_graph_available": True, "modules": [], "languages": ["csharp", "typescript"]}, "python"
+    )
+    assert "recall: csharp **0.75**, typescript **0.86**" in prose
+
+
+def test_an_unmeasured_language_is_named_rather_than_dropped() -> None:
+    """Silence reads as "no gap here". Unmeasured is not zero, and it is not perfect either."""
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["rust"]}, "python")
+    assert "No corpus measurement exists for rust" in prose
+    assert "unknown, not perfect" in prose
+    assert "0.00" not in prose
+
+
+def test_a_blast_radius_from_before_languages_existed_falls_back_to_the_flag() -> None:
+    """An old `design.json` replayed today has no `languages` key.
+
+    The flag is a poor source for this — that is the whole defect — but on a document
+    serialised before the graph carried the answer it is the only source there is.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    prose = _blast_prose({"call_graph_available": True, "modules": []}, "go")
+    assert "recall for go is" in prose
+
+
 def test_the_caveat_states_measured_recall_for_a_measured_language() -> None:
     """Five phases of measurement only change an outcome if a reader sees the number.
 

@@ -690,6 +690,47 @@ def _more(names: list[str]) -> str:
     return f" (+{len(names) - _MAX_IMPORTERS} more)" if len(names) > _MAX_IMPORTERS else ""
 
 
+def _languages_of(bd: dict[str, Any], fallback: str) -> list[str]:
+    """The front-ends that built this blast radius, else the caller's language.
+
+    **Which language the caveat names is a property of the graph, not of the run.**
+    ``fallback`` is `--language`, whose job is to pick the *codegen* target; using it to
+    label a measurement of the extractor is a category error, and `sdlc plan` defaults it to
+    the literal ``python``, so a C# repository planned without the flag published Python's
+    recall figure against a graph Python had not touched.
+
+    The fallback survives for a blast radius serialised before `languages` existed — an old
+    `design.json` replayed today. That is the one case where the flag is the best we have.
+    """
+    declared = [str(x) for x in (bd.get("languages") or []) if str(x)]
+    return sorted(set(declared)) if declared else [fallback]
+
+
+def _recall_clause(languages: list[str]) -> str:
+    """Measured `CALLS` recall per language, with unmeasured ones named and not scored."""
+    measured = [(lang, measured_recall(lang)) for lang in languages]
+    scored = [(lang, r) for lang, r in measured if r is not None]
+    unscored = [lang for lang, r in measured if r is None]
+
+    source = "(against the extractor's own test corpus, not this repository)"
+    clause = ""
+    if len(scored) == 1:
+        lang, recall = scored[0]
+        clause += (
+            f" Measured `CALLS` recall for {lang} is **{recall:.2f}** {source} — "
+            "treat this list as a lower bound."
+        )
+    elif scored:
+        figures = ", ".join(f"{lang} **{recall:.2f}**" for lang, recall in scored)
+        clause += f" Measured `CALLS` recall: {figures} {source} — treat this list as a lower bound."
+    if unscored:
+        # Named, never dropped: silence reads as "no gap here", and an unmeasured front-end
+        # has not scored badly — it has not been scored.
+        names = ", ".join(unscored)
+        clause += f" No corpus measurement exists for {names}, so its recall is unknown, not perfect."
+    return clause
+
+
 def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     """The three blocks the template requires, in order: reading, containment, caveat."""
     modules = bd.get("modules") or []
@@ -742,15 +783,9 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
         # The parenthetical is load-bearing: this is measured against the extractor's own
         # fixtures, NOT against the repository being described. A reader who takes it as a
         # statement about their own code has been misled by us. None means the language was
-        # never measured — six of eight front-ends have no corpus — and an unmeasured language
-        # has not scored zero, so it gets no clause at all.
-        recall = measured_recall(language)
-        if recall is not None:
-            caveat += (
-                f" Measured `CALLS` recall for {language} is **{recall:.2f}** "
-                "(against the extractor's own test corpus, not this repository) — "
-                "treat this list as a lower bound."
-            )
+        # never measured — an unmeasured language has not scored zero, so it is named
+        # without a figure rather than dropped, which would read as having no gap at all.
+        caveat += _recall_clause(_languages_of(bd, language))
 
     unverified = bd.get("unverified_references") or []
     if unverified:
