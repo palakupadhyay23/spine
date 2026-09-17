@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.pkg import FactStore
+from orchestrator.sdlc import brief
+from orchestrator.sdlc.brief import Brief, Tier
 from orchestrator.sdlc.churn import changed_recently
 from orchestrator.sdlc.localize import Localization, localize_trace
 
@@ -253,52 +255,57 @@ async def build_rca(
 
 
 def render_rca_md(report: RCAReport) -> str:
+    """Render the report as markdown, against the shared section vocabulary.
+
+    Titles and order come from :mod:`orchestrator.sdlc.brief`. The tier is EVIDENCE: an RCA
+    ranks hypotheses *by evidence* and must not assert a conclusion, which is the same
+    discipline the header has always claimed ("ranked by evidence, not asserted") and which
+    is now enforced rather than described.
+    """
     origin = "LLM-enriched" if report.llm else "deterministic (no LLM)"
-    out: list[str] = [f"# Root-cause analysis\n\n_{origin}; hypotheses ranked by evidence, not asserted._\n"]
+    title = "Root-cause analysis"
+    doc = Brief(title, tier=Tier.EVIDENCE)
+
+    preamble = [f"_{origin}; hypotheses ranked by evidence, not asserted._"]
     if report.exception:
-        out.append(f"**Exception:** `{report.exception}`\n")
+        preamble.append(f"\n**Exception:** `{report.exception}`")
+    doc.add(brief.PROBLEM, "\n".join(preamble))
 
-    out.append("## Fault site")
     if report.fault_site:
-        line = report.fault_site + (f" (in {report.fault_module})" if report.fault_module else "")
-        out.append(line)
+        site = [report.fault_site + (f" (in {report.fault_module})" if report.fault_module else "")]
         if report.recently_changed:
-            out.append("\n⚠ This module changed recently — treat a regression as the leading hypothesis.")
+            site.append("\n⚠ This module changed recently — treat a regression as the leading hypothesis.")
         if report.callers:
-            out.append("\n_Called by (potential trigger paths):_")
-            out.extend(f"- {c}" for c in report.callers[:10])
+            site.append("\n_Called by (potential trigger paths):_")
+            site.extend(f"- {c}" for c in report.callers[:10])
+        doc.add(brief.FAULT_SITE, "\n".join(site))
     else:
-        out.append("_Not localized to a repo symbol — see the low-confidence hypothesis below._")
-    out.append("")
+        doc.add(brief.FAULT_SITE)
 
-    out.append("## Root-cause hypotheses")
     if report.hypotheses:
+        rows: list[str] = []
         for i, h in enumerate(report.hypotheses, 1):
-            out.append(f"{i}. **[{h.confidence}]** {h.claim}")
-            out.extend(f"   - {e}" for e in h.evidence)
+            rows.append(f"{i}. **[{h.confidence}]** {h.claim}")
+            rows.extend(f"   - {e}" for e in h.evidence)
+        doc.add(brief.HYPOTHESES, "\n".join(rows))
     else:
-        out.append("_No hypotheses could be grounded — gather more of the failure output._")
-    out.append("")
+        doc.add(brief.HYPOTHESES)
 
-    out.append("## Regression surface")
     if report.regression_surface:
-        out.append("_A fix must not break these (the fault module's dependents + hotspots):_\n")
-        out.extend(f"- {s}" for s in report.regression_surface[:15])
+        surface = ["_A fix must not break these (the fault module's dependents + hotspots):_\n"]
+        surface.extend(f"- {s}" for s in report.regression_surface[:15])
+        doc.add(brief.REGRESSION_SURFACE, "\n".join(surface))
     else:
-        out.append("_None identified (no in-repo dependents, or the fault didn't localize)._")
-    out.append("")
+        doc.add(brief.REGRESSION_SURFACE)
 
-    out.append("## Suggested fix approach")
-    out.append(report.fix_approach)
-    out.append("")
-
-    out.append("## Next step")
-    out.append(
+    doc.add(brief.FIX_APPROACH, report.fix_approach)
+    doc.add(
+        brief.NEXT_STEP,
         "Review + approve, then `orchestrator design` the fix and implement it with a regression "
         "test that reproduces the failure first (red → green). This report stops at analysis — "
-        "no code is changed."
+        "no code is changed.",
     )
-    return "\n".join(out) + "\n"
+    return doc.render()
 
 
 __all__ = ["Hypothesis", "RCAReport", "build_rca", "render_rca_md"]

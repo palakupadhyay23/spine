@@ -25,6 +25,8 @@ from pathlib import Path
 
 from orchestrator.pkg import FactStore
 from orchestrator.pkg.facts import NodeKind
+from orchestrator.sdlc import brief
+from orchestrator.sdlc.brief import Brief, Tier
 
 
 @dataclass(frozen=True)
@@ -183,12 +185,19 @@ def build_investigation(
 
 
 def render_investigation_md(inv: Investigation) -> str:
-    """Render the brief as markdown. Honest when a section has nothing grounded."""
-    out: list[str] = [f"# Investigation — {inv.title or 'ticket'}\n"]
-    if inv.problem:
-        out.append(f"## Problem\n{inv.problem}\n")
+    """Render the brief as markdown. Honest when a section has nothing grounded.
 
-    out.append("## Where it lands in the code")
+    Section titles and their order come from :mod:`orchestrator.sdlc.brief`, not from this
+    function — five modules spelled these by hand and had drifted to three spellings of
+    "next step" alone. The tier is EVIDENCE, so this renderer *cannot* emit a verdict or a
+    recommendation: an investigation must stay re-derivable from the graph, and the argument
+    on top of it belongs to `design`, which has an author behind it.
+    """
+    doc = Brief(f"Investigation — {inv.title or 'ticket'}", tier=Tier.EVIDENCE)
+    if inv.problem:
+        doc.add(brief.PROBLEM, inv.problem)
+
+    out: list[str] = []
     if inv.landing:
         out.append("_Lexically-retrieved from the knowledge graph — start here, confirm before trusting._\n")
         for hit in inv.landing:
@@ -237,27 +246,21 @@ def render_investigation_md(inv: Investigation) -> str:
             "_No symbols matched the ticket's terms — it may name new behavior, "
             "or use words the code doesn't._"
         )
-    out.append("")
+    doc.add(brief.LANDS, "\n".join(out))
+    doc.add(brief.KNOWLEDGE, inv.knowledge)
 
-    out.append("## Relevant project knowledge")
-    out.append(
-        inv.knowledge
-        if inv.knowledge
-        else "_No committed `episteme/` found — run `orchestrator understand .` to build one._"
-    )
-    out.append("")
-
-    out.append("## Prior art / related work")
     if inv.prior_notes:
-        out.append("_From cross-run memory (past runs on this repo):_\n")
-        out.extend(f"- {note}" for note in inv.prior_notes)
+        notes = ["_From cross-run memory (past runs on this repo):_\n"]
+        notes.extend(f"- {note}" for note in inv.prior_notes)
+        doc.add(brief.PRIOR_ART, "\n".join(notes))
     else:
-        out.append("_None surfaced (cross-run memory needs the registry DB; the CLI runs without it)._")
-    out.append("")
+        doc.add(brief.PRIOR_ART)
 
-    out.append("## Suggested next step")
-    out.append("Feed this into `orchestrator design` to produce a grounded, blast-radius-aware design.")
-    return "\n".join(out) + "\n"
+    doc.add(
+        brief.NEXT_STEP,
+        "Feed this into `orchestrator design` to produce a grounded, blast-radius-aware design.",
+    )
+    return doc.render()
 
 
 __all__ = ["Investigation", "Landing", "build_investigation", "render_investigation_md"]

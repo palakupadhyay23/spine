@@ -111,6 +111,39 @@ NEXT_STEP = Section(
     "_No next step suggested._",
 )
 
+# ---- Evidence sections specific to root-cause analysis ----------------------
+
+FAULT_SITE = Section(
+    "fault_site",
+    "Fault site",
+    Tier.EVIDENCE,
+    "_Not localized to a repo symbol — see the low-confidence hypothesis below._",
+)
+HYPOTHESES = Section(
+    "hypotheses",
+    "Root-cause hypotheses",
+    Tier.EVIDENCE,
+    "_No hypotheses could be grounded — gather more of the failure output._",
+)
+REGRESSION_SURFACE = Section(
+    "regression_surface",
+    "Regression surface",
+    Tier.EVIDENCE,
+    "_None identified (no in-repo dependents, or the fault didn't localize)._",
+)
+#: **Mixed provenance, and the tier does not currently say so.** The deterministic path
+#: computes this from the localization (`rca._deterministic_fix_approach`); the enrichment
+#: path *overwrites* it with the model's text (`rca.py:201`). It is filed as EVIDENCE because
+#: that is what the default path produces and P2 changes no behaviour — but an LLM-enriched
+#: report carries a model-written section inside an Evidence-tier document. Recorded in the
+#: plan as an open decision rather than settled here.
+FIX_APPROACH = Section(
+    "fix_approach",
+    "Suggested fix approach",
+    Tier.EVIDENCE,
+    "_No fix approach derived._",
+)
+
 # ---- the Judgement tier: requires an author ---------------------------------
 
 VERDICT = Section(
@@ -144,10 +177,14 @@ DECOMPOSITION = Section(
 ORDER: tuple[Section, ...] = (
     PROBLEM,
     VERDICT,
+    FAULT_SITE,
+    HYPOTHESES,
     LANDS,
+    REGRESSION_SURFACE,
     KNOWLEDGE,
     PRIOR_ART,
     OPTIONS,
+    FIX_APPROACH,
     OPEN_QUESTIONS,
     DECOMPOSITION,
     NOT_VERIFIED,
@@ -212,6 +249,9 @@ class Brief:
 
 __all__ = [
     "DECOMPOSITION",
+    "FAULT_SITE",
+    "FIX_APPROACH",
+    "HYPOTHESES",
     "KNOWLEDGE",
     "LANDS",
     "NEXT_STEP",
@@ -221,6 +261,7 @@ __all__ = [
     "ORDER",
     "PRIOR_ART",
     "PROBLEM",
+    "REGRESSION_SURFACE",
     "REQUIRED",
     "VERDICT",
     "Brief",
