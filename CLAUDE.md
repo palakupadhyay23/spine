@@ -27,14 +27,30 @@ casually; they're contracts. Get the dir from `understand.BANK_DIRNAME` /
 | `catalog/`, `intake/`, `agentic/`, `personas/`, `evals/` | profiling, sources→intents, the codegen tool-use loop, personas, measurement |
 | `cli/` | Every command surface — one module per help panel, `sdlc.py` and `pkg.py` on their own; `_app.py` holds the root app and panels, `_common.py` the shared helpers |
 
-Design records live in **`docs/specs/`** — read the relevant spec before changing a
-subsystem; that's where the *why* is. `docs/specs/README.md` indexes them.
+The design records already in **`docs/specs/`** are where the *why* is — read the relevant
+one before changing a subsystem. `docs/specs/README.md` indexes them.
 
-They are **tracked on purpose.** `understand` ingests markdown from disk whether or not git
+They stay **tracked on purpose.** `understand` ingests markdown from disk whether or not git
 tracks it, so a docs tree that exists locally but not in the repo makes your `episteme/`
 describe `Doc` nodes CI can't see — and `understand --check` fails on a diff you can't
 reproduce. Committed docs are in CI's checkout too, so local and CI agree by construction.
-Keep new design records in here rather than in an untracked scratch directory.
+**Never delete one to "tidy up", and never leave an untracked markdown tree inside the
+checkout** — that is the trap this paragraph exists to close, and it is unchanged.
+
+**New plans and new design records go outside the checkout** (ruled 2026-09-16; the earlier
+instruction to add them here is superseded). Tracking one costs a `SPEC-INDEX.md` row, a
+prose count, an `ls … wc -l` beside it, a spec count in `STATE-OF-SPINE.md` and an indexing
+check — five gates, for a document no user reads. Write them to a scratchpad or notes
+directory and point the currency gate at them:
+
+```bash
+python scripts/roadmap-status.py --check ~/plans/<track>.md
+```
+
+**The cost is real and worth stating:** the existing specs stop accreting, so "read the
+relevant spec" degrades for subsystems built after this date. If a *why* is load-bearing for
+reading the code, it belongs in the module docstring, where it travels with the thing it
+explains — not in a record nobody can find.
 
 ## Invariants — break these and things get subtly wrong
 
