@@ -76,8 +76,8 @@ _PATH_RE = re.compile(r"\b((?:src/|tests/)[\w./-]+\.py)\b")
 def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     """Paths the spec *states*, which outrank paths inferred from its words.
 
-    ``_landing_files`` reads only the title and summary, matching the ticket's language
-    against the graph. A ticket about "the registry API" whose criteria name
+    ``_landing_files`` matches the ticket's language against the graph. A ticket about "the
+    registry API" whose criteria name
     ``src/orchestrator/cli.py`` therefore came back proposing the registry *server* modules
     — the wrong side of the wire — while the file the spec named twice was absent. Codegen
     is then handed a design that contradicts its own spec, and on SSPN-49 it submitted
@@ -88,21 +88,34 @@ def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     does not exist is dropped: naming a file to create is a job for the approach, not for a
     list of files to open.
     """
-    blob = " ".join(
-        [
-            str(spec.get("summary") or ""),
-            str(spec.get("technical_notes") or ""),
-            *[str(a) for a in (spec.get("acceptance_criteria") or [])],
-        ]
-    )
     out: list[str] = []
-    for rel in _PATH_RE.findall(blob):
+    for rel in _PATH_RE.findall(_query_text(spec, title=False)):
         if rel in out:
             continue
         if root is not None and not (root / rel).is_file():
             continue
         out.append(rel)
     return out
+
+
+def _query_text(spec: dict[str, Any], *, title: bool = True) -> str:
+    """Every field of a spec that can carry an identifier, as one string to search with.
+
+    ``summary`` is the spec writer's paraphrase; ``description``/``scope`` are the intent's,
+    under the extractor's verbatim rule; ``technical_notes`` carries whatever the source named
+    and the paraphrase dropped; the criteria are the contract. Searching the paraphrase alone
+    is how NSS-1231 proposed three database models for an OAuth2 change: the summary had
+    invented "system", and the file the ticket named was in a field nothing read.
+    """
+    parts = [str(spec.get("title") or "")] if title else []
+    parts += [
+        str(spec.get("summary") or ""),
+        str(spec.get("description") or ""),
+        str(spec.get("scope") or ""),
+        str(spec.get("technical_notes") or ""),
+        *[str(a) for a in (spec.get("acceptance_criteria") or [])],
+    ]
+    return " ".join(p for p in parts if p)
 
 
 def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
@@ -123,7 +136,7 @@ def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
     from orchestrator.sdlc.investigate import build_investigation
 
     investigation = build_investigation(
-        str(spec.get("title", "")), str(spec.get("summary", "")), store=store, max_symbols=8
+        str(spec.get("title", "")), _query_text(spec, title=False), store=store, max_symbols=8
     )
     files: list[str] = []
     for landing in investigation.landing:
@@ -144,10 +157,7 @@ def _overview_files(spec: dict[str, Any], overview: dict[str, Any] | None) -> li
     modules = (overview or {}).get("modules") or []
     if not modules:
         return []
-    text = " ".join(
-        [str(spec.get("title", "")), str(spec.get("summary", ""))]
-        + [str(a) for a in (spec.get("acceptance_criteria") or [])]
-    ).lower()
+    text = _query_text(spec).lower()
     tokens = {t for t in re.split(r"[^a-z0-9]+", text) if len(t) > 3}
     if not tokens:
         return []

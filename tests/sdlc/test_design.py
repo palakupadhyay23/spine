@@ -376,3 +376,77 @@ def test_a_spec_naming_nothing_still_falls_back_to_the_overview() -> None:
     design = _fallback_design(spec, overview, None, None)
 
     assert "Heuristic design (no LLM)" in design["risks"][0]
+
+
+# --- the design reads the whole spec, not only the paraphrase (NSS-1231) --------------------
+#
+# The spec writer's summary invented "system" and dropped the file the ticket named. Reading
+# only title + summary, the design proposed a database model carrying `SourceSystemId` and
+# ranked the named file on the one generic word it shared. The identifiers survive in
+# `description`, `scope` and `technical_notes` (P2); the design must read them.
+
+
+def _nss_1231_graph() -> Any:
+    from orchestrator.pkg import FactStore
+    from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+
+    b = FactBatch()
+    for module, kind, name, file, line in (
+        (
+            "csharp:Utils",
+            NodeKind.TYPE,
+            "EBSOrderApiClient",
+            "FunctionsApp/Shared/Utils/EBSOrderApiClient.cs",
+            11,
+        ),
+        (
+            "csharp:Utils",
+            NodeKind.FIELD,
+            "_client",
+            "FunctionsApp/Shared/Utils/AzureServiceBusScheduler.cs",
+            7,
+        ),
+        ("csharp:ApiModels", NodeKind.FIELD, "SourceSystemId", "FunctionsApp/ApiModels/Mill.cs", 13),
+    ):
+        # add_node is first-wins for a grounded id, so re-adding the module is a no-op.
+        b.add_node(Node(module, NodeKind.MODULE, module.split(":")[1], "csharp", Provenance(file, 1)))
+        nid = f"{module}.{name}"
+        b.add_node(Node(nid, kind, name, "csharp", Provenance(file, line)))
+        b.add_edge(Edge(module, nid, EdgeKind.CONTAINS))
+    return FactStore(b)
+
+
+async def test_nss_1231_the_named_file_outranks_the_paraphrase_s_invented_word() -> None:
+    from orchestrator.sdlc.design import produce_design
+
+    paraphrase = (
+        "Implement OAuth2 client-credentials authentication for OIC integration to ensure secure, "
+        "standards-based authentication. This will allow the system to authenticate using client credentials."
+    )
+    ticket = (
+        "Replace the current HTTP Basic Auth (`EBS_API_USERNAME`/`EBS_API_PASSWORD`, used in "
+        "`EBSOrderApiClient.cs`) with OAuth2 client-credentials flow against the IDCS token endpoint."
+    )
+    spec: dict[str, Any] = {
+        "title": "Implement OAuth2 client-credentials auth for OIC integration",
+        "summary": paraphrase,
+        "description": ticket,
+        "acceptance_criteria": [],
+    }
+    design = await produce_design(spec, overview=None, store=_nss_1231_graph(), llm=None)
+
+    files = design["files_to_touch"]
+    assert files[0] == "FunctionsApp/Shared/Utils/EBSOrderApiClient.cs"
+    # The invented word still matches — a floor is P8's job — but it no longer outranks the
+    # file the ticket named.
+    assert "FunctionsApp/ApiModels/Mill.cs" not in files[:2]
+
+
+def test_a_path_named_in_the_description_is_a_stated_path(tmp_path: Path) -> None:
+    """Whatever field the ticket's identifiers survived in, the design reads it."""
+    from orchestrator.sdlc.design import _stated_paths
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "named.py").write_text("x = 1\n")
+    spec = {"title": "T", "summary": "nothing here", "description": "edit src/named.py", "scope": ""}
+    assert _stated_paths(spec, tmp_path) == ["src/named.py"]
