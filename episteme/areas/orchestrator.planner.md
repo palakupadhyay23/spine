@@ -25,7 +25,7 @@ flowchart LR
 
 - [`orchestrator.planner`](../../src/orchestrator/planner/__init__.py#L1)
 - [`orchestrator.planner.v0`](../../src/orchestrator/planner/v0.py#L1)
-- [`orchestrator.planner.v1`](../modules/orchestrator.planner.v1.md)
+- [`orchestrator.planner.v1`](../../src/orchestrator/planner/v1.py#L1)
 
 ## Depends on
 

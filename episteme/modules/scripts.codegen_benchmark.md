@@ -103,7 +103,7 @@ _12 of the symbols other code depends on here have no test path the graph can se
 
 [`scripts/codegen_benchmark.py:1853`](../../scripts/codegen_benchmark.py#L1853)
 
-- **Calls** (9): [`SubprocessPreflightRunner`](../../src/orchestrator/sdlc/preflight.py#L224), [`from_repo`](../../src/orchestrator/sdlc/grounding.py#L48), `getenv`, [`load_local_env`](../../src/orchestrator/core/env.py#L20), `orchestrator.core.llm.LiteLLMClient`, `orchestrator.core.llm.RecordingLLMClient`, `pathlib.Path`, [`run_ticket`](../../scripts/codegen_benchmark.py#L1681), [`taskset`](../../scripts/codegen_benchmark.py#L1438)
+- **Calls** (9): [`SubprocessPreflightRunner`](../../src/orchestrator/sdlc/preflight.py#L290), [`from_repo`](../../src/orchestrator/sdlc/grounding.py#L48), `getenv`, [`load_local_env`](../../src/orchestrator/core/env.py#L20), `orchestrator.core.llm.LiteLLMClient`, `orchestrator.core.llm.RecordingLLMClient`, `pathlib.Path`, [`run_ticket`](../../scripts/codegen_benchmark.py#L1681), [`taskset`](../../scripts/codegen_benchmark.py#L1438)
 
 ### `make_worktree`
 
@@ -124,7 +124,7 @@ _12 of the symbols other code depends on here have no test path the graph can se
 [`scripts/codegen_benchmark.py:1681`](../../scripts/codegen_benchmark.py#L1681)
 
 - **Called by** (1): [`main`](../../scripts/codegen_benchmark.py#L1853)
-- **Calls** (15): [`LLMCodegenAdapter`](../../src/orchestrator/sdlc/codegen.py#L868), [`SubprocessPreflightRunner`](../../src/orchestrator/sdlc/preflight.py#L224), [`_rel`](../../scripts/codegen_benchmark.py#L1508), [`_stage`](../../scripts/codegen_benchmark.py#L1456), [`build_design`](../../scripts/codegen_benchmark.py#L1615), [`drop_worktree`](../../scripts/codegen_benchmark.py#L1480), `getenv`, [`grade`](../../scripts/codegen_benchmark.py#L1568), [`make_worktree`](../../scripts/codegen_benchmark.py#L1469), `pathlib.Path`, [`read_source`](../../src/orchestrator/evals/graders.py#L191), [`reused_existing_symbols`](../../src/orchestrator/evals/graders.py#L174), [`run_held_out_tests`](../../src/orchestrator/evals/graders.py#L61), [`run_pytest`](../../scripts/codegen_benchmark.py#L1489), [`semgrep_findings`](../../src/orchestrator/evals/graders.py#L138)
+- **Calls** (15): [`LLMCodegenAdapter`](../../src/orchestrator/sdlc/codegen.py#L913), [`SubprocessPreflightRunner`](../../src/orchestrator/sdlc/preflight.py#L290), [`_rel`](../../scripts/codegen_benchmark.py#L1508), [`_stage`](../../scripts/codegen_benchmark.py#L1456), [`build_design`](../../scripts/codegen_benchmark.py#L1615), [`drop_worktree`](../../scripts/codegen_benchmark.py#L1480), `getenv`, [`grade`](../../scripts/codegen_benchmark.py#L1568), [`make_worktree`](../../scripts/codegen_benchmark.py#L1469), `pathlib.Path`, [`read_source`](../../src/orchestrator/evals/graders.py#L191), [`reused_existing_symbols`](../../src/orchestrator/evals/graders.py#L174), [`run_held_out_tests`](../../src/orchestrator/evals/graders.py#L61), [`run_pytest`](../../scripts/codegen_benchmark.py#L1489), [`semgrep_findings`](../../src/orchestrator/evals/graders.py#L138)
 - **Documented in**: `docs/specs/persona-skill-measurement.md#3-the-ab-harness`, `docs/specs/persona-skill-measurement.md#phasing-each-shippable`
 
 ### `taskset`

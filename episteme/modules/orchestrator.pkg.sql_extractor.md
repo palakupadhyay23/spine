@@ -108,14 +108,14 @@ _13 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/sql_extractor.py:362`](../../src/orchestrator/pkg/sql_extractor.py#L362)
 
 - **Called by** (2): [`_emit_data_access`](../../src/orchestrator/pkg/sql_extractor.py#L315), [`_handle_create_view`](../../src/orchestrator/pkg/sql_extractor.py#L244)
-- **Calls** (1): [`Node`](../../src/orchestrator/pkg/facts.py#L121)
+- **Calls** (1): [`Node`](../../src/orchestrator/pkg/facts.py#L128)
 
 ### `_touch_function`
 
 [`src/orchestrator/pkg/sql_extractor.py:367`](../../src/orchestrator/pkg/sql_extractor.py#L367)
 
 - **Called by** (1): [`_handle_create_routine`](../../src/orchestrator/pkg/sql_extractor.py#L289)
-- **Calls** (1): [`Node`](../../src/orchestrator/pkg/facts.py#L121)
+- **Calls** (1): [`Node`](../../src/orchestrator/pkg/facts.py#L128)
 
 ### `_type_sql`
 

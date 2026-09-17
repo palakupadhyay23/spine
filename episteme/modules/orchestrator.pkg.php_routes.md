@@ -136,7 +136,7 @@ _26 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/php_routes.py:369`](../../src/orchestrator/pkg/php_routes.py#L369)
 
 - **Called by** (1): [`_walk_expr`](../../src/orchestrator/pkg/php_routes.py#L199)
-- **Calls** (6): [`PendingRoute`](../../src/orchestrator/pkg/php_routes.py#L51), [`Provenance`](../../src/orchestrator/pkg/facts.py#L81), [`_arg_value`](../../src/orchestrator/pkg/php_routes.py#L65), [`_join_route`](../../src/orchestrator/pkg/php_routes.py#L113), [`_literal_string`](../../src/orchestrator/pkg/php_routes.py#L81), [`_resolve_handler`](../../src/orchestrator/pkg/php_routes.py#L142)
+- **Calls** (6): [`PendingRoute`](../../src/orchestrator/pkg/php_routes.py#L51), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_arg_value`](../../src/orchestrator/pkg/php_routes.py#L65), [`_join_route`](../../src/orchestrator/pkg/php_routes.py#L113), [`_literal_string`](../../src/orchestrator/pkg/php_routes.py#L81), [`_resolve_handler`](../../src/orchestrator/pkg/php_routes.py#L142)
 
 ### `_resolve_handler`
 
@@ -191,7 +191,7 @@ _26 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/php_routes.py:392`](../../src/orchestrator/pkg/php_routes.py#L392)
 
 - **Called by** (1): [`extract`](../../src/orchestrator/pkg/php_extractor.py#L163)
-- **Calls** (2): [`Edge`](../../src/orchestrator/pkg/facts.py#L137), [`Node`](../../src/orchestrator/pkg/facts.py#L121)
+- **Calls** (2): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128)
 
 ### `scan_laravel_routes`
 
@@ -205,7 +205,7 @@ _26 of the symbols other code depends on here have no test path the graph can se
 [`src/orchestrator/pkg/php_routes.py:407`](../../src/orchestrator/pkg/php_routes.py#L407)
 
 - **Called by** (1): [`extract`](../../src/orchestrator/pkg/php_extractor.py#L163)
-- **Calls** (8): [`Edge`](../../src/orchestrator/pkg/facts.py#L137), [`Node`](../../src/orchestrator/pkg/facts.py#L121), [`Provenance`](../../src/orchestrator/pkg/facts.py#L81), [`_attributes`](../../src/orchestrator/pkg/php_routes.py#L443), [`_join_route`](../../src/orchestrator/pkg/php_routes.py#L113), [`_named_arg`](../../src/orchestrator/pkg/php_routes.py#L476), [`_route_path`](../../src/orchestrator/pkg/php_routes.py#L483), [`_string_list`](../../src/orchestrator/pkg/php_routes.py#L100)
+- **Calls** (8): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_attributes`](../../src/orchestrator/pkg/php_routes.py#L443), [`_join_route`](../../src/orchestrator/pkg/php_routes.py#L113), [`_named_arg`](../../src/orchestrator/pkg/php_routes.py#L476), [`_route_path`](../../src/orchestrator/pkg/php_routes.py#L483), [`_string_list`](../../src/orchestrator/pkg/php_routes.py#L100)
 
 ## Imports
 

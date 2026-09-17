@@ -5,7 +5,7 @@
 
 **Source:** [`scripts/roadmap-status.py`](../../scripts/roadmap-status.py)
 
-1 types · 16 functions · python
+1 types · 20 functions · python
 
 ## Changing this safely
 
@@ -14,125 +14,149 @@
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
 - [`scanned_docs`](../../scripts/roadmap-status.py#L100) — reaches **4** symbols · **no test path visible**
-- [`PhaseRow`](../../scripts/roadmap-status.py#L131) — reaches **3** symbols · **no test path visible**
-- [`_cells`](../../scripts/roadmap-status.py#L140) — reaches **3** symbols · **no test path visible**
-- [`_is_separator`](../../scripts/roadmap-status.py#L145) — reaches **3** symbols · **no test path visible**
-- [`phase_tables`](../../scripts/roadmap-status.py#L158) — reaches **2** symbols · **no test path visible**
-- [`_display`](../../scripts/roadmap-status.py#L384) — reaches **1** symbol · **no test path visible**
-- [`check`](../../scripts/roadmap-status.py#L376) — reaches **1** symbol · **no test path visible**
-- [`set_extra_docs`](../../scripts/roadmap-status.py#L82) — reaches **1** symbol · **no test path visible**
+- [`PhaseRow`](../../scripts/roadmap-status.py#L135) — reaches **3** symbols · **no test path visible**
+- [`_cells`](../../scripts/roadmap-status.py#L144) — reaches **3** symbols · **no test path visible**
+- [`_is_separator`](../../scripts/roadmap-status.py#L149) — reaches **3** symbols · **no test path visible**
+- [`claimed_done`](../../scripts/roadmap-status.py#L303) — reaches **2** symbols · **no test path visible**
+- [`phase_tables`](../../scripts/roadmap-status.py#L162) — reaches **2** symbols · **no test path visible**
+- [`_display`](../../scripts/roadmap-status.py#L497) — reaches **1** symbol · **no test path visible**
+- [`check`](../../scripts/roadmap-status.py#L489) — reaches **1** symbol · **no test path visible**
 
-_8 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
+_9 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
 ## Documented in
 
-`CHANGELOG.md`, `docs/specs/SPEC-INDEX.md#partial-shipped-in-part-remainder-outstanding`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`, `docs/specs/templates/track-plan.md#design-plan-track-one-line-on-what-it-delivers`
+`CHANGELOG.md`, `docs/specs/SPEC-INDEX.md#partial-shipped-in-part-remainder-outstanding`, `docs/specs/kotlin-support-roadmap.md#11-risks-and-gotchas`, `docs/specs/kotlin-support-roadmap.md#7-files-to-change`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`, `docs/specs/templates/track-plan.md#design-plan-track-one-line-on-what-it-delivers`
 
 ## Types
 
 ### `PhaseRow`
 
-[`scripts/roadmap-status.py:131`](../../scripts/roadmap-status.py#L131)
+[`scripts/roadmap-status.py:135`](../../scripts/roadmap-status.py#L135)
 
-- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L158)
+- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L162)
 - **Fields**: `doc`, `evidence`, `finished`, `phase_id`, `started`, `status`
 
 ## Functions
 
 ### `_cells`
 
-[`scripts/roadmap-status.py:140`](../../scripts/roadmap-status.py#L140)
+[`scripts/roadmap-status.py:144`](../../scripts/roadmap-status.py#L144)
 
-- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L158)
+- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L162)
 
 ### `_display`
 
-[`scripts/roadmap-status.py:384`](../../scripts/roadmap-status.py#L384)
+[`scripts/roadmap-status.py:497`](../../scripts/roadmap-status.py#L497)
 
-- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L392)
+- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L505)
 
 ### `_is_separator`
 
-[`scripts/roadmap-status.py:145`](../../scripts/roadmap-status.py#L145)
+[`scripts/roadmap-status.py:149`](../../scripts/roadmap-status.py#L149)
 
-- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L158)
+- **Called by** (1): [`phase_tables`](../../scripts/roadmap-status.py#L162)
 - **Calls** (1): `fullmatch`
+
+### `_phase_order`
+
+[`scripts/roadmap-status.py:323`](../../scripts/roadmap-status.py#L323)
+
+_No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `check`
 
-[`scripts/roadmap-status.py:376`](../../scripts/roadmap-status.py#L376)
+[`scripts/roadmap-status.py:489`](../../scripts/roadmap-status.py#L489)
 
-- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L392)
-- **Calls** (1): [`phase_tables`](../../scripts/roadmap-status.py#L158)
+- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L505)
+- **Calls** (1): [`phase_tables`](../../scripts/roadmap-status.py#L162)
 
 ### `check_cross_spec_dependency`
 
-[`scripts/roadmap-status.py:242`](../../scripts/roadmap-status.py#L242)
+[`scripts/roadmap-status.py:246`](../../scripts/roadmap-status.py#L246)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `check_evidence_completeness`
 
-[`scripts/roadmap-status.py:209`](../../scripts/roadmap-status.py#L209)
+[`scripts/roadmap-status.py:213`](../../scripts/roadmap-status.py#L213)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `check_header_found_but_unparsed`
 
-[`scripts/roadmap-status.py:329`](../../scripts/roadmap-status.py#L329)
+[`scripts/roadmap-status.py:440`](../../scripts/roadmap-status.py#L440)
 
 - **Calls** (1): [`scanned_docs`](../../scripts/roadmap-status.py#L100)
 - **Documented in**: `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
 
+### `check_index_status_agrees`
+
+[`scripts/roadmap-status.py:369`](../../scripts/roadmap-status.py#L369)
+
+- **Calls** (1): [`claimed_done`](../../scripts/roadmap-status.py#L303)
+
 ### `check_indexed`
 
-[`scripts/roadmap-status.py:290`](../../scripts/roadmap-status.py#L290)
+[`scripts/roadmap-status.py:401`](../../scripts/roadmap-status.py#L401)
 
 - **Documented in**: `CHANGELOG.md`
 
 ### `check_relative_links`
 
-[`scripts/roadmap-status.py:306`](../../scripts/roadmap-status.py#L306)
+[`scripts/roadmap-status.py:417`](../../scripts/roadmap-status.py#L417)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `check_started_before_finished`
 
-[`scripts/roadmap-status.py:223`](../../scripts/roadmap-status.py#L223)
+[`scripts/roadmap-status.py:227`](../../scripts/roadmap-status.py#L227)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
 ### `check_top_status_freshness`
 
-[`scripts/roadmap-status.py:272`](../../scripts/roadmap-status.py#L272)
+[`scripts/roadmap-status.py:276`](../../scripts/roadmap-status.py#L276)
 
 _No relationships extracted — nothing in the graph calls it or extends it._
 
+### `check_top_status_matches_table`
+
+[`scripts/roadmap-status.py:329`](../../scripts/roadmap-status.py#L329)
+
+- **Calls** (1): [`claimed_done`](../../scripts/roadmap-status.py#L303)
+
+### `claimed_done`
+
+[`scripts/roadmap-status.py:303`](../../scripts/roadmap-status.py#L303)
+
+- **Called by** (2): [`check_index_status_agrees`](../../scripts/roadmap-status.py#L369), [`check_top_status_matches_table`](../../scripts/roadmap-status.py#L329)
+
 ### `main`
 
-[`scripts/roadmap-status.py:392`](../../scripts/roadmap-status.py#L392)
+[`scripts/roadmap-status.py:505`](../../scripts/roadmap-status.py#L505)
 
-- **Calls** (4): [`_display`](../../scripts/roadmap-status.py#L384), [`check`](../../scripts/roadmap-status.py#L376), [`phase_tables`](../../scripts/roadmap-status.py#L158), [`set_extra_docs`](../../scripts/roadmap-status.py#L82)
+- **Calls** (4): [`_display`](../../scripts/roadmap-status.py#L497), [`check`](../../scripts/roadmap-status.py#L489), [`phase_tables`](../../scripts/roadmap-status.py#L162), [`set_extra_docs`](../../scripts/roadmap-status.py#L82)
 
 ### `phase_tables`
 
-[`scripts/roadmap-status.py:158`](../../scripts/roadmap-status.py#L158)
+[`scripts/roadmap-status.py:162`](../../scripts/roadmap-status.py#L162)
 
-- **Called by** (2): [`check`](../../scripts/roadmap-status.py#L376), [`main`](../../scripts/roadmap-status.py#L392)
-- **Calls** (4): [`PhaseRow`](../../scripts/roadmap-status.py#L131), [`_cells`](../../scripts/roadmap-status.py#L140), [`_is_separator`](../../scripts/roadmap-status.py#L145), [`scanned_docs`](../../scripts/roadmap-status.py#L100)
+- **Called by** (2): [`check`](../../scripts/roadmap-status.py#L489), [`main`](../../scripts/roadmap-status.py#L505)
+- **Calls** (4): [`PhaseRow`](../../scripts/roadmap-status.py#L135), [`_cells`](../../scripts/roadmap-status.py#L144), [`_is_separator`](../../scripts/roadmap-status.py#L149), [`scanned_docs`](../../scripts/roadmap-status.py#L100)
 - **Documented in**: `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`
 
 ### `scanned_docs`
 
 [`scripts/roadmap-status.py:100`](../../scripts/roadmap-status.py#L100)
 
-- **Called by** (2): [`check_header_found_but_unparsed`](../../scripts/roadmap-status.py#L329), [`phase_tables`](../../scripts/roadmap-status.py#L158)
+- **Called by** (2): [`check_header_found_but_unparsed`](../../scripts/roadmap-status.py#L440), [`phase_tables`](../../scripts/roadmap-status.py#L162)
 
 ### `set_extra_docs`
 
 [`scripts/roadmap-status.py:82`](../../scripts/roadmap-status.py#L82)
 
-- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L392)
+- **Called by** (1): [`main`](../../scripts/roadmap-status.py#L505)
 - **Calls** (1): `pathlib.Path`
 
 ### `set_root`

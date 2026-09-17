@@ -174,7 +174,7 @@ _19 of the symbols other code depends on here have no test path the graph can se
 
 ## Imports
 
-`__future__.annotations`, `ctypes`, `dataclasses.dataclass`, `dataclasses.field`, [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1), [`orchestrator.pkg.facts`](../../src/orchestrator/pkg/facts.py#L1), [`orchestrator.pkg.finalize_names`](../../src/orchestrator/pkg/finalize_names.py#L1), [`orchestrator.pkg.perl_orm`](../../src/orchestrator/pkg/perl_orm.py#L1), [`orchestrator.pkg.perl_routes`](orchestrator.pkg.perl_routes.md), `pathlib.Path`, `tree_sitter.Language`, `tree_sitter.Node`, `tree_sitter.Parser`, `tree_sitter_perl`, `typing.Any`, `typing.TYPE_CHECKING`
+`__future__.annotations`, `ctypes`, `dataclasses.dataclass`, `dataclasses.field`, [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1), [`orchestrator.pkg.facts`](../../src/orchestrator/pkg/facts.py#L1), [`orchestrator.pkg.finalize_names`](../../src/orchestrator/pkg/finalize_names.py#L1), [`orchestrator.pkg.perl_orm`](../../src/orchestrator/pkg/perl_orm.py#L1), [`orchestrator.pkg.perl_routes`](../../src/orchestrator/pkg/perl_routes.py#L1), `pathlib.Path`, `tree_sitter.Language`, `tree_sitter.Node`, `tree_sitter.Parser`, `tree_sitter_perl`, `typing.Any`, `typing.TYPE_CHECKING`
 
 ## Imported by
 
