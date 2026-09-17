@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- The build document's blast-radius paragraph stated four things it could not back, all
+  of them visible on any non-Python repository.
+  - The caveat cited an issue key from Spine's own tracker, in documents describing other
+    people's repositories. The sentence already explains the limitation; the key only told
+    a reader to look up something they cannot reach. Two `--help` examples leaked the same
+    convention and now use `PROJ-123`.
+  - Measured `CALLS` recall was read from `--language`, a *codegen* flag that
+    `orchestrator sdlc plan` defaulted to the literal `python` — so a C# repository was told
+    Python's 0.73 against a graph Python had not touched. The blast radius now carries the
+    front-ends that actually built it, scores each of them, and names an unmeasured
+    front-end without a figure rather than dropping it.
+  - Containment printed a module count and then listed eight names, so a reader who counted
+    got a different number. Both branches now state what they elided, and say "at least N"
+    when the names were already capped upstream.
+  - Test detection was four Python-shaped clauses applied to language-neutral prose, so
+    `UnitTests/…Tests.cs` counted as product code and inflated the containment figure. The
+    rule is now segment-based across Python, .NET, Java and JS/TS conventions, and strictly
+    additive — nothing that was a test before stops being one.
+- `orchestrator sdlc plan --language` defaults to `auto` (was the literal `python`) and
+  refuses an unsupported value, matching `sdlc feature`. It selects the codegen prompt, the
+  layout and the test environment, so the old default gave non-Python repositories
+  Python scaffolding without saying so.
+
 ## 3.35.0 — 2026-09-16
 
 ### Added
