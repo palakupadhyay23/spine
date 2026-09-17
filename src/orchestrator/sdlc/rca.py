@@ -263,8 +263,10 @@ def render_rca_md(report: RCAReport) -> str:
     is now enforced rather than described.
     """
     origin = "LLM-enriched" if report.llm else "deterministic (no LLM)"
-    title = "Root-cause analysis"
-    doc = Brief(title, tier=Tier.EVIDENCE)
+    # D7: the document's own type follows its content. Enrichment overwrites `fix_approach`
+    # with the model's text, so an enriched report is not an Evidence-tier document and must
+    # not present itself as one. The deterministic path is unchanged and stays EVIDENCE.
+    doc = Brief("Root-cause analysis", tier=Tier.JUDGEMENT if report.llm else Tier.EVIDENCE)
 
     preamble = [f"_{origin}; hypotheses ranked by evidence, not asserted._"]
     if report.exception:
@@ -298,7 +300,13 @@ def render_rca_md(report: RCAReport) -> str:
     else:
         doc.add(brief.REGRESSION_SURFACE)
 
-    doc.add(brief.FIX_APPROACH, report.fix_approach)
+    # Labelled per rendering, because this one section's provenance changes with the run:
+    # `_deterministic_fix_approach` computed it, or the model replaced it.
+    doc.add(
+        brief.FIX_APPROACH,
+        report.fix_approach,
+        label=brief.MODEL if report.llm else brief.DETERMINISTIC,
+    )
     doc.add(
         brief.NEXT_STEP,
         "Review + approve, then `orchestrator design` the fix and implement it with a regression "

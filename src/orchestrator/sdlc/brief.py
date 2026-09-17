@@ -48,6 +48,16 @@ class Tier(Enum):
     JUDGEMENT = 2
 
 
+#: The provenance labels, shared with the build document (``docs/specs/build-document.md``
+#: §1), which has carried them per-section since it was built. A brief that mixes a quoted
+#: requirement with model inference *without saying which is which* is worse than no brief:
+#: it lends the authority of the first to the second.
+STATED = "stated"
+DETERMINISTIC = "derived · deterministic"
+MODEL = "derived · model"
+HUMAN = "human"
+
+
 class BriefError(ValueError):
     """A surface tried to render a section it is not permitted to. Always names both."""
 
@@ -131,12 +141,13 @@ REGRESSION_SURFACE = Section(
     Tier.EVIDENCE,
     "_None identified (no in-repo dependents, or the fault didn't localize)._",
 )
-#: **Mixed provenance, and the tier does not currently say so.** The deterministic path
-#: computes this from the localization (`rca._deterministic_fix_approach`); the enrichment
-#: path *overwrites* it with the model's text (`rca.py:201`). It is filed as EVIDENCE because
-#: that is what the default path produces and P2 changes no behaviour — but an LLM-enriched
-#: report carries a model-written section inside an Evidence-tier document. Recorded in the
-#: plan as an open decision rather than settled here.
+#: **Mixed provenance — which is why sections carry a label as well as a tier.** The
+#: deterministic path computes this from the localization (`rca._deterministic_fix_approach`);
+#: the enrichment path *overwrites* it with the model's text (`rca.py:201`). Declaring it
+#: JUDGEMENT outright would delete it from every deterministic report, so the tier stays
+#: EVIDENCE — the default path's honest answer — and the caller labels each rendering
+#: :data:`MODEL` or :data:`DETERMINISTIC`. `rca` additionally raises the whole brief to
+#: JUDGEMENT when enrichment ran, so the document's own type never overstates it (D7).
 FIX_APPROACH = Section(
     "fix_approach",
     "Suggested fix approach",
@@ -213,12 +224,17 @@ class Brief:
     title: str
     tier: Tier = Tier.EVIDENCE
     _bodies: dict[str, str] = field(default_factory=dict)
+    _labels: dict[str, str] = field(default_factory=dict)
 
-    def add(self, section: Section, body: str = "") -> Brief:
-        """Set one section's body. Returns self so calls chain.
+    def add(self, section: Section, body: str = "", *, label: str = "") -> Brief:
+        """Set one section's body, optionally labelled with where it came from.
 
         Refuses a section above this brief's tier, naming both — the boundary D4 exists for.
         An empty body is not an error: the section renders its own honest copy.
+
+        ``label`` is for a section whose provenance varies per rendering rather than per
+        section — :data:`FIX_APPROACH` is the case that forced it. A section whose
+        provenance is fixed does not need one; its tier already says.
         """
         if section.tier.value > self.tier.value:
             raise BriefError(
@@ -227,6 +243,8 @@ class Brief:
                 "put it in `design`, which has an author behind it."
             )
         self._bodies[section.key] = body.strip()
+        if label:
+            self._labels[section.key] = label
         return self
 
     def render(self) -> str:
@@ -242,6 +260,11 @@ class Brief:
             if body is None and section not in REQUIRED:
                 continue
             out.append(section.heading)
+            label = self._labels.get(section.key)
+            if label:
+                # Blank line after, or markdown folds the label into the first paragraph —
+                # and a provenance label that reads as content is the opposite of its point.
+                out.append(f"*{label}*\n")
             out.append(body or section.empty)
             out.append("")
         return "\n".join(out).rstrip() + "\n"
@@ -249,9 +272,12 @@ class Brief:
 
 __all__ = [
     "DECOMPOSITION",
+    "DETERMINISTIC",
     "FAULT_SITE",
     "FIX_APPROACH",
+    "HUMAN",
     "HYPOTHESES",
+    "MODEL",
     "KNOWLEDGE",
     "LANDS",
     "NEXT_STEP",
@@ -262,6 +288,7 @@ __all__ = [
     "PRIOR_ART",
     "PROBLEM",
     "REGRESSION_SURFACE",
+    "STATED",
     "REQUIRED",
     "VERDICT",
     "Brief",
