@@ -270,6 +270,7 @@ async def _llm_design(spec: dict[str, Any], ctx: dict[str, Any], llm: Any) -> di
 
 
 def render_design_md(spec: dict[str, Any], design: dict[str, Any]) -> str:
+    from orchestrator.sdlc import brief
     from orchestrator.sdlc.impact import render_md as _render_blast
 
     def _list(title: str, items: list[str]) -> str:
@@ -278,7 +279,11 @@ def render_design_md(spec: dict[str, Any], design: dict[str, Any]) -> str:
         body = "\n".join(f"- {i}" for i in items)
         return f"\n## {title}\n{body}\n"
 
-    origin = "LLM-generated" if design.get("llm") else "heuristic (no LLM)"
+    # The shared provenance vocabulary rather than this module's own prose. A design is the
+    # JUDGEMENT-tier document in this family — it is an argument about what to build — and
+    # whether a model or the heuristic produced that argument is the single most useful fact
+    # about it. "LLM-generated" and "derived · model" said the same thing in two dialects.
+    origin = brief.MODEL if design.get("llm") else brief.DETERMINISTIC
     return (
         f"# Design — {spec.get('title', 'feature')}\n\n"
         f"_{origin}, grounded in the knowledge graph: {design.get('grounded')}_\n\n"

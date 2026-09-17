@@ -23,10 +23,18 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.pkg import FactStore
+from orchestrator.sdlc import brief
+from orchestrator.sdlc.brief import Brief, Tier
 from orchestrator.sdlc.churn import changed_recently
 from orchestrator.sdlc.localize import Localization, localize_trace
 
 logger = logging.getLogger("orchestrator.sdlc.rca")
+
+#: Bounds the "Not verified" caveat now quotes, so the number a reader sees and the number
+#: we actually cut at cannot drift apart — the defect that produced "reaches 13" beside a
+#: list of eight.
+_MAX_CALLERS = 10
+_MAX_SURFACE = 15
 
 # Exception class → a generic but grounded starting hypothesis. These are the
 # "what does this error usually mean" priors an engineer applies before reading.
@@ -252,53 +260,101 @@ async def build_rca(
     return report
 
 
-def render_rca_md(report: RCAReport) -> str:
-    origin = "LLM-enriched" if report.llm else "deterministic (no LLM)"
-    out: list[str] = [f"# Root-cause analysis\n\n_{origin}; hypotheses ranked by evidence, not asserted._\n"]
-    if report.exception:
-        out.append(f"**Exception:** `{report.exception}`\n")
+def _not_verified(report: RCAReport) -> str:
+    """What this analysis did not establish. Conditional on state, never boilerplate.
 
-    out.append("## Fault site")
-    if report.fault_site:
-        line = report.fault_site + (f" (in {report.fault_module})" if report.fault_module else "")
-        out.append(line)
-        if report.recently_changed:
-            out.append("\n⚠ This module changed recently — treat a regression as the leading hypothesis.")
-        if report.callers:
-            out.append("\n_Called by (potential trigger paths):_")
-            out.extend(f"- {c}" for c in report.callers[:10])
-    else:
-        out.append("_Not localized to a repo symbol — see the low-confidence hypothesis below._")
-    out.append("")
-
-    out.append("## Root-cause hypotheses")
+    An RCA is the document most likely to be read as a conclusion, and its header's promise
+    — "ranked by evidence, not asserted" — is easy to skim past. Naming the specific thing
+    that was not done is harder to skim than a disclaimer.
+    """
+    notes: list[str] = []
     if report.hypotheses:
+        notes.append(
+            "- The hypotheses were **ranked from static evidence, not reproduced**. None has "
+            "been executed against the failure."
+        )
+    if not report.fault_site:
+        notes.append(
+            "- The fault was not localized to a symbol, so everything below rests on the failure text alone."
+        )
+    if len(report.regression_surface) > _MAX_SURFACE:
+        notes.append(
+            f"- The regression surface lists {_MAX_SURFACE} of {len(report.regression_surface)} "
+            "— the remainder are equally affected, not less so."
+        )
+    if len(report.callers) > _MAX_CALLERS:
+        notes.append(
+            f"- {len(report.callers) - _MAX_CALLERS} further caller(s) were not listed as trigger paths."
+        )
+    if report.llm:
+        notes.append(
+            "- The fix approach was written by a model from the evidence above; it is a "
+            "suggestion, and nothing verified it."
+        )
+    return "\n".join(notes)
+
+
+def render_rca_md(report: RCAReport) -> str:
+    """Render the report as markdown, against the shared section vocabulary.
+
+    Titles and order come from :mod:`orchestrator.sdlc.brief`. The tier is EVIDENCE: an RCA
+    ranks hypotheses *by evidence* and must not assert a conclusion, which is the same
+    discipline the header has always claimed ("ranked by evidence, not asserted") and which
+    is now enforced rather than described.
+    """
+    origin = "LLM-enriched" if report.llm else "deterministic (no LLM)"
+    # D7: the document's own type follows its content. Enrichment overwrites `fix_approach`
+    # with the model's text, so an enriched report is not an Evidence-tier document and must
+    # not present itself as one. The deterministic path is unchanged and stays EVIDENCE.
+    doc = Brief("Root-cause analysis", tier=Tier.JUDGEMENT if report.llm else Tier.EVIDENCE)
+
+    preamble = [f"_{origin}; hypotheses ranked by evidence, not asserted._"]
+    if report.exception:
+        preamble.append(f"\n**Exception:** `{report.exception}`")
+    doc.add(brief.PROBLEM, "\n".join(preamble))
+
+    if report.fault_site:
+        site = [report.fault_site + (f" (in {report.fault_module})" if report.fault_module else "")]
+        if report.recently_changed:
+            site.append("\n⚠ This module changed recently — treat a regression as the leading hypothesis.")
+        if report.callers:
+            site.append("\n_Called by (potential trigger paths):_")
+            site.extend(f"- {c}" for c in report.callers[:_MAX_CALLERS])
+        doc.add(brief.FAULT_SITE, "\n".join(site))
+    else:
+        doc.add(brief.FAULT_SITE)
+
+    if report.hypotheses:
+        rows: list[str] = []
         for i, h in enumerate(report.hypotheses, 1):
-            out.append(f"{i}. **[{h.confidence}]** {h.claim}")
-            out.extend(f"   - {e}" for e in h.evidence)
+            rows.append(f"{i}. **[{h.confidence}]** {h.claim}")
+            rows.extend(f"   - {e}" for e in h.evidence)
+        doc.add(brief.HYPOTHESES, "\n".join(rows))
     else:
-        out.append("_No hypotheses could be grounded — gather more of the failure output._")
-    out.append("")
+        doc.add(brief.HYPOTHESES)
 
-    out.append("## Regression surface")
     if report.regression_surface:
-        out.append("_A fix must not break these (the fault module's dependents + hotspots):_\n")
-        out.extend(f"- {s}" for s in report.regression_surface[:15])
+        surface = ["_A fix must not break these (the fault module's dependents + hotspots):_\n"]
+        surface.extend(f"- {s}" for s in report.regression_surface[:_MAX_SURFACE])
+        doc.add(brief.REGRESSION_SURFACE, "\n".join(surface))
     else:
-        out.append("_None identified (no in-repo dependents, or the fault didn't localize)._")
-    out.append("")
+        doc.add(brief.REGRESSION_SURFACE)
 
-    out.append("## Suggested fix approach")
-    out.append(report.fix_approach)
-    out.append("")
-
-    out.append("## Next step")
-    out.append(
+    doc.add(brief.NOT_VERIFIED, _not_verified(report))
+    # Labelled per rendering, because this one section's provenance changes with the run:
+    # `_deterministic_fix_approach` computed it, or the model replaced it.
+    doc.add(
+        brief.FIX_APPROACH,
+        report.fix_approach,
+        label=brief.MODEL if report.llm else brief.DETERMINISTIC,
+    )
+    doc.add(
+        brief.NEXT_STEP,
         "Review + approve, then `orchestrator design` the fix and implement it with a regression "
         "test that reproduces the failure first (red → green). This report stops at analysis — "
-        "no code is changed."
+        "no code is changed.",
     )
-    return "\n".join(out) + "\n"
+    return doc.render()
 
 
 __all__ = ["Hypothesis", "RCAReport", "build_rca", "render_rca_md"]
