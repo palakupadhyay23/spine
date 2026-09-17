@@ -1839,7 +1839,9 @@ def _claims_a_change(summary: str) -> bool:
     docstring" claims something but names no file this stage can check. Requiring both keeps
     a real no-op a no-op.
     """
-    return bool(_CHANGE_CLAIM.search(summary)) and bool(_PATH_RE.search(summary))
+    from orchestrator.sdlc.source_paths import PATH_RE
+
+    return bool(_CHANGE_CLAIM.search(summary)) and bool(PATH_RE.search(summary))
 
 
 def _is_test_file(path: Path) -> bool:
@@ -2216,7 +2218,9 @@ def _safe_target(root: Path, rel: str) -> Path:
     return candidate
 
 
-_PATH_RE = re.compile(r"\b((?:src/|tests/)[\w./-]+\.py)\b")
+# The path regex lives in `sdlc.source_paths`, shared with `design._stated_paths`: two copies
+# that must agree is the drift a plan's §6.1 exists to prevent, and the Python-only copy that
+# used to sit here could not see the `.cs` file a ticket named.
 
 
 _MAX_TEST_EXAMPLE_BYTES = 12_000  # supplementary to the source block, so a fraction of it
@@ -2240,7 +2244,7 @@ def _existing_test_examples(spec: dict[str, Any], root: Path, design: str = "") 
     convention for invoking *any* entry point under test is best stated by the tests that
     already do it.
     """
-    targets = _paths_from(spec, design)
+    targets = _paths_from(spec, design, root)
     if not targets:
         return ""
     modules = {_module_path_of(rel) for rel in targets if _module_path_of(rel)}
@@ -2279,19 +2283,30 @@ def _existing_test_examples(spec: dict[str, Any], root: Path, design: str = "") 
     )
 
 
-def _paths_from(spec: dict[str, Any], design: str) -> list[str]:
-    """Repo-relative source paths this ticket is about — spec first, then the design."""
+def _paths_from(spec: dict[str, Any], design: str, root: Path | None = None) -> list[str]:
+    """Repo-relative source paths this ticket is about — spec first, then the design.
+
+    Reads every field an identifier survives in (the intent's own ``description``/``scope``
+    since intake carries them, not only the paraphrased summary). With a ``root``, a bare
+    basename is resolved to its one location and anything that does not exist is dropped —
+    the same rule ``design._stated_paths`` applies, from the same module.
+    """
+    from orchestrator.sdlc.source_paths import named_paths, resolve
+
     blob = " ".join(
         [
             str(spec.get("summary") or ""),
+            str(spec.get("description") or ""),
+            str(spec.get("scope") or ""),
             str(spec.get("technical_notes") or ""),
             *_str_list(spec.get("acceptance_criteria")),
         ]
     )
     seen: list[str] = []
-    for rel in _PATH_RE.findall(blob) + _PATH_RE.findall(design):
-        if rel not in seen:
-            seen.append(rel)
+    for rel in named_paths(blob) + named_paths(design):
+        resolved = resolve(rel, root) if root is not None else rel
+        if resolved and resolved not in seen:
+            seen.append(resolved)
     return seen
 
 
@@ -2406,10 +2421,12 @@ def _named_existing_files(spec: dict[str, Any], root: Path, design: str = "") ->
     """
     # Spec first: when a ticket does name its files, that is the sharpest statement of
     # intent there is. The design follows, and fills the common case where it does not.
-    seen = _paths_from(spec, design)
+    seen = _paths_from(spec, design, root)
     blob = " ".join(
         [
             str(spec.get("summary") or ""),
+            str(spec.get("description") or ""),
+            str(spec.get("scope") or ""),
             str(spec.get("technical_notes") or ""),
             *_str_list(spec.get("acceptance_criteria")),
         ]

@@ -425,7 +425,7 @@ async def test_nss_1231_the_named_file_outranks_the_paraphrase_s_invented_word()
     )
     ticket = (
         "Replace the current HTTP Basic Auth (`EBS_API_USERNAME`/`EBS_API_PASSWORD`, used in "
-        "`EBSOrderApiClient.cs`) with OAuth2 client-credentials flow against the IDCS token endpoint."
+        "the `EBSOrderApiClient` class) with OAuth2 client-credentials flow against the IDCS token endpoint."
     )
     spec: dict[str, Any] = {
         "title": "Implement OAuth2 client-credentials auth for OIC integration",
@@ -450,3 +450,47 @@ def test_a_path_named_in_the_description_is_a_stated_path(tmp_path: Path) -> Non
     (tmp_path / "src" / "named.py").write_text("x = 1\n")
     spec = {"title": "T", "summary": "nothing here", "description": "edit src/named.py", "scope": ""}
     assert _stated_paths(spec, tmp_path) == ["src/named.py"]
+
+
+# --- the override lever works outside Python (NSS-1231) --------------------------------------
+#
+# `_PATH_RE` matched `src/|tests/` + `.py` only. On a .NET repository a ticket could name its
+# file as precisely as it liked and the design fell through to the keyword guess regardless.
+
+
+def test_nss_1231_a_bare_cs_filename_in_the_ticket_is_a_stated_path(tmp_path: Path) -> None:
+    from orchestrator.sdlc.design import _fallback_design
+
+    target = tmp_path / "FunctionsApp" / "Shared" / "Utils" / "EBSOrderApiClient.cs"
+    target.parent.mkdir(parents=True)
+    target.write_text("//\n", encoding="utf-8")
+    (tmp_path / "FunctionsApp" / "Program.cs").write_text("//\n", encoding="utf-8")
+    spec = {
+        "title": "Implement OAuth2 client-credentials auth for OIC integration",
+        "summary": "a paraphrase naming nothing",
+        "description": "Replace Basic Auth (`EBS_API_USERNAME`, used in `EBSOrderApiClient.cs`) with OAuth2.",
+        "acceptance_criteria": [],
+    }
+
+    design = _fallback_design(spec, None, None, tmp_path)
+
+    assert design["files_to_touch"] == ["FunctionsApp/Shared/Utils/EBSOrderApiClient.cs"]
+    assert design["risks"] == ["Files taken from the paths this ticket names, not inferred from its words."]
+
+
+def test_a_windows_path_in_the_ticket_is_read(tmp_path: Path) -> None:
+    from orchestrator.sdlc.design import _stated_paths
+
+    (tmp_path / "Shared" / "Enums").mkdir(parents=True)
+    (tmp_path / "Shared" / "Enums" / "ProductGroup.cs").write_text("//\n", encoding="utf-8")
+    spec = {"summary": r"the helper in Shared\Enums\ProductGroup.cs", "acceptance_criteria": []}
+    assert _stated_paths(spec, tmp_path) == ["Shared/Enums/ProductGroup.cs"]
+
+
+def test_an_ambiguous_bare_name_is_not_guessed(tmp_path: Path) -> None:
+    from orchestrator.sdlc.design import _stated_paths
+
+    for d in ("a", "b"):
+        (tmp_path / d).mkdir()
+        (tmp_path / d / "Product.cs").write_text("//\n", encoding="utf-8")
+    assert _stated_paths({"summary": "edit Product.cs", "acceptance_criteria": []}, tmp_path) == []

@@ -67,12 +67,6 @@ def _structure_lines(overview: dict[str, Any] | None) -> list[str]:
     return lines
 
 
-# Repo-relative source paths, matching `codegen._PATH_RE`. Duplicated rather than shared:
-# a six-character regex is cheaper to repeat than a new coupling between two modules that
-# otherwise do not know about each other.
-_PATH_RE = re.compile(r"\b((?:src/|tests/)[\w./-]+\.py)\b")
-
-
 def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     """Paths the spec *states*, which outrank paths inferred from its words.
 
@@ -87,14 +81,20 @@ def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     read here for the same reason ``codegen._paths_from`` reads them. A stated path that
     does not exist is dropped: naming a file to create is a job for the approach, not for a
     list of files to open.
+
+    Any source suffix, either separator, and a bare basename — ``EBSOrderApiClient.cs`` with
+    no directory is how NSS-1231 wrote it, and it resolves to its one location under ``root``
+    (two locations is a guess and is dropped). Until it did, this lever was Python-only, and
+    on a .NET repository the design fell through to the keyword guess however precisely the
+    ticket had named its file. Without a ``root`` paths are taken as written.
     """
+    from orchestrator.sdlc.source_paths import named_paths, resolve
+
     out: list[str] = []
-    for rel in _PATH_RE.findall(_query_text(spec, title=False)):
-        if rel in out:
-            continue
-        if root is not None and not (root / rel).is_file():
-            continue
-        out.append(rel)
+    for rel in named_paths(_query_text(spec, title=False)):
+        resolved = resolve(rel, root) if root is not None else rel
+        if resolved and resolved not in out:
+            out.append(resolved)
     return out
 
 
