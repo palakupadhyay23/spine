@@ -184,6 +184,49 @@ def build_investigation(
     )
 
 
+def _not_verified(inv: Investigation) -> str:
+    """What this brief did *not* establish, derived from its own state.
+
+    The section is required, so the alternative to writing this is the placeholder — and
+    "nothing was deliberately left unchecked" is false of every investigation: retrieval here
+    is lexical, the list is bounded, and three of the four sections degrade silently when
+    their source is absent. A limits section that is wrong is worse than none, because a
+    reader who sees one stops looking for the limits themselves.
+
+    Every line is conditional on real state. A brief with genuinely nothing to declare falls
+    back to the section's own copy rather than inventing a caveat.
+    """
+    notes: list[str] = []
+    if inv.landing:
+        notes.append(
+            "- Retrieval is **lexical**, not semantic: these symbols matched the ticket's "
+            "words. A landing site that uses different words for the same thing is not here."
+        )
+    if inv.elided:
+        notes.append(
+            f"- {inv.elided} further match(es) were not listed — the ranking is a bound, "
+            "not a judgement that the rest are irrelevant."
+        )
+    if not inv.knowledge:
+        notes.append("- No `episteme/` was read, so committed project knowledge is absent, not empty.")
+    if not inv.prior_notes:
+        notes.append(
+            "- Prior runs were not consulted (cross-run memory needs the registry DB) — "
+            "this ticket may have been attempted before."
+        )
+    if len(inv.repos) > 1:
+        notes.append(
+            f"- {len(inv.repos)} repositories were merged. Anything in a repository that was "
+            "not declared is invisible here, and reads the same as nothing to find."
+        )
+    if inv.landing and not any(hit.intents for hit in inv.landing):
+        notes.append(
+            "- No landing site carries a recorded intent, which is not the same as no prior "
+            "work having touched it."
+        )
+    return "\n".join(notes)
+
+
 def render_investigation_md(inv: Investigation) -> str:
     """Render the brief as markdown. Honest when a section has nothing grounded.
 
@@ -256,6 +299,7 @@ def render_investigation_md(inv: Investigation) -> str:
     else:
         doc.add(brief.PRIOR_ART)
 
+    doc.add(brief.NOT_VERIFIED, _not_verified(inv))
     doc.add(
         brief.NEXT_STEP,
         "Feed this into `orchestrator design` to produce a grounded, blast-radius-aware design.",

@@ -30,6 +30,12 @@ from orchestrator.sdlc.localize import Localization, localize_trace
 
 logger = logging.getLogger("orchestrator.sdlc.rca")
 
+#: Bounds the "Not verified" caveat now quotes, so the number a reader sees and the number
+#: we actually cut at cannot drift apart — the defect that produced "reaches 13" beside a
+#: list of eight.
+_MAX_CALLERS = 10
+_MAX_SURFACE = 15
+
 # Exception class → a generic but grounded starting hypothesis. These are the
 # "what does this error usually mean" priors an engineer applies before reading.
 _EXC_HINTS: dict[str, str] = {
@@ -254,6 +260,40 @@ async def build_rca(
     return report
 
 
+def _not_verified(report: RCAReport) -> str:
+    """What this analysis did not establish. Conditional on state, never boilerplate.
+
+    An RCA is the document most likely to be read as a conclusion, and its header's promise
+    — "ranked by evidence, not asserted" — is easy to skim past. Naming the specific thing
+    that was not done is harder to skim than a disclaimer.
+    """
+    notes: list[str] = []
+    if report.hypotheses:
+        notes.append(
+            "- The hypotheses were **ranked from static evidence, not reproduced**. None has "
+            "been executed against the failure."
+        )
+    if not report.fault_site:
+        notes.append(
+            "- The fault was not localized to a symbol, so everything below rests on the failure text alone."
+        )
+    if len(report.regression_surface) > _MAX_SURFACE:
+        notes.append(
+            f"- The regression surface lists {_MAX_SURFACE} of {len(report.regression_surface)} "
+            "— the remainder are equally affected, not less so."
+        )
+    if len(report.callers) > _MAX_CALLERS:
+        notes.append(
+            f"- {len(report.callers) - _MAX_CALLERS} further caller(s) were not listed as trigger paths."
+        )
+    if report.llm:
+        notes.append(
+            "- The fix approach was written by a model from the evidence above; it is a "
+            "suggestion, and nothing verified it."
+        )
+    return "\n".join(notes)
+
+
 def render_rca_md(report: RCAReport) -> str:
     """Render the report as markdown, against the shared section vocabulary.
 
@@ -279,7 +319,7 @@ def render_rca_md(report: RCAReport) -> str:
             site.append("\n⚠ This module changed recently — treat a regression as the leading hypothesis.")
         if report.callers:
             site.append("\n_Called by (potential trigger paths):_")
-            site.extend(f"- {c}" for c in report.callers[:10])
+            site.extend(f"- {c}" for c in report.callers[:_MAX_CALLERS])
         doc.add(brief.FAULT_SITE, "\n".join(site))
     else:
         doc.add(brief.FAULT_SITE)
@@ -295,11 +335,12 @@ def render_rca_md(report: RCAReport) -> str:
 
     if report.regression_surface:
         surface = ["_A fix must not break these (the fault module's dependents + hotspots):_\n"]
-        surface.extend(f"- {s}" for s in report.regression_surface[:15])
+        surface.extend(f"- {s}" for s in report.regression_surface[:_MAX_SURFACE])
         doc.add(brief.REGRESSION_SURFACE, "\n".join(surface))
     else:
         doc.add(brief.REGRESSION_SURFACE)
 
+    doc.add(brief.NOT_VERIFIED, _not_verified(report))
     # Labelled per rendering, because this one section's provenance changes with the run:
     # `_deterministic_fix_approach` computed it, or the model replaced it.
     doc.add(

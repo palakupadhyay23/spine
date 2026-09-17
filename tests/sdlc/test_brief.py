@@ -70,6 +70,44 @@ def test_every_section_title_is_unique() -> None:
     assert len(titles) == len(set(titles))
 
 
+def test_no_deterministic_surface_can_reach_a_judgement_section() -> None:
+    """§5.1's import boundary, checked rather than trusted.
+
+    `investigate` and `rca` are the surfaces invariant 2 protects. A verdict, an options
+    table or a recommendation appearing in either would destroy the property that makes them
+    quotable — and the way that happens is not malice, it is someone adding one useful line.
+    """
+    import inspect
+
+    from orchestrator.sdlc import investigate, rca
+
+    judgement = {s.key.upper() for s in ORDER if s.tier is Tier.JUDGEMENT}
+    for module in (investigate, rca):
+        source = inspect.getsource(module)
+        for name in judgement:
+            assert f"brief.{name}" not in source, (
+                f"{module.__name__} reaches for the JUDGEMENT section {name}. "
+                "A deterministic brief renders facts; the argument belongs to `design`."
+            )
+
+
+def test_the_limits_section_is_not_boilerplate() -> None:
+    """A limits section that is always the same sentence is furniture, not information.
+
+    It has to be conditional on real state, or a reader learns to skip it — at which point
+    the honest thing we added is worse than nothing, because it looks like a disclosure.
+    """
+    from orchestrator.sdlc.rca import RCAReport, render_rca_md
+
+    bare = render_rca_md(RCAReport())
+    loaded = render_rca_md(RCAReport(llm=True, regression_surface=[f"s{i}" for i in range(20)]))
+    bare_block = bare.split("## Not verified")[1].split("## ")[0]
+    loaded_block = loaded.split("## Not verified")[1].split("## ")[0]
+    assert bare_block != loaded_block
+    assert "15 of 20" in loaded_block
+    assert "written by a model" in loaded_block
+
+
 def test_evidence_tier_sees_only_evidence_sections() -> None:
     assert all(s.tier is Tier.EVIDENCE for s in sections_for(Tier.EVIDENCE))
     assert NOT_VERIFIED in sections_for(Tier.EVIDENCE)
