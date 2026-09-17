@@ -14,7 +14,7 @@ import sys
 import pytest
 
 from orchestrator.pkg import FactStore
-from orchestrator.sdlc.criteria_binding import bind_criteria
+from orchestrator.pkg.criteria_binding import bind_criteria
 
 _GRAPH_SRC = """
 from orchestrator.pkg.facts import FactBatch, Node, NodeKind, Provenance
@@ -125,7 +125,7 @@ def test_the_binding_is_stable_across_hash_seeds() -> None:
             "import json",
             "from orchestrator.pkg import FactStore",
             _GRAPH_SRC,
-            "from orchestrator.sdlc.criteria_binding import bind_criteria",
+            "from orchestrator.pkg.criteria_binding import bind_criteria",
             'spec = {"acceptance_criteria": ["`render` returns a string", "`report.py` is touched"]}',
             "b = bind_criteria(spec, store=FactStore(graph()))",
             "print(json.dumps(b.to_dict(), sort_keys=True))",

@@ -176,7 +176,7 @@ def _check_unbound_criteria(criteria: Any, issue_type: str = "") -> list[Finding
     """A criterion naming code the graph does not hold.
 
     Only claims can fail here — prose, CamelCase, env vars and tool names are not claims about
-    this repository and never refuse a ticket. That rule lives in `criteria_binding`, which
+    this repository and never refuse a ticket. That rule lives in `pkg.criteria_binding`, which
     borrows it from the doc-drift reconciler rather than inventing a second one.
 
     **What the finding means depends on the ticket**, and `assess` acts on it accordingly. For
