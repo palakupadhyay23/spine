@@ -31,7 +31,7 @@ from orchestrator.pkg.scoping import (
 # the file with `split(":", 1)[0]`:
 #
 #   sdlc/design.py:130          sdlc/builddoc.py:953, 1163
-#   sdlc/autorun.py:788         sdlc/criteria_binding.py:224
+#   sdlc/autorun.py:788         pkg/criteria_binding.py:224
 #                               sdlc/evidence.py:73
 #
 # The last two are the ones that would hurt. `evidence.py` is the Evidence artifact's own file

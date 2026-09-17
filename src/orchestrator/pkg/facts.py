@@ -89,7 +89,7 @@ class Provenance:
     sites parse this string back with ``split(":", 1)[0]`` to recover the file path::
 
         sdlc/design.py            sdlc/builddoc.py (x2)
-        sdlc/autorun.py           sdlc/criteria_binding.py
+        sdlc/autorun.py           pkg/criteria_binding.py
                                   sdlc/evidence.py
 
     Adding a segment makes every one of them return the *repo name* where a path is expected —
