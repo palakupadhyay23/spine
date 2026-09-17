@@ -130,6 +130,9 @@ def landing_files(landing_rows: list[dict[str, Any]]) -> tuple[str, ...]:
                 module=str(row.get("module", "")),
             )
             for row in landing_rows
+            # The same floor the design applies — a weak hit is not a landing site, and the
+            # gate must not be handed one as if it were.
+            if not row.get("weak")
         )
     )
 

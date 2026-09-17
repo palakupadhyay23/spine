@@ -99,6 +99,25 @@ def _is_test_file(path: str) -> bool:
 
 
 @dataclass(frozen=True)
+class ScoredSymbol:
+    """A retrieval hit with the evidence it rests on, so a consumer can tell strong from weak.
+
+    ``weak`` is the floor: **every** token the hit shares with the query also names symbols in
+    other files — it rests on nothing specific. NSS-1231's five proposed files all rested on
+    ``client`` (one word, shared by a Service Bus field, a blob client and two API clients), and
+    ``PsiHoldApiClient`` on ``api`` + ``client``, two such words; the score alone could not say
+    so once it left this module, because nothing downstream carried it. One token unique to the
+    hit's file — ``ebsorder``, ``exporter`` — is enough to make it strong: the ticket named one
+    thing and one thing matched.
+    """
+
+    node: Node
+    score: float
+    matched: tuple[str, ...]
+    weak: bool
+
+
+@dataclass(frozen=True)
 class SymbolImpact:
     """A changed symbol and what depends on it."""
 
@@ -165,11 +184,25 @@ class GroundedRetriever:
         Type/Function outrank Module so the result reads like an API surface.
         Test-file symbols are excluded by default: a spec wants the APIs to
         reuse, not the tests that exercise them.
+
+        The nodes only; :meth:`scored_symbols` carries the evidence too.
+        """
+        return [s.node for s in self.scored_symbols(text, limit=limit, include_tests=include_tests)]
+
+    def scored_symbols(self, text: str, *, limit: int = 8, include_tests: bool = False) -> list[ScoredSymbol]:
+        """:meth:`relevant_symbols` with each hit's score, matched tokens and the ``weak`` floor.
+
+        "Names other symbols" is counted over distinct **files**, on the candidates the ranking
+        sees: a module and the function inside it sharing the file's name is one thing named
+        once, not a generic word — `exporter` in `src/exporter.py` is the thing a ticket meant,
+        `client` across four files is not. Measured against the graph in hand, not a constant,
+        so the rule holds on a ten-node fixture and a ten-thousand-node repository.
         """
         query = _tokens(text)
         if not query:
             return []
-        scored: list[tuple[float, str, Node]] = []
+        hits: list[tuple[float, str, Node, frozenset[str]]] = []
+        files_of: dict[str, set[str]] = {}
         for node in self._store.nodes:
             if not node.grounded:
                 continue
@@ -178,15 +211,23 @@ class GroundedRetriever:
             name_tokens = _tokens(node.name)
             if not name_tokens:
                 continue
-            overlap = len(query & name_tokens)
-            if overlap == 0:
+            overlap = frozenset(query & name_tokens)
+            if not overlap:
                 continue
-            score = 3.0 * (overlap / len(name_tokens)) + 1.0 * overlap
+            file = node.provenance.file if node.provenance is not None else node.id
+            for token in overlap:
+                files_of.setdefault(token, set()).add(file)
+            score = 3.0 * (len(overlap) / len(name_tokens)) + 1.0 * len(overlap)
             if node.kind in (NodeKind.TYPE, NodeKind.FUNCTION):
                 score += 0.5
-            scored.append((score, node.id, node))
-        scored.sort(key=lambda s: (-s[0], s[1]))
-        return [n for _, _, n in scored[:limit]]
+            hits.append((score, node.id, node, overlap))
+        hits.sort(key=lambda s: (-s[0], s[1]))
+        out: list[ScoredSymbol] = []
+        for score, _, node, overlap in hits[:limit]:
+            matched = tuple(sorted(overlap))
+            weak = all(len(files_of.get(token, ())) >= 2 for token in matched)
+            out.append(ScoredSymbol(node=node, score=score, matched=matched, weak=weak))
+        return out
 
     def api_surface(self, text: str, *, limit: int = 8) -> list[Node]:
         """``relevant_symbols`` with Module hits expanded into their classes.
@@ -230,4 +271,4 @@ class GroundedRetriever:
         )
 
 
-__all__ = ["GroundedRetriever", "SymbolImpact"]
+__all__ = ["GroundedRetriever", "ScoredSymbol", "SymbolImpact"]

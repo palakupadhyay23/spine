@@ -1082,9 +1082,31 @@ def render_build_md(
     add("---\n")
 
     add("## 1. Requirement")
-    add(_label(STATED, "the ticket body, quoted"))
+    # This section carried a `stated — the ticket body, quoted` label over `spec["summary"]`,
+    # which is the spec writer's paraphrase — a model's prose under the authority of a quote,
+    # the exact confusion `brief.py`'s vocabulary exists to prevent. On NSS-1231 the paraphrase
+    # had dropped the file the ticket named and invented four words, and a reader had no way
+    # to see the ticket to know. The intent's description is the closest thing intake carries
+    # to the ticket's own words (the extractor keeps identifiers verbatim there); it is shown
+    # when present, and either way the label says what the text is.
+    description = str(spec.get("description") or "").strip()
     add(f"**{title}**\n")
-    add(str(spec.get("summary") or "_The ticket says nothing beyond its title._") + "\n")
+    if description:
+        add(
+            _label(
+                MODEL,
+                "the intent's description — the ticket's words as intake carried them, identifiers verbatim",
+            )
+        )
+        add(description + "\n")
+    else:
+        add(
+            _label(
+                MODEL,
+                "`intake/specs.py` — the spec writer's summary; the ticket's own words were not carried",
+            )
+        )
+        add(str(spec.get("summary") or "_The ticket says nothing beyond its title._") + "\n")
 
     add("## 2. Intent")
     add(_label(MODEL, "`intake/specs.py` — the spec writer"))
@@ -1271,6 +1293,10 @@ async def build_plan(
     )
     landing = []
     for land in getattr(investigation, "landing", []) or []:
+        # The same floor the design applies: a hit on one shared word is not a landing site,
+        # and handing the gate every weak hit is how an all-weak ticket read as located.
+        if getattr(land, "weak", False):
+            continue
         where = str(getattr(land, "where", "")).split(":", 1)[0]
         if where and where not in landing:
             landing.append(where)

@@ -407,6 +407,7 @@ def _nss_1231_graph() -> Any:
             7,
         ),
         ("csharp:ApiModels", NodeKind.FIELD, "SourceSystemId", "FunctionsApp/ApiModels/Mill.cs", 13),
+        ("csharp:DbModels", NodeKind.FIELD, "SourceSystemId", "FunctionsApp/DbModels/MillsEntity.cs", 15),
     ):
         # add_node is first-wins for a grounded id, so re-adding the module is a no-op.
         b.add_node(Node(module, NodeKind.MODULE, module.split(":")[1], "csharp", Provenance(file, 1)))
@@ -435,11 +436,9 @@ async def test_nss_1231_the_named_file_outranks_the_paraphrase_s_invented_word()
     }
     design = await produce_design(spec, overview=None, store=_nss_1231_graph(), llm=None)
 
-    files = design["files_to_touch"]
-    assert files[0] == "FunctionsApp/Shared/Utils/EBSOrderApiClient.cs"
-    # The invented word still matches — a floor is P8's job — but it no longer outranks the
-    # file the ticket named.
-    assert "FunctionsApp/ApiModels/Mill.cs" not in files[:2]
+    # The invented word matches two database models on one shared word, `system` — a weak
+    # hit, dropped by the floor. What remains is the file the ticket named.
+    assert design["files_to_touch"] == ["FunctionsApp/Shared/Utils/EBSOrderApiClient.cs"]
 
 
 def test_a_path_named_in_the_description_is_a_stated_path(tmp_path: Path) -> None:

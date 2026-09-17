@@ -140,6 +140,12 @@ def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
     )
     files: list[str] = []
     for landing in investigation.landing:
+        # The floor. A hit on one shared word is a reason to look, not a file to edit; five of
+        # them was NSS-1231's whole design. Dropped here, an all-weak ticket falls through to
+        # "no files are proposed" — the honest answer, and one this function's caller already
+        # knew how to give.
+        if landing.weak:
+            continue
         path = landing.where.split(":", 1)[0]
         if path and path not in files:
             files.append(path)
