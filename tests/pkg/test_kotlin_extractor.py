@@ -100,6 +100,25 @@ def _facts(tmp_path: Path, src: str = REPO_KT, name: str = "Cart.kt") -> FactBat
     return ex.finalize(batch)
 
 
+def _repo_facts(tmp_path: Path, files: dict[str, str]) -> FactBatch:
+    """Extract several files as one repository.
+
+    Needed wherever the behaviour under test is about a *type declared in another
+    file*, which since the deferred-call fix is the only way a same-package receiver
+    resolves at all: an undeclared `CartDao` is no longer quietly invented under the
+    caller's package, so a fixture that wants the edge has to declare the class the
+    way the real code being modelled does.
+    """
+    ex = KotlinExtractor()
+    batch = FactBatch()
+    for name, src in files.items():
+        f = tmp_path / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(src, encoding="utf-8")
+        batch.merge(ex.extract(path=f, module=ex.module_name(f, tmp_path), rel=name))
+    return ex.finalize(batch)
+
+
 def _ids(batch: FactBatch, kind: NodeKind) -> set[str]:
     return {n.id for n in batch.nodes if n.kind is kind and not n.external}
 
@@ -316,6 +335,17 @@ object Registry {
     fun register() {}
 }
 
+// Declared, because a receiver's type has to be *known* for the call through it to
+// land: a type nothing in the repository declares is no longer invented under the
+// caller's package (see `_DeferredCall`).
+class CartDao {
+    fun load() {}
+}
+
+class Topic {
+    fun render() {}
+}
+
 fun Topic.slugify(): String = ""
 """
 
@@ -380,7 +410,18 @@ class Runner {
 
 
 def test_safe_call_resolves_like_a_plain_one(tmp_path: Path) -> None:
-    src = """\
+    calls = _calls(
+        _repo_facts(
+            tmp_path,
+            {
+                "CartDao.kt": """\
+package com.shop.data
+
+class CartDao {
+    fun fetch() {}
+}
+""",
+                "Repo.kt": """\
 package com.shop.data
 
 class Repo(private val dao: CartDao) {
@@ -388,14 +429,29 @@ class Repo(private val dao: CartDao) {
         dao?.fetch()
     }
 }
-"""
-    calls = _calls(_facts(tmp_path, src, "Repo.kt"))
+""",
+            },
+        )
+    )
     assert ("java:com.shop.data.Repo.load", "java:com.shop.data.CartDao.fetch") in calls
 
 
 def test_companion_call_folds_onto_the_class(tmp_path: Path) -> None:
     """D5 from the call side: `CartService.boot()` names the class, not `Companion`."""
-    src = """\
+    calls = _calls(
+        _repo_facts(
+            tmp_path,
+            {
+                "CartService.kt": """\
+package com.shop.data
+
+class CartService {
+    companion object {
+        fun boot() {}
+    }
+}
+""",
+                "Boot.kt": """\
 package com.shop.data
 
 class Boot {
@@ -403,8 +459,10 @@ class Boot {
         CartService.boot()
     }
 }
-"""
-    calls = _calls(_facts(tmp_path, src, "Boot.kt"))
+""",
+            },
+        )
+    )
     assert ("java:com.shop.data.Boot.run", "java:com.shop.data.CartService.boot") in calls
 
 

@@ -126,3 +126,46 @@ def test_a_nested_settings_file_is_a_separate_build(tmp_path: Path) -> None:
 def test_a_repo_with_no_gradle_gains_no_gradle_modules(tmp_path: Path) -> None:
     (tmp_path / "a.kt").write_text("package p\n\nclass A\n", encoding="utf-8")
     assert _modules(RepoCodeExtractor().extract(tmp_path)) == set()
+
+
+# ---- §11 finding 8: a dependency belongs to the module it configures ----
+
+
+def test_a_dependency_inside_a_project_block_belongs_to_that_project(tmp_path: Path) -> None:
+    """A root script may configure other modules from inside itself.
+
+    Walking the whole tree and crediting every `project(":x")` to the script's own module
+    asserted a root -> `core/ui` edge that no file declares *and* lost the real
+    `app` -> `core/ui` one: a false edge and a missing edge from a single read.
+    """
+    (tmp_path / "settings.gradle.kts").write_text('include(":app", ":core:ui")\n', encoding="utf-8")
+    (tmp_path / "build.gradle.kts").write_text(
+        'project(":app") {\n    dependencies { implementation(project(":core:ui")) }\n}\n',
+        encoding="utf-8",
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    imports = {(e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.IMPORTS}
+    assert ("gradle:app", "gradle:core/ui") in imports
+    assert ("gradle:<root>", "gradle:core/ui") not in imports
+
+
+def test_a_subprojects_block_credits_no_single_module(tmp_path: Path) -> None:
+    """`subprojects { }` applies to a set this file does not enumerate, so the honest
+    reading is no edge — not one edge hung off the root."""
+    (tmp_path / "settings.gradle.kts").write_text('include(":app")\n', encoding="utf-8")
+    (tmp_path / "build.gradle.kts").write_text(
+        'subprojects {\n    dependencies { implementation(project(":core:ghost")) }\n}\n',
+        encoding="utf-8",
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert not [e for e in batch.edges if e.kind is EdgeKind.IMPORTS]
+    assert "gradle:core/ghost" not in {n.id for n in batch.nodes}
+
+
+def test_a_computed_module_path_is_not_a_module(tmp_path: Path) -> None:
+    """`include(":core:$it")` is a loop body, not a module named `core/$it`."""
+    (tmp_path / "settings.gradle.kts").write_text(
+        'listOf("data", "model").forEach { include(":core:$it") }\n', encoding="utf-8"
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert "gradle:core/$it" not in {n.id for n in batch.nodes}

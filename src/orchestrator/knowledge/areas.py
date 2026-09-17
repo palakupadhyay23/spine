@@ -26,7 +26,7 @@ from orchestrator.pkg.store import FactStore
 
 #: How much of a project's dotted modules a prefix must cover before it counts as an
 #: organisational prefix rather than architecture. Measured rather than picked: on the
-#: Android validation app the vendor prefix `com.google.samples.apps.nowinandroid` covers
+#: Android validation app the vendor prefix (five reverse-DNS segments) covers
 #: **94.4%** of first-party modules and the very next segment drops to **57.7%** — that
 #: cliff is where the namespace stops naming the organisation and starts naming components.
 #: On this repository the deepest majority prefix is `orchestrator` at **48.1%**, so the
@@ -43,7 +43,7 @@ def common_namespace_prefix(names: Iterable[str]) -> tuple[str, ...]:
     """The reverse-DNS prefix a project's modules share, as segments — ``()`` if none.
 
     A reverse-DNS namespace spends its first several segments on the *organisation*
-    (``com.google.samples.apps.nowinandroid``) and only then names a component. Grouping by
+    (``com.example.apps.<product>``) and only then names a component. Grouping by
     the first two segments therefore answers ``com.google`` for every module in the
     repository — one area containing the entire application, which is not an architecture.
 
@@ -70,6 +70,27 @@ def common_namespace_prefix(names: Iterable[str]) -> tuple[str, ...]:
             break
         best = candidate
     return best
+
+
+def store_namespace_prefix(nodes: Iterable[Node]) -> tuple[str, ...]:
+    """The namespace prefix for a whole node set — **the** definition, for every caller.
+
+    :func:`common_namespace_prefix` takes names, so each caller had to decide which
+    modules got to vote, and they did not agree: ``state`` and ``AreaIndex`` voted over
+    every non-external module while ``collect_areas`` voted over non-*test* modules only.
+    A prefix is decided by a majority of the voters, so a different electorate is a
+    different prefix — and then ``state`` and ``understand`` draw two different
+    architectures for the same commit, which is precisely what this module's docstring
+    says it exists to prevent. Measured on this repository before the fix: 103 area
+    labels one way, 386 the other.
+
+    Tests vote. They are modules of the repository and they carry its namespace, so they
+    are evidence about what that namespace is; whether a test area is *drawn* is a
+    separate decision each renderer still makes for itself.
+    """
+    return common_namespace_prefix(
+        node.name for node in nodes if node.kind is NodeKind.MODULE and not node.external
+    )
 
 
 def area_of_name(name: str, prefix: tuple[str, ...] = ()) -> str:
@@ -115,7 +136,11 @@ def build_module_paths(nodes: Iterable[Node]) -> tuple[str, ...]:
         if node.id.startswith(_GRADLE_PREFIX) and node.kind is NodeKind.MODULE
     }
     paths.discard("<root>")  # the root project owns no sources of its own
-    return tuple(sorted(paths, key=len, reverse=True))
+    # Longest first, then alphabetically. Sorting a *set* by length alone leaves ties in
+    # iteration order, which for a set of strings is hash order and so varies with
+    # PYTHONHASHSEED — and this tuple decides which module `area_of_file` matches a file
+    # to, on a path CLAUDE.md requires to be deterministic.
+    return tuple(sorted(paths, key=lambda path: (-len(path), path)))
 
 
 def area_of_file(
@@ -157,9 +182,7 @@ class AreaIndex:
         # Resolved once per store: the prefix is a property of the whole module set, so
         # deriving it per node would be both wrong (one node knows nothing about the set)
         # and quadratic.
-        self.prefix = common_namespace_prefix(
-            node.name for node in store.nodes if node.kind is NodeKind.MODULE and not node.external
-        )
+        self.prefix = store_namespace_prefix(store.nodes)
 
     def owning_module(self, node_id: str) -> Node | None:
         """Walk CONTAINS upward to the module that owns this node, if any."""
@@ -204,6 +227,7 @@ __all__ = [
     "AreaIndex",
     "area_of_name",
     "common_namespace_prefix",
+    "store_namespace_prefix",
     "multiplatform_modules",
     "zone_of",
 ]

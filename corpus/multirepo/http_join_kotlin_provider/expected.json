@@ -35,7 +35,7 @@
     { "src": "java:mobile@shop.net.ShopApi.getTopics", "dst": "java:api@endpoint:GET /v1/topics", "kind": "CONSUMES" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:mobile@endpoint:GET /v1/topics", "dst": "java:mobile@shop.net.ShopApi.getTopics", "kind": "EXPOSES" },
       "why": "PREDICTED BEFORE SCORING. Retrofit's `@GET(\"v1/topics\")` looks exactly like a route declaration and is the opposite of one (D10). Reading it as an `Endpoint` would make the app a provider of the route it calls, and the join would then pair two providers and propose nothing — the failure would be silent, because the graph would still be internally consistent."

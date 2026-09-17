@@ -39,6 +39,7 @@ method path without its real prefix is a route that does not exist.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
@@ -52,6 +53,32 @@ SPRING_PACKAGES = frozenset({"org.springframework.web.bind.annotation", "org.spr
 
 #: Class annotations that make a class a request-mapping handler (see module docstring).
 CONTROLLER_ANNOTATIONS = frozenset({"Controller", "RestController"})
+
+#: A Spring property placeholder (``${api.base}``) or a SpEL expression (``#{...}``).
+#: Either one means the path is resolved from configuration at boot, so the source does
+#: not say what it is.
+_PLACEHOLDER = re.compile(r"[$#]\{")
+
+
+def literal_path(value: str | None) -> str | None:
+    """A route path that is genuinely constant, or ``None``.
+
+    The module docstring's rule — "a path argument that is not a string literal … a
+    ``@Value`` placeholder — yields ``None`` rather than a guess" — needs enforcing
+    *after* the literal is read, not only by refusing non-literal nodes. Found in
+    review: ``@GetMapping("${api.base}/topics")`` is a perfectly ordinary Java
+    ``string_literal``, so it sailed through the node-type test and produced the
+    endpoint ``GET /${api.base}/topics``. Kotlin has the same hole by a different
+    spelling: an interpolation is refused by the grammar, but the escaped form
+    ``"\\${api.base}/topics"`` decodes to exactly the same literal text.
+
+    An empty string stays a valid path (it is how a class-level prefix says "no
+    prefix"), so this tests for the placeholder, not for emptiness.
+    """
+    if value is None:
+        return None
+    return None if _PLACEHOLDER.search(value) else value
+
 
 #: The verb each shortcut mapping annotation stands for.
 VERB_BY_MAPPING = {
@@ -201,6 +228,7 @@ __all__ = [
     "emit_endpoints",
     "is_controller",
     "join_path",
+    "literal_path",
     "resolves_into_spring",
     "verbs_of",
 ]

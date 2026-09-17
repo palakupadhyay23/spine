@@ -42,7 +42,7 @@ ANDROID_UNIT_TEST_TASK = "testDebugUnitTest"
 JVM_TEST_TASK = "test"
 
 # An `android { … }` block is the durable marker. The plugin *id* is not: Android projects
-# of any size apply a convention plugin (`id("nowinandroid.android.library")`), and the
+# of any size apply a convention plugin (`id("<product>.android.library")`), and the
 # string `com.android.library` then appears only inside `build-logic/`, never in the module
 # that is actually an Android library.
 _ANDROID_BLOCK = re.compile(r"^\s*android\s*(\{|=)", re.MULTILINE)
@@ -119,11 +119,20 @@ def package_dir(module: Path, package: str) -> tuple[str, str] | None:
     return None
 
 
-def base_package(module: Path) -> str:
-    """The shallowest package under this module's main source root that holds Kotlin.
+def base_packages(module: Path) -> tuple[str, ...]:
+    """Every shallowest package under this module's main source root that holds Kotlin.
 
-    ``""`` when the module has no Kotlin at all — a resources-only or pure-Java module.
+    Empty when the module has no Kotlin at all — a resources-only or pure-Java module.
+
+    **Plural on purpose.** A module is not required to root all its sources at one package,
+    and several real ones do not: a benchmark module holding both its own package and a
+    helper under a third-party namespace is the case that turned up in the validation app.
+    Answering with only the first meant a target under any *other* of the module's packages
+    matched nothing, and `module_for_package` then refused a placement it could have made —
+    a refusal that reads exactly like the honest "no module holds that package" one, which
+    is what makes it worth fixing rather than tolerating.
     """
+    found: list[str] = []
     for source_root in SOURCE_ROOTS:
         main = module / "src" / "main" / source_root
         if not main.is_dir():
@@ -131,8 +140,19 @@ def base_package(module: Path) -> str:
         for dirpath, dirnames, files in os.walk(main):
             dirnames[:] = sorted(dirnames)
             if any(f.endswith(".kt") for f in files):
-                return Path(dirpath).relative_to(main).as_posix().replace("/", ".")
-    return ""
+                found.append(Path(dirpath).relative_to(main).as_posix().replace("/", "."))
+                dirnames[:] = []  # its sub-packages are under this one, not beside it
+    return tuple(dict.fromkeys(found))
+
+
+def base_package(module: Path) -> str:
+    """The module's primary package — the first of :func:`base_packages`, or ``""``.
+
+    Kept for the callers that need *a* package to spell a new directory with; anything
+    *matching* a package must use the plural form.
+    """
+    packages = base_packages(module)
+    return packages[0] if packages else ""
 
 
 def module_for_package(root: Path, package: str) -> Path | None:
@@ -156,11 +176,11 @@ def module_for_package(root: Path, package: str) -> Path | None:
     best: Path | None = None
     longest = -1
     for module in modules:
-        base = base_package(module)
-        if not base or not (package == base or package.startswith(f"{base}.")):
-            continue
-        if len(base) > longest:
-            best, longest = module, len(base)
+        for base in base_packages(module):
+            if not base or not (package == base or package.startswith(f"{base}.")):
+                continue
+            if len(base) > longest:
+                best, longest = module, len(base)
     return best
 
 

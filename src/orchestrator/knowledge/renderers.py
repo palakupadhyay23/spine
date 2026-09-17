@@ -25,7 +25,7 @@ from orchestrator.catalog.profile import ProjectProfile
 from orchestrator.knowledge.areas import (
     AreaIndex,
     area_of_name,
-    common_namespace_prefix,
+    store_namespace_prefix,
     zone_of,
 )
 from orchestrator.pkg.facts import EdgeKind, Node, NodeKind
@@ -713,9 +713,11 @@ def collect_areas(store: FactStore, deps: ModuleDeps) -> dict[str, AreaFacts]:
         for mod in store.nodes
         if mod.kind is NodeKind.MODULE and not mod.external and not _is_test_module(mod.name)
     ]
-    # Same rule as `state` and `AreaIndex`: a reverse-DNS project groups by the segments
-    # that differ, not by the vendor prefix every module shares.
-    prefix = common_namespace_prefix(mod.name for mod in first_party)
+    # Same rule as `state` and `AreaIndex` — and now literally the same function over the
+    # same electorate. Voting over `first_party` alone (tests excluded) gave this renderer
+    # a different prefix from `state`'s on the same store, so the two drew different
+    # architectures for one commit.
+    prefix = store_namespace_prefix(store.nodes)
     for mod in first_party:
         name = area_of_name(mod.name, prefix)
         area_of_module[mod.id] = name

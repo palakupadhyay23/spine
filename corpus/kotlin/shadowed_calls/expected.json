@@ -20,7 +20,7 @@
     { "src": "java:shop.scope.Runner.go", "dst": "java:shop.scope.Runner.audit", "kind": "CALLS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": {
         "src": "java:shop.scope.Runner.go",

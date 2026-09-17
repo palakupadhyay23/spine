@@ -19,7 +19,7 @@
     { "src": "java:shop.net", "dst": "java:retrofit2.http.POST", "kind": "IMPORTS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:endpoint:GET /topics", "dst": "java:shop.net.ShopApi.getTopics", "kind": "EXPOSES" },
       "why": "PREDICTED BEFORE SCORING. This is the tempting reading — `@GET(\"topics\")` looks exactly like the JAX-RS and Spring annotations that *do* make endpoints — and it is backwards. Retrofit declares a call, not a route. An Endpoint node here would make this app appear to serve `/topics`, and would make `pkg verify` report zero dangling while doing it: the self-consistent invention this project has removed twice."

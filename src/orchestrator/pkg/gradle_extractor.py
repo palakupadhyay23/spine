@@ -28,7 +28,7 @@ node at all; ``project(someVariable)`` names nothing knowable and gets nothing.
 
 **Known gap: dependencies injected by a convention plugin are invisible here.** A
 mature Gradle build factors shared wiring into `build-logic` precompiled plugins,
-so a module's script reads ``plugins { id("nowinandroid.android.feature") }`` and
+so a module's script reads ``plugins { id("<product>.android.feature") }`` and
 its dependencies on ``core:*`` live in that plugin's **`.kt`** source instead.
 Measured on the validation app: every ``app →`` and ``sync →`` edge is visible,
 and **no ``feature → core`` edge is**, because all six feature modules get theirs
@@ -151,12 +151,23 @@ class GradleExtractor:
                 )
 
     def _read_dependencies(self, root: TSNode, own: str, source: bytes, rel: str, batch: FactBatch) -> None:
-        """``implementation(project(":core:model"))`` → ``IMPORTS`` between modules."""
+        """``implementation(project(":core:model"))`` → ``IMPORTS`` between modules.
+
+        **Which module the dependency belongs to is not always this file's module.** A
+        root ``build.gradle.kts`` may configure others from inside it, and the reader
+        used to walk the whole tree and credit every ``project(":x")`` it found to the
+        script's own module. So ``project(":app") { dependencies { implementation(project(":core:ui")) } }``
+        asserted a root → ``core/ui`` edge that no file declares and lost the real
+        ``app`` → ``core/ui`` one — a false edge and a missing edge from a single read.
+        """
         for call in _walk(root):
             if call.type != "call_expression":
                 continue
             if _callee(call, source) not in _PROJECT_CONFIGURATIONS:
                 continue
+            host = _configured_module(call, source, own)
+            if host is None:
+                continue  # inside `subprojects {}` / `allprojects {}` — see `_configured_module`
             for inner in _call_arguments(call):
                 if inner.type != "call_expression" or _callee(inner, source) != "project":
                     continue  # `implementation(libs.foo)` is a third-party coordinate
@@ -174,8 +185,33 @@ class GradleExtractor:
                         )
                     )
                     batch.add_edge(
-                        Edge(own, target, EdgeKind.IMPORTS, Provenance(rel, call.start_point[0] + 1))
+                        Edge(host, target, EdgeKind.IMPORTS, Provenance(rel, call.start_point[0] + 1))
                     )
+
+
+#: Blocks that configure modules other than the one whose script they are written in.
+_FOREIGN_SCOPES = frozenset({"subprojects", "allprojects", "project", "configure"})
+
+
+def _configured_module(call: TSNode, source: bytes, own: str) -> str | None:
+    """Which module a dependency call configures: ``own``, another one, or nothing.
+
+    ``project(":app") { … }`` names its module, so the dependency is that module's.
+    ``subprojects { … }`` and ``allprojects { … }`` apply to a set this file does not
+    enumerate — the answer is "several modules, and this script does not say which", so
+    the honest reading is no edge at all rather than one edge hung off the root.
+    """
+    node = call.parent
+    while node is not None:
+        if node.type == "call_expression":
+            name = _callee(node, source)
+            if name in _FOREIGN_SCOPES:
+                if name in ("subprojects", "allprojects"):
+                    return None
+                named = next((lit for lit in _string_arguments(node, source) if lit.startswith(":")), None)
+                return module_id(named) if named else None
+        node = node.parent
+    return own
 
 
 def _callee(call: TSNode, source: bytes) -> str:

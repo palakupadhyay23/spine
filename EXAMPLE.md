@@ -181,11 +181,11 @@ so nothing you saw in steps 3–6 was invented. Recall is 1.00 on everything exc
 
 | language | `CALLS` recall |
 |---|---|
-| `c` `sql` | 1.00 |
-| `kotlin` | 0.92 |
+| `c` `cpp` `sql` | 1.00 |
+| `kotlin` | 0.94 |
 | `perl` | 0.89 |
 | `typescript` | 0.86 |
-| `cpp` `csharp` `go` `php` | 0.75 |
+| `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
 | `java` | 0.67 |
 

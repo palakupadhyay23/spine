@@ -38,11 +38,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Provenance
 from orchestrator.pkg.kotlin_names import (
     Annotation,
     annotations_of,
-    bare_type,
     element_type,
     field_text,
     text,
@@ -122,10 +121,14 @@ def _read_binding(
         source_id = f"{type_id}.{name}"
     if source_id == provided:
         return False  # a self-binding says nothing
-    # `@Provides fun x(): OkHttpClient` provides a type this tree does not declare.
-    # The binding is still a fact, so the target gets an external placeholder rather
-    # than the edge dangling — `FactBatch` dedup upgrades it if a declaration appears.
-    batch.add_node(Node(provided, NodeKind.TYPE, provided.rsplit(".", 1)[-1], "kotlin", external=True))
+    # The edge only. Whether `provided` is a name the source *stated* — through an import,
+    # which has already put a placeholder node there — or one `_resolve_type` assumed from
+    # the enclosing package is not knowable here, and minting the node made the two
+    # indistinguishable: a guessed target arrived pre-grounded, so `finalize`'s repoint
+    # (which identifies a guess precisely by its having no node anywhere) could never see
+    # it, and `@Provides fun x(): Clock` asserted a `Clock` class inside the DI module's
+    # own package. Left dangling for exactly one pass; `finalize` either finds the
+    # declaration or repoints to the bare name, and never leaves it dangling.
     batch.add_edge(Edge(source_id, provided, EdgeKind.PROVIDES, Provenance(rel, binding.line)))
     return True
 
@@ -141,7 +144,12 @@ def _returned_type(method: TSNode, resolve: Any, source: bytes) -> str:
         return ""
     for child in method.named_children:
         if child.type == "user_type" and child.start_byte > params.end_byte:
-            resolved = resolve(bare_type(text(child, source)).rsplit(".", 1)[-1])
+            # `element_type`, not `bare_type` — the same peel `_first_parameter_type`
+            # fifteen lines below has always done. Found in review: `@Provides fun
+            # provideClients(): Set<OkHttpClient>` read its return type as `Set` and
+            # minted a `Set` class in the module's own package as the PROVIDES target,
+            # which `FactStore.injection_reach_of` then walked in `blast_radius`.
+            resolved = resolve(element_type(text(child, source)).rsplit(".", 1)[-1])
             return resolved or ""
     return ""
 

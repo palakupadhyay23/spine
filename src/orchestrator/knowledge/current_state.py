@@ -28,8 +28,8 @@ from orchestrator.knowledge.areas import (
     area_of_file,
     area_of_name,
     build_module_paths,
-    common_namespace_prefix,
     multiplatform_modules,
+    store_namespace_prefix,
     zone_of,
 )
 from orchestrator.knowledge.infrastructure import Infrastructure, detect_infrastructure
@@ -253,9 +253,7 @@ def compute_current_state(
     # The reverse-DNS prefix this project's modules share, resolved once from the whole
     # first-party module set (§9.4). Without it every module of a reverse-DNS application
     # groups under `com.google` — one area holding the entire app.
-    _namespace_prefix = common_namespace_prefix(
-        n.name for n in nodes if n.kind is NodeKind.MODULE and not n.external
-    )
+    _namespace_prefix = store_namespace_prefix(nodes)
 
     def _area_of(n: Node) -> str:
         # The component a node lives in: its owning module's name (dotted namespace /
@@ -296,6 +294,31 @@ def compute_current_state(
             ep_by_ctrl[e.src] += 1
     busiest = [(by_id[cid].name, n) for cid, n in ep_by_ctrl.most_common(8)]
 
+    def _test_covered_areas() -> set[str]:
+        """Areas a test file imports into, read from provenance rather than from areas.
+
+        On a Gradle build an area *is* a module directory — `core/data`, `app` — and a
+        module holds its own tests under `src/test/`, so no area is ever named "test" and
+        `is_test_area` can never fire. `coupling` is module-to-module for the same build,
+        so the test→source edge it would need does not exist there either: the result was
+        `tested_areas: 0` for **every** Gradle repository, including a fully tested one,
+        and a report that said "no automated tests detected" about a repo with tests.
+
+        Provenance answers it directly and in the same vocabulary as every other area
+        here: a node whose file is a test path, importing something, marks the imported
+        thing's area as having a test that reaches it.
+        """
+        out: set[str] = set()
+        for edge in batch.edges:
+            if edge.kind is not EdgeKind.IMPORTS:
+                continue
+            src_node, dst_node = by_id.get(edge.src), by_id.get(edge.dst)
+            if src_node is None or dst_node is None or src_node.provenance is None:
+                continue
+            if _is_test_path(src_node.provenance.file):
+                out.add(_area_of(dst_node))
+        return out
+
     coupling: Counter[tuple[str, str]] = Counter()
     external: Counter[str] = Counter()
     for e in batch.edges:
@@ -319,7 +342,11 @@ def compute_current_state(
         elif not _module_paths:
             # With a Gradle module graph present, per-file imports would double-count
             # the same architecture in a second, coarser vocabulary.
-            sa, da = _area(src.name), _area(dst_name)
+            # With the prefix, like every other area in this function. Without it, a
+            # reverse-DNS repository grouped its coupling under `com.google` while its
+            # areas were named `core.data` — so no arrow matched any node and the whole
+            # "System architecture" section rendered empty.
+            sa, da = _area(src.name, _namespace_prefix), _area(dst_name, _namespace_prefix)
             if sa != da:
                 coupling[(sa, da)] += 1
 
@@ -347,7 +374,7 @@ def compute_current_state(
     # started joining (`pkg/import_link.py`); before that no test→source edge existed.
     all_areas = set(area_types) | set(area_funcs)
     production = {a for a in all_areas if not is_test_area(a)}
-    covered = {dst for (src, dst) in coupling if is_test_area(src)} & production
+    covered = ({dst for (src, dst) in coupling if is_test_area(src)} | _test_covered_areas()) & production
     tested_areas = len(covered)
     untested_top = [(a, c) for a, c in area_types.most_common() if a in production and a not in covered][:5]
 

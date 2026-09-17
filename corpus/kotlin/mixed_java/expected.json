@@ -32,8 +32,8 @@
     }
   ],
   "false_positives": [],
-  "excluded": [],
-  "open_questions": [
-    "Should the shared `java:` module node record more than one language? It currently reports whichever front-end declared it first in the sorted walk (`Cart.kt` before `Checkout.java`, so `kotlin`). Nothing reads a module's language today, so this is recorded rather than fixed."
-  ]
+  "excluded": [
+    "**Decided (was an open question).** A shared `java:` module node records ONE language — whichever front-end declared it first in the sorted walk (`Cart.kt` before `Checkout.java`, so `kotlin`). Nothing reads a module's language, and the id is what D2's shared namespace is for; a multi-language field would be a vocabulary change serving no reader. The expected set is complete either way, which is what makes this a decision rather than a provisional label."
+  ],
+  "open_questions": []
 }

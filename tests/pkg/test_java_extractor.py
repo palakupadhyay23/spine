@@ -312,3 +312,103 @@ def test_jax_rs_extraction_is_deterministic(tmp_path: Path) -> None:
     second, _ = _facts(tmp_path, JAX_RS_RESOURCE, "OrderResource.java")
     assert first.nodes == second.nodes
     assert first.edges == second.edges
+
+
+# ---- Spring MVC, the Java grammar half ----------------------------------------
+#
+# `test_jvm_routes.py`'s docstring has always said "the grammar halves are tested in
+# `test_kotlin_routes.py` and `test_java_extractor`'s Spring cases" — and there were no
+# Spring cases here. 104 new lines of Java route reading shipped covered by one corpus
+# case, which is how §11 finding 4 (a `@Value` placeholder read as a literal path) reached
+# a released language's front-end.
+
+SPRING_JAVA = """\
+package com.example.web;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/api")
+public class TopicController {
+    @GetMapping("/topics")
+    public String list() { return ""; }
+
+    @PostMapping("/topics")
+    public String create() { return ""; }
+
+    @RequestMapping("/any")
+    public String any() { return ""; }
+}
+"""
+
+
+def _java_facts(tmp_path: Path, src: str, name: str) -> FactBatch:
+    f = tmp_path / name
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(src, encoding="utf-8")
+    ex = JavaExtractor()
+    return ex.extract(path=f, module=ex.module_name(f, tmp_path), rel=name)
+
+
+def _endpoints(batch: FactBatch) -> set[str]:
+    return {n.name for n in batch.nodes if n.kind is NodeKind.ENDPOINT}
+
+
+def test_java_spring_endpoints_compose_the_class_prefix(tmp_path: Path) -> None:
+    """A class-level `@RequestMapping` is a prefix; a method-level one with no verb is not
+    an endpoint, because inventing `ANY` would put a verb in the graph nobody wrote."""
+    batch = _java_facts(tmp_path, SPRING_JAVA, "TopicController.java")
+    assert _endpoints(batch) == {"GET /api/topics", "POST /api/topics"}
+
+
+def test_java_spring_endpoint_exposes_its_handler(tmp_path: Path) -> None:
+    batch = _java_facts(tmp_path, SPRING_JAVA, "TopicController.java")
+    exposes = {(e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.EXPOSES}
+    assert ("java:endpoint:GET /api/topics", "java:com.example.web.TopicController.list") in exposes
+
+
+def test_a_java_property_placeholder_is_not_a_path(tmp_path: Path) -> None:
+    """§11 finding 4. `@GetMapping("${api.base}/topics")` is an ordinary Java
+    `string_literal`, so it sailed through the node-type test that was supposed to refuse
+    it and produced the endpoint `GET /${api.base}/topics`.
+
+    `jvm_routes`'s module docstring already stated the rule — "a path argument that is not
+    a string literal — a constant, a concatenation, a `@Value` placeholder — yields `None`
+    rather than a guess". The placeholder case needed testing *after* the literal is read,
+    not only at the node type.
+    """
+    src = """\
+package com.example.web;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class C {
+    @GetMapping("${api.base}/topics")
+    public String list() { return ""; }
+}
+"""
+    batch = _java_facts(tmp_path, src, "C.java")
+    assert not _endpoints(batch)
+
+
+def test_a_java_annotation_named_getmapping_from_elsewhere_is_not_springs(tmp_path: Path) -> None:
+    """Feign puts identical annotations on a *client*; the import is what decides."""
+    src = """\
+package com.example.web;
+
+import com.acme.rpc.Controller;
+import com.acme.rpc.GetMapping;
+
+@Controller
+public class C {
+    @GetMapping("/topics")
+    public String list() { return ""; }
+}
+"""
+    batch = _java_facts(tmp_path, src, "C.java")
+    assert not _endpoints(batch)

@@ -137,3 +137,76 @@ def test_nav_endpoints_cannot_collide_with_an_http_verb(tmp_path: Path) -> None:
     """`NAV` keeps in-app routes out of the cross-repo HTTP join entirely."""
     names = _endpoints(_facts(tmp_path))
     assert names and all(name.startswith("NAV ") for name in names)
+
+
+# ---- §11 finding 10: a route constant is scoped to its package ----
+
+
+def _multi(tmp_path: Path, files: dict[str, str]) -> FactBatch:
+    for name, src in files.items():
+        f = tmp_path / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(src, encoding="utf-8")
+    return RepoCodeExtractor().extract(tmp_path)
+
+
+_FEATURE = """\
+package feature.{name}
+
+const val route = "{name}_route"
+
+fun {name}Nav() {{
+    composable(route = route) {{ {Name}Screen() }}
+}}
+
+fun {Name}Screen() {{}}
+"""
+
+
+def test_two_features_may_declare_the_same_route_constant(tmp_path: Path) -> None:
+    """A flat repo-wide constant table let the survivor win.
+
+    The other module's `composable` was then credited with a path its source never
+    contains, and one endpoint collected an `EXPOSES` to both screens. Two feature modules
+    each declaring `const val route` is the ordinary Compose convention.
+    """
+    batch = _multi(
+        tmp_path,
+        {
+            "one/Nav.kt": _FEATURE.format(name="one", Name="One"),
+            "two/Nav.kt": _FEATURE.format(name="two", Name="Two"),
+        },
+    )
+    endpoints = {n.name for n in batch.nodes if n.kind is NodeKind.ENDPOINT}
+    assert endpoints == {"NAV one_route", "NAV two_route"}
+    exposes = {(e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.EXPOSES}
+    assert exposes == {
+        ("java:endpoint:NAV one_route", "java:feature.one.OneScreen"),
+        ("java:endpoint:NAV two_route", "java:feature.two.TwoScreen"),
+    }
+
+
+def test_a_concatenated_route_is_not_a_route(tmp_path: Path) -> None:
+    """`composable(route = "topic/" + BASE)` is an `additive_expression`, not a literal.
+
+    The route used to be the argument's *raw source text*, recognised as a literal by
+    `startswith('"')` and then stripped of its first and last character — so this produced
+    the endpoint `NAV topic/" + BAS`.
+    """
+    batch = _multi(
+        tmp_path,
+        {
+            "Nav.kt": """\
+package app
+
+const val BASE = "x"
+
+fun nav() {
+    composable(route = "topic/" + BASE) { TopicRoute() }
+}
+
+fun TopicRoute() {}
+"""
+        },
+    )
+    assert not [n for n in batch.nodes if n.kind is NodeKind.ENDPOINT]

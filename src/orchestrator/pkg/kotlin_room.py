@@ -35,6 +35,7 @@ a ``.sql`` schema by the linker.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
@@ -78,6 +79,8 @@ def read_entity(
     source: bytes,
     rel: str,
     batch: FactBatch,
+    *,
+    constants: Mapping[str, str],
 ) -> bool:
     """Emit the ``Entity`` for an ``@Entity``-annotated class. Returns whether it did.
 
@@ -91,7 +94,23 @@ def read_entity(
     if not class_name:
         return False
 
-    table = string_value(annotation.arg("tableName"), source) or class_name
+    named = annotation.arg("tableName")
+    if named is None:
+        # Room's documented default. Not a guess: the annotation says nothing, and
+        # "nothing" means the class name.
+        table = class_name
+    else:
+        # It says *something*. Found in review: an unreadable `tableName = TOPICS`
+        # was indistinguishable from an absent one, so the class name was claimed as
+        # the table — and then one real table produced two Entity nodes, a grounded
+        # `TopicEntity` and an external `topics` from the DAO's own `@Query`, which
+        # `data_layer_link` matches by name and so never reconciles with the
+        # migration that creates it. A constant declared in this file is resolved;
+        # anything else is refused outright, because a table name that is wrong is
+        # worse here than a table name that is missing.
+        table = string_value(named, source) or constants.get(text(named, source), "")
+        if not table:
+            return False
     eid = entity_id(type_id)
     line = annotation.line
     batch.add_node(Node(eid, NodeKind.ENTITY, table, _LANG, Provenance(rel, line)))
@@ -420,11 +439,15 @@ def repoint_table_edges(batch: FactBatch) -> FactBatch:
     entities by name.
     """
     by_table: dict[str, str] = {}
+    entities = set()
+    types = set()
     for node in batch.nodes:
-        if node.kind is NodeKind.ENTITY and node.grounded and node.id.startswith("java:entity:"):
-            by_table.setdefault(node.name.lower(), node.id)
-    if not by_table:
-        return batch
+        if node.kind is NodeKind.ENTITY and node.id.startswith("java:entity:"):
+            entities.add(node.id)
+            if node.grounded:
+                by_table.setdefault(node.name.lower(), node.id)
+        elif node.kind is NodeKind.TYPE:
+            types.add(node.id)
 
     out = FactBatch()
     for node in batch.nodes:
@@ -435,11 +458,25 @@ def repoint_table_edges(batch: FactBatch) -> FactBatch:
             continue
         table = edge.dst[len("java:entity:") :]
         target = by_table.get(table.lower())
-        if target is None:
-            out.add_node(Node(edge.dst, NodeKind.ENTITY, table, _LANG, external=True))
+        if target is not None:
+            out.add_edge(Edge(edge.src, target, edge.kind, edge.provenance))
+            continue
+        if edge.dst in entities:
             out.add_edge(edge)
             continue
-        out.add_edge(Edge(edge.src, target, edge.kind, edge.provenance))
+        if f"java:{table}" in types:
+            # The id was built from a *class* the write method takes as a parameter,
+            # not from a table name a `@Query` wrote. Found in review: `@Insert fun
+            # insert(dto: SomeDto)` on a plain data class minted the entity
+            # `java:entity:app.data.SomeDto` — an Entity whose name is a dotted FQN,
+            # for a class carrying no `@Entity` at all. A class that is not an entity
+            # cannot be backed by an external placeholder the way an unknown *table*
+            # can: there is no table here to stand for.
+            continue
+        # A table this tree has no class for. The honest record — the DAO really does
+        # read it — and `data_layer_link` can still pair it with a real `.sql` schema.
+        out.add_node(Node(edge.dst, NodeKind.ENTITY, table, _LANG, external=True))
+        out.add_edge(edge)
     return out
 
 

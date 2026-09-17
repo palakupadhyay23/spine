@@ -111,7 +111,7 @@ in [CLI_REFERENCE.md](https://github.com/synaptixs/spine/blob/main/CLI_REFERENCE
 | Local feature build, live PR, review feedback, post-merge tracker completion | ✅ | `sdlc feature --safe` / `--live`, `address-review`, `complete` |
 | Durable multi-feature pipeline and approval dashboard | ✅ | `sdlc run`, `up`; [Operations](https://github.com/synaptixs/spine/blob/main/OPERATIONS.md) |
 | Inspect the execution graph, node results and selected workflow | ✅ | `sdlc explain`, `sdlc workflow` |
-| Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl comprehension/codegen | ✅ | `pkg extract`, `sdlc feature --language`; [toolchains](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#10-language-support--toolchains) |
+| Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and Kotlin comprehension/codegen | ✅ | `pkg extract`, `sdlc feature --language`; [toolchains](https://github.com/synaptixs/spine/blob/main/AGENT_GUIDE.md#10-language-support--toolchains) |
 | Optional C/C++ member-call enrichment between grounded symbols; measured coverage limits | 🟡 | `[clang]` (also in `[all]`); [validation](https://github.com/synaptixs/spine/blob/main/docs/evals/clang-semantic-validation.md) |
 | SQL schema/query/procedure comprehension, migration folding, UTF-16 and SQL Server `GO` batches | ✅ | `[sql]`; `pkg extract`, `understand` |
 | SQL migration codegen validated in SQLite or opt-in Docker Postgres | ✅ | `sdlc feature --language sql`; `[sql-postgres]` |
@@ -174,8 +174,8 @@ The autonomous multi-feature pipeline + web dashboard needs Temporal + Postgres 
 see the [Setup guide](https://github.com/synaptixs/spine/blob/main/SETUP.md).
 
 **Which languages and models?**
-Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP and Perl**, with
-**Kotlin** comprehension-only — each
+Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and
+Kotlin** — each
 front-end going beyond structure into what that stack actually does (Java and C# REST
 endpoints, EF Core entities, C's `#include` graph, C++ templates and namespaces, Go
 interface satisfaction by method-set matching). **PHP** adds a call graph too (namespaces,

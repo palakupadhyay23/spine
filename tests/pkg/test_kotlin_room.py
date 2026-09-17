@@ -238,3 +238,102 @@ def test_room_entities_reconcile_against_a_sql_schema(tmp_path: Path) -> None:
     assert "java:entity:shop.db.TopicEntity" not in ids, "the ORM entity merged onto it"
     reads = _edges(batch, EdgeKind.READS)
     assert ("java:shop.db.TopicDao.all", "sql:topics") in reads
+
+
+# ---- §11 finding 6: an entity's table and an entity's class are different claims ----
+
+
+def _repo(tmp_path: Path, files: dict[str, str]) -> FactBatch:
+    for name, src in files.items():
+        f = tmp_path / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(src, encoding="utf-8")
+    return RepoCodeExtractor().extract(tmp_path)
+
+
+def test_a_table_name_held_in_a_constant_is_resolved_not_assumed(tmp_path: Path) -> None:
+    """`@Entity(tableName = TOPICS)` names a table; the class name is not that table.
+
+    An unreadable `tableName` used to be indistinguishable from an absent one, so the
+    class name was claimed — and then one real table produced *two* Entity nodes, the
+    grounded class and an external node for the table its own `@Query` names, which
+    `data_layer_link` matches by name and so never reconciles with the migration.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "E.kt": """\
+package app.data
+
+import androidx.room.Dao
+import androidx.room.Entity
+import androidx.room.Query
+
+const val TOPICS = "topics"
+
+@Entity(tableName = TOPICS)
+class TopicEntity(val id: String)
+
+@Dao
+interface TopicDao {
+    @Query("SELECT * FROM topics")
+    fun all(): List<TopicEntity>
+}
+"""
+        },
+    )
+    entities = [n for n in batch.nodes if n.kind is NodeKind.ENTITY]
+    assert [(n.id, n.name) for n in entities] == [("java:entity:app.data.TopicEntity", "topics")]
+    assert ("java:app.data.TopicDao.all", "java:entity:app.data.TopicEntity") in {
+        (e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.READS
+    }
+
+
+def test_an_unreadable_table_name_yields_no_entity_at_all(tmp_path: Path) -> None:
+    """When the constant is not in the file, the table is unknown — and a table name that
+    is *wrong* is worse here than one that is missing."""
+    batch = _repo(
+        tmp_path,
+        {
+            "E.kt": """\
+package app.data
+
+import androidx.room.Entity
+
+@Entity(tableName = Tables.TOPICS)
+class TopicEntity(val id: String)
+"""
+        },
+    )
+    assert not [n for n in batch.nodes if n.kind is NodeKind.ENTITY]
+
+
+def test_a_write_parameter_that_is_not_an_entity_mints_nothing(tmp_path: Path) -> None:
+    """`@Insert fun insert(dto: SomeDto)` on a plain data class.
+
+    The id was built from the *class*, so it minted `java:entity:app.data.SomeDto` — an
+    Entity whose name is a dotted FQN, for a class carrying no `@Entity`. Unlike an
+    unknown *table*, there is nothing here an external placeholder could honestly stand
+    for.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "D.kt": """\
+package app.data
+
+import androidx.room.Dao
+import androidx.room.Insert
+
+class SomeDto(val id: String)
+
+@Dao
+interface Writer {
+    @Insert
+    fun insert(dto: SomeDto)
+}
+"""
+        },
+    )
+    assert not [n for n in batch.nodes if n.kind is NodeKind.ENTITY]
+    assert not [e for e in batch.edges if e.kind is EdgeKind.WRITES]

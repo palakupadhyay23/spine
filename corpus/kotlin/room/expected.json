@@ -45,7 +45,7 @@
     { "src": "java:shop.db", "dst": "java:androidx.room.Upsert", "kind": "IMPORTS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:shop.db.TopicDao.remove", "dst": "java:entity:shop.db.TopicEntity", "kind": "READS" },
       "why": "PREDICTED BEFORE SCORING. `remove` is a `@Query` whose body is `DELETE FROM topics WHERE id = :id`. A reader that pattern-matched a table name out of the annotation — or that treated every `@Query` as a read because the word is 'query' — would call this a READS. It is a WRITES, and only parsing the statement tells you so. The same raw-string `\"\"\"` spelling is what 8 of the 18 @Query bodies in the validation app use."

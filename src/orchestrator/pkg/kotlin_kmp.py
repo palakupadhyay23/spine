@@ -10,7 +10,7 @@ id**. ``FactBatch`` de-duplicates by id, so two of the three would simply vanish
 their provenance with them, and nothing would report it.
 
 So an ``actual`` declaration's id carries the source set that declares it:
-``java:co.touchlab.kampkit.models.ViewModel@androidMain``. The ``expect`` keeps the plain
+``java:com.example.shared.models.ViewModel@androidMain``. The ``expect`` keeps the plain
 id, which is the right way round — common code is written against the contract, so a type
 reference from ``commonMain`` resolving to the plain id resolves to the thing the source
 actually names.
@@ -62,8 +62,19 @@ def source_set_of(file: str) -> str:
 
     ``shared/src/androidMain/kotlin/co/touchlab/Foo.kt`` → ``androidMain``.
     """
-    match = _SOURCE_SET.search(file)
-    return match.group(1) if match else ""
+    # The **last** `src/` segment, not the first. A module rooted under a directory that
+    # itself contains `src/` — or any repository laid out as `src/<module>/src/…` — gave
+    # the outer one, so two platforms' `actual`s collapsed onto a single id and
+    # `FactBatch` dedup dropped one of them without a word.
+    #
+    # Walked rather than matched: a regex for this has to not consume the separator it
+    # needs for the *next* match, which is the kind of subtlety that makes a scan look
+    # right and read the first occurrence anyway.
+    parts = file.split("/")
+    for index in range(len(parts) - 2, -1, -1):
+        if parts[index] == "src":
+            return parts[index + 1]
+    return ""
 
 
 def platform_modifier(node: TSNode, source: bytes) -> str:

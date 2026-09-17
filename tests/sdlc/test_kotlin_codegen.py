@@ -212,7 +212,7 @@ def test_guidance_names_kotlin_test_rather_than_junit(tmp_path: Path) -> None:
 
 
 def test_junit_only_project_is_detected(tmp_path: Path) -> None:
-    """spring-petclinic-kotlin declares `junit-jupiter-api` and no `kotlin("test")`.
+    """The Spring validation repository declares `junit-jupiter-api` and no `kotlin("test")`.
 
     Generated code that imports `kotlin.test` there does not compile — found by running
     the brownfield proof, not by reading the docs.
@@ -270,7 +270,7 @@ def test_preflight_is_skipped_when_no_linter_is_configured(tmp_path: Path) -> No
 
 def test_a_version_catalog_alias_still_names_its_linter(tmp_path: Path) -> None:
     """`alias(libs.plugins.detekt)` is how a modern build applies it — a plugin-id match
-    alone would miss it, and KaMPKit applies ktlint exactly this way."""
+    alone would miss it, and the KMP validation repository applies ktlint exactly this way."""
     (tmp_path / "build.gradle.kts").write_text("plugins { alias(libs.plugins.detekt) }\n", encoding="utf-8")
     assert GradlePreflightRunner()._configured_linter(tmp_path) == "detekt"
 

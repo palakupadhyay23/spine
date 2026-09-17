@@ -197,3 +197,85 @@ interface TopicDao {
 """
     pending, _ = _run(tmp_path, src, "Dao.kt")
     assert pending == []
+
+
+# ---- §11 finding 21: `@GET` is not Retrofit's until an import says it is ----
+
+
+def test_a_get_annotation_from_another_library_is_not_a_retrofit_call(tmp_path: Path) -> None:
+    """JAX-RS puts `@GET` on exactly this kind of method, and so do several others.
+
+    Without the check every such method became a `pkg joins` candidate — a claim that this
+    repository calls an endpoint at that path. `jvm_routes.resolves_into_spring` gets the
+    identical question right fifteen lines away in a sibling module.
+    """
+    f = tmp_path / "Api.kt"
+    f.write_text(
+        """\
+package app.api
+
+import javax.ws.rs.GET
+import javax.ws.rs.Path
+
+interface Resource {
+    @GET
+    @Path("/topics")
+    fun topics(): String
+}
+""",
+        encoding="utf-8",
+    )
+    ex = KotlinExtractor()
+    ex.finalize(ex.extract(path=f, module="app.api", rel="Api.kt"))
+    assert ex.unresolved_calls == []
+
+
+def test_a_retrofit_wildcard_import_is_enough(tmp_path: Path) -> None:
+    """`import retrofit2.http.*` is how real Retrofit code is written."""
+    f = tmp_path / "Api.kt"
+    f.write_text(
+        """\
+package app.api
+
+import retrofit2.http.*
+
+interface Api {
+    @GET("topics")
+    suspend fun topics(): String
+}
+""",
+        encoding="utf-8",
+    )
+    ex = KotlinExtractor()
+    ex.finalize(ex.extract(path=f, module="app.api", rel="Api.kt"))
+    assert [(c.verb, c.path) for c in ex.unresolved_calls] == [("GET", "/topics")]
+
+
+def test_join_candidates_do_not_leak_between_repositories(tmp_path: Path) -> None:
+    """§11 finding 19. `ClientState.clear()` deliberately preserves `unmatched`, so the
+    front-end's accumulator grew across repositories: `reset_unresolved()` cleared the
+    list the attribute pointed at, and the next `finalize` rebuilt it from the state that
+    still held the previous repository's calls — proposing repo A's calls as repo B's."""
+    from orchestrator.pkg.extractor import RepoCodeExtractor
+
+    for name in ("a", "b"):
+        d = tmp_path / name
+        d.mkdir()
+        (d / "Api.kt").write_text(
+            f"""\
+package svc.{name}
+
+import retrofit2.http.GET
+
+interface Api {{
+    @GET("{name}/topics")
+    suspend fun topics(): String
+}}
+""",
+            encoding="utf-8",
+        )
+    ex = RepoCodeExtractor()
+    ex.extract(tmp_path / "a")
+    ex.reset_unresolved()
+    ex.extract(tmp_path / "b")
+    assert [c.path for c in ex.unresolved_calls] == ["/b/topics"]

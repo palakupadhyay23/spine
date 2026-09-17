@@ -180,3 +180,18 @@ def test_multiplatform_is_detected_from_a_common_main_directory() -> None:
 def test_build_module_paths_is_what_area_splitting_keys_on(tmp_path: Path) -> None:
     """Source-set areas ride the Gradle module graph (D11); no Gradle, no split."""
     assert build_module_paths([]) == ()
+
+
+# ---- §11 finding 9: the source set is the module's own ----
+
+
+def test_the_source_set_is_the_last_src_segment_not_the_first() -> None:
+    """A path that already contains `src/` gave the *outer* one.
+
+    Two platforms' `actual`s then carried the same suffix, collapsed onto one id, and
+    `FactBatch` dedup dropped one of them with no elision counter — the exact failure the
+    suffix exists to prevent.
+    """
+    assert source_set_of("src/shared/src/androidMain/kotlin/Platform.kt") == "androidMain"
+    assert source_set_of("shared/src/iosMain/kotlin/Platform.kt") == "iosMain"
+    assert source_set_of("shared/build/generated/Platform.kt") == ""

@@ -41,6 +41,7 @@ from orchestrator.pkg.jvm_routes import (
     class_prefix,
     emit_endpoints,
     is_controller,
+    literal_path,
     resolves_into_spring,
 )
 
@@ -366,7 +367,7 @@ def _spring_literal(node: TSNode | None, source: bytes) -> str | None:
         if not items:
             return ""
         node = items[0]
-    return _string_literal(node, source) if node.type == "string_literal" else None
+    return literal_path(_string_literal(node, source)) if node.type == "string_literal" else None
 
 
 def _spring_methods(annotation: TSNode, source: bytes) -> tuple[str, ...]:

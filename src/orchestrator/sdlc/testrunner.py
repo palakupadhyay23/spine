@@ -537,7 +537,22 @@ class GradleTestRunner:
             )
         tasks = [self._resolved.get(t, t) for t in (await self._changed_module_tasks(path) or ["test"])]
         argv = (*argv_base, *tasks, "--console=plain")
-        rc, out = await _exec_capture(argv, cwd=path, timeout=self._timeout)
+        try:
+            rc, out = await _exec_capture(argv, cwd=path, timeout=self._timeout)
+        except (PermissionError, OSError) as exc:
+            # A `gradlew` committed without its executable bit is common enough on
+            # Windows-authored repositories to be worth naming. The class docstring
+            # promises a hinted failure rather than a silent green; an exception escaping
+            # `run()` is neither, and it aborts the whole feature run instead of the test.
+            return TestRunResult(
+                passed=False,
+                returncode=-1,
+                output=(
+                    f"gradle test could not run: {argv[0]} is present but not executable "
+                    f"({exc}). Run `chmod +x gradlew`, or remove the wrapper to fall back to "
+                    "`gradle` on PATH, then retry."
+                ),
+            )
         retry = _variant_tasks(out, tasks) if rc != 0 else None
         if retry is None:
             return TestRunResult(passed=rc == 0, returncode=rc, output=_clip(f"# {' '.join(argv)}\n{out}"))
@@ -605,6 +620,12 @@ _ASKED_TASK = re.compile(
 _CANDIDATES = re.compile(r"[Cc]andidates are: (?P<list>'[^']+'(?:,\s*'[^']+')*)")
 _QUOTED = re.compile(r"'([^']+)'")
 
+#: A Gradle task path, and nothing else. This text comes out of the *repository's* build
+#: — an error message a build script can write whatever it likes into — and goes straight
+#: back in as an argv element, so a "candidate" spelled `--init-script` would be a flag to
+#: Gradle rather than a task. Anchored and leading-dash-free by construction.
+_TASK_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.:-]*")
+
 
 def _variant_tasks(output: str, tasks: list[str]) -> list[str] | None:
     """Rewrite ``tasks`` using the variant task names Gradle just named, or ``None``.
@@ -628,8 +649,15 @@ def _variant_tasks(output: str, tasks: list[str]) -> list[str] | None:
         return None
     path = asked.group("path") or asked.group("task") or ""
     name = path.rsplit(":", 1)[-1]
-    candidates = _QUOTED.findall(listed.group("list"))
+    candidates = [c for c in _QUOTED.findall(listed.group("list")) if _TASK_NAME.fullmatch(c)]
     if not name or not candidates:
+        return None
+    # §10: never an emulator, and never by luck. `connectedDebugAndroidTest` contains
+    # "Debug" and would win the preference below, so instrumented tasks are removed by
+    # name first — leaving the guarantee on an explicit rule rather than on an
+    # undocumented property of whatever Gradle happens to print in its error.
+    candidates = [c for c in candidates if not _INSTRUMENTED.search(c)]
+    if not candidates:
         return None
     debug = [c for c in candidates if "Debug" in c]
     chosen = (debug or candidates)[0]
@@ -637,6 +665,12 @@ def _variant_tasks(output: str, tasks: list[str]) -> list[str] | None:
         return None
     rewritten = [t if t.rsplit(":", 1)[-1] != name else t[: len(t) - len(name)] + chosen for t in tasks]
     return rewritten if rewritten != tasks else None
+
+
+#: Task names that run on a device or emulator. AGP spells them several ways —
+#: `connectedDebugAndroidTest`, `demoDebugAndroidTest`, `pixel2api30DebugAndroidTest`
+#: for a managed device — and none of them may ever be selected (§10).
+_INSTRUMENTED = re.compile(r"(?i)connected|androidTest|managedDevice|deviceTest")
 
 
 def _nearest_gradle_module(start: Path, root: Path) -> Path | None:

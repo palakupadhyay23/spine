@@ -48,12 +48,13 @@ would invent a phantom component per module. They get a dedicated reader
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from orchestrator.pkg.extractor import rel_module_name
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.finalize_names import declared_ids, resolve_or_drop
 from orchestrator.pkg.kotlin_di import read_module
 from orchestrator.pkg.kotlin_http import (
     ClientState,
@@ -64,6 +65,7 @@ from orchestrator.pkg.kotlin_http import (
 )
 from orchestrator.pkg.kotlin_kmp import id_suffix as kmp_id_suffix
 from orchestrator.pkg.kotlin_kmp import link_actuals, source_set_of
+from orchestrator.pkg.kotlin_names import string_constants
 from orchestrator.pkg.kotlin_nav import NavState
 from orchestrator.pkg.kotlin_nav import collect_consts as collect_route_consts
 from orchestrator.pkg.kotlin_nav import emit as emit_nav_routes
@@ -115,6 +117,41 @@ class _ImportContext:
     wildcard_prefixes: set[str] = field(default_factory=set)
 
 
+@dataclass(frozen=True)
+class _DeferredCall:
+    """A ``recv.name()`` held back until every declaration in the repository is known.
+
+    A call through a *typed receiver* cannot be judged from one file. Two things are
+    unknowable there, and both were fabrications before this existed
+    (docs/specs/kotlin-support-roadmap.md §11):
+
+    * **Which package the receiver's type is in.** ``_resolve_type`` falls back to the
+      enclosing package for any bare name it cannot place, which is right for a sibling
+      and wrong for everything else — including every one of Kotlin's default imports.
+      ``s.uppercase()`` in ``package app.ui`` became a call to ``java:app.ui.String.uppercase``,
+      a class that does not exist in any package.
+    * **Whether the named member exists at all.** ``topic.let { }`` resolved onto
+      ``java:app.data.Topic.let``, and ``let`` is not a member of ``Topic`` — it is one of
+      the four scope functions §3.2 lists under "never".
+
+    Both used to reach the graph as an ``external`` placeholder node plus an edge, so
+    ``pkg verify`` saw nothing dangling and reported clean. Deferring instead lets
+    ``finalize`` ask the only question that settles it: does the repository declare this?
+    """
+
+    src: str
+    #: Method ids to try, in priority order. The first one already grounded wins.
+    candidates: tuple[str, ...]
+    #: The type id each candidate hangs off, in the same order as ``candidates``.
+    owners: tuple[str, ...]
+    #: Whether the receiver's type was **read from the source** (an explicit import or a
+    #: qualified name) rather than assumed. Only a certain type may back an external
+    #: placeholder: its fully-qualified name is what the file actually says, so a call
+    #: into a library lands rather than dangling. A guess has no such backstop.
+    certain: bool
+    provenance: Provenance
+
+
 @dataclass
 class _Pending:
     """A function body held back until every declaration in the file is known."""
@@ -126,6 +163,9 @@ class _Pending:
     #: whether this is a `fun Route.x()` — a Ktor route module, so its body is
     #: already in route context even though no `routing { … }` encloses it (D16)
     route_module: bool = False
+    #: the extension receiver type as written (`fun NavController.x()` → `NavController`),
+    #: which is what `this` denotes inside the body of a top-level extension
+    receiver: str = ""
 
 
 @dataclass
@@ -151,6 +191,8 @@ class _FileContext:
     extensions: dict[str, str] = field(default_factory=dict)
     #: simple names of types declared in this file, for constructor calls
     local_types: set[str] = field(default_factory=set)
+    #: `const val NAME = "literal"` declared in this file — Room table names use them
+    constants: dict[str, str] = field(default_factory=dict)
     pending: list[_Pending] = field(default_factory=list)
     #: the path from a literal Retrofit ``baseUrl(...)`` in this file, if any (D10)
     base_path: str = ""
@@ -182,6 +224,8 @@ class KotlinExtractor:
         # Ktor route modules are mounted by their caller, usually in another file,
         # so a route's full path is only known once the whole tree is read (D16).
         self._ktor = KtorState()
+        # Calls through a typed receiver, judged in `finalize` — see `_DeferredCall`.
+        self._deferred: list[_DeferredCall] = []
 
     def module_name(self, path: Path, root: Path) -> str:
         # Kotlin's module is the package declaration, which lives in the file and
@@ -206,7 +250,8 @@ class KotlinExtractor:
         # Retrofit puts the host in the builder, not the annotations, so the base
         # path (when it is a literal at all) has to be read before the interfaces.
         ctx.base_path = base_url_path(tree.root_node, source)
-        collect_route_consts(tree.root_node, source, self._nav)
+        ctx.constants = string_constants(tree.root_node, source)
+        collect_route_consts(tree.root_node, source, self._nav, package=module)
 
         # Pass 1 — every declaration, and the resolver table that describes them.
         for node in tree.root_node.named_children:
@@ -227,9 +272,23 @@ class KotlinExtractor:
         # Pass 2 — calls, once every id in the file is known (D8, §3.2).
         for pend in ctx.pending:
             self._calls(pend, ctx, source, rel, batch)
-            scan_nav_calls(pend.body, pend.func_id, source, rel, self._nav)
+            scan_nav_calls(
+                pend.body,
+                pend.func_id,
+                source,
+                rel,
+                self._nav,
+                package=module,
+                imports=ctx.imports.by_simple,
+            )
             scan_ktor_calls(
-                pend.body, source, rel, self._ktor, owner=pend.func_id if pend.route_module else None
+                pend.body,
+                source,
+                rel,
+                self._ktor,
+                owner=pend.func_id if pend.route_module else None,
+                package=module,
+                imports=ctx.imports.by_simple,
             )
         return batch
 
@@ -308,13 +367,22 @@ class KotlinExtractor:
         # already exists to hang READS/WRITES off. Each is a no-op on a type that
         # carries no such annotation, so a plain class costs one dictionary lookup.
         resolve = self._type_resolver(ctx)
-        if not read_entity(node, type_id, resolve, source, rel, batch):
+        if not read_entity(node, type_id, resolve, source, rel, batch, constants=ctx.constants):
             # Only a class that is not itself an entity can be a Room *view* — a
             # query result shape holding `@Embedded` + `@Relation`.
             read_relation_view(node, resolve, source, rel, batch)
         read_dao(node, type_id, resolve, source, rel, batch)
         read_module(node, type_id, resolve, source, rel, batch)
-        scan_type(node, type_id, source, rel, self._client, base_path=ctx.base_path)
+        scan_type(
+            node,
+            type_id,
+            source,
+            rel,
+            self._client,
+            base_path=ctx.base_path,
+            by_simple=ctx.imports.by_simple,
+            wildcard_prefixes=ctx.imports.wildcard_prefixes,
+        )
         read_controller(node, type_id, self._spring_resolver(ctx), source, rel, batch)
 
     def _type_resolver(self, ctx: _FileContext) -> Any:
@@ -453,7 +521,9 @@ class KotlinExtractor:
 
         body = next((c for c in node.named_children if c.type == "function_body"), None)
         if body is not None:
-            ctx.pending.append(_Pending(func_id, owner, body, _parameter_types(node, source), route_module))
+            ctx.pending.append(
+                _Pending(func_id, owner, body, _parameter_types(node, source), route_module, receiver)
+            )
 
     def _finalize_resolver(self, batch: FactBatch) -> Any:
         """A ``screen name → Function id`` closure over the finished batch.
@@ -500,8 +570,16 @@ class KotlinExtractor:
         _collect_bindings(pend.body, source, scope)
 
         for call in _call_sites(pend.body):
-            target = self._resolve_call(call, pend.owner, ctx, scope, source)
+            line = call.start_point[0] + 1
+            target = self._resolve_call(
+                call, pend.owner, ctx, scope, source, line=line, rel=rel, this_type=pend.receiver
+            )
             if target is None:
+                continue
+            if isinstance(target, _DeferredCall):
+                # A typed receiver: whether this call is real is a whole-repository
+                # question, so it is answered in `finalize` (see `_DeferredCall`).
+                self._deferred.append(replace(target, src=pend.func_id, provenance=Provenance(rel, line)))
                 continue
             # A resolved third-party callee — `Modifier.padding`, `Json.decodeFromString` —
             # is a real call to a real symbol this tree does not declare, so it gets an
@@ -528,17 +606,25 @@ class KotlinExtractor:
         ctx: _FileContext,
         scope: _Scope,
         source: bytes,
-    ) -> str | None:
+        *,
+        line: int,
+        rel: str,
+        this_type: str = "",
+    ) -> str | _DeferredCall | None:
         callee = next(iter(call.named_children), None)
         if callee is None:
             return None
         if callee.type == "identifier":
             return self._resolve_bare(_text(callee, source), owner, ctx, scope)
         if callee.type == "navigation_expression":
-            return self._resolve_navigated(callee, owner, ctx, scope, source)
+            return self._resolve_navigated(
+                callee, owner, ctx, scope, source, line=line, rel=rel, this_type=this_type
+            )
         return None  # a chained or computed callee — inference, so never
 
-    def _resolve_bare(self, name: str, owner: str | None, ctx: _FileContext, scope: _Scope) -> str | None:
+    def _resolve_bare(
+        self, name: str, owner: str | None, ctx: _FileContext, scope: _Scope
+    ) -> str | _DeferredCall | None:
         """``foo()`` with no receiver."""
         if not name or name in scope.bound:
             # D9: a Kotlin local *can* shadow a call — `val helper = ::other`
@@ -564,6 +650,27 @@ class KotlinExtractor:
             # type or a function, which is exactly what D2's shared namespace
             # buys: the id unifies with the declaration in the other file.
             return f"java:{ctx.imports.by_simple[name]}"
+        if ctx.package:
+            # A bare name this file does not declare and does not import: in Kotlin
+            # that is a same-package declaration in **another file**, which is how a
+            # Ktor route module is mounted (`route("/v1") { orders() }`) and how any
+            # multi-file package calls itself.
+            #
+            # §3.2 row 1 refused this outright, and gave the right reason for the code
+            # as it then stood: "there is no `finalize` backstop for a function id, so
+            # it would be a guess that never gets checked." There is one now — the same
+            # one `_DeferredCall` uses — so the call can be *checked* instead of either
+            # guessed or dropped. Nothing is emitted unless the repository declares it.
+            candidates = tuple(
+                f"java:{prefix}.{name}" for prefix in (ctx.package, *sorted(ctx.imports.wildcard_prefixes))
+            )
+            return _DeferredCall(
+                src="",
+                candidates=candidates,
+                owners=candidates,
+                certain=False,
+                provenance=Provenance("", 0),
+            )
         return None
 
     def _resolve_navigated(
@@ -573,7 +680,11 @@ class KotlinExtractor:
         ctx: _FileContext,
         scope: _Scope,
         source: bytes,
-    ) -> str | None:
+        *,
+        line: int,
+        rel: str,
+        this_type: str = "",
+    ) -> str | _DeferredCall | None:
         """``recv.foo()`` — the typed-receiver case, and the static/companion one."""
         parts = [c for c in nav.named_children]
         if len(parts) < 2:
@@ -586,10 +697,27 @@ class KotlinExtractor:
             return None
 
         if receiver.type == "this_expression":
-            return f"{owner}.{name}" if owner and name in ctx.members_of(owner) else None
+            if owner:
+                return f"{owner}.{name}" if name in ctx.members_of(owner) else None
+            # A top-level extension: `this` is its *receiver*, whose type the signature
+            # states and the file imports. Found in review: `fun NavController.x() {
+            # this.navigate(…) }` resolved to nothing at all, because only a member
+            # function was considered to have a `this` worth resolving.
+            return (
+                self._deferred_call(this_type, name, ctx, owner=None, line=line, rel=rel)
+                if this_type
+                else None
+            )
         if receiver.type != "identifier":
             return None  # a chained or computed receiver — never
         recv = _text(receiver, source)
+        if recv == "Companion" and owner:
+            # D5's third call form, written from inside the class that owns the companion.
+            # `Companion` is not a type this file declares, so without this it resolved as a
+            # bare name under the enclosing package — the phantom `java:pkg.Companion.make`
+            # that D5 exists to prevent. §6 assigns all three forms to the `companions`
+            # corpus case and the fixture only ever contained two of them.
+            return f"{owner}.{name}" if name in ctx.members_of(owner) else None
         recv_type = scope.type_of(recv)
 
         # An extension is claimed only when the receiver fits, or when the receiver's
@@ -598,14 +726,76 @@ class KotlinExtractor:
         if name in ctx.extensions and (recv_type is None or _bare_type(recv_type) == ctx.extensions[name]):
             return f"java:{ctx.package}.{name}" if ctx.package else None
         if recv_type is not None:
-            resolved = self._resolve_type(recv_type, ctx)
-            return f"{resolved}.{name}" if resolved else None
+            # An extension **imported** from another file is written exactly like a member
+            # call, and `ctx.extensions` only knows this file's. Offering the import as a
+            # second candidate recovers the true, grounded target instead of losing it —
+            # `test_extension_call_resolves_to_the_free_function_not_the_receiver` pinned
+            # only the same-file half of D4. Member first, extension second, which is
+            # Kotlin's own resolution order: a member always wins over an extension.
+            imported = ctx.imports.by_simple.get(name)
+            return self._deferred_call(
+                recv_type,
+                name,
+                ctx,
+                owner=None,
+                line=line,
+                rel=rel,
+                also=(f"java:{imported}",) if imported else (),
+            )
         if recv[:1].isupper():
             # `Type.foo()` — an object, a companion member folded onto the class
             # (D5), or an enum member. The Java rule, unchanged.
-            resolved = self._resolve_type(recv, ctx)
-            return f"{resolved}.{name}" if resolved else None
+            return self._deferred_call(recv, name, ctx, owner=None, line=line, rel=rel)
         return None
+
+    def _deferred_call(
+        self,
+        type_name: str,
+        member: str,
+        ctx: _FileContext,
+        *,
+        owner: str | None,
+        line: int,
+        rel: str,
+        also: tuple[str, ...] = (),
+    ) -> _DeferredCall | None:
+        """Hold back ``<type_name>.<member>()`` for the whole-repository check.
+
+        ``also`` are extra ids the call could name, tried *after* the receiver's own
+        members and never used as the external-placeholder fallback — they are alternative
+        readings of the same call site, not the reading the source states.
+        """
+        owners, certain = self._type_candidates(type_name, ctx)
+        if not owners and not also:
+            return None
+        return _DeferredCall(
+            src=owner or "",
+            candidates=tuple(f"{t}.{member}" for t in owners) + also,
+            owners=owners or also,
+            certain=certain and bool(owners),
+            provenance=Provenance(rel, line),
+        )
+
+    def _type_candidates(self, simple_or_fqn: str, ctx: _FileContext) -> tuple[tuple[str, ...], bool]:
+        """Every id a type name could denote, best first, and whether the source says so.
+
+        ``certain`` means the name was *read*: an already-qualified name, or one an
+        explicit ``import`` places. Everything else is assumption, and the candidates
+        are then the enclosing package plus each ``import a.b.*`` prefix — a wildcard
+        names no symbol on its own, but it is exactly where a bare name may come from,
+        and offering it as a candidate is how the *true* target of ``dao.getTopics()``
+        is found rather than invented under the caller's own package.
+        """
+        name = _bare_type(simple_or_fqn)
+        if not name:
+            return (), False
+        if "." in name:
+            return (f"java:{name}",), True
+        if name in ctx.imports.by_simple:
+            return (f"java:{ctx.imports.by_simple[name]}",), True
+        guesses = [f"java:{ctx.package}.{name}"] if ctx.package else []
+        guesses += [f"java:{prefix}.{name}" for prefix in sorted(ctx.imports.wildcard_prefixes)]
+        return tuple(guesses), False
 
     # ---- resolution ---------------------------------------------------------
 
@@ -652,13 +842,23 @@ class KotlinExtractor:
         for node in batch.nodes:
             out.add_node(node)
         for edge in batch.edges:
-            if edge.kind is not EdgeKind.IMPLEMENTS or not edge.dst.startswith("java:") or edge.dst in known:
+            # `PROVIDES` rides along for the same reason and by the same test: a Hilt
+            # binding's return type is resolved by `_resolve_type` too, so
+            # `@Provides fun x(): Repo` in a module whose package does not declare
+            # `Repo` used to mint the type `java:<this.package>.Repo` — a class in a
+            # package that does not contain it, which `FactStore.injection_reach_of`
+            # then walked in `blast_radius`.
+            if (
+                edge.kind not in (EdgeKind.IMPLEMENTS, EdgeKind.PROVIDES)
+                or not edge.dst.startswith("java:")
+                or edge.dst in known
+            ):
                 out.add_edge(edge)
                 continue
             bare = edge.dst.rsplit(".", 1)[-1]
             target = f"java:{bare}"
             out.add_node(Node(target, NodeKind.TYPE, bare, _LANG, external=True))
-            out.add_edge(Edge(edge.src, target, EdgeKind.IMPLEMENTS, edge.provenance))
+            out.add_edge(Edge(edge.src, target, edge.kind, edge.provenance))
 
         # P3, and both passes need the whole tree for the same reason the IMPLEMENTS
         # repoint above does: a `@Query` names a *table* while an `@Entity` names a
@@ -671,8 +871,48 @@ class KotlinExtractor:
         emit_ktor_routes(self._ktor, out, resolve_function)
         self._ktor.clear()
         link_actuals(out)
+        self._settle_calls(out)
         self.unresolved_calls, _joined = join_to_endpoints(self._client, out)
         return out
+
+    def _settle_calls(self, batch: FactBatch) -> None:
+        """Decide every held-back typed-receiver call against the finished repository.
+
+        Three outcomes, and the middle one is the whole point:
+
+        * A candidate the repository **declares** wins, first one in priority order.
+          A wildcard-imported sibling lands here — ``import app.data.*`` then
+          ``dao.getTopics()`` resolves to ``java:app.data.TopicDao.getTopics``, the real
+          declaration, which the per-file guess used to replace with one under the
+          *caller's* package.
+        * Nothing grounded, and the receiver's type was **guessed** or is a type this
+          repository declares: **drop**. A guessed id has no backstop, and a declared
+          type that has no such member means the call is not to that type at all —
+          ``topic.let { }`` being the common shape. This is the case that used to mint a
+          placeholder and so hide itself from ``pkg verify``.
+        * Nothing grounded, the type was read from the source, and the repository does
+          not declare it: a genuine call into a library. It keeps the external
+          placeholder, because the id is the fully-qualified name the file itself wrote
+          (measured: 387 such edges across 161 AndroidX/kotlinx symbols on the
+          validation app, and losing them would be a real recall regression).
+        """
+        declared = declared_ids(batch)
+        for call in self._deferred:
+            if resolve_or_drop(
+                batch,
+                call.src,
+                call.candidates,
+                EdgeKind.CALLS,
+                call.provenance,
+                declared=declared,
+            ):
+                continue
+            if not call.certain or call.owners[0] in declared:
+                continue
+            target = call.candidates[0]
+            batch.add_node(Node(target, NodeKind.FUNCTION, target.rsplit(".", 1)[-1], _LANG, external=True))
+            batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
+        self._deferred.clear()
 
 
 # ---- scope, for typed receivers ---------------------------------------------
@@ -728,6 +968,21 @@ def _collect_bindings(body: TSNode, source: bytes, scope: _Scope) -> None:
             for child in node.named_children:
                 if child.type in ("parameter", "variable_declaration"):
                     scope.bind(_declared_name_or_first(child, source))
+        elif node.type == "for_statement":
+            # `for (helper in fns)` binds `helper`, and a bound name silences a bare
+            # call to it (D9). The grammar hangs the loop variable straight off the
+            # `for_statement` rather than inside any parameter list, so it needs its
+            # own branch — without it, `for (helper in fns) { helper() }` was resolved
+            # to a *member* named `helper`, an edge to a function the loop never calls.
+            for child in node.named_children:
+                if child.type == "variable_declaration":
+                    scope.bind(_declared_name_or_first(child, source))
+        elif node.type == "catch_block":
+            # `catch (report: Throwable)` binds `report` — same rule, and the grammar
+            # puts the name as a bare `identifier` child of the catch.
+            caught = next((c for c in node.named_children if c.type == "identifier"), None)
+            if caught is not None:
+                scope.bind(_text(caught, source))
 
 
 def _call_sites(body: TSNode) -> list[TSNode]:

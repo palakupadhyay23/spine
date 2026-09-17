@@ -47,7 +47,7 @@ def test_rest_controller_is_a_controller() -> None:
 def test_plain_controller_is_also_a_controller() -> None:
     """`@RestController` is `@Controller` + `@ResponseBody`; both register mappings.
 
-    The validation repository (spring-petclinic-kotlin) uses the plain one on every
+    The Spring validation repository uses the plain one on every
     controller it has, so a reader that accepts only `@RestController` finds nothing
     there. D16's first draft named only `@RestController`.
     """
@@ -103,7 +103,8 @@ def test_repeated_verbs_collapse() -> None:
 
 
 def test_join_normalises_a_method_path_without_a_leading_slash() -> None:
-    """Spring allows it and petclinic writes it three times (`@GetMapping("vets.json")`)."""
+    """Spring allows it and the validation repository writes it three times
+    (`@GetMapping("vets.json")`)."""
     assert join_path("", "vets.json") == "/vets.json"
 
 
@@ -163,7 +164,8 @@ def test_an_explicit_import_resolves_the_annotation() -> None:
 
 
 def test_a_wildcard_import_resolves_the_annotation() -> None:
-    """petclinic writes `import org.springframework.web.bind.annotation.*` — not optional."""
+    """The validation repository writes `import org.springframework.web.bind.annotation.*`
+    — not optional."""
     assert resolves_into_spring(
         "GetMapping",
         by_simple={},

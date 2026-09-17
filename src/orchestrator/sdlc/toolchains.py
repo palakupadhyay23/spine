@@ -81,6 +81,18 @@ def _node_runner(env: TestEnvironment) -> TestRunner:
     )
 
 
+def _jvm_runner(env: TestEnvironment) -> TestRunner:
+    """Maven or Gradle for a Java project, chosen from what the layout detected.
+
+    §9.3's exit criterion — "the existing Java greenfield test passes on a Gradle
+    scaffold" — needs this and nothing else: `GradleTestRunner` was built in P8 and then
+    only Kotlin was wired to it, so a Java Gradle project still ran `mvn test` against a
+    build that has no `pom.xml`.
+    """
+    name = "GradleTestRunner" if getattr(env, "build_tool", "maven") == "gradle" else "MavenTestRunner"
+    return cast("TestRunner", _load("testrunner", name)())
+
+
 def _native_runner(env: TestEnvironment) -> TestRunner:
     name = "MesonTestRunner" if getattr(env, "build_tool", "cmake") == "meson" else "CTestRunner"
     return cast("TestRunner", _load("testrunner", name)())
@@ -271,8 +283,8 @@ TOOLCHAINS: Mapping[str, Toolchain] = MappingProxyType(
             "java",
             _layout("_resolve_java_layout"),
             _scaffold("_java_files"),
-            _environment("JavaToolEnvironment"),
-            _runner("MavenTestRunner"),
+            _environment("JavaToolEnvironment", "maven"),
+            _jvm_runner,
             _prompts("_JAVA"),
             "java_guidance",
             available=_probe("java_toolchain_available"),

@@ -152,11 +152,21 @@ class VenvTestEnvironment:
 
 
 class JavaToolEnvironment:
-    """Java build toolchain (Maven). Dependencies come from ``pom.xml``, not pip —
-    so ``install`` (auto-heal) is a no-op and ``ensure`` does nothing (Maven
-    resolves on ``mvn test``). ``python`` is unavailable by design."""
+    """Java build toolchain. Dependencies come from ``pom.xml`` or ``build.gradle``, not
+    pip — so ``install`` (auto-heal) is a no-op and ``ensure`` does nothing (the build
+    resolves on ``mvn test`` / ``gradle test``). ``python`` is unavailable by design.
+
+    ``build_tool`` is what the layout detected. It is carried here so the *runner* can be
+    chosen from it: `kotlin-support-roadmap.md` §9.3 is the whole reason `GradleTestRunner`
+    exists — "Java codegen on a Gradle project cannot run its tests today" — and until this
+    field existed the Java row still hardwired Maven, so the gap §9.3 was written to close
+    stayed open while the roadmap counted it delivered.
+    """
 
     declared: set[str] = set()
+
+    def __init__(self, build_tool: str = "maven") -> None:
+        self.build_tool = build_tool or "maven"
 
     @property
     def python(self) -> str:
@@ -166,10 +176,11 @@ class JavaToolEnvironment:
         return None
 
     async def install(self, packages: list[str]) -> bool:
-        return False  # Java deps are declared in pom.xml, not pip-installed
+        return False  # Java deps are declared in the build file, not pip-installed
 
     def describe(self) -> str:
-        return "java toolchain (Maven; deps resolved from pom.xml)"
+        source = "build.gradle" if self.build_tool == "gradle" else "pom.xml"
+        return f"java toolchain ({self.build_tool.capitalize()}; deps resolved from {source})"
 
 
 class NodeToolEnvironment:

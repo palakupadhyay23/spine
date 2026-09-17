@@ -38,7 +38,7 @@
     { "src": "java:app.describe", "dst": "java:app.platformName", "kind": "CALLS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:app.orphanPlatform@androidMain", "dst": "java:app.orphanPlatform", "kind": "IMPLEMENTS" },
       "why": "PREDICTED BEFORE SCORING. `orphanPlatform` is an `actual` whose `expect` is nowhere in this tree. The contract's id is trivially computable — strip the suffix — so emitting the edge and an external placeholder for the target is the tempting move. It would assert a declaration nobody has read, in a package this run *did* scan, which is the one place an external placeholder is not honest: absence here is evidence, not ignorance."
@@ -51,9 +51,8 @@
   "excluded": [
     "`androidOnly` is an ordinary function that happens to live in `androidMain`. It keeps its plain id and is here to pin that the suffix keys off the **keyword**, not the directory — see open_questions.",
     "`describe` resolves its call to the `expect` (`java:app.platformName`), not to either implementation. That is the point of leaving the `expect` unsuffixed: common code names the contract, and a `CALLS` edge to one platform's copy would be a claim about which target is running.",
-    "The three files are all named `Platform.kt` and all declare `package app`, so they share one `Module` node whose provenance is whichever the sorted walk reached first. That is correct — they are one package — and it is why the source set has to live in the *declaration* id rather than the module id."
+    "The three files are all named `Platform.kt` and all declare `package app`, so they share one `Module` node whose provenance is whichever the sorted walk reached first. That is correct — they are one package — and it is why the source set has to live in the *declaration* id rather than the module id.",
+    "**Decided (was an open question).** An Android product flavour does NOT get the source-set treatment. D17 expected it to, and P7 measured that it does not follow: a flavour variant carries no keyword, so keying off the directory would rename declarations that never collided and leave calls into flavour code pointing at an id nothing declares. Closing it needs a collision-driven rule computed across the whole tree, which would make an id depend on what else the repository contains — a separate change with its own evidence, not a provisional label here."
   ],
-  "open_questions": [
-    "Should an Android product flavour get the same treatment? D17 was written expecting it to: `src/demo` and `src/prod` declare the same class in the same package, and the validation app does it four times. Measured at P7, it does **not** follow — a flavour variant carries no keyword, so keying off the directory instead would rename declarations that never collided and leave calls into flavour code pointing at an id nothing declares. Closing it needs a collision-driven rule computed across the whole tree, which makes an id depend on what else the repository contains. Recorded rather than guessed at."
-  ]
+  "open_questions": []
 }

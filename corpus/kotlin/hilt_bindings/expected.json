@@ -50,7 +50,7 @@
     { "src": "java:shop.di.CartViewModel.load", "dst": "java:shop.di.CartRepository.items", "kind": "CALLS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:shop.di.Clock", "dst": "java:shop.di.Clock", "kind": "PROVIDES" },
       "why": "PREDICTED BEFORE SCORING. `StrayBinding.bindsClock` carries a genuine `@Binds` and would bind `Clock` to itself — but its class has no `@Module`, so it declares no wiring and must produce nothing. Reading `@Binds` wherever it appears would invent a component out of an annotation, and a self-binding is the clearest form of the resulting nonsense."

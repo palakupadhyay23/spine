@@ -57,7 +57,7 @@
     { "src": "java:endpoint:GET /vets.json", "dst": "java:svc.web.PageController.vets", "kind": "EXPOSES" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:endpoint:GET /remote/topics", "dst": "java:svc.web.TopicClient.remote", "kind": "EXPOSES" },
       "why": "PREDICTED BEFORE SCORING. `TopicClient` is a Feign-shaped interface: the same `@GetMapping` annotation, used to declare a route this service *calls*. Keying off the mapping annotation alone turns a consumer into a provider, and `pkg joins` would then pair a caller with itself. The class stereotype requirement is what prevents it, and it is the only thing that can."
@@ -70,9 +70,8 @@
   "excluded": [
     "`TopicController.helper` carries no mapping annotation and yields nothing — the ordinary case, here to show that being a method of a controller is not by itself a route.",
     "`produces = \"application/json\"` on `vets` is read past, not recorded: content negotiation is not part of an endpoint's identity in this vocabulary, and two endpoints differing only in `produces` would collide on one id anyway.",
-    "The six `java:org.springframework.*` import targets are external and stay out of the node ratio; the IMPORTS edges to them still count. `PageController` imports by wildcard as well, which names no single symbol and so adds no edge."
+    "The six `java:org.springframework.*` import targets are external and stay out of the node ratio; the IMPORTS edges to them still count. `PageController` imports by wildcard as well, which names no single symbol and so adds no edge.",
+    "**Decided (was an open question).** A class-level `@RequestMapping` carrying a verb is read as a prefix only, and emits no endpoint for the class itself. It is legal and occasionally written, but no sample in the validation repositories does it, so there is no evidence either way — and the rule is left where a *missing* endpoint is the failure rather than an invented one. The expected set here is complete for the fixture as written."
   ],
-  "open_questions": [
-    "Should `@RequestMapping` on a class with a verb — legal, and occasionally written — emit an endpoint for the class itself? It is not read today: the reader takes class annotations as prefix-only. No sample in the validation repositories does this, so the rule has no evidence behind it either way and was left where a missing endpoint is the failure rather than an invented one."
-  ]
+  "open_questions": []
 }

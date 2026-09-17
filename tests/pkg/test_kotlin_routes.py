@@ -230,7 +230,14 @@ fun Application.module(board: Board, client: Client) {
 
 
 def test_a_typed_resource_route_yields_nothing(tmp_path: Path) -> None:
-    """`get<Index> { }` takes its path from a `@Resource` on another class."""
+    """`get<Index> { }` takes its path from a `@Resource` on another class.
+
+    The plain `get("/real")` beside it is a **positive control**, and it is the whole
+    reason this test means anything: an empty endpoint set is also what a reader that had
+    stopped working entirely would produce, so without a route that must be found the
+    assertion passes for any reason at all — including the grammar happening to parse
+    `get<Index>` into a shape the walk never reaches.
+    """
     src = """\
 package svc
 
@@ -240,10 +247,11 @@ import io.ktor.server.routing.*
 fun Application.module() {
     routing {
         get<Index> { }
+        get("/real") { }
     }
 }
 """
-    assert _endpoints(_facts(tmp_path, V=src)) == set()
+    assert _endpoints(_facts(tmp_path, V=src)) == {"GET /real"}
 
 
 # ---- Ktor: EXPOSES, and the closure rule ------------------------------------
@@ -300,7 +308,7 @@ def test_a_verb_less_request_mapping_yields_nothing(tmp_path: Path) -> None:
 
 
 def test_plain_controller_routes_too(tmp_path: Path) -> None:
-    """petclinic uses `@Controller` on every one of its controllers."""
+    """The Spring validation repository uses `@Controller` on every one of its controllers."""
     assert "GET /vets.json" in _endpoints(_spring(tmp_path))
 
 
@@ -322,6 +330,86 @@ def test_the_handler_gets_an_exposes_edge(tmp_path: Path) -> None:
 
 def test_stranded_annotations_are_recovered(tmp_path: Path) -> None:
     """tree-sitter-kotlin 1.1.0 parks a parenthesised top-level annotation outside the
-    declaration it decorates, stripping its `modifiers`. 24 files in the validation
-    app hit it; without recovery `TopicController` reads as a plain class."""
-    assert "GET /api/topics" in _endpoints(_spring(tmp_path))
+    declaration it decorates, stripping its `modifiers`. 24 files in the validation app hit
+    it; without recovery `TopicController` reads as a plain class.
+
+    `@RequestMapping("/api")` is the stranded one — it is the annotation with parentheses —
+    so the observable difference is the class-level **prefix**. Asserting the prefixed id
+    alone only repeats what `test_the_handler_gets_an_exposes_edge` already needs; the
+    unprefixed form has to be asserted *absent*, because that is precisely what would be
+    emitted if the annotation were lost and the rest of the reader carried on working.
+    """
+    endpoints = _endpoints(_spring(tmp_path))
+    assert "GET /api/topics" in endpoints
+    assert "GET /topics" not in endpoints, "the class prefix was dropped, i.e. not recovered"
+
+
+# ---- §11 finding 7: a bare name is not a repository-wide address ----
+
+
+def _multi(tmp_path: Path, files: dict[str, str]) -> FactBatch:
+    for name, src in files.items():
+        f = tmp_path / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(src, encoding="utf-8")
+    return RepoCodeExtractor().extract(tmp_path)
+
+
+_MOUNTED = """\
+package {pkg}
+
+import io.ktor.server.application.*
+import io.ktor.server.routing.*
+
+fun Route.health() {{
+    get("/health") {{ }}
+}}
+
+fun Application.module() {{
+    routing {{
+        route("/{prefix}") {{ health() }}
+    }}
+}}
+"""
+
+
+def test_a_mount_resolves_in_its_own_package_not_across_services(tmp_path: Path) -> None:
+    """Two services each declaring `fun Route.health()` is the normal shape of a monorepo.
+
+    Resolving the mount by bare name across the whole tree mounted service A's routes under
+    service B's prefix — a route B does not serve, provenanced to a file that never
+    mentions it — or, when both declared the name, silently dropped both.
+    """
+    batch = _multi(
+        tmp_path,
+        {
+            "a/App.kt": _MOUNTED.format(pkg="svc.a", prefix="a"),
+            "b/App.kt": _MOUNTED.format(pkg="svc.b", prefix="b"),
+        },
+    )
+    endpoints = {n.name for n in batch.nodes if n.kind is NodeKind.ENDPOINT}
+    assert endpoints == {"GET /a/health", "GET /b/health"}
+
+
+def test_a_spring_property_placeholder_is_not_a_path(tmp_path: Path) -> None:
+    """Kotlin refuses an interpolated path at the grammar, but `"\\${api.base}/x"` is an
+    *escaped* dollar and decodes to the same Spring placeholder — a path resolved from
+    configuration at boot, which the source does not state."""
+    batch = _multi(
+        tmp_path,
+        {
+            "C.kt": """\
+package svc
+
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+class C {
+    @GetMapping("\\${api.base}/topics")
+    fun list() {}
+}
+"""
+        },
+    )
+    assert not [n for n in batch.nodes if n.kind is NodeKind.ENDPOINT]

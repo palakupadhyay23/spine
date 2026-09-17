@@ -48,18 +48,21 @@
     { "src": "java:shop.nav.itemScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
     { "src": "java:shop.nav.splitScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
     { "src": "java:shop.nav.computedScreen", "dst": "java:androidx.navigation.compose.composable", "kind": "CALLS" },
+    { "src": "java:shop.nav.navigateToCart", "dst": "java:androidx.navigation.NavController.navigate", "kind": "CALLS" },
+    { "src": "java:shop.nav.navigateToItem", "dst": "java:androidx.navigation.NavController.navigate", "kind": "CALLS" },
     { "src": "java:shop.nav", "dst": "java:androidx.navigation.NavController", "kind": "IMPORTS" },
     { "src": "java:shop.nav", "dst": "java:androidx.navigation.NavGraphBuilder", "kind": "IMPORTS" },
     { "src": "java:shop.nav", "dst": "java:androidx.navigation.compose.composable", "kind": "IMPORTS" }
   ],
   "known_gaps": [],
-  "false_positives": [
+  "refusals": [
     {
       "edge": { "src": "java:endpoint:NAV split_route", "dst": "java:shop.nav.LeftPane", "kind": "EXPOSES" },
       "why": "PREDICTED BEFORE SCORING. `splitScreen`'s lambda shows two screens. Emitting EXPOSES to the first one read is the closure rule's failure mode — the order the walk happens to visit them in is not evidence about which screen the route is for. The Endpoint is still correct and still emitted; only the EXPOSES is withheld."
     }
   ],
   "excluded": [
+    "`this.navigate(...)` inside `fun NavController.navigateToCart()` **is** a labelled CALLS edge, not an omission: `this` is the extension's receiver, whose type the signature states and line 3 imports, so `NavController.navigate` is read from the source rather than inferred. Recorded because both edges were missing from an earlier version of this file while `typed_receivers` scored the identical shape — labels are read off the source, never off the output (corpus/README.md).",
     "`computedScreen` yields NO endpoint at all — its route is a function call, so the path cannot be known and inventing a name for it would be worse than silence. Its body's CALLS edges are still emitted, because those are ordinary calls and have nothing to do with navigation.",
     "`composable` is an explicitly imported function, so calling it is an ordinary resolved CALLS edge (P2) and is labelled as one. Navigation reading and call resolution are independent passes over the same call site — the route reading does not suppress the call, and should not.",
     "`cartRoute` and `itemIdArg` are top-level properties, deliberately not Fields (D6), so they are not labelled as such.",

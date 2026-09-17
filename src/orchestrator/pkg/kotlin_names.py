@@ -91,7 +91,7 @@ class Annotation:
         """The named argument, falling back to the one at ``position``.
 
         Kotlin lets the same annotation be written either way and real code uses
-        both: aiandroid writes ``@GET(value = "topics")`` and ``@Query(value =
+        both: the Android validation app writes ``@GET(value = "topics")`` and ``@Query(value =
         "…")`` with the name, while most examples write them positionally. A
         reader that handles only one form silently sees nothing in half of them.
         """
@@ -225,8 +225,25 @@ def _simple_name(name: str) -> str:
     return bare_type(name).rsplit(".", 1)[-1]
 
 
+#: What ``\\x`` stands for in a Kotlin string. Decoded rather than dropped: the
+#: previous version kept only ``string_content`` children, so ``"costs \\$5"`` came
+#: back as ``costs 5`` — a literal that is silently *wrong* rather than refused.
+_ESCAPES = {"t": "\t", "b": "\b", "n": "\n", "r": "\r", "'": "'", '"': '"', "\\": "\\", "$": "$"}
+
+
+def decoded_escape(raw: str) -> str | None:
+    """``\\n`` → a newline, ``\\u0041`` → ``A``; ``None`` when this one is not decodable."""
+    body = raw[1:]
+    if body[:1] == "u" and len(body) == 5:
+        try:
+            return chr(int(body[1:], 16))
+        except ValueError:
+            return None
+    return _ESCAPES.get(body) if len(body) == 1 else None
+
+
 def string_value(node: TSNode | None, source: bytes) -> str | None:
-    """A string literal's content, or ``None`` when the node is not a literal.
+    """A string literal's **constant** content, or ``None`` when there is no such thing.
 
     Both spellings matter and the second one is not optional in practice: Room
     ``@Query`` bodies in real code are **raw** strings (``multiline_string_literal``),
@@ -234,21 +251,81 @@ def string_value(node: TSNode | None, source: bytes) -> str | None:
     ``@Query`` annotations in the validation app are written that way. Returning
     ``None`` for anything else is what keeps a computed path or a constant
     reference from being mistaken for a literal one.
+
+    **An interpolated string is not a literal**, and saying so is the whole point of
+    this function. Found in review: the first version joined the ``string_content``
+    children and dropped everything between them, so every caller was handed a
+    *plausible* constant assembled out of a computed one. A Ktor group written
+    ``route("/api/${cfg.version-brace")`` became the path ``/api/``, and
+    ``"/users/${user.id-brace/detail"`` became ``/users//detail`` — an endpoint that
+    exists at no version of that service. One helper, and every reader downstream of
+    it (Ktor routes, Compose navigation, Room, and the two Gradle readers) inherited
+    the fabrication.
+
+    Detection needs both halves, because tree-sitter-kotlin 1.1.0 only tags *some*
+    interpolations. In a raw string, ``$y`` arrives as an ``interpolation`` node; in
+    an ordinary string it arrives as two bare ``string_content`` children (``$`` and
+    ``y``) with no marker at all — which is how ``include(":core:$it")`` reached the
+    graph as the module ``gradle:core/$it``. So a ``$`` surviving *inside*
+    ``string_content`` means interpolation too; a deliberately literal dollar is a
+    separate ``escape_sequence`` child and never appears there.
     """
     if node is None:
         return None
     if node.type not in ("string_literal", "multiline_string_literal"):
         return None
-    parts = [text(c, source) for c in node.named_children if c.type == "string_content"]
-    if parts:
-        return "".join(
-            source[c.start_byte : c.end_byte].decode("utf-8", "replace")
-            for c in node.named_children
-            if c.type == "string_content"
-        )
-    # An empty literal ("" or """""") has no string_content child.
+    out: list[str] = []
+    for child in node.named_children:
+        if child.type == "string_content":
+            chunk = source[child.start_byte : child.end_byte].decode("utf-8", "replace")
+            if "$" in chunk:
+                return None  # the untagged short form, `"$it"` — computed, not constant
+            out.append(chunk)
+        elif child.type == "escape_sequence":
+            decoded = decoded_escape(text(child, source))
+            if decoded is None:
+                return None  # an escape this does not understand is not a known constant
+            out.append(decoded)
+        else:
+            return None  # `interpolation`, or anything else that is not constant text
+    if out:
+        return "".join(out)
+    # An empty literal ("" or """""") has no children at all.
     raw = text(node, source)
     return "" if raw in ('""', '""""""') else None
+
+
+def string_constants(root: TSNode, source: bytes) -> dict[str, str]:
+    """Every ``const val NAME = "literal"`` this file declares, at any nesting.
+
+    Room names a table with a constant often enough that refusing every such entity
+    would be a real recall loss, and a `@Entity`'s `tableName` constant is declared
+    beside it — in the file, usually in the class's own `companion object`. Scoped to
+    the file on purpose: a repo-wide table would have to answer which of two same-named
+    constants was meant, and getting that wrong is the failure this exists to avoid.
+    """
+    out: dict[str, str] = {}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        stack.extend(node.named_children)
+        if node.type != "property_declaration":
+            continue
+        decl = next((c for c in node.named_children if c.type == "variable_declaration"), None)
+        if decl is None:
+            continue
+        name = next((text(c, source) for c in decl.named_children if c.type == "identifier"), "")
+        literal = next(
+            (
+                string_value(c, source)
+                for c in node.named_children
+                if c.type in ("string_literal", "multiline_string_literal")
+            ),
+            None,
+        )
+        if name and literal:
+            out[name] = literal
+    return out
 
 
 def collection_items(node: TSNode | None) -> list[TSNode]:
@@ -278,8 +355,10 @@ __all__ = [
     "bare_type",
     "class_reference",
     "collection_items",
+    "decoded_escape",
     "element_type",
     "field_text",
+    "string_constants",
     "string_value",
     "text",
 ]

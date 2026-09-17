@@ -225,7 +225,7 @@ result disagrees with this document, the document changes.
 | **P8 Kotlin/JVM codegen** (D13, §9.3) | `GradleTestRunner`, `KotlinToolEnvironment`, `kotlin_toolchain_available`; layout/scaffold for `kotlin("jvm")`; prompts + `kotlin-conventions`; `"kotlin"` into `SUPPORTED_LANGUAGES`; preflight via `./gradlew check` when `ktlint`/`detekt` are configured | 5–7 d | greenfield `sdlc feature --language kotlin` → real `./gradlew test` green **and** red proven (the Go 4.2 pair); brownfield on the Spring validation repo green, independently re-run | ✅ DONE | 2026-09-16 | 2026-09-16 | Real Gradle 8.13 / Kotlin 2.0.21. **Greenfield:** scaffold → `gradle test` **BUILD SUCCESSFUL**; assertion broken → **BUILD FAILED** naming the test (the Go 4.2 pair). **Brownfield:** `VisitFee` + test placed into spring-petclinic-kotlin's existing package → **3 tests, 0 failures, 0 errors**, re-run green with `--rerun-tasks`. `GradleTestRunner` verified red (`rc=1`), green (`rc=0`), wrapper-preferred on KaMPKit, and loud-failure with neither wrapper nor `gradle`. `GradlePreflightRunner` skips without a linter and finds ktlint in KaMPKit / nothing in petclinic or aiandroid. `tests/sdlc/test_kotlin_codegen.py` (26); `tests/sdlc` + `catalog` + `personas` **1,115 passed, 0 failed**. |
 | **P9 Android codegen** (D13) | `android.py` (module placement by package, Android-module detection, SDK probe); variant-aware unit-test task in `GradleTestRunner`; `android_toolchain_available` + `kotlin_project_error`; `TargetLayout.module`/`.android`; Android guidance in the prompts | 5–8 d | brownfield on aiandroid: a repository function + JVM unit test placed in the right `core/` module, the module's real unit-test task **genuinely green, independently verified**; grounding uses the P1–P5 graph | ✅ DONE | 2026-09-16 | 2026-09-16 | Real Gradle 8.1 / AGP 8.1.0-beta01 / JDK 17 / Android SDK platform 33. **The exit criterion as first written names a task that does not exist** — `:core:data:testDebugUnitTest` is *ambiguous* in aiandroid, because `AndroidLibraryConventionPlugin` calls `configureFlavors`, so **every** library module is flavoured and the real tasks are `testDemoDebugUnitTest` / `testProdDebugUnitTest`. Measured, not assumed (§11). **Placement:** 27 modules, `build-logic` correctly excluded as an included build; `…core.data` → `core/data`, the *new* sub-package `…core.data.pricing` → `core/data` under that module's own `src/main/java`, `…core.model.data` → `core/model` with the plain `test` task (a Kotlin/JVM module inside an Android build); an unrelated package resolves to **nothing** and the run stops with the module list rather than guessing. Classification checked against **all 27** modules: 25 Android, 2 plain JVM (`core/model`, `lint`) — and `lint` is the case that vindicates detecting an `android { }` block rather than a plugin id, since it applies `com.android.lint`, which is the *standalone* Lint plugin on a JVM library and produces no variants. **Brownfield:** `syncBackoffMillis` + `SyncBackoffTest` placed into `core/data`'s existing package → **4 tests, 0 failures, 0 errors**; independently re-run with `--rerun-tasks` (**197 tasks executed**, nothing from cache) → **BUILD SUCCESSFUL**. **Red:** assertion broken → `passed=False`, `rc=1`, naming `SyncBackoffTest > each retry doubles the wait FAILED` at `SyncBackoffTest.kt:17` (the Go 4.2 pair). The runner found the module from `git status`, asked for `testDebugUnitTest`, recovered from Gradle's own candidate list, and cached the answer for later refine iterations. `detect_jvm_test_library` now reads `build-logic/` convention plugins — aiandroid declares `kotlin("test")` *only* there, so before this it was right by luck. **Mixed build proven too:** a second feature placed into `core/model` — a plain Kotlin/JVM module in the same Android repo — ran as `:core:model:test` while `core/data` ran as `:core:data:testDemoDebugUnitTest` in the *same* invocation (**3 tests, 0 failures**, independently re-run with `--rerun-tasks`). That second module is what exposed the per-module test-library finding (§11) and a `git status` flag: git collapses a wholly-new untracked directory, so a generated test that is the first file in a new directory was invisible to module attribution until `-uall`. `tests/sdlc/test_android_codegen.py` (43). |
 | **P10 Generic work** (§9.1, §9.2, §9.4) | `scripts/roadmap-status.py --check` (two new checks + CI); `scripts/validate-frontend.py` proven on Kotlin; reverse-DNS area grouping; the dead `Toolchain.conventions_skill_id` removed | 3–4 d | each item's own exit in §9; this table passes its own check | ✅ DONE | 2026-09-16 | 2026-09-16 | **§9.1** — the gate existed but was missing the check §9.1 names, and this roadmap proved why: its own **Status** line read *“P0–P5 done · P6–P11 not started”* for three phases while the table below it showed P6–P8 DONE with evidence, and the gate stayed green. Two checks added — the header's phase claim against its own table's DONE rows, and the spec's claim against `SPEC-INDEX.md`'s — both structured on *both* sides, which is what separates them from the prose classification withdrawn at 33% precision. A third defect surfaced doing it: `_TOP_STATUS` matched `(.+?)\.` on one line, so a **wrapped** status line matched nothing at all — and every roadmap here wraps its own, which made every check reading it a silent no-op. Now 9 checks, 3 tables, **and wired into CI** (it was not). **§9.2** — `validate-frontend.py` existed and is now *demonstrated* on Kotlin rather than assumed: 1,635 grounded nodes, node counts split `kotlin` / `gradle`, `pkg verify` OK, the `state` stack line, and the top-10 unresolved imports. **§9.4** — reverse-DNS grouping: on the validation app **258 of 273 first-party types sat in one area called `com.google`**; they now render as **39 areas** — `core.data` (40), `core.database`, `feature.topic` … — while this repository is measurably **unchanged** (its deepest majority prefix is `orchestrator` at 48.1%, under the threshold, because `orchestrator.pkg` already *is* the area). The spec's literal rule — the prefix shared by *every* module — does not survive the validation repo: one first-party module declaring `package androidx.test.uiautomator` drags the common prefix of all 71 to nothing, so the rule is coverage-based, with the threshold placed in the measured gap (94.4% → 57.7%). 9 tests in `tests/knowledge/test_areas_reverse_dns.py`, 9 more in `tests/test_roadmap_status.py`. |
-| **P11 Review + MR** (D19) | self-review against `docs/reviewing/language-frontend-checklist.md` — the checklist a maintainer runs; fix; MR body carrying the phase table and every validation number | 1–2 d | verdict "mergeable"; every §7.1 row updated; full suite with CI's extras green; no `episteme/` in the diff | ✅ DONE | 2026-09-16 | 2026-09-16 | **Verdict: mergeable, after 6 findings fixed.** Every registration site checked with `file:line`: extractor, `default_extractors` (gated append), `FRONT_ENDS`, `EXTRA_PROBES`, `_GRAMMAR_MODULES` (the cache key — a warm cache would otherwise serve a Kotlin-less graph forever), `catalog/profile.py`, `scope.WALKERS`, `SUPPORTED_LANGUAGES`, the `Toolchain` row. `import_link` and `insights` need no Kotlin branch — Kotlin rides Java's `java:` prefix, and its visibility modifiers are not stored — and both now **say so** rather than leaving the next reader to infer it. **Findings fixed (7):** the doc binder read `.kt`/`.kts` as symbols (§11, drift 25 → 24); Kotlin was missing from `test_capabilities._FIXTURES` and `test_verifier._SOURCES`, two hand-written rosters that fail open (§11); the `understand-codebase` skill still advertised ten languages — the same class as P9's plugin-manifest miss, and a site the docs matrix names; two undocumented "no branch needed" decisions. **Gates:** `mypy src tests` **0 issues / 742 files** (`strict`), full suite **3,926 passed, 0 failed** with CI's extras, `ruff` clean over 779 files, all five generated-artifact gates green, `mutate-dispatch.py` **8 of 8 caught, 0 skipped**, `validate-frontend.py` green on the validation app, **no `episteme/` in the diff**. |
+| **P11 Review + MR** (D19) | self-review against `docs/reviewing/language-frontend-checklist.md` — the checklist a maintainer runs; fix; MR body carrying the phase table and every validation number | 1–2 d | verdict "mergeable"; every §7.1 row updated; full suite with CI's extras green; no `episteme/` in the diff | ✅ DONE | 2026-09-16 | 2026-09-17 | **Maintainer review returned _not mergeable_ on 2026-09-17 and is the record that matters here — the self-review missed the class of defect that mattered most.** Eleven fabrication paths, two self-agreeing corpus cases, an area-grouping invariant break and two codegen holes; all fixed, all recorded individually in §11. The self-review's own findings stand below, but its verdict did not survive contact with a second reader: it checked every *registration* site and no *refusal*, and every fabrication it missed was hidden behind the same mechanism — a guessed id minted as an `external` placeholder, which makes `pkg verify` report clean and the D9 oracle report nothing. Measured effect of the fixes on the validation app: **72 fabricated edges over 36 invented ids → 0**, 46 invented nodes gone, and 126 true edges *recovered* that the per-file guess had displaced (`CALLS` 2,167 → 2,221); corpus `CALLS` recall **0.92 → 0.94** with precision still 1.00; every front-end, not only Python, now has an invention row gated at zero. **Self-review (2026-09-16), verdict mergeable after 6 findings fixed.** Every registration site checked with `file:line`: extractor, `default_extractors` (gated append), `FRONT_ENDS`, `EXTRA_PROBES`, `_GRAMMAR_MODULES` (the cache key — a warm cache would otherwise serve a Kotlin-less graph forever), `catalog/profile.py`, `scope.WALKERS`, `SUPPORTED_LANGUAGES`, the `Toolchain` row. `import_link` and `insights` need no Kotlin branch — Kotlin rides Java's `java:` prefix, and its visibility modifiers are not stored — and both now **say so** rather than leaving the next reader to infer it. **Findings fixed (7):** the doc binder read `.kt`/`.kts` as symbols (§11, drift 25 → 24); Kotlin was missing from `test_capabilities._FIXTURES` and `test_verifier._SOURCES`, two hand-written rosters that fail open (§11); the `understand-codebase` skill still advertised ten languages — the same class as P9's plugin-manifest miss, and a site the docs matrix names; two undocumented "no branch needed" decisions. **Gates:** `mypy src tests` **0 issues / 742 files** (`strict`), full suite **3,926 passed, 0 failed** with CI's extras, `ruff` clean over 779 files, all five generated-artifact gates green, `mutate-dispatch.py` **8 of 8 caught, 0 skipped**, `validate-frontend.py` green on the validation app, **no `episteme/` in the diff**. |
 
 Rough total: **45–60 days**, one engineer familiar with the PKG. **Delivery is one merge** (D19):
 the branch carries every phase, a draft MR exists from P1 for visibility, and it is converted to
@@ -711,6 +711,189 @@ Kotlin:
   test and this file has none; `docs-matrix.md` names the site, so only running the checklist
   finds it. Three lists of the same fact in one repository, none derived from the registry — the
   count of "places that enumerate languages by hand" is itself the risk.
+### Maintainer review, 2026-09-17 — the fabrication class
+
+A maintainer review of the merge request returned **not mergeable** on eleven fabrication paths,
+two self-agreeing corpus cases and a comprehension-layer invariant break. They are recorded
+individually below because they are **one defect repeated**, and the shape is worth naming: a
+reader that could not answer a question returned a *plausible* answer instead of none, and the
+plausible answer was then minted as an `external` placeholder — so the edge never dangled,
+`pkg verify` reported clean, and the D9 invention oracle could not see it either. Every number in
+this section was measured by running the branch's own code.
+
+**What made them invisible is more important than any one of them.** A placeholder node is the
+graph's way of saying "this exists outside the tree". Minting one for a *guess* makes a guess
+indistinguishable from a library call, and every gate here checks consistency rather than truth.
+The structural fix is `finalize`: a target that was assumed rather than read is checked against
+what the repository actually declares, and dropped when nothing does.
+
+- **A same-package type guess reached `CALLS`, and a placeholder hid it.**
+  *(Found 2026-09-17, review.)* `_resolve_type` fell back to `java:{package}.{name}` for any
+  unresolved type, and `finalize` repointed `IMPLEMENTS` only — so `_calls` minted an external
+  `Function` for the invented id. Kotlin's *default* imports (`String`, `System`, `Math`) need no
+  import line, so this fired on essentially every file: `s.uppercase()` in `package app.ui`
+  became a call to `java:app.ui.String.uppercase`, a class in a package that does not contain it.
+  Measured on the validation app: **72 fabricated edges over 36 invented ids**, now **0**, and
+  46 invented placeholder nodes gone (2,376 → 2,330). `CALLS` went **up**, 2,167 → 2,221: the
+  same check that drops a guess also *recovers* the true edge the guess displaced, 126 of them
+  here.
+  Fixed by deferring every typed-receiver call to `finalize` (`_DeferredCall`) and resolving it
+  through `pkg/finalize_names.py::resolve_or_drop`, which existed for exactly this and was unused.
+  The fix also *recovers* true edges: a wildcard-imported sibling is now offered as a candidate,
+  so `dao.getTopics()` resolves to the real `java:app.data.TopicDao.getTopics` instead of a
+  same-named class under the caller's own package.
+- **The scope functions §3.2 lists under "never" were emitted.** *(Found 2026-09-17, review.)*
+  `topic.let { }`, `.apply`, `.run`, `.also` all resolved onto the receiver type, so
+  `blast_radius` on any type named every file that had ever written `x.let { }`. No blocklist was
+  needed in the end: a type the repository *declares* has known members, so a call naming a
+  member it does not declare is refused by the same `finalize` check.
+- **`string_value` dropped interpolation, so computed paths were emitted as literals.**
+  *(Found 2026-09-17, review.)* One helper, five readers. `route("/api/${cfg.version}")` became
+  the path `/api/`; `"/users/${user.id}/detail"` became `/users//detail`, an endpoint that exists
+  at no version of that service; `include(":core:$it")` became the module `gradle:core/$it`.
+  Detection needs both halves, because tree-sitter-kotlin 1.1.0 tags only *some* interpolations:
+  `${x}` in a raw string is an `interpolation` node, but `$it` in an ordinary string arrives as
+  two bare `string_content` children with no marker at all. A `$` surviving inside
+  `string_content` therefore means interpolation too. Found while fixing it: escape sequences were
+  silently *dropped* rather than decoded, so `"costs \$5 today"` came back as `costs 5 today` — a
+  literal that is wrong rather than refused. Both fixed; `test_kotlin_literals.py` pins the lot.
+- **A Compose route was read from raw source text, not from the parse.**
+  *(Found 2026-09-17, review.)* `_resolve` recognised a literal by `raw.startswith('"')` and then
+  stripped the first and last character, so `composable(route = "topic/" + BASE)` — an
+  `additive_expression`, not a literal at all — produced the endpoint `NAV topic/" + BAS`. Now
+  read from the argument node, so a concatenation is refused by the grammar rather than by a
+  string test that cannot see the shape.
+- **A Spring `@Value` placeholder was a literal path in the *Java* front-end.**
+  *(Found 2026-09-17, review.)* `jvm_routes`'s docstring states the rule — "a `@Value`
+  placeholder yields `None` rather than a guess" — but `${api.base}` is an ordinary Java
+  `string_literal`, so it passed the node-type test and produced `GET /${api.base}/topics`. A
+  regression in an already-shipped language, and the reason the rule now lives in
+  `jvm_routes.literal_path` where both front-ends share it: Kotlin has the identical hole by a
+  different spelling, since `"\${api.base}/x"` is an *escaped* dollar that decodes to the same text.
+- **Hilt `PROVIDES` targets were invented, and generic wrappers were not unwrapped.**
+  *(Found 2026-09-17, review.)* `@Provides fun provideClients(): Set<OkHttpClient>` read its
+  return type with `bare_type` and got `Set`, minting a `Set` class in the module's own package —
+  which `FactStore.injection_reach_of` then walked in `blast_radius`. The sibling
+  `_first_parameter_type` had used `element_type` correctly all along, fifteen lines below.
+  Separately, the reader minted the target node itself, which made a guessed target arrive
+  pre-grounded and so invisible to `finalize`'s repoint; it now emits the edge only.
+- **Two Room fabrications, from the same missing distinction.**
+  *(Found 2026-09-17, review.)* `@Entity(tableName = TOPICS)` with a constant was
+  indistinguishable from *no* `tableName`, so the class name was claimed as the table — one real
+  table then produced two `Entity` nodes (a grounded class and an external node for the table its
+  own `@Query` names), and `data_layer_link` matches by name, so the class never reconciled with
+  the migration that creates it. A constant declared in the file is now resolved
+  (`kotlin_names.string_constants`) and anything else refuses the entity outright. Separately,
+  `@Insert fun insert(dto: SomeDto)` on a plain data class minted `java:entity:app.data.SomeDto` —
+  an Entity whose name is a dotted FQN, for a class carrying no `@Entity` at all. Unlike an
+  unknown *table*, there is nothing there for a placeholder to stand for, so it is dropped.
+- **Ktor mounts and Compose route constants both resolved by bare name, repo-wide.**
+  *(Found 2026-09-17, review.)* A `health()` call in one service mounted another service's
+  `fun Route.health()` under the caller's prefix, ignoring package, imports and a same-file
+  declaration of the same name; and two feature modules each declaring `const val route` merged,
+  so the loser's `composable` was credited with a path its source never contains and one endpoint
+  collected an `EXPOSES` to both screens. Both are the ordinary shape of a monorepo and of the
+  Compose feature-module convention. Both now resolve own-package → explicit import → unique
+  repo-wide, and refuse an ambiguous name — and the fix *raises* recall, because a collision no
+  longer costs both routes.
+- **The Gradle reader credited every nested block to the script's own module.**
+  *(Found 2026-09-17, review.)* `project(":app") { dependencies { … } }` in a root script
+  asserted a root → `core/ui` edge that no file declares *and* lost the real `app` → `core/ui`
+  one: a false edge and a missing edge from a single read. `subprojects {}` applies to a set the
+  file does not enumerate, so it now contributes nothing rather than one edge hung off the root.
+- **The KMP source-set suffix came from the first `/src/` match.**
+  *(Found 2026-09-17, review.)* In a path that already contains `src/`, two platforms' `actual`s
+  collapsed onto one id and `FactBatch` dedup dropped one without a word — the exact failure the
+  suffix exists to prevent. Now the rightmost match, walked rather than matched, because a regex
+  for this must not consume the separator the next match needs.
+- **The D9 invention oracle shared the extractor's blind spot.**
+  *(Found 2026-09-17, review.)* Neither `_Kotlin.declares` nor `_collect_bindings` bound a `for`
+  loop variable or a `catch` parameter, so `for (helper in fns) { helper() }` produced a
+  fabricated `CALLS` that the invention check certified as clean. `scope.py`'s own docstring
+  forbids precisely this ("a detector that agrees with the extractor by construction") and
+  `_CFamily` has always walked `for_range_loop`. Both are *scopes*, not declarations — their name
+  binds inside their own span, where a `val` binds only from the line after it ends.
+  **And nothing in CI held any front-end but Python's invention at zero**, because the oracle had
+  only ever been pointed at this repository, which is pure Python. `score_invention_over` now runs
+  it across the corpus fixtures as well: every front-end has a row, and Kotlin's reads
+  `measured, 0 invented` over 21 shadowable bare calls.
+- **Two corpus cases dropped true edges and argued the omission away.**
+  *(Found 2026-09-17, review.)* `ktor_routes` omitted `svc.module → svc.orders` behind a clause
+  claiming the file's only `CALLS` edge was the one to `buildPath` — false, since `orders` is a
+  first-party same-package declaration, not a wildcard import. `compose_nav` omitted both
+  `this.navigate(...)` edges although the receiver type is imported on line 3 and
+  `typed_receivers` scores the identical shape. Both were the two cases that would have caught
+  the fabrications above, which is what makes a self-agreeing corpus worse than a small one.
+  Both edges are now labelled and **emitted**: §3.2 row 1 refused a same-package call across
+  files for want of a `finalize` backstop, and there is one now, so the call is *checked* rather
+  than guessed or dropped. Kotlin `CALLS` recall **0.92 → 0.94**, precision still 1.00.
+- **`false_positives` was used with the opposite of its documented meaning.**
+  *(Found 2026-09-17, review.)* `corpus/README.md` defines it as "edges the front-end **emits**
+  that are not true", and 18 of the 20 entries across every language described a fabrication the
+  reader correctly *avoided* — so a reader counting the field concluded Kotlin invented eleven
+  edges. Split into a new `refusals` field, which is also the only annotation here that is
+  **enforced**: a refusal the extractor starts emitting fails the case on load rather than
+  showing up as an anonymous dip in a precision number.
+- **Two corpus cases did not contain the shape §6 assigns them.**
+  *(Found 2026-09-17, review.)* `extensions` was given "an extension with the same name imported
+  from elsewhere" and had no `import` at all; `companions` was given three call forms and had
+  two, missing `Companion.make()` — the form most likely to mint the phantom D5 exists to
+  prevent, because `Companion` is a capitalised bare name no file declares. Adding it showed D5's
+  third form was never implemented. Both fixtures now carry their assigned shape, and the missing
+  `import` exposed a further defect: an extension **imported** from another package was attributed
+  to the receiver type, losing a grounded target for an invented one, because the per-file
+  extension table only ever held that file's own.
+- **`state` and `understand` computed different prefixes over the same store.**
+  *(Found 2026-09-17, review.)* `AreaIndex` and `current_state` voted over every non-external
+  module; `renderers.collect_areas` voted over non-*test* modules only. A prefix is decided by a
+  majority of the voters, so a different electorate is a different prefix — measured on this
+  repository: **103 area labels one way, 386 the other**. `areas.py`'s own docstring exists to
+  prevent exactly this ("One definition, two renderers… a reader who noticed would stop trusting
+  both"). One function, `store_namespace_prefix`, now serves all three.
+- **Two more area defects behind it.** *(Found 2026-09-17, review.)* `coupling` was the only area
+  in `current_state` computed *without* the prefix, so on a reverse-DNS repository its arrows
+  named areas that did not exist and the whole "System architecture" section rendered empty. And
+  `tested_areas` was structurally always `0` for **any** Gradle repository: an area there is a
+  module directory (`core/data`), so no area is ever named "test" and `is_test_area` can never
+  fire, while module-to-module `coupling` cannot express a test→source edge either. A fully
+  tested repository reported "no automated tests detected". Coverage is now read from provenance.
+  Separately, `build_module_paths` sorted a *set* by length alone, leaving ties in hash order on
+  a path CLAUDE.md requires to be deterministic.
+- **Codegen: an emulator task was selectable, and a package could be invented.**
+  *(Found 2026-09-17, review.)* `connectedDebugAndroidTest` contains "Debug" and would have won
+  the variant-task preference — §10's "never an emulator" rested on an undocumented property of
+  Gradle's error text, and now rests on an explicit rule. Repo-controlled Gradle output also
+  became an argv element, so a "candidate" spelled `--init-script` would have been a flag rather
+  than a task; candidates are now matched against a task-name pattern. And on the default
+  no-`--package-name` path, a repository whose only Kotlin module is rooted at `com.acme.app` was
+  given `org.example.myrepo` — a package invented for a *brownfield* repo, which is exactly what
+  D13/P9 says placement must never do. Every placement test passed `--package-name` explicitly,
+  so nothing covered the default path the fallback exists to serve.
+- **§9.3 was counted delivered and was half-built.** *(Found 2026-09-17, review.)* Its exit
+  criterion is "the existing Java greenfield test passes on a Gradle scaffold", and `GradleTestRunner`
+  was built in P8 with only Kotlin wired to it — so a Java Gradle project still ran `mvn test`
+  against a build with no `pom.xml`. The Java row now selects its runner from the build tool the
+  layout already detected.
+- **Three smaller ones.** *(Found 2026-09-17, review.)* Retrofit did no import resolution, so any
+  `@GET` with a literal became a `pkg joins` candidate — JAX-RS puts an identical annotation on
+  an identical method, and `jvm_routes.resolves_into_spring` gets the same question right fifteen
+  lines away. `unresolved_calls` leaked between repositories, because `ClientState.clear()`
+  preserves `unmatched` by design and `finalize` rebuilt the front-end's list from it, so
+  `reset_unresolved()` could not reach it — re-introducing the bug that function's docstring was
+  written to fix. And `_is_test_path` never learned Kotlin, so `_prove_the_tests_test_something`
+  and `_files_no_test_exercises` were silently dark for every Kotlin run.
+- **Tests that could not fail.** *(Found 2026-09-17, review.)* `test_toolchains.py`'s dangling-
+  capability check filtered by membership of `_SEED` while building the catalog *from* `_SEED`, so
+  its result was unconditionally empty and the body could have been deleted. A Ktor test asserted
+  an empty endpoint set with no positive control, which passes equally well if the reader stops
+  working entirely. `test_java_extractor.py` had no Spring cases at all, although `test_jvm_routes.py`
+  says the Java grammar half is tested there — 104 new lines of Java route reading shipped covered
+  by one corpus case, which is how the `@Value` finding above reached a released language.
+- **Validation-repository names in `src/` and `tests/`.** *(Found 2026-09-17, review.)* Thirteen
+  sites, against this document's own rule (line 14: "names live in `docs/` only"). Replaced with
+  neutral descriptions; the rule exists so the code does not read as if it special-cases four
+  particular repositories.
+
 - **`is_public` is in §3.1 but not in this codebase.** *(Found 2026-09-15, P1.)* `facts.Node` has
   no such field, and no front-end has such a method — §3.1's row was written from another
   project's shape. Nothing to implement; the row is noted here so the next reader does not go
@@ -731,5 +914,9 @@ P8  Kotlin/JVM codegen         ✅ 2026-09-16   greenfield green+red; petclinic 
 P9  Android codegen            ✅ 2026-09-16   brownfield into the validation app; the module's
                                               own unit-test task green, independently re-run
 P10 generic work               ✅ 2026-09-16   roadmap gate +2 checks & into CI; areas 1 → 39
-P11 review + MR to ready       ✅ 2026-09-16   verdict mergeable; 6 findings found and fixed
+P11 review + MR to ready       ✅ 2026-09-17   self-review mergeable (6 findings); maintainer
+                                              review NOT mergeable — 11 fabrication paths,
+                                              2 self-agreeing corpus cases, areas, codegen;
+                                              all fixed (§11). 72 fabricated edges -> 0,
+                                              126 true edges recovered; recall 0.92 -> 0.94
 ```

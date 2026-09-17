@@ -57,7 +57,14 @@ def test_compute_metrics() -> None:
     assert s.interfaces == 1
     assert s.layers["API · controllers"] == 1
     assert s.layers["Interfaces / contracts"] == 1
-    assert ("App.Api", "App.Biz") in s.coupling
+    # `Api`/`Biz`, not `App.Api`/`App.Biz`: both modules carry the `App` namespace, so
+    # the shared prefix is stripped and the areas are the segments that differ. The point
+    # of the assertion is that coupling is spelled the **same way** as every other area in
+    # this state — it used to be the only one computed without the prefix, so on a
+    # reverse-DNS repository its arrows named areas that did not exist and the whole
+    # architecture section rendered empty.
+    assert ("Api", "Biz") in s.coupling
+    assert set(s.coupling) <= {(a, b) for a in s.area_types for b in s.area_types}
     assert s.tested_areas == 0
 
 

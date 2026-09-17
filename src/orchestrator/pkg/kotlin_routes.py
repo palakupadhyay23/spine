@@ -44,6 +44,7 @@ routes (``get<Index> { … }``, Ktor Resources) yield nothing — the path lives
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -57,6 +58,7 @@ from orchestrator.pkg.jvm_routes import (
     emit_endpoints,
     is_controller,
     join_path,
+    literal_path,
     resolves_into_spring,
 )
 from orchestrator.pkg.kotlin_names import (
@@ -112,11 +114,22 @@ class _Route:
 
 @dataclass(frozen=True)
 class _Mount:
-    """A call that mounts a route module at ``prefix`` inside ``host``."""
+    """A call that mounts a route module at ``prefix`` inside ``host``.
+
+    ``package`` and ``imports`` are the mounting *file*'s, and they are what makes the
+    name mean something. Found in review: a mount used to resolve by bare name across
+    the whole repository, so in a monorepo a ``health()`` call in one service mounted
+    another service's ``fun Route.health()`` under the caller's prefix — a route the
+    second service does not serve, attributed to a function in a file that never
+    mentions it. Two services declaring a route module of the same name is the normal
+    shape of a monorepo, not a corner case.
+    """
 
     host: str
     prefix: str
     name: str
+    package: str
+    imports: Mapping[str, str]
 
 
 @dataclass
@@ -148,13 +161,24 @@ def register_module(name: str, func_id: str, receiver: str, state: KtorState) ->
     return True
 
 
-def scan_calls(body: TSNode, source: bytes, rel: str, state: KtorState, *, owner: str | None) -> None:
+def scan_calls(
+    body: TSNode,
+    source: bytes,
+    rel: str,
+    state: KtorState,
+    *,
+    owner: str | None,
+    package: str = "",
+    imports: Mapping[str, str] | None = None,
+) -> None:
     """Collect the Ktor routes and mounts in one function body.
 
     ``owner`` is the function's own id when the function is a route module, and
     ``None`` otherwise — in which case the walk is only looking for ``routing { … }``.
+    ``package`` and ``imports`` travel with every mount recorded here, because by
+    ``emit`` the file they came from is gone (see :class:`_Mount`).
     """
-    _scan(body, owner, "", state, source, rel)
+    _scan(body, owner, "", state, source, rel, _Site(package, imports or {}))
 
 
 def emit(state: KtorState, batch: FactBatch, resolve: Any) -> int:
@@ -180,30 +204,42 @@ def emit(state: KtorState, batch: FactBatch, resolve: Any) -> int:
 # ---- the walk ---------------------------------------------------------------
 
 
-def _scan(node: TSNode, owner: str | None, prefix: str, state: KtorState, source: bytes, rel: str) -> None:
+@dataclass(frozen=True)
+class _Site:
+    """The package and import map of the file a mount was written in."""
+
+    package: str
+    imports: Mapping[str, str]
+
+
+def _scan(
+    node: TSNode, owner: str | None, prefix: str, state: KtorState, source: bytes, rel: str, site: _Site
+) -> None:
     for child in node.named_children:
         if child.type == "call_expression" and not _is_inner_callee(child):
-            _call(child, owner, prefix, state, source, rel)
+            _call(child, owner, prefix, state, source, rel, site)
         else:
-            _scan(child, owner, prefix, state, source, rel)
+            _scan(child, owner, prefix, state, source, rel, site)
 
 
-def _call(call: TSNode, owner: str | None, prefix: str, state: KtorState, source: bytes, rel: str) -> None:
+def _call(
+    call: TSNode, owner: str | None, prefix: str, state: KtorState, source: bytes, rel: str, site: _Site
+) -> None:
     """Read one call, and descend into its lambda with whatever prefix now holds."""
     inner = _arguments_holder(call)
     name = _plain_callee(inner, source)
     lam = _lambda_of(call)
 
     if name == _ROUTING and lam is not None:
-        _scan(lam, _ROOT, "", state, source, rel)  # a route context opens here
+        _scan(lam, _ROOT, "", state, source, rel, site)  # a route context opens here
         return
     if owner is None:
-        _scan(call, None, prefix, state, source, rel)  # still looking for `routing`
+        _scan(call, None, prefix, state, source, rel, site)  # still looking for `routing`
         return
     if name == _ROUTE:
         group = _literal_argument(inner, source)
         if lam is not None and group is not None:
-            _scan(lam, owner, join_path(prefix, group), state, source, rel)
+            _scan(lam, owner, join_path(prefix, group), state, source, rel, site)
         # else: a computed group path silences every route inside it (D16)
         return
     verb = _VERBS.get(name)
@@ -213,14 +249,14 @@ def _call(call: TSNode, owner: str | None, prefix: str, state: KtorState, source
         # A bare call in route context with no lambda is Ktor's idiom for mounting a
         # route module (`videos(database)`). Recorded as a candidate only: it resolves
         # in `emit` if some `fun Route.<name>` declares it, and is dropped otherwise.
-        state.mounts.append(_Mount(owner, prefix, name))
+        state.mounts.append(_Mount(owner, prefix, name, site.package, site.imports))
         return
     # Anything else: a wrapper that nests routes without changing the path
     # (`authenticate("x") { … }`, `install(…) { … }`), or a chained call whose
     # *receiver* is the route — `get("/get") { … }.describe { … }` is one call on
     # another, and reading only the outer half loses the route entirely. Descending
     # through the whole node rather than just the lambda is what catches both.
-    _scan(call, owner, prefix, state, source, rel)
+    _scan(call, owner, prefix, state, source, rel, site)
 
 
 def _declare(
@@ -274,13 +310,10 @@ def _mount_points(state: KtorState) -> dict[str, list[str]]:
     module mounted twice genuinely serves two paths, and gets both.
     """
     resolved: dict[str, list[str]] = {_ROOT: [""]}
-    # A name declared by two different modules cannot be mounted unambiguously, so
-    # it is not resolved at all — the same rule the Compose screen resolver uses.
-    modules = {name: ids[0] for name, ids in state.modules_by_name.items() if len(ids) == 1}
     for _ in range(_MAX_MOUNT_DEPTH):
         changed = False
         for mount in state.mounts:
-            target = modules.get(mount.name)
+            target = _mounted_module(mount, state)
             bases = resolved.get(mount.host)
             if target is None or bases is None:
                 continue
@@ -293,6 +326,33 @@ def _mount_points(state: KtorState) -> dict[str, list[str]]:
         if not changed:
             break
     return resolved
+
+
+def _mounted_module(mount: _Mount, state: KtorState) -> str | None:
+    """Which ``fun Route.<name>`` this mount call names, or ``None``.
+
+    Resolved from the *calling* file's point of view, in the order Kotlin itself
+    resolves a name: a declaration in the same package, then one an explicit import
+    names, then — only when exactly one exists — a declaration anywhere in the
+    repository. The last step is what the whole resolver used to be, and on its own it
+    crosses service boundaries: a bare name is not a repository-wide address.
+
+    A name several candidates answer to is not resolved at all, the same rule the
+    Compose screen resolver uses.
+    """
+    ids = state.modules_by_name.get(mount.name, [])
+    if not ids:
+        return None
+    if mount.package:
+        own = f"java:{mount.package}.{mount.name}"
+        if own in ids:
+            return own
+    imported = mount.imports.get(mount.name)
+    if imported is not None:
+        candidate = f"java:{imported}"
+        if candidate in ids:
+            return candidate
+    return ids[0] if len(ids) == 1 else None
 
 
 # ---- Spring, adapted to the Kotlin grammar ----------------------------------
@@ -376,7 +436,10 @@ def _mapping_path(annotation: Any, source: bytes) -> str | None:
     # `@GetMapping(["/a", "/b"])` — Spring allows several; the first is enough to
     # ground one endpoint and the rest would each need their own, so take them all.
     items = collection_items(node)
-    return string_value(items[0] if items else node, source)
+    # `literal_path` rather than the raw literal: Kotlin refuses an interpolated path
+    # at the grammar, but `"\\${api.base}/x"` is an *escaped* dollar and decodes to the
+    # same Spring placeholder Java's reader had to be taught to refuse.
+    return literal_path(string_value(items[0] if items else node, source))
 
 
 def _mapping_methods(annotation: Any, source: bytes) -> tuple[str, ...]:

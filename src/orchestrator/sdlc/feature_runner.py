@@ -506,11 +506,27 @@ async def _repair_after_revision(
 
 
 def _is_test_path(rel: str) -> bool:
-    name = Path(rel).name
+    """Whether a repo-relative path is a test file, in any supported language.
+
+    Two checks that guard generated work — ``_prove_the_tests_test_something`` and
+    ``_files_no_test_exercises`` — are driven entirely by this, so a language it does not
+    recognise has both of them silently switched off for every run. Kotlin was such a
+    language: its tests are ``FooTest.kt`` under ``src/test/``, and neither the suffix list
+    nor the ``tests`` (plural) directory check matched either half.
+    """
+    path = Path(rel.replace("\\", "/"))
+    name = path.name
+    stem = path.stem
+    parts = {p.lower() for p in path.parts}
     return (
         name.startswith("test_")
         or name.endswith(("_test.py", "Test.php", ".t"))
-        or "tests" in {p.lower() for p in Path(rel.replace("\\", "/")).parts}
+        # `FooTest.kt` / `FooTests.kt` / `FooSpec.kt` — the JVM and Go conventions
+        or (path.suffix in (".kt", ".kts", ".java", ".go") and stem.endswith(("Test", "Tests", "Spec")))
+        or path.suffix == ".go"
+        and stem.endswith("_test")
+        # `tests/` is the Python/PHP convention; Gradle and Maven both use `src/test/`.
+        or bool(parts & {"tests", "test", "androidtest"})
     )
 
 

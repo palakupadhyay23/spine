@@ -6,6 +6,49 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+### Fixed
+
+- **Kotlin: eleven fabrication paths, found in maintainer review** (§11 of
+  [the Kotlin roadmap](docs/specs/kotlin-support-roadmap.md)). One defect repeated: a reader that
+  could not answer a question returned a *plausible* answer instead of none, and the answer was
+  minted as an `external` placeholder — so nothing dangled, `pkg verify` reported clean, and the
+  invention oracle saw nothing. `s.uppercase()` became a call to a `String` class inside the
+  caller's own package; `topic.let { }` became a member of `Topic`; `route("/api/${cfg.version}")`
+  became the path `/api/`; `@Provides fun x(): Set<OkHttpClient>` provided a `Set` class in the DI
+  module's package; `@Entity(tableName = TOPICS)` claimed the class name as the table.
+
+  A target that was *assumed* rather than read is now checked in `finalize` against what the
+  repository actually declares, and dropped when nothing does. Measured on the validation app:
+  **72 fabricated edges over 36 invented ids → 0**, and 46 invented placeholder nodes gone. The
+  graph went *up*, not down — the same check that drops a guess recovers the true edge the guess
+  displaced, 126 of them here (`CALLS` 2,167 → 2,221) — and corpus `CALLS` recall is **0.92 →
+  0.94** with precision still 1.00.
+
+- **The invention gate covered one language.** `score_invention` had only ever been pointed at
+  this repository, which is pure Python, so its per-language map held one row and every other
+  front-end's zero meant "never examined". It now also runs over the corpus fixtures — committed,
+  offline, one per language — and every front-end has a row gated at zero.
+
+- **`state` and `understand` drew different architectures for the same commit.** They voted for
+  the shared namespace prefix over different module sets (tests included, tests excluded), and a
+  prefix is decided by a majority of the voters. Measured on this repository: 103 area labels one
+  way, 386 the other. One definition now serves all three callers. Two defects behind it: area
+  `coupling` was computed without the prefix, so on a reverse-DNS repository the whole "System
+  architecture" section rendered empty; and `tested_areas` was structurally `0` for **any** Gradle
+  repository, so a fully tested one reported "no automated tests detected".
+
+- **A Spring `@Value` placeholder was read as a literal path in the Java front-end** —
+  `@GetMapping("${api.base}/topics")` produced that endpoint verbatim. The rule was stated in
+  `jvm_routes`'s docstring and enforced only at the node type. Now shared by both JVM front-ends.
+
+- **Java codegen on a Gradle project still ran `mvn test`.** `GradleTestRunner` shipped with only
+  Kotlin wired to it, against a build with no `pom.xml`; the Java toolchain row now selects its
+  runner from the build tool the layout already detected.
+
+- **Codegen safety**: an emulator task (`connectedDebugAndroidTest`) was selectable by the
+  variant-task preference, repo-controlled Gradle output could reach `argv` as a flag, and
+  brownfield placement could invent a package for a repository that already had one.
+
 ### Added
 
 - **Kotlin comprehension and call graph — the 11th PKG front-end** (`[kotlin]` extra, P1+P2 of
@@ -20,8 +63,10 @@ All notable changes to this project are documented here. Format loosely follows
   a lambda, a chained receiver, a callable reference, and a same-package function declared in
   another file. A local binding silences a bare call of the same name, because a Kotlin local
   genuinely can shadow one — unlike Java, where the two live in separate namespaces. Measured on
-  a 263-file Android app: 2,169 `CALLS` edges, **0 fabricated** across 2,167 bare calls; corpus
-  precision **1.00** on every node and edge kind.
+  a 263-file Android app: 2,221 `CALLS` edges, **0 fabricated**; corpus precision **1.00** on
+  every node and edge kind, `CALLS` recall 0.94. (The first measurement of this said 2,169 edges
+  and 0 fabricated. Maintainer review found that 72 of them *were* fabricated and invisible —
+  see Fixed, below.)
 
   Kotlin ids share Java's `java:` namespace, so a mixed `.kt`/`.java` module — the normal Android
   layout — is **one** graph, with inheritance and calls crossing the language boundary. `.kts`

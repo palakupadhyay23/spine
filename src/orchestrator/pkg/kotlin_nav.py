@@ -33,11 +33,12 @@ would be a guess about which one is "the" screen.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
-from orchestrator.pkg.kotlin_names import string_value, text
+from orchestrator.pkg.kotlin_names import decoded_escape, string_value, text
 
 if TYPE_CHECKING:
     from tree_sitter import Node as TSNode
@@ -50,6 +51,37 @@ NAV = "NAV"
 #: `{anything}` or `$ident` — the parts of a route that vary per navigation.
 _PARAM = re.compile(r"\{[^}]*\}|\$\w+")
 
+#: The short interpolation form the grammar does not tag; group 1 is the name.
+_BARE_INTERPOLATION = re.compile(r"\$(\w+)")
+
+
+@dataclass(frozen=True)
+class _Part:
+    """One piece of a route: literal text, or the name of a constant to substitute."""
+
+    kind: Literal["text", "const"]
+    value: str
+
+
+#: A route expression, decomposed. Empty means the empty route, which is a real one.
+_Template = tuple[_Part, ...]
+
+
+@dataclass(frozen=True)
+class _Site:
+    """Where a route expression was written, and what names were in scope there.
+
+    A route constant is resolved from the *using* file's point of view, so the
+    package and import map of that file travel with the route rather than being
+    looked up later — by ``finalize`` the file is long gone.
+    """
+
+    package: str
+    #: simple name → fully-qualified name, from this file's `import` headers
+    imports: Mapping[str, str]
+    rel: str
+    line: int
+
 
 @dataclass
 class NavState:
@@ -57,22 +89,48 @@ class NavState:
 
     Everything here waits for ``finalize`` because a route constant is almost
     always declared in a different file from the ``composable`` that uses it.
+
+    **Constants are keyed by package, not by bare name.** Found in review: a flat
+    repo-wide dict silently merges two modules that each declare ``const val
+    route`` — the survivor wins, the other module's ``composable`` is credited with
+    a path its source never contains, and one endpoint collects an ``EXPOSES`` to
+    both screens. Two modules declaring the same constant name is the ordinary
+    Compose feature-module convention, not a corner case.
     """
 
-    #: `const val` name → its literal value, from every file seen so far
-    consts: dict[str, str] = field(default_factory=dict)
-    #: (raw route expression, screen id or "", rel, line)
-    declarations: list[tuple[str, str, str, int]] = field(default_factory=list)
-    #: (raw route expression, calling function id, rel, line)
-    navigations: list[tuple[str, str, str, int]] = field(default_factory=list)
+    #: (package, `const val` name) → its literal value, from every file seen so far
+    consts: dict[tuple[str, str], str] = field(default_factory=dict)
+    #: (route template, screen id or "", site)
+    declarations: list[tuple[_Template, str, _Site]] = field(default_factory=list)
+    #: (route template, calling function id, site)
+    navigations: list[tuple[_Template, str, _Site]] = field(default_factory=list)
 
     def clear(self) -> None:
         self.consts.clear()
         self.declarations.clear()
         self.navigations.clear()
 
+    def lookup(self, name: str, site: _Site) -> str | None:
+        """The value of constant ``name`` as ``site`` sees it, or ``None``.
 
-def collect_consts(root: TSNode, source: bytes, state: NavState) -> None:
+        Own package first, then an explicit import, then a repo-wide fallback that
+        only fires when exactly one package declares the name — the same
+        "ambiguous means unresolved" rule ``kotlin_routes`` applies to mount names.
+        """
+        own = self.consts.get((site.package, name))
+        if own is not None:
+            return own
+        imported = site.imports.get(name)
+        if imported is not None and "." in imported:
+            package, _, simple = imported.rpartition(".")
+            found = self.consts.get((package, simple))
+            if found is not None:
+                return found
+        matches = {value for (_pkg, simple), value in self.consts.items() if simple == name}
+        return matches.pop() if len(matches) == 1 else None
+
+
+def collect_consts(root: TSNode, source: bytes, state: NavState, *, package: str) -> None:
     """Record every top-level ``const val NAME = "literal"`` in this file."""
     for node in root.named_children:
         if node.type != "property_declaration":
@@ -86,10 +144,19 @@ def collect_consts(root: TSNode, source: bytes, state: NavState) -> None:
             None,
         )
         if name and literal:
-            state.consts[name] = literal
+            state.consts[package, name] = literal
 
 
-def scan_calls(body: TSNode, func_id: str, source: bytes, rel: str, state: NavState) -> None:
+def scan_calls(
+    body: TSNode,
+    func_id: str,
+    source: bytes,
+    rel: str,
+    state: NavState,
+    *,
+    package: str,
+    imports: Mapping[str, str],
+) -> None:
     """Collect ``composable(...)`` declarations and ``navigate(...)`` calls in a body."""
     for call in _walk(body):
         if call.type != "call_expression" or _is_inner_callee(call):
@@ -101,14 +168,17 @@ def scan_calls(body: TSNode, func_id: str, source: bytes, rel: str, state: NavSt
         # named `composable` finds the route and never the screen.
         inner = _arguments_holder(call)
         name = _callee_name(inner, source)
+        if name not in ("composable", "navigate"):
+            continue
+        argument = _argument_node(inner, source, named="route" if name == "composable" else "")
+        template = _template(argument, source)
+        if template is None:
+            continue
+        site = _Site(package, imports, rel, call.start_point[0] + 1)
         if name == "composable":
-            route = _argument_text(inner, source, named="route")
-            if route:
-                state.declarations.append((route, _single_screen(call, source), rel, call.start_point[0] + 1))
-        elif name == "navigate":
-            route = _argument_text(inner, source)
-            if route:
-                state.navigations.append((route, func_id, rel, call.start_point[0] + 1))
+            state.declarations.append((template, _single_screen(call, source), site))
+        else:
+            state.navigations.append((template, func_id, site))
 
 
 def emit(state: NavState, batch: FactBatch, resolve: Any) -> None:
@@ -117,20 +187,20 @@ def emit(state: NavState, batch: FactBatch, resolve: Any) -> None:
     Runs once, in ``finalize``, when every route constant in the repository is known.
     """
     by_key: dict[str, str] = {}
-    for raw, screen, rel, line in state.declarations:
-        path = _resolve(raw, state.consts)
+    for template, screen, site in state.declarations:
+        path = _resolve(template, state, site)
         if path is None:
             continue
         endpoint_id = f"java:endpoint:{NAV} {path}"
-        provenance = Provenance(rel, line)
+        provenance = Provenance(site.rel, site.line)
         batch.add_node(Node(endpoint_id, NodeKind.ENDPOINT, f"{NAV} {path}", _LANG, provenance))
         by_key.setdefault(_key(path), endpoint_id)
         target = resolve(screen) if screen else None
         if target:
             batch.add_edge(Edge(endpoint_id, target, EdgeKind.EXPOSES, provenance))
 
-    for raw, caller, rel, line in state.navigations:
-        path = _resolve(raw, state.consts)
+    for template, caller, site in state.navigations:
+        path = _resolve(template, state, site)
         if path is None:
             continue
         declared = by_key.get(_key(path))
@@ -139,30 +209,116 @@ def emit(state: NavState, batch: FactBatch, resolve: Any) -> None:
             # the honest answer — inventing the endpoint would make `pkg verify`
             # report zero dangling for a destination that does not exist.
             continue
-        batch.add_edge(Edge(caller, declared, EdgeKind.CONSUMES, Provenance(rel, line)))
+        batch.add_edge(Edge(caller, declared, EdgeKind.CONSUMES, Provenance(site.rel, site.line)))
 
 
-def _resolve(raw: str, consts: dict[str, str]) -> str | None:
-    """A route expression → its path, or ``None`` when it cannot be known.
+def _argument_node(call: TSNode, source: bytes, *, named: str = "") -> TSNode | None:
+    """The route argument's expression node — named when given, else the first one."""
+    args = next((c for c in call.named_children if c.type == "value_arguments"), None)
+    if args is None:
+        return None
+    positional: list[TSNode] = []
+    for arg in args.named_children:
+        if arg.type != "value_argument" or not arg.named_children:
+            continue
+        children = arg.named_children
+        if named and len(children) >= 2 and children[0].type == "identifier":
+            if text(children[0], source) == named:
+                return children[-1]
+            continue
+        if len(children) == 1:
+            positional.append(children[0])
+    return positional[0] if positional else None
 
-    Handles the three spellings real navigation code uses: a plain literal, a bare
-    constant reference, and a literal with ``$constant`` interpolated into it.
+
+def _template(node: TSNode | None, source: bytes) -> _Template | None:
+    """A route expression → the parts it is built from, or ``None`` when it is computed.
+
+    Two spellings are routes; everything else is refused. A bare identifier is a
+    constant reference, resolved against the constants collected repo-wide. A string
+    literal becomes its literal chunks interleaved with the simple names interpolated
+    into it, because a Compose route is genuinely written that way —
+    ``"topic_route/{$topicIdArg}"`` names its parameter with a constant.
+
+    Found in review: this used to be the *raw source text* of the argument, and
+    ``_resolve`` recognised a literal by ``raw.startswith('"')`` and then stripped the
+    first and last character. So ``composable(route = "topic/" + BASE)`` — an
+    ``additive_expression``, not a literal at all — produced the route ``topic/" + BAS``
+    and an ``Endpoint`` node with it. Reading the parsed node instead means a
+    concatenation, a function call or a template with a computed expression in it is
+    refused by the grammar rather than by a string test that cannot see the shape.
     """
-    if raw.startswith('"'):
-        inner = raw[1:-1]
-        return _PARAM.sub(lambda m: _expand(m.group(0), consts), inner)
-    literal = consts.get(raw)
-    return literal if literal is not None else None
+    if node is None:
+        return None
+    if node.type == "identifier":
+        return (_Part(kind="const", value=text(node, source)),)
+    if node.type not in ("string_literal", "multiline_string_literal"):
+        return None  # a concatenation, a call, `buildString { }` — computed, so never
+    parts: list[_Part] = []
+    # Consecutive `string_content` children are joined before the short-form split,
+    # because the grammar hands `"item_route/{$itemIdArg}"` back as the four chunks
+    # `item_route/{`, `$`, `itemIdArg`, `}` — splitting each chunk on its own never
+    # sees a `$` beside its name and reads the whole route as literal text.
+    literal = ""
+    for child in node.named_children:
+        if child.type == "string_content":
+            literal += text(child, source)
+            continue
+        # An escaped dollar is literal text and must not become a name, so the buffer
+        # is flushed around it rather than split through it.
+        parts.extend(_split_bare_interpolation(literal))
+        literal = ""
+        if child.type == "escape_sequence":
+            decoded = decoded_escape(text(child, source))
+            if decoded is None:
+                return None
+            parts.append(_Part(kind="text", value=decoded))
+        elif child.type == "interpolation":
+            inner = text(child, source).lstrip("$").strip("{}").strip()
+            if not inner.isidentifier():
+                return None  # `${cfg.version}`, `${a + b}` — a computed segment
+            parts.append(_Part(kind="const", value=inner))
+        else:
+            return None
+    parts.extend(_split_bare_interpolation(literal))
+    return tuple(parts)
 
 
-def _expand(token: str, consts: dict[str, str]) -> str:
-    """``{$topicIdArg}`` → ``{topicId}`` when the constant is known, else unchanged."""
-    inner = token.strip("{}")
-    if inner.startswith("$"):
-        value = consts.get(inner[1:])
-        if value is not None:
-            return f"{{{value}}}"
-    return token
+def _split_bare_interpolation(chunk: str) -> list[_Part]:
+    """Split ``topic/$id/x`` into text and name parts.
+
+    tree-sitter-kotlin 1.1.0 tags ``${x}`` as an ``interpolation`` node but leaves the
+    short ``$x`` form as plain ``string_content``, so the split has to be done here.
+    """
+    out: list[_Part] = []
+    for index, piece in enumerate(_BARE_INTERPOLATION.split(chunk)):
+        if not piece:
+            continue
+        out.append(_Part(kind="const" if index % 2 else "text", value=piece))
+    return out
+
+
+def _resolve(template: _Template, state: NavState, site: _Site) -> str | None:
+    """A route template → its path, or ``None`` when it cannot be known.
+
+    A name that resolves to a constant is substituted. A name that does not stays
+    written as ``$name``: in a route that is a *parameter*, not a missing constant —
+    a declaration writes ``topic_route/{$topicIdArg}`` and the matching call writes
+    ``topic_route/$encodedId``, and :func:`_key` collapses both to ``topic_route/{}``
+    so the two pair. A route consisting of nothing but an unresolved bare constant is
+    refused, because there is no path there at all.
+    """
+    if len(template) == 1 and template[0].kind == "const":
+        value = state.lookup(template[0].value, site)
+        return value if value is not None else None
+    out: list[str] = []
+    for part in template:
+        if part.kind == "text":
+            out.append(part.value)
+            continue
+        value = state.lookup(part.value, site)
+        out.append(value if value is not None else f"${part.value}")
+    return "".join(out)
 
 
 def _key(path: str) -> str:

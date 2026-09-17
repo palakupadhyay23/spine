@@ -139,3 +139,68 @@ def test_blast_radius_reaches_the_injecting_code(tmp_path: Path) -> None:
 def test_a_repo_with_no_di_gains_no_provides_edges(tmp_path: Path) -> None:
     src = "package shop.plain\n\ninterface Repo\n\nclass Impl : Repo\n"
     assert _provides(_facts(tmp_path, src, "Plain.kt")) == set()
+
+
+# ---- §11 finding 5: a binding's target is a type, and a wrapper is not it ----
+
+
+def _repo(tmp_path: Path, files: dict[str, str]) -> FactBatch:
+    for name, src in files.items():
+        f = tmp_path / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(src, encoding="utf-8")
+    return RepoCodeExtractor().extract(tmp_path)
+
+
+def test_a_generic_return_type_is_peeled_to_what_it_provides(tmp_path: Path) -> None:
+    """`@Provides fun provideClients(): Set<OkHttpClient>` provides `OkHttpClient`.
+
+    This read its return type with `bare_type` and got `Set`, then minted a `Set` class in
+    the module's own package as the PROVIDES target — which `FactStore.injection_reach_of`
+    walked in `blast_radius`. The sibling `_first_parameter_type` had used `element_type`
+    all along, fifteen lines below.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+import okhttp3.OkHttpClient
+
+@Module
+object NetModule {
+    @Provides
+    fun provideClients(): Set<OkHttpClient> = emptySet()
+}
+"""
+        },
+    )
+    assert ("java:app.di.NetModule.provideClients", "java:okhttp3.OkHttpClient") in _provides(batch)
+    assert "java:app.di.Set" not in {n.id for n in batch.nodes}
+
+
+def test_a_provided_type_the_repo_does_not_declare_is_not_put_in_its_package(tmp_path: Path) -> None:
+    """The same repoint `IMPLEMENTS` has always had: a guessed target that nothing declares
+    names the bare type the source wrote, never a package this front-end chose for it."""
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+
+@Module
+object NetModule {
+    @Provides
+    fun provideClock(): Clock = TODO()
+}
+"""
+        },
+    )
+    assert "java:app.di.Clock" not in {n.id for n in batch.nodes}
+    assert ("java:app.di.NetModule.provideClock", "java:Clock") in _provides(batch)

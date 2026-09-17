@@ -448,6 +448,7 @@ records — the *why* — are indexed at [docs/specs/README.md](docs/specs/READM
 | "live needs a repo to push to" | Pass `repo=...` or set `SDLC_REPO_URL`; ensure `GITHUB_TOKEN`/`GH_TOKEN` is set. |
 | A `live` call refuses to write | That's the gate — pass `confirm=true` together with `live=true`. |
 | Build fails for Java/TS/C#/C/C++/Go/PHP/Perl | The language toolchain isn't installed — see [§10](AGENT_GUIDE.md#10-language-support--toolchains). |
+| Build fails for Kotlin | Needs a JDK and Gradle. Most repos ship `./gradlew`, which is used in preference and downloads the version the project pins; only a repo without one needs `gradle` on PATH. Android additionally needs the SDK (`ANDROID_HOME`) — but never an emulator or a connected device. |
 
 **`temporal-test-server` orphaned after a killed pytest** — `pkill -f temporal-test-server`.
 The time-skipping test server does not clean up after `SIGKILL`.

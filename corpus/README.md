@@ -126,6 +126,7 @@ same syntax and different edges.
 | `edges` | `{src, dst, kind}` — every edge true of the fixture |
 | `known_gaps` | edges from `edges` the front-end is *known* to skip, each with a `why` |
 | `false_positives` | edges the front-end **emits that are not true** — invention, held visible |
+| `refusals` | edges a plausible reader **would** emit and this one must not — predicted before scoring, and **enforced**: if the extractor emits one, the case fails to load |
 | `excluded` | what is deliberately not labelled, and on what grounds |
 | `open_questions` | vocabulary questions that must be decided before the label is meaningful |
 
@@ -155,6 +156,15 @@ recorded here rather than argued again per case.
 costing it. The field records the defect and its reasoning so a low precision number is
 legible rather than mysterious — it never suppresses the penalty. Same contract as
 `known_gaps`: recording a fact must not change the score.
+
+**`refusals` are the opposite of `false_positives`, and the distinction is not pedantry.**
+A refusal is an edge a *plausible* reader emits and this one deliberately does not — the
+tempting fabrication the case was built around. Eighteen such entries were filed under
+`false_positives`, whose definition one row above is "edges the front-end **emits** that are
+not true", so a reader counting the field concluded Kotlin invented eleven edges it had in
+fact correctly refused. They are also the only annotation here that is **checked**: a
+refusal the extractor starts emitting fails the case on load, rather than showing up as an
+anonymous dip in a precision number.
 
 ## Writing a case
 

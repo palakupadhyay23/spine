@@ -272,7 +272,7 @@ def detect_jvm_test_library(root: Path) -> str:
     scripts = [*root.rglob("build.gradle.kts"), *root.rglob("build.gradle")]
     # Android's dominant idiom hides the test dependency from every build script that uses it:
     # the validation app declares `kotlin("test")` once, inside a convention plugin in
-    # `build-logic/`, and each module then applies `id("nowinandroid.android.library")`.
+    # `build-logic/`, and each module then applies `id("<product>.android.library")`.
     # Reading only `build.gradle*` sees no test library anywhere in a repo that has one.
     for conventions in (root / "build-logic", root / "buildSrc"):
         if conventions.is_dir():
@@ -313,6 +313,15 @@ def _module_layout(
         # single Kotlin module still has exactly one honest answer; more than one does not.
         with_kotlin = [m for m in modules if android.base_package(m)]
         module = with_kotlin[0] if len(with_kotlin) == 1 else None
+        if module is not None:
+            # …and the package is that module's, not the repo-derived one. Found in
+            # review: falling back to the single Kotlin module while keeping the
+            # derived name wrote `app/src/main/java/org/example/myrepo` into a module
+            # rooted at `com.acme.app` — a package invented for a brownfield repo,
+            # which is exactly what D13/P9 says the placement must never do. Every
+            # placement test passed `--package-name` explicitly, so nothing covered
+            # the default path this fallback exists to serve.
+            target = android.base_package(module)
     if module is None:
         return TargetLayout(
             package_name=target,

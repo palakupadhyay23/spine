@@ -358,10 +358,28 @@ class _Kotlin:
     parameter — including the implicit ``it`` — binds inside the lambda only.
     """
 
-    scope_nodes = frozenset({"function_declaration", "lambda_literal", "anonymous_function"})
+    # `for_statement` and `catch_block` are **scopes**, not declarations: their name binds
+    # inside their own span, where a `val` binds only from the line after it ends. Both
+    # were missing entirely, and that mattered more than a missing binding usually does —
+    # this walker is the *oracle* for D9, so a name it fails to bind is a name it cannot
+    # report the extractor for fabricating, and the extractor had the identical gap. So
+    # `for (helper in fns) { helper() }` produced an invented edge that the invention check
+    # then certified as clean. This module's own docstring forbids exactly that ("a
+    # detector that agrees with the extractor by construction"), and `_CFamily` has always
+    # walked `for_range_loop` for the same reason.
+    scope_nodes = frozenset(
+        {"function_declaration", "lambda_literal", "anonymous_function", "for_statement", "catch_block"}
+    )
     call_nodes = frozenset({"call_expression"})
 
     def params(self, node: TSNode, src: bytes) -> Iterable[str]:
+        if node.type == "for_statement":
+            return [
+                n for c in node.named_children if c.type == "variable_declaration" for n in _own_name(c, src)
+            ]
+        if node.type == "catch_block":
+            name = next((c for c in node.named_children if c.type == "identifier"), None)
+            return [_text(name, src)] if name is not None else []
         out: list[str] = []
         for holder in node.named_children:
             if holder.type not in ("function_value_parameters", "lambda_parameters"):

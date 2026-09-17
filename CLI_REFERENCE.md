@@ -796,7 +796,7 @@ Regression coverage: what a change should re-test, from the call graph.
 For a symbol you're about to change (`--symbol`) or a fault site (`--trace`),
 computes the blast radius and splits it into tests that already exercise it
 and production code in the radius with no covering test — the regression
-gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl).
+gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl/Kotlin).
 
 ```
 orchestrator regression [PATH] [OPTIONS]

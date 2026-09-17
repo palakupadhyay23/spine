@@ -32,6 +32,8 @@ host is build configuration, not a fact about the code.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from collections.abc import Set as AbstractSet
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
@@ -47,6 +49,13 @@ if TYPE_CHECKING:
 #: its verb is an argument, and a verb-less call cannot join to anything.
 _VERBS = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"})
 
+#: The package Retrofit's verb annotations live in. `@GET` is not Retrofit's until an
+#: import says it is — the same rule `jvm_routes.resolves_into_spring` applies to
+#: `@GetMapping`, and for the same reason: JAX-RS, Micronaut and half a dozen other
+#: libraries put an annotation of exactly that name on exactly that kind of method.
+#: Without the check, any `@GET("…")` in the tree became a cross-repo join candidate.
+RETROFIT_PACKAGE = "retrofit2.http"
+
 
 def scan_type(
     node: TSNode,
@@ -56,6 +65,8 @@ def scan_type(
     state: ClientState,
     *,
     base_path: str = "",
+    by_simple: Mapping[str, str] | None = None,
+    wildcard_prefixes: AbstractSet[str] = frozenset(),
 ) -> None:
     """Collect this type's Retrofit calls into ``state``. No emission here.
 
@@ -70,7 +81,16 @@ def scan_type(
             name = field_text(member, "name", source)
             if not name:
                 continue
-            _scan_method(member, f"{type_id}.{name}", source, rel, state, base_path)
+            _scan_method(
+                member,
+                f"{type_id}.{name}",
+                source,
+                rel,
+                state,
+                base_path,
+                by_simple or {},
+                wildcard_prefixes,
+            )
 
 
 def _scan_method(
@@ -80,9 +100,11 @@ def _scan_method(
     rel: str,
     state: ClientState,
     base_path: str,
+    by_simple: Mapping[str, str],
+    wildcard_prefixes: AbstractSet[str],
 ) -> None:
     for annotation in annotations_of(method, source):
-        if annotation.name not in _VERBS:
+        if not _is_retrofit_verb(annotation.name, by_simple, wildcard_prefixes):
             continue
         # Real Retrofit code writes both `@GET("topics")` and `@GET(value = "topics")`;
         # the validation app uses the named form throughout.
@@ -97,6 +119,25 @@ def _scan_method(
                 provenance=Provenance(rel, annotation.line),
             )
         )
+
+
+def _is_retrofit_verb(name: str, by_simple: Mapping[str, str], wildcard_prefixes: AbstractSet[str]) -> bool:
+    """Whether ``@name`` on a method is one of Retrofit's verb annotations, *here*.
+
+    Same shape as :func:`jvm_routes.resolves_into_spring`, fifteen lines away in a sibling
+    module, and missing here: a fully qualified name answers for itself, a bare one
+    resolves through an explicit import, and failing that through a wildcard — which real
+    Retrofit code needs, since it is normally written ``import retrofit2.http.*``.
+    """
+    simple = name.rsplit(".", 1)[-1]
+    if simple not in _VERBS:
+        return False
+    if "." in name:
+        return name.rsplit(".", 1)[0] == RETROFIT_PACKAGE
+    imported = by_simple.get(simple)
+    if imported is not None:
+        return imported.rsplit(".", 1)[0] == RETROFIT_PACKAGE
+    return RETROFIT_PACKAGE in wildcard_prefixes
 
 
 def _join(base_path: str, path: str) -> str:
@@ -136,6 +177,14 @@ def join_to_endpoints(state: ClientState, batch: FactBatch) -> tuple[list[Pendin
     _emit_matched(state, batch)
     joined = sum(1 for e in batch.edges if e.kind is EdgeKind.CONSUMES) - before
     unmatched = list(state.unmatched)
+    # `ClientState.clear()` deliberately preserves `unmatched` — for the Python
+    # front-end it is the run's output and is read off the state afterwards. Here it
+    # has already been copied out, and leaving it would make this front-end's own
+    # accumulator grow across repositories: `RepoCodeExtractor.reset_unresolved()`
+    # clears the *list* the attribute points at, but `finalize` rebinds that attribute
+    # from this state on the next run, so repo A's calls came straight back and were
+    # proposed as repo B's cross-repo join candidates.
+    state.unmatched.clear()
     state.clear()
     return unmatched, joined
 

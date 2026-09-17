@@ -6,6 +6,10 @@ class Widget {
         return make()
     }
 
+    fun reboot(): Widget {
+        return Companion.make()
+    }
+
     companion object {
         const val KIND = "widget"
 

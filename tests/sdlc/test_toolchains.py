@@ -7,7 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from orchestrator.catalog.catalog import _SEED, CapabilityCatalog
+from orchestrator.catalog.catalog import CapabilityCatalog
+from orchestrator.catalog.skills import NATIVE_SKILLS
 from orchestrator.sdlc.feature_runner import _resolve_language
 from orchestrator.sdlc.preflight import PhpPreflightRunner, SubprocessPreflightRunner, make_preflight_runner
 from orchestrator.sdlc.toolchains import TOOLCHAINS
@@ -49,13 +50,26 @@ def test_every_languages_conventions_capability_resolves_to_a_skill() -> None:
     a *registered* one that resolves to nothing is not.
     """
     catalog = CapabilityCatalog.from_sources()
-    dangling = [
-        f"{language}-conventions"
-        for language in TOOLCHAINS
-        if catalog.get(f"{language}-conventions") is None
-        and any(f"{language}-conventions" == cap.id for cap in _SEED)
-    ]
-    assert dangling == []
+    skills = {skill.id: skill for skill in NATIVE_SKILLS}
+    checked: list[str] = []
+    problems: list[str] = []
+    for language in TOOLCHAINS:
+        capability = catalog.get(f"{language}-conventions")
+        if capability is None:
+            continue  # not every language has one — SQL ships without, and that is fine
+        checked.append(language)
+        skill = skills.get(capability.id)
+        if skill is None:
+            problems.append(f"{capability.id}: selected by the planner, no skill behind the id")
+        elif not skill.guidance.strip():
+            problems.append(f"{capability.id}: a skill with no guidance is an empty prompt")
+        if language not in (capability.selector.languages or frozenset()):
+            problems.append(f"{capability.id}: selector does not name {language}, so it is never chosen")
+    assert problems == []
+    # Non-vacuity. The previous version of this test filtered the catalog by membership of
+    # `_SEED` — and the catalog is *built* from `_SEED`, so `dangling` was unconditionally
+    # empty and the body could have been deleted without failing anything.
+    assert len(checked) >= len(TOOLCHAINS) - 1, f"only {checked} were examined"
 
 
 def test_preflight_factory_preserves_interpreter_selection() -> None:
