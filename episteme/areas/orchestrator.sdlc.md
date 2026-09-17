@@ -3,7 +3,7 @@
 
 [← Episteme](../README.md) · [Architecture](../architecture.md)
 
-**`orchestrator.sdlc`** is one of 60 areas in this repo, in the `orchestrator` zone. It holds 53 modules — 128 types and 432 functions. It sits in the middle of the graph: 17 areas below it, 15 above. Changes here can reach both ways.
+**`orchestrator.sdlc`** is one of 61 areas in this repo, in the `orchestrator` zone. It holds 54 modules — 132 types and 435 functions. It sits in the middle of the graph: 17 areas below it, 16 above. Changes here can reach both ways.
 
 ```mermaid
 flowchart LR
@@ -41,13 +41,14 @@ flowchart LR
 
 **In the diagram:** **`orchestrator.sdlc`** (this area) · [`orchestrator.agentic`](orchestrator.agentic.md) · [`orchestrator.cli`](orchestrator.cli.md) · [`orchestrator.codereview`](orchestrator.codereview.md) · [`orchestrator.evals`](orchestrator.evals.md) · [`orchestrator.knowledge`](orchestrator.knowledge.md) · [`orchestrator.plugin`](orchestrator.plugin.md) · [`orchestrator.registry`](orchestrator.registry.md) · [`orchestrator.runtime`](orchestrator.runtime.md) · `orchestrator.approval` · [`orchestrator.catalog`](orchestrator.catalog.md) · [`orchestrator.core`](orchestrator.core.md) · [`orchestrator.intake`](orchestrator.intake.md) · `orchestrator.ir`
 
-_Showing 16 of 32 neighbouring areas._
+_Showing 16 of 33 neighbouring areas._
 
 ## Modules
 
 - [`orchestrator.sdlc`](../../src/orchestrator/sdlc/__init__.py#L1)
 - [`orchestrator.sdlc.activities`](../../src/orchestrator/sdlc/activities.py#L1)
 - [`orchestrator.sdlc.autorun`](../modules/orchestrator.sdlc.autorun.md)
+- [`orchestrator.sdlc.brief`](../../src/orchestrator/sdlc/brief.py#L1)
 - [`orchestrator.sdlc.builddoc`](../modules/orchestrator.sdlc.builddoc.md)
 - [`orchestrator.sdlc.case`](../../src/orchestrator/sdlc/case.py#L1)
 - [`orchestrator.sdlc.churn`](../../src/orchestrator/sdlc/churn.py#L1)
@@ -105,4 +106,4 @@ _Showing 16 of 32 neighbouring areas._
 
 ## Depended on by
 
-[`orchestrator.agentic`](orchestrator.agentic.md), [`orchestrator.cli`](orchestrator.cli.md), [`orchestrator.codereview`](orchestrator.codereview.md), [`orchestrator.evals`](orchestrator.evals.md), [`orchestrator.knowledge`](orchestrator.knowledge.md), [`orchestrator.plugin`](orchestrator.plugin.md), [`orchestrator.registry`](orchestrator.registry.md), [`orchestrator.runtime`](orchestrator.runtime.md), `scripts.agentic_eval`, `scripts.audit_eval`, `scripts.codegen_ab`, [`scripts.codegen_benchmark`](scripts.codegen_benchmark.md), `scripts.live_sdlc_worker`, `scripts.phase2a_parity_gate`, `scripts.skill_ab`
+[`orchestrator.agentic`](orchestrator.agentic.md), [`orchestrator.cli`](orchestrator.cli.md), [`orchestrator.codereview`](orchestrator.codereview.md), [`orchestrator.evals`](orchestrator.evals.md), [`orchestrator.knowledge`](orchestrator.knowledge.md), [`orchestrator.plugin`](orchestrator.plugin.md), [`orchestrator.registry`](orchestrator.registry.md), [`orchestrator.runtime`](orchestrator.runtime.md), `scripts.agentic_eval`, `scripts.audit_eval`, `scripts.brief-sections`, `scripts.codegen_ab`, [`scripts.codegen_benchmark`](scripts.codegen_benchmark.md), `scripts.live_sdlc_worker`, `scripts.phase2a_parity_gate`, `scripts.skill_ab`
