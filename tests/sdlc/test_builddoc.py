@@ -887,6 +887,25 @@ def test_containment_says_how_many_importers_it_did_not_list() -> None:
     assert "(+5 more)" in prose
 
 
+def test_containment_says_at_least_when_names_were_capped_upstream() -> None:
+    """`impact.py` caps importer names per module *before* this renderer sees them.
+
+    So the count here is of names that survived, not of modules that import — and the
+    sentence presented that floor as a total. The renderer cannot lift the cap, but it can
+    see it: a module reporting 20 importers and carrying 8 names has been truncated.
+    """
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    capped = {"ref": "a.py", "importers": 20, "importer_names": [f"pkg.mod{i}" for i in range(8)]}
+    prose = _blast_prose({"call_graph_available": True, "modules": [capped]}, "python")
+    assert "reaches at least 8 non-test module(s)" in prose
+
+    whole = {"ref": "a.py", "importers": 2, "importer_names": ["pkg.a", "pkg.b"]}
+    exact = _blast_prose({"call_graph_available": True, "modules": [whole]}, "python")
+    assert "reaches 2 non-test module(s)" in exact
+    assert "at least" not in exact
+
+
 def test_containment_does_not_count_dotnet_tests_as_product_code() -> None:
     """The prose is language-neutral; the test-detection rule was not.
 

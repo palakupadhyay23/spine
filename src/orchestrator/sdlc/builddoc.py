@@ -677,8 +677,11 @@ def _is_test_module(name: str) -> bool:
     )
 
 
-#: How many importer names the containment sentence spells out before eliding.
-_MAX_IMPORTERS = 8
+#: How many importer names the containment *sentence* spells out before eliding. Distinct
+#: from `_MAX_IMPORTERS`, which bounds the diagram: prose can carry more names than a
+#: readable graph can, and the two have always differed. One name for both would silently
+#: move whichever bound it was not written for.
+_MAX_CONTAINMENT_NAMES = 8
 
 
 def _more(names: list[str]) -> str:
@@ -687,7 +690,20 @@ def _more(names: list[str]) -> str:
     Stating the count and then listing eight of it is a sentence that reads as complete and
     is not — a reader counts the names and gets a different number from the one we printed.
     """
-    return f" (+{len(names) - _MAX_IMPORTERS} more)" if len(names) > _MAX_IMPORTERS else ""
+    return f" (+{len(names) - _MAX_CONTAINMENT_NAMES} more)" if len(names) > _MAX_CONTAINMENT_NAMES else ""
+
+
+def _names_were_capped_upstream(modules: list[dict[str, Any]]) -> bool:
+    """Did any module contribute fewer importer *names* than it has importers?
+
+    `impact.py` caps `importer_names` per module before this renderer ever sees them, so the
+    count in the containment sentence is a count of names that survived, not of modules that
+    import. That cap is invisible here — the list simply arrives short — which is how
+    "reaches N non-test module(s)" came to be a floor presented as a total. Comparing each
+    module's true `importers` against the names it actually carries is the only way to
+    detect it downstream, and saying so is cheaper than plumbing the real figure up.
+    """
+    return any(int(m.get("importers") or 0) > len(m.get("importer_names") or []) for m in modules)
 
 
 def _languages_of(bd: dict[str, Any], fallback: str) -> list[str]:
@@ -748,6 +764,8 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     )
 
     all_importers = [n for m in modules for n in (m.get("importer_names") or [])]
+    # "at least", not a total: the names reaching this renderer are already capped per module.
+    at_least = "at least " if _names_were_capped_upstream(modules) else ""
     if not all_importers:
         containment = (
             "**Containment:** nothing in the graph imports what changes. A change here "
@@ -756,14 +774,15 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     elif all(_is_test_module(n) for n in all_importers):
         tests = sorted(set(all_importers))
         containment = (
-            f"**Containment:** the only importers are tests ({', '.join(tests[:_MAX_IMPORTERS])}"
+            f"**Containment:** the only importers are tests ({', '.join(tests[:_MAX_CONTAINMENT_NAMES])}"
             f"{_more(tests)}). Nothing in the product depends on what changes."
         )
     else:
         product = sorted({n for n in all_importers if not _is_test_module(n)})
         containment = (
-            f"**Containment:** the neighbourhood reaches {len(product)} non-test module(s): "
-            f"{', '.join(product[:_MAX_IMPORTERS])}{_more(product)}. A change here is visible to them."
+            f"**Containment:** the neighbourhood reaches {at_least}{len(product)} non-test "
+            f"module(s): {', '.join(product[:_MAX_CONTAINMENT_NAMES])}{_more(product)}. "
+            "A change here is visible to them."
         )
 
     if not bd.get("call_graph_available"):
