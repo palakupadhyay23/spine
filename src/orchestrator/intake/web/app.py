@@ -69,6 +69,8 @@ def _plan_to_dict(plan: BacklogPlan) -> dict[str, object]:
                 "intent_id": s.intent_id,
                 "title": s.title,
                 "summary": s.summary,
+                "description": s.description,
+                "scope": s.scope,
                 "user_story": s.user_story,
                 "acceptance_criteria": list(s.acceptance_criteria),
                 # Carried separately, not merged: the preview labels them so a reader can

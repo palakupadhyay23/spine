@@ -70,7 +70,7 @@
 [`src/orchestrator/pkg/verify.py:492`](../../src/orchestrator/pkg/verify.py#L492)
 
 - **Called by** (1): [`verify_batch`](../../src/orchestrator/pkg/verify.py#L516)
-- **Calls** (3): [`VerifyIssue`](../../src/orchestrator/pkg/verify.py#L62), [`_examples`](../../src/orchestrator/pkg/verify.py#L87), [`find_invented_calls`](../../src/orchestrator/pkg/invention.py#L329)
+- **Calls** (3): [`VerifyIssue`](../../src/orchestrator/pkg/verify.py#L62), [`_examples`](../../src/orchestrator/pkg/verify.py#L87), [`find_invented_calls`](../../src/orchestrator/pkg/invention.py#L338)
 
 ### `_check_phantoms`
 

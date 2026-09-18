@@ -8,9 +8,9 @@
       },
       "note": "provenance measured on this repo, offline; the pinned corpus is run explicitly",
       "provenance": {
-        "anchored": 13204,
-        "excluded": 864,
-        "resolved": 13204,
+        "anchored": 13358,
+        "excluded": 874,
+        "resolved": 13358,
         "unreadable": 0
       }
     },
@@ -102,16 +102,21 @@
         "csharp": {
           "edges": {
             "CALLS": {
-              "emitted": 3,
-              "expected": 4,
-              "matched": 3
+              "emitted": 4,
+              "expected": 5,
+              "matched": 4
             },
             "CONTAINS": {
-              "emitted": 15,
-              "expected": 15,
-              "matched": 15
+              "emitted": 22,
+              "expected": 22,
+              "matched": 22
             },
             "IMPLEMENTS": {
+              "emitted": 1,
+              "expected": 1,
+              "matched": 1
+            },
+            "IMPORTS": {
               "emitted": 1,
               "expected": 1,
               "matched": 1
@@ -119,24 +124,24 @@
           },
           "nodes": {
             "Field": {
-              "emitted": 1,
-              "expected": 1,
-              "matched": 1
+              "emitted": 4,
+              "expected": 4,
+              "matched": 4
             },
             "Function": {
-              "emitted": 9,
-              "expected": 9,
-              "matched": 9
+              "emitted": 11,
+              "expected": 11,
+              "matched": 11
             },
             "Module": {
-              "emitted": 3,
-              "expected": 3,
-              "matched": 3
-            },
-            "Type": {
               "emitted": 5,
               "expected": 5,
               "matched": 5
+            },
+            "Type": {
+              "emitted": 7,
+              "expected": 7,
+              "matched": 7
             }
           }
         },
@@ -709,9 +714,9 @@
     },
     "drift": {
       "count": 1887,
-      "docs": 1928,
+      "docs": 1936,
       "gated": false,
-      "mentions": 13620,
+      "mentions": 13650,
       "note": "recorded, never gated \u2014 an upper bound: a tenth of the population cannot bind by construction. See GATES"
     },
     "invention": {
@@ -735,11 +740,11 @@
           "unexamined": 0
         },
         "csharp": {
-          "examined": 3,
+          "examined": 4,
           "invented": 0,
-          "shadowable": 3,
+          "shadowable": 4,
           "status": "measured",
-          "total_calls": 3,
+          "total_calls": 4,
           "unexamined": 0
         },
         "go": {
@@ -787,7 +792,7 @@
           "invented": 0,
           "shadowable": 0,
           "status": "measured",
-          "total_calls": 20563,
+          "total_calls": 20878,
           "unexamined": 0
         },
         "sql": {
@@ -808,7 +813,7 @@
         }
       },
       "note": "gated at zero per language, not against this baseline \u2014 see GATES",
-      "total_calls": 20637
+      "total_calls": 20953
     },
     "parity": {
       "declared": 75,

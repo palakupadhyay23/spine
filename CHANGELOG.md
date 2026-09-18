@@ -4,6 +4,80 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## 3.37.0 — 2026-09-17
+
+Two field reports from a C#/.NET engagement, both diagnosed to defects rather than misuse and
+both reproduced as fixtures. **NSS-1231:** `sdlc plan` proposed five files for an OAuth2 change;
+one was right. The ticket had named the right file in its first sentence, and the spec writer's
+paraphrase deleted it before retrieval ran — 40 identifiers destroyed, 14 generic words invented,
+three of which produced three database models as "files to touch". **NSS-1209:** three of five
+proposed files were flagged "absent from the knowledge graph", including the one that was right,
+and the five `.razor` components the work landed in could not be proposed at all.
+
+### Added
+
+- **Blazor components enter the graph** (`.razor`, read by the C# front-end — no new grammar or
+  extra). `pkg.razor` rewrites a component into line-aligned C#: `@using`/`@namespace`/`@inject`
+  become the statements they stand for on the same line, markup becomes blank lines, and
+  `@code`/`@functions` open a `partial class` named after the file. Every symbol carries its true
+  `.razor` line. A component's module is its `@namespace` or, like an unnamespaced `.cs`, its
+  path. Inline `@expression` references in markup are not read — a guessed reference is worse
+  than a missing one. Corpus case `corpus/csharp/razor`: precision 1.00, recall 1.00 on every kind
+  from the first extraction; C# `CALLS` recall 0.75 → 0.80 on the scoreboard.
+
+- **Jira attachments are read, not only named.** On a single-issue fetch, each attachment the doc
+  readers claim (markdown, text, PDF, HTML, docx, xlsx) is downloaded and read through
+  `pkg.doc_source` — the same code `understand` uses. At most five, none over 2 MB, each cut at
+  8,000 characters with the cut stated. Images stay named-only: reading one needs OCR, which lives
+  on the opt-in `media extract` seam. A JQL scan never fetches them.
+
+- **Retrieval carries its evidence, and the brief says when it is weak.** A landing site now
+  records its score and the query words it shares, and is **weak** when every one of those
+  words also names symbols in other files — `client` across four files; `api` + `client`. The
+  investigation brief marks each weak hit with the words it rests on and says when every hit is
+  weak. The heuristic design drops weak hits, so an all-weak ticket falls through to *"no files
+  are proposed — locate the change before building"* instead of five confident wrong paths.
+
+### Fixed
+
+- **A file in a shared namespace was reported "absent from the knowledge graph".** C#, Java, PHP
+  and Go key one `Module` node per namespace, package or directory, with the provenance of
+  whichever file was walked first; the design's reference check matched paths against `Module`
+  provenance only, so one file per namespace resolved and every sibling was called a possible
+  hallucination — two sections after its own symbols had been printed with line numbers. The
+  check now resolves a path against any grounded node's file. A module spanning several files
+  says so in the blast-radius line, and its importers are summed once in the build document,
+  not once per file.
+
+- **The spec writer dropped the identifiers the ticket named.** `FeatureSpec` now carries the
+  intent's `description` and `scope` — the fields the extractor keeps identifiers verbatim in —
+  and a deterministic backstop appends whatever the source named and the summary dropped to
+  `technical_notes`, labelled as carried, bounded at 24. The prompt already asked for this and a
+  real model ignored it; a rule a model can ignore is not a rule.
+
+- **The design read only the paraphrase.** Retrieval, the overview fallback and the stated-path
+  reader now read every identifier-bearing spec field — title, summary, description, scope,
+  technical notes, criteria. On the NSS-1231 shape the named file ranks first.
+
+- **Naming a file in the ticket only worked for Python.** The path regex behind
+  `design._stated_paths` and `codegen._paths_from` matched `src/…*.py` and `tests/…*.py`, so a
+  .NET ticket writing `EBSOrderApiClient.cs` could not override a keyword guess. One shared
+  `sdlc.source_paths` accepts every front-end suffix, either separator, and a bare basename
+  resolved to its one location (two locations is a guess and is dropped). `_claims_a_change`
+  inherits it: "Rewrote orchestrator/api_errors.py …" — the summary its docstring was written
+  for — is now a claim.
+
+- **Build document §1 labelled a model's paraphrase as a quote.** The section carried
+  `stated — the ticket body, quoted` over the spec writer's summary. It now shows the intent's
+  description when intake carried one, labelled `derived · model`, or the summary with a label
+  saying the ticket's own words were not carried. [`build-document.md`](docs/specs/build-document.md)
+  row 01 moves with it.
+
+- **A Story that lands nowhere on a grounded graph said "nothing contradicts the code".** True
+  and useless. It still proceeds — a feature can be about code that does not exist yet — but
+  now carries a `localization` finding saying the design proposes nothing to build from and what
+  to name. Bugs keep `UNLOCALIZED`.
+
 ## 3.36.0 — 2026-09-17
 
 ### Added

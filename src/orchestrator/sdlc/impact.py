@@ -20,6 +20,7 @@ so their absence is reported honestly rather than implied to be zero impact.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -55,6 +56,11 @@ class ModuleImpact:
     importers: int
     importer_names: tuple[str, ...]
     hotspots: tuple[SymbolImpact, ...]
+    # How many source files the resolved module node owns. 1 for a file-keyed front-end
+    # (Python, TypeScript); more for a namespace-, package- or directory-keyed one (C#, Java,
+    # PHP, Go), where ``importers`` is a fact about the whole namespace and must not be read
+    # as a fact about ``ref``.
+    spans: int = 1
 
 
 @dataclass(frozen=True)
@@ -87,29 +93,92 @@ def _module_nodes(store: FactStore) -> list[Node]:
     return sorted(mods, key=lambda n: (not n.grounded, n.id))
 
 
-def _match_module(ref: str, modules: list[Node]) -> Node | None:
+def _owner_of(store: FactStore, node_id: str, parents: dict[str, str]) -> Node | None:
+    """Walk CONTAINS upward to the MODULE node ``node_id`` belongs to; None if the walk ends first."""
+    cur = node_id
+    for _ in range(16):  # cap the walk; graphs can't nest this deep, but never loop
+        parent = parents.get(cur)
+        if parent is None:
+            return None
+        pnode = store.node(parent)
+        if pnode is not None and pnode.kind is NodeKind.MODULE:
+            return pnode
+        cur = parent
+    return None
+
+
+def _file_index(store: FactStore) -> tuple[list[tuple[str, Node]], dict[str, int]]:
+    """Every grounded source file → the MODULE node that owns it, plus files-per-module.
+
+    A namespace-keyed front-end (C#, Java, PHP; Go by directory) emits **one** MODULE node per
+    namespace, whose provenance is whichever file was walked first. Resolving a design path
+    against MODULE provenance alone therefore resolves exactly one file per namespace and
+    reports every sibling as absent — on NSS-1209, three of five correct files came back
+    "hallucinated" two sections after their own symbols had been printed with line numbers.
+
+    Every grounded node knows its file, and CONTAINS knows its module. That pair is the fact
+    the unverified-references check always claimed to test: *is this path in the graph?*
+    Sorted so resolution is byte-stable across extractions.
+    """
+    parents = store.parents_index()
+    by_file: dict[str, Node] = {}
+    for node in store.nodes:
+        if not node.grounded or node.provenance is None or not node.provenance.file:
+            continue
+        owner = node if node.kind is NodeKind.MODULE else _owner_of(store, node.id, parents)
+        if owner is not None:
+            by_file.setdefault(node.provenance.file, owner)
+    spans: dict[str, int] = {}
+    for owner in by_file.values():
+        spans[owner.id] = spans.get(owner.id, 0) + 1
+    return sorted(by_file.items()), spans
+
+
+def _match_module(
+    ref: str, modules: list[Node], by_file: list[tuple[str, Node]] | None = None
+) -> Node | None:
     """Resolve a design's file/module reference to a MODULE node, best-effort.
 
-    Tries, in order: exact provenance path or path suffix, exact node name,
-    then basename. ``modules`` is pre-sorted grounded-first, so the first hit at
-    each precedence level prefers real code.
+    Candidates are every MODULE node by its own provenance file (grounded-first, so a real
+    module wins an ambiguous exact match) and every grounded file by its owning module
+    (``by_file``, from :func:`_file_index`) — so a file that shares its module node with
+    siblings still resolves to that module. Four passes: exact provenance path; exact node
+    name; path suffix; bare basename. The last two follow ``source_paths.resolve``'s rules —
+    two distinct owners is a guess and resolves to nothing, and a ref that names a directory
+    is never matched on basename — or a NEW ``Payments/Client.cs`` would resolve to
+    ``Legacy/Client.cs`` and the honest "unverified" answer would go silent.
     """
-    ref_n = ref.replace("\\", "/").strip().lstrip("./")
+    from orchestrator.sdlc.source_paths import normalise
+
+    ref_n = normalise(ref)
     if not ref_n:
         return None
     base = _basename(ref_n)
-    for n in modules:
-        f = (n.provenance.file if n.provenance else "") or ""
-        if f and (f == ref_n or f.endswith("/" + ref_n)):
+    candidates: list[tuple[str, Node]] = [
+        ((n.provenance.file if n.provenance else "") or "", n) for n in modules
+    ]
+    candidates = [(f, n) for f, n in candidates if f] + list(by_file or ())
+
+    for f, n in candidates:
+        if f == ref_n:
             return n
     for n in modules:
         if n.name == ref_n or n.name == base:
             return n
-    for n in modules:
-        f = (n.provenance.file if n.provenance else "") or ""
-        if f and _basename(f) == base:
-            return n
+    suffix = _unique_owner(n for f, n in candidates if f.endswith("/" + ref_n))
+    if suffix is not None:
+        return suffix
+    if "/" not in ref_n:
+        return _unique_owner(n for f, n in candidates if _basename(f) == base)
     return None
+
+
+def _unique_owner(owners: Iterable[Node]) -> Node | None:
+    """The one distinct node among ``owners``, or None — a second candidate is a guess."""
+    distinct: dict[str, Node] = {}
+    for n in owners:
+        distinct.setdefault(n.id, n)
+    return next(iter(distinct.values())) if len(distinct) == 1 else None
 
 
 def _hotspots(store: FactStore, module: Node, *, limit: int) -> list[SymbolImpact]:
@@ -154,6 +223,7 @@ def blast_radius(
     grounded = store.summary().get("grounded_nodes", 0) > 0
     call_graph = bool(store.edges_of_kind(EdgeKind.CALLS))
     modules = _module_nodes(store)
+    by_file, spans = _file_index(store)
 
     mods: list[ModuleImpact] = []
     unresolved: list[str] = []
@@ -164,7 +234,7 @@ def blast_radius(
         if not ref or ref in seen:
             continue
         seen.add(ref)
-        node = _match_module(ref, modules)
+        node = _match_module(ref, modules, by_file)
         if node is None:
             unresolved.append(ref)
             continue
@@ -181,6 +251,7 @@ def blast_radius(
                 importers=len(importers),
                 importer_names=names,
                 hotspots=hotspots,
+                spans=spans.get(node.id, 1),
             )
         )
     return BlastRadius(tuple(mods), tuple(unresolved), call_graph, grounded, tuple(sorted(langs)))
@@ -208,6 +279,7 @@ def to_dict(br: BlastRadius) -> dict[str, Any]:
                 "where": m.where,
                 "importers": m.importers,
                 "importer_names": list(m.importer_names),
+                "spans": m.spans,
                 "hotspots": [
                     {
                         "name": s.name,
@@ -242,7 +314,12 @@ def render_md(bd: dict[str, Any]) -> str:
             imp = f"imported by {m['importers']} module(s)"
             if m.get("importer_names"):
                 imp += ": " + ", ".join(m["importer_names"])
-            lines.append(f"- `{m['ref']}` — {imp}")
+            # Name the subject of the count. "AzureServiceBusScheduler.cs — imported by 14"
+            # was the namespace's fan-in pinned on whichever file resolved, and it made an
+            # unrelated scheduler read as the hub of the change (NSS-1231).
+            spans = int(m.get("spans") or 1)
+            shared = f"module `{m['module']}` spans {spans} file(s); " if spans > 1 else ""
+            lines.append(f"- `{m['ref']}` — {shared}{imp}")
             for s in m.get("hotspots") or []:
                 extra = f", {s['transitive']} transitive" if s["transitive"] > s["callers"] else ""
                 exposed = int(s.get("exposed") or 0)

@@ -1,6 +1,6 @@
-# State of Spine — 3.36.0
+# State of Spine — 3.37.0
 
-**The one document to read.** Verified against source on **2026-09-17**, at the 3.36.0 release
+**The one document to read.** Verified against source on **2026-09-17**, at the 3.37.0 release
 cut. Every number below was re-measured that day.
 
 > **Why this exists.** `docs/specs/` holds **91** markdown files — **87 specs** plus this
@@ -24,16 +24,16 @@ gates (before building, before merging). The product is **Spine**; it ships as
 
 | | Value | How it is known |
 |---|---|---|
-| Version | **3.36.0** | cutting now; 3.35.0 is the last on PyPI. Minor, not patch: **Kotlin** — 11th language, 12th front-end via the Gradle `.kts` reader — with comprehension, `CALLS`, Room/Retrofit, Compose navigation, Hilt through the new `PROVIDES` edge kind, Ktor + Spring routes, Multiplatform, and Kotlin/JVM + Android codegen. 3.35.0 shipped the `[clang]` semantic pass and `pkg export --format cypher` |
+| Version | **3.37.0** | cutting now; 3.36.0 is the last on PyPI. Minor, not patch: **Blazor components** — `.razor` read as line-aligned C# through the C# front-end, no new grammar or extra — plus Jira attachment text on intake and retrieval that carries its evidence and floors weak hits; closes the NSS-1231/NSS-1209 field reports (a shared-namespace file reported absent from the graph, the spec writer dropping the ticket's identifiers, a file named in a ticket only resolving for Python). 3.36.0 shipped **Kotlin** — 11th language, 12th front-end via the Gradle `.kts` reader — with comprehension, `CALLS`, Room/Retrofit, Compose navigation, Hilt through the new `PROVIDES` edge kind, Ktor + Spring routes, Multiplatform, and Kotlin/JVM + Android codegen |
 | Languages extracted | **11** languages (**12** front-ends) | Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl, Kotlin, SQL, plus a **Gradle** reader that turns `.kts` build scripts into a module dependency graph rather than parsing them as source (D11) — Perl has comprehension + `CALLS` + routes + data layer (all six phases of [perl-support-roadmap.md](perl-support-roadmap.md)); Kotlin is at P0–P11 (all phases) of [kotlin-support-roadmap.md](kotlin-support-roadmap.md) (comprehension, `CALLS`, Room entities + DAO data edges, Retrofit calls as cross-repo `CONSUMES` candidates, Compose navigation as `NAV` endpoints, Hilt/Dagger wiring through the new `PROVIDES` edge, a Gradle `.kts` module graph that gives `state` real components instead of package-name prefixes, and Ktor + Spring MVC server routes that make a Kotlin service a **provider** — the Spring half is shared with the Java front-end, which had read JAX-RS only, Multiplatform source sets with `expect`/`actual` ids joined by `IMPLEMENTS`, and **Kotlin/JVM codegen** on Gradle — whose runner also gives *Java* codegen its first Gradle support) |
 | Perl codegen progress | **C-0 through C-5 DONE** | [Roadmap](perl-codegen-roadmap.md): dispatch mutation detection **4/8 → 8/8**, 0 skipped mutations; `--language perl` enabled with real green/red runner proof; greenfield live proof passes 81 assertions from a clean checkout; brownfield clean-checkout proof passes 4,192 tests, with 116 regression gaps unchanged |
 | PHP delivery | Composer or pinned PHPUnit PHAR | Configured test layout, changed-file lint, modern PHPUnit; [validation roadmap](php-codegen-roadmap.md) |
 | CLI commands | **56** | `grep -c '\.command(' src/orchestrator/cli/*.py`, summed |
-| Source modules | **377** | `find src/orchestrator -name '*.py'` |
-| Test functions | **3,581** across 343 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
+| Source modules | **379** | `find src/orchestrator -name '*.py'` |
+| Test functions | **3,657** across 348 files | `grep -rh '^def test_\|^async def test_' tests`; files via the same pattern with `-rl` |
 | Optional C/C++ semantic pass | `[clang]`, included in `[all]` | [Five-repository evaluation](../evals/clang-semantic-step3b.md): OpenCV 2,597/135,633 sites at 300.296 s; TinyXML-2 416/1,379 at 0.300 s; GoogleTest 54; pugixml 0; fmt 24 bundled-test edges only. Step 3b complete; [Step 4 release readiness](parsing-and-the-pkg.md#step-4--release-readiness) 4.1–4.4 complete on `0c39f6b`; 4.5 gap triage complete. **Merged in #379, shipped in 3.35.0.** *What drives these numbers: [a sixth repository](../evals/clang-semantic-small-repo-validation.md) was added as a control — yaml-cpp, 404 files, 75 class-declaring `.h` headers, real STL use — and recovers **1.89%**, indistinguishable from OpenCV's 1.91% at 1/19th the size. **Recovery tracks standard-library density, not repository size.** TinyXML-2's 30% is explained by its near-total absence of the STL (0.4 `std::` per 1k lines), which leaves almost every receiver type resolvable from repository sources alone. Read these as the pass's behaviour under its documented system-header ceiling, not as a size effect.* |
-| Graph precision | **1.00** on every node and edge kind, all 12 front-ends | `orchestrator pkg accuracy` against a hand-labelled corpus (64 cases; Kotlin contributes 14 of its own plus 2 multi-repo joins, added across P1–P6 of [kotlin-support-roadmap.md](kotlin-support-roadmap.md)) |
-| `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.94** (Kotlin, on 31) · **0.89** (Perl, on 9) · **0.75** (C#, Go, PHP) · **0.73** (Python) · **0.67** (Java) — small corpus denominators; every miss is a predicted `known_gap`, not a surprise | same |
+| Graph precision | **1.00** on every node and edge kind, all 12 front-ends | `orchestrator pkg accuracy` against a hand-labelled corpus (67 cases; Kotlin contributes 14 of its own plus 2 multi-repo joins, added across P1–P6 of [kotlin-support-roadmap.md](kotlin-support-roadmap.md)) |
+| `CALLS` recall | **1.00** (C, SQL) → **0.86** (TypeScript, on 14 labelled edges) · **0.94** (Kotlin, on 31) · **0.89** (Perl, on 9) · **0.80** (C#) · **0.75** (Go, PHP) · **0.73** (Python) · **0.67** (Java) — small corpus denominators; every miss is a predicted `known_gap`, not a surprise | same |
 | Grounding effect, `create` tickets | **29/50 grounded, 0/50 ungrounded** | 200-run controlled A/B, 2 frontier models, 5 passes |
 | Same, across two codebases | **47/68 vs 3/68** | replicated on an unrelated external repo |
 | Control (`edit` tickets, target file named) | **122/124 either arm** | rules out a generic more-context effect |
@@ -102,7 +102,7 @@ Measured against a hand-labelled corpus, all 11 languages
 |---|---|
 | **Precision** | **1.00** on every node kind and every edge kind, all 11 languages — *on the corpus*, and see the caveat below |
 | **Recall** | 1.00 on every kind **except `CALLS`** |
-| `CALLS` recall | 1.00 (c, cpp with clang, sql) · 0.94 (kotlin) · 0.89 (perl) · **0.86 (typescript)** · 0.75 (csharp, go, php) · 0.73 (python) · 0.67 (java) — small corpus denominators; semantic real-repo limits are reported separately |
+| `CALLS` recall | 1.00 (c, cpp with clang, sql) · 0.94 (kotlin) · 0.89 (perl) · **0.86 (typescript)** · 0.80 (csharp) · 0.75 (go, php) · 0.73 (python) · 0.67 (java) — small corpus denominators; semantic real-repo limits are reported separately |
 | Invention | **0** on this repo and on 11 pinned public repos across 6 front-ends, gated `strict` at zero per language (2026-08-24) |
 
 **That precision row was a corpus score over a corpus missing a shape, and both have been

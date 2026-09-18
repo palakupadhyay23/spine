@@ -29,6 +29,13 @@ Node ids are namespace-qualified (``csharp:Namespace.Type``) so partial classes
 split across files collapse onto one node. Entity nodes use a parallel
 ``csharp:entity:Namespace.Type`` id so the data graph is distinct from the type
 graph.
+
+**Blazor components** (``.razor``) are read too: :mod:`orchestrator.pkg.razor` rewrites
+one into line-aligned C# — ``@using``/``@namespace``/``@inject`` in place, markup blanked,
+``@code`` opened as a ``partial class`` named after the file — and it takes the path above
+from there, so every symbol carries its true ``.razor`` line. A component's module is its
+``@namespace`` when it declares one, else the namespace its ``.razor.cs`` code-behind declares,
+else its path, exactly as an unnamespaced ``.cs``.
 """
 
 from __future__ import annotations
@@ -40,6 +47,12 @@ from typing import TYPE_CHECKING, Any
 
 from orchestrator.pkg.extractor import rel_module_name
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.razor import (
+    code_behind_namespace,
+    component_class_name,
+    component_namespace,
+    razor_to_csharp,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node as TSNode
@@ -93,17 +106,26 @@ class CSharpExtractor:
     """C# front-end (tree-sitter). Install the ``csharp`` extra to use it."""
 
     language: str = "csharp"
-    suffixes: tuple[str, ...] = (".cs",)
+    # `.razor` too: a Blazor component is C# plus markup, and `pkg.razor` rewrites it into
+    # line-aligned C# before the parser sees it — the same shape as `php_extractor` branching on
+    # `.blade.php` by filename, with the opposite verdict (a component holds real logic).
+    suffixes: tuple[str, ...] = (".cs", ".razor")
 
     def module_name(self, path: Path, root: Path) -> str:
         # C#'s closest thing to a package is the (first) namespace, which lives in
-        # the file; fall back to the repo-relative path when there's none.
+        # the file; fall back to the repo-relative path when there's none. A component
+        # declares it as `@namespace`, and most do not — then, like an unnamespaced .cs
+        # file, its module is its path.
         try:
             # utf-8-sig strips a leading BOM, which is common in .NET files and would
-            # otherwise defeat the ^namespace match.
-            m = _NAMESPACE_RE.search(path.read_text(encoding="utf-8-sig"))
+            # otherwise defeat the ^namespace match. errors="replace" for the same reason
+            # `extract` decodes that way: one stray byte must not drop the file from the graph.
+            text = path.read_text(encoding="utf-8-sig", errors="replace")
         except OSError:
-            m = None
+            return rel_module_name(path, root)
+        if path.suffix.lower() == ".razor":
+            return component_namespace(text) or code_behind_namespace(path) or rel_module_name(path, root)
+        m = _NAMESPACE_RE.search(text)
         return m.group(1) if m else rel_module_name(path, root)
 
     def finalize(self, batch: FactBatch) -> FactBatch:
@@ -141,8 +163,19 @@ class CSharpExtractor:
         return repointed
 
     def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
-        parser = _csharp_parser()
         source = path.read_bytes()
+        if path.suffix.lower() == ".razor":
+            text = source.decode("utf-8-sig", errors="replace")
+            # Line-aligned, so every provenance below is a true `.razor` line number.
+            rewritten = razor_to_csharp(text, rel, namespace=code_behind_namespace(path))
+            batch = self._extract_source(rewritten.encode("utf-8"), module=module, rel=rel)
+            return _span_component(
+                batch, text, rel, namespace=component_namespace(text) or code_behind_namespace(path)
+            )
+        return self._extract_source(source, module=module, rel=rel)
+
+    def _extract_source(self, source: bytes, *, module: str, rel: str) -> FactBatch:
+        parser = _csharp_parser()
         tree = parser.parse(source)
         batch = FactBatch()
         module_id = f"csharp:{module}" if module else "csharp:<root>"
@@ -740,6 +773,35 @@ def _csharp_parser() -> Any:
         parser = Parser()
         parser.language = language
         return parser
+
+
+def _span_component(batch: FactBatch, text: str, rel: str, *, namespace: str) -> FactBatch:
+    """The component's ``Type`` spans the whole file.
+
+    Blazor's generated class *is* the file — the markup is the render method's body — but the
+    rewrite opens the class on the ``@inject`` line and again at ``@code``, and ``add_node``
+    keeps the first, so the ``Type`` reported a one-line span at ``@inject``. Then
+    ``GroundedRetriever.enclosing_symbol`` on a line inside ``@code`` found nothing, and a diff
+    there had no blast radius. Widened here, once the parse is done, from a fact the file
+    states: its length.
+    """
+    from dataclasses import replace
+
+    from orchestrator.pkg.razor import _lines
+
+    stem = component_class_name(rel)
+    type_id = f"csharp:{_join_ns(namespace, stem)}"
+    total = len(_lines(text)) or 1
+    if all(n.id != type_id for n in batch.nodes):
+        return batch
+    widened = FactBatch()
+    for node in batch.nodes:
+        if node.id == type_id and node.provenance is not None:
+            node = replace(node, provenance=Provenance(rel, 1, total))
+        widened.add_node(node)
+    for edge in batch.edges:
+        widened.add_edge(edge)
+    return widened
 
 
 __all__ = ["CSharpExtractor"]

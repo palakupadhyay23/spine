@@ -60,6 +60,14 @@ class Landing:
     #: never *"no prior work"*. The distinction is why the report states coverage once rather
     #: than leaving a reader to infer it from blanks.
     intents: tuple[str, ...] = ()
+    #: The retrieval score and the query tokens the name shared, and whether that evidence is
+    #: **weak** — resting only on words that name other files too. Carried because the score used
+    #: to be discarded here, which left every consumer unable to tell "matched on `oauth2`"
+    #: from "matched on `client`": NSS-1231's five wrong files were all the second kind, and
+    #: the design promoted them to "Files to touch" with no way to know.
+    score: float = 0.0
+    matched: tuple[str, ...] = ()
+    weak: bool = False
 
     @property
     def location(self) -> str:
@@ -131,15 +139,16 @@ def build_investigation(
 
     retriever = GroundedRetriever(store)
     # One extra, so `elided` can distinguish "these are all of them" from "this is the top N".
-    symbols = retriever.relevant_symbols(f"{title}\n{problem}", limit=max_symbols + 1)
-    elided = max(0, len(symbols) - max_symbols)
-    symbols = symbols[:max_symbols]
+    hits = retriever.scored_symbols(f"{title}\n{problem}", limit=max_symbols + 1)
+    elided = max(0, len(hits) - max_symbols)
+    hits = hits[:max_symbols]
     parents = store.parents_index()
 
     landing: list[Landing] = []
     areas: list[str] = []
     repos: list[str] = []
-    for n in symbols:
+    for hit in hits:
+        n = hit.node
         module = _owning_module(store, n.id, parents)
         repo, _ = unscope_id(n.id)
         landing.append(
@@ -155,6 +164,9 @@ def build_investigation(
                 # out in blame order, which is stable but not meaningful, and a brief that
                 # reorders between runs cannot be diffed.
                 intents=tuple(sorted(i.name for i in store.intents_for(n.id))),
+                score=round(hit.score, 2),
+                matched=hit.matched,
+                weak=hit.weak,
             )
         )
         # Areas are qualified by repo, or two services that both have `app.models` collapse
@@ -261,8 +273,18 @@ def render_investigation_md(inv: Investigation) -> str:
                 shown = ", ".join(hit.intents[:3])
                 more = f" +{len(hit.intents) - 3} more" if len(hit.intents) > 3 else ""
                 served = f" — last changed for {shown}{more}"
+            # A weak hit says what it rests on. "Confirm before trusting" above is advice; this
+            # is the evidence a reader needs to act on it — and the design drops weak hits
+            # rather than promoting them to files to touch.
+            shared = ", ".join(f"`{t}`" for t in hit.matched)
+            basis = f" — weak: only {shared}, which other files use too" if hit.weak and hit.matched else ""
+            head = f"- {prefix}`{hit.name}` ({hit.kind}, {hit.callers} caller(s){reach})"
+            out.append(f"{head}{in_mod}{loc}{served}{basis}")
+        if inv.landing and all(hit.weak for hit in inv.landing):
             out.append(
-                f"- {prefix}`{hit.name}` ({hit.kind}, {hit.callers} caller(s){reach}){in_mod}{loc}{served}"
+                "\n_Every match rests only on words other files use too. That is not a landing site — this "
+                "ticket may name new behaviour, or use words the code doesn't. The design proposes "
+                "no files from it; name the file, class or endpoint involved._"
             )
         if any(hit.intents for hit in inv.landing):
             # Stated once, at report level, and only when the tier actually ran. Per symbol it

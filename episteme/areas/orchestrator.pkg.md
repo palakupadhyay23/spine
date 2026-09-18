@@ -3,7 +3,7 @@
 
 [← Episteme](../README.md) · [Architecture](../architecture.md)
 
-**`orchestrator.pkg`** is one of 61 areas in this repo, in the `orchestrator` zone. It holds 66 modules — 136 types and 601 functions. It sits in the middle of the graph: 1 area below it, 18 above. Changes here can reach both ways.
+**`orchestrator.pkg`** is one of 61 areas in this repo, in the `orchestrator` zone. It holds 67 modules — 138 types and 608 functions. It sits in the middle of the graph: 1 area below it, 19 above. Changes here can reach both ways.
 
 ```mermaid
 flowchart LR
@@ -13,9 +13,9 @@ flowchart LR
   n3["orchestrator.cli"]
   n4["orchestrator.codereview"]
   n5["orchestrator.evals"]
-  n6["orchestrator.knowledge"]
-  n7["orchestrator.mcp"]
-  n8["orchestrator.plugin"]
+  n6["orchestrator.intake"]
+  n7["orchestrator.knowledge"]
+  n8["orchestrator.mcp"]
   n1 --> n0
   n2 --> n0
   n3 --> n0
@@ -27,9 +27,9 @@ flowchart LR
   n0 --> n5
 ```
 
-**In the diagram:** **`orchestrator.pkg`** (this area) · [`orchestrator.agentic`](orchestrator.agentic.md) · [`orchestrator.catalog`](orchestrator.catalog.md) · [`orchestrator.cli`](orchestrator.cli.md) · [`orchestrator.codereview`](orchestrator.codereview.md) · [`orchestrator.evals`](orchestrator.evals.md) · [`orchestrator.knowledge`](orchestrator.knowledge.md) · [`orchestrator.mcp`](orchestrator.mcp.md) · [`orchestrator.plugin`](orchestrator.plugin.md)
+**In the diagram:** **`orchestrator.pkg`** (this area) · [`orchestrator.agentic`](orchestrator.agentic.md) · [`orchestrator.catalog`](orchestrator.catalog.md) · [`orchestrator.cli`](orchestrator.cli.md) · [`orchestrator.codereview`](orchestrator.codereview.md) · [`orchestrator.evals`](orchestrator.evals.md) · [`orchestrator.intake`](orchestrator.intake.md) · [`orchestrator.knowledge`](orchestrator.knowledge.md) · [`orchestrator.mcp`](orchestrator.mcp.md)
 
-_Showing 9 of 19 neighbouring areas._
+_Showing 9 of 20 neighbouring areas._
 
 ## Modules
 
@@ -85,6 +85,7 @@ _Showing 9 of 19 neighbouring areas._
 - [`orchestrator.pkg.python_client`](../../src/orchestrator/pkg/python_client.py#L1)
 - [`orchestrator.pkg.python_orm`](../modules/orchestrator.pkg.python_orm.md)
 - [`orchestrator.pkg.python_routes`](../../src/orchestrator/pkg/python_routes.py#L1)
+- [`orchestrator.pkg.razor`](../../src/orchestrator/pkg/razor.py#L1)
 - [`orchestrator.pkg.rdf`](../../src/orchestrator/pkg/rdf.py#L1)
 - [`orchestrator.pkg.repos`](../../src/orchestrator/pkg/repos.py#L1)
 - [`orchestrator.pkg.retrieval`](../../src/orchestrator/pkg/retrieval.py#L1)
@@ -106,4 +107,4 @@ _Showing 9 of 19 neighbouring areas._
 
 ## Depended on by
 
-[`orchestrator.agentic`](orchestrator.agentic.md), [`orchestrator.catalog`](orchestrator.catalog.md), [`orchestrator.cli`](orchestrator.cli.md), [`orchestrator.codereview`](orchestrator.codereview.md), [`orchestrator.evals`](orchestrator.evals.md), [`orchestrator.knowledge`](orchestrator.knowledge.md), [`orchestrator.mcp`](orchestrator.mcp.md), [`orchestrator.plugin`](orchestrator.plugin.md), [`orchestrator.registry`](orchestrator.registry.md), [`orchestrator.sdlc`](orchestrator.sdlc.md), [`orchestrator.spine`](orchestrator.spine.md), `scripts.classify-unbound-mentions`, [`scripts.codegen_benchmark`](scripts.codegen_benchmark.md), `scripts.phase2a_parity_gate`, `scripts.render_architecture_svg`, [`scripts.sdlc_shapes`](scripts.sdlc_shapes.md), `scripts.state-numbers`, `scripts.validate-frontend`
+[`orchestrator.agentic`](orchestrator.agentic.md), [`orchestrator.catalog`](orchestrator.catalog.md), [`orchestrator.cli`](orchestrator.cli.md), [`orchestrator.codereview`](orchestrator.codereview.md), [`orchestrator.evals`](orchestrator.evals.md), [`orchestrator.intake`](orchestrator.intake.md), [`orchestrator.knowledge`](orchestrator.knowledge.md), [`orchestrator.mcp`](orchestrator.mcp.md), [`orchestrator.plugin`](orchestrator.plugin.md), [`orchestrator.registry`](orchestrator.registry.md), [`orchestrator.sdlc`](orchestrator.sdlc.md), [`orchestrator.spine`](orchestrator.spine.md), `scripts.classify-unbound-mentions`, [`scripts.codegen_benchmark`](scripts.codegen_benchmark.md), `scripts.phase2a_parity_gate`, `scripts.render_architecture_svg`, [`scripts.sdlc_shapes`](scripts.sdlc_shapes.md), `scripts.state-numbers`, `scripts.validate-frontend`

@@ -9,7 +9,7 @@
 
 ## Changing this safely
 
-**Tested by** (4): `tests.pkg.test_join_link`, `tests.pkg.test_multi_repo_load`, `tests.pkg.test_nested_repos`, `tests.pkg.test_persistence`
+**Tested by** (5): `tests.pkg.test_join_link`, `tests.pkg.test_multi_repo_load`, `tests.pkg.test_nested_repos`, `tests.pkg.test_persistence`, `tests.pkg.test_razor`
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
@@ -112,7 +112,7 @@
 
 [`src/orchestrator/pkg/persistence.py:182`](../../src/orchestrator/pkg/persistence.py#L182)
 
-- **Called by** (1 production · 6 test): [`_cache_path`](../../src/orchestrator/pkg/persistence.py#L230), [`test_a_cache_from_a_different_extractor_is_not_read`](../../tests/pkg/test_persistence.py#L210), [`test_changing_an_extractor_changes_the_fingerprint`](../../tests/pkg/test_persistence.py#L192), [`test_clang_presence_and_version_change_fingerprint`](../../tests/pkg/test_persistence.py#L257), [`test_the_fingerprint_is_in_the_cache_filename`](../../tests/pkg/test_persistence.py#L235), [`test_the_fingerprint_is_stable_across_processes`](../../tests/pkg/test_persistence.py#L173), [`test_the_fingerprint_is_stable_within_a_process`](../../tests/pkg/test_persistence.py#L169)
+- **Called by** (1 production · 7 test): [`_cache_path`](../../src/orchestrator/pkg/persistence.py#L230), [`test_a_cache_from_a_different_extractor_is_not_read`](../../tests/pkg/test_persistence.py#L210), [`test_a_warm_cache_cannot_serve_a_razor_less_graph`](../../tests/pkg/test_razor.py#L160), [`test_changing_an_extractor_changes_the_fingerprint`](../../tests/pkg/test_persistence.py#L192), [`test_clang_presence_and_version_change_fingerprint`](../../tests/pkg/test_persistence.py#L257), [`test_the_fingerprint_is_in_the_cache_filename`](../../tests/pkg/test_persistence.py#L235), [`test_the_fingerprint_is_stable_across_processes`](../../tests/pkg/test_persistence.py#L173), [`test_the_fingerprint_is_stable_within_a_process`](../../tests/pkg/test_persistence.py#L169)
 - **Calls** (2): `pathlib.Path`, `sha256`
 - **Documented in**: `docs/evals/clang-semantic-step4-smoke.txt`, `docs/specs/kotlin-support-roadmap.md#8-blast-radius-measured-from-the-pkg-per-registration-site`, `docs/specs/perl-support-roadmap.md#4-phases-the-living-table`, `docs/specs/perl-support-roadmap.md#7-blast-radius-measured-from-the-pkg-per-registration-site`, `docs/specs/templates/language-track.md#7-blast-radius-measured-from-the-pkg-per-registration-site`
 
@@ -157,7 +157,7 @@
 
 [`src/orchestrator/pkg/persistence.py:145`](../../src/orchestrator/pkg/persistence.py#L145)
 
-- **Called by** (7): [`_per_repo`](../../src/orchestrator/plugin/server.py#L975), [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`check_declared_repos`](../../scripts/sdlc_shapes.py#L264), [`check_memory_bank`](../../src/orchestrator/knowledge/understand.py#L314), [`load_or_extract`](../../src/orchestrator/pkg/persistence.py#L237), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L378), [`render_memory_bank`](../../src/orchestrator/knowledge/understand.py#L122)
+- **Called by** (7): [`_per_repo`](../../src/orchestrator/plugin/server.py#L978), [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`check_declared_repos`](../../scripts/sdlc_shapes.py#L264), [`check_memory_bank`](../../src/orchestrator/knowledge/understand.py#L314), [`load_or_extract`](../../src/orchestrator/pkg/persistence.py#L237), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L378), [`render_memory_bank`](../../src/orchestrator/knowledge/understand.py#L122)
 - **Calls** (2): [`_git`](../../src/orchestrator/pkg/persistence.py#L138), `pathlib.Path`
 - **Documented in**: `docs/specs/multi-repo-roadmap.md#submodules-a-multi-repo-laid-out-inside-one-checkout-2026-09-09`, `docs/specs/pkg-accuracy-gaps.md#6-operational-open-right-now`
 
@@ -174,4 +174,4 @@
 
 ## Imported by
 
-[`orchestrator.cli.change`](../../src/orchestrator/cli/change.py#L1), [`orchestrator.cli.pkg`](orchestrator.cli.pkg.md), [`orchestrator.cli.understand`](../../src/orchestrator/cli/understand.py#L1), [`orchestrator.codereview.checkout`](../../src/orchestrator/codereview/checkout.py#L1), [`orchestrator.evals.localization`](../../src/orchestrator/evals/localization.py#L1), [`orchestrator.knowledge.analysis`](../../src/orchestrator/knowledge/analysis.py#L1), [`orchestrator.knowledge.understand`](../../src/orchestrator/knowledge/understand.py#L1), [`orchestrator.pkg`](../../src/orchestrator/pkg/__init__.py#L1), [`orchestrator.plugin.server`](orchestrator.plugin.server.md), [`scripts.sdlc_shapes`](scripts.sdlc_shapes.md), [`tests.pkg.test_join_link`](../../tests/pkg/test_join_link.py#L1), [`tests.pkg.test_multi_repo_load`](../../tests/pkg/test_multi_repo_load.py#L1), [`tests.pkg.test_nested_repos`](../../tests/pkg/test_nested_repos.py#L1), [`tests.pkg.test_persistence`](../../tests/pkg/test_persistence.py#L1)
+[`orchestrator.cli.change`](../../src/orchestrator/cli/change.py#L1), [`orchestrator.cli.pkg`](orchestrator.cli.pkg.md), [`orchestrator.cli.understand`](../../src/orchestrator/cli/understand.py#L1), [`orchestrator.codereview.checkout`](../../src/orchestrator/codereview/checkout.py#L1), [`orchestrator.evals.localization`](../../src/orchestrator/evals/localization.py#L1), [`orchestrator.knowledge.analysis`](../../src/orchestrator/knowledge/analysis.py#L1), [`orchestrator.knowledge.understand`](../../src/orchestrator/knowledge/understand.py#L1), [`orchestrator.pkg`](../../src/orchestrator/pkg/__init__.py#L1), [`orchestrator.plugin.server`](orchestrator.plugin.server.md), [`scripts.sdlc_shapes`](scripts.sdlc_shapes.md), [`tests.pkg.test_join_link`](../../tests/pkg/test_join_link.py#L1), [`tests.pkg.test_multi_repo_load`](../../tests/pkg/test_multi_repo_load.py#L1), [`tests.pkg.test_nested_repos`](../../tests/pkg/test_nested_repos.py#L1), [`tests.pkg.test_persistence`](../../tests/pkg/test_persistence.py#L1), [`tests.pkg.test_razor`](../../tests/pkg/test_razor.py#L1)

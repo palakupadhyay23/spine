@@ -1,0 +1,22 @@
+@using App
+@inject IProductService Products
+
+<table>
+    @foreach (var p in Items) {
+        <tr><td>@Display(p.Group)</td></tr>
+    }
+</table>
+
+@code {
+    [Parameter] public List<Product> Items { get; set; } = new();
+
+    private string Display(string code)
+    {
+        return Expand(code);
+    }
+
+    private string Expand(string code)
+    {
+        return code;
+    }
+}

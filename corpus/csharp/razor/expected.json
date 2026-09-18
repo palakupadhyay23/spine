@@ -1,0 +1,97 @@
+{
+  "language": "csharp",
+  "case": "razor",
+  "why": "The control for the Razor rewrite, in the vocabulary the C# front-end already has: a Blazor component beside the C# type it renders. The component declares no `@namespace`, so its module is its path, like an unnamespaced .cs; `@using App` imports the sibling module by its real id; `@inject` is a field; the members of `@code` are the class's, and a bare sibling call inside `@code` is a CALLS edge. Every fact the vocabulary can express is labelled; the one it cannot is under `excluded` with its reason. A control scores 1.00/1.00 by design — the signal is any run where it does not.",
+  "root": ".repo",
+  "nodes": [
+    {
+      "id": "csharp:App",
+      "kind": "Module"
+    },
+    {
+      "id": "csharp:App.Product",
+      "kind": "Type"
+    },
+    {
+      "id": "csharp:App.Product.Group",
+      "kind": "Field"
+    },
+    {
+      "id": "csharp:App/ProductsGrid.razor",
+      "kind": "Module"
+    },
+    {
+      "id": "csharp:ProductsGrid",
+      "kind": "Type"
+    },
+    {
+      "id": "csharp:ProductsGrid.Products",
+      "kind": "Field"
+    },
+    {
+      "id": "csharp:ProductsGrid.Items",
+      "kind": "Field"
+    },
+    {
+      "id": "csharp:ProductsGrid.Display",
+      "kind": "Function"
+    },
+    {
+      "id": "csharp:ProductsGrid.Expand",
+      "kind": "Function"
+    }
+  ],
+  "edges": [
+    {
+      "src": "csharp:App",
+      "dst": "csharp:App.Product",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:App.Product",
+      "dst": "csharp:App.Product.Group",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:App/ProductsGrid.razor",
+      "dst": "csharp:ProductsGrid",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:ProductsGrid",
+      "dst": "csharp:ProductsGrid.Products",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:ProductsGrid",
+      "dst": "csharp:ProductsGrid.Items",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:ProductsGrid",
+      "dst": "csharp:ProductsGrid.Display",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:ProductsGrid",
+      "dst": "csharp:ProductsGrid.Expand",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "csharp:App/ProductsGrid.razor",
+      "dst": "csharp:App",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "csharp:ProductsGrid.Display",
+      "dst": "csharp:ProductsGrid.Expand",
+      "kind": "CALLS"
+    }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "excluded": [
+    "`@Display(p.Group)` in the markup is a real call — the generated render method invokes it — but the vocabulary has no node for a component's render method, so there is no caller id to label it under. Inline markup expressions are not read by design (the ticket-context track's D9); when they are, this is the edge to add, with a caller the graph can name."
+  ],
+  "open_questions": []
+}

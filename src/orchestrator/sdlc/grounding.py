@@ -183,7 +183,10 @@ class PKGCodegenGrounder:
 
 def _spec_query(spec: dict[str, Any]) -> str:
     """Concatenate the spec's prose fields into one retrieval query."""
-    parts = [str(spec.get(k) or "") for k in ("title", "summary", "user_story", "technical_notes")]
+    parts = [
+        str(spec.get(k) or "")
+        for k in ("title", "summary", "description", "scope", "user_story", "technical_notes")
+    ]
     criteria = spec.get("acceptance_criteria")
     if isinstance(criteria, list):
         parts.extend(str(c) for c in criteria)

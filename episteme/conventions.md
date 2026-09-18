@@ -15,15 +15,15 @@
 
 
 **Naming**
-- **Functions** are `snake_case` (100% of 3620).
-- **Types** are `PascalCase` (100% of 791).
-- **1536 of 3620 functions** are underscore-private — the public surface is the rest.
+- **Functions** are `snake_case` (100% of 3650).
+- **Types** are `PascalCase` (100% of 795).
+- **1554 of 3650 functions** are underscore-private — the public surface is the rest.
 
 **Tests**
 
-- **374 test modules**, named `test_*.py` (94%).
-- They live in `tests/pkg/` (64), `tests/sdlc/` (61), `tests/registry/` (34), `tests/intake/` (25).
+- **379 test modules**, named `test_*.py` (94%).
+- They live in `tests/pkg/` (65), `tests/sdlc/` (64), `tests/registry/` (34), `tests/intake/` (26).
 
 **Errors**
 
-- **67 exception types** of its own, rooted at `LLMError`, `TaskOrchestrationError`, `GatewayError`, `CheckoutError`, `ObjectStoreError`. Failure is signalled by raising these, not by return codes.
+- **69 exception types** of its own, rooted at `LLMError`, `TaskOrchestrationError`, `GatewayError`, `CheckoutError`, `ObjectStoreError`. Failure is signalled by raising these, not by return codes.

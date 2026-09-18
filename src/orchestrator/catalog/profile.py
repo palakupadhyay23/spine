@@ -25,6 +25,7 @@ _LANG_BY_SUFFIX = {
     ".js": "javascript",
     ".jsx": "javascript",
     ".cs": "csharp",
+    ".razor": "csharp",  # a Blazor component: C# plus markup, read by the C# front-end
     ".c": "c",
     ".h": "c",
     ".cpp": "cpp",

@@ -54,6 +54,7 @@ _REVIEWABLE_SUFFIXES = frozenset(
         ".cpp",
         ".hpp",
         ".cs",
+        ".razor",
         ".ts",
         ".tsx",
         ".js",

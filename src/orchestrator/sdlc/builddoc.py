@@ -754,7 +754,16 @@ def _blast_prose(bd: dict[str, Any], language: str = "python") -> str:
     """The three blocks the template requires, in order: reading, containment, caveat."""
     modules = bd.get("modules") or []
     shown = modules[:_MAX_MODULES]
-    total_importers = sum(int(m.get("importers") or 0) for m in modules)
+    # Two design paths inside one namespace resolve to the same module node, and its importers
+    # are one fact, not two. Summed per row, a three-file namespace reported its fan-in three
+    # times over. Per distinct module, it is reported once.
+    # Keyed on (module, where): in a merged multi-repo graph two services both keyed `App.Models`
+    # are two modules, and the name alone would fold their importers into one.
+    per_module: dict[tuple[str, str], int] = {}
+    for m in modules:
+        key = (str(m.get("module") or m.get("ref") or ""), str(m.get("where") or ""))
+        per_module.setdefault(key, int(m.get("importers") or 0))
+    total_importers = sum(per_module.values())
     total_hotspots = sum(len(m.get("hotspots") or []) for m in modules)
 
     elided = ""
@@ -1053,7 +1062,9 @@ def render_build_md(
     blast = design.get("blast_radius") or {}
     changed, created, carried = _file_rows(files, root)
 
-    landing = list(getattr(investigation, "landing", []) or [])
+    landing = [
+        land for land in (getattr(investigation, "landing", []) or []) if not getattr(land, "weak", False)
+    ]
     landing_files = {str(getattr(land, "where", "")).split(":", 1)[0] for land in landing}
     agreed = sorted(landing_files & set(files))
 
@@ -1076,9 +1087,31 @@ def render_build_md(
     add("---\n")
 
     add("## 1. Requirement")
-    add(_label(STATED, "the ticket body, quoted"))
+    # This section carried a `stated — the ticket body, quoted` label over `spec["summary"]`,
+    # which is the spec writer's paraphrase — a model's prose under the authority of a quote,
+    # the exact confusion `brief.py`'s vocabulary exists to prevent. On NSS-1231 the paraphrase
+    # had dropped the file the ticket named and invented four words, and a reader had no way
+    # to see the ticket to know. The intent's description is the closest thing intake carries
+    # to the ticket's own words (the extractor keeps identifiers verbatim there); it is shown
+    # when present, and either way the label says what the text is.
+    description = str(spec.get("description") or "").strip()
     add(f"**{title}**\n")
-    add(str(spec.get("summary") or "_The ticket says nothing beyond its title._") + "\n")
+    if description:
+        add(
+            _label(
+                MODEL,
+                "a model's carry of the intent's description — identifiers required verbatim; not a quote",
+            )
+        )
+        add(description + "\n")
+    else:
+        add(
+            _label(
+                MODEL,
+                "`intake/specs.py` — the spec writer's summary; the ticket's own words were not carried",
+            )
+        )
+        add(str(spec.get("summary") or "_The ticket says nothing beyond its title._") + "\n")
 
     add("## 2. Intent")
     add(_label(MODEL, "`intake/specs.py` — the spec writer"))
@@ -1257,14 +1290,23 @@ async def build_plan(
     store = FactStore(batch)
     overview = build_overview(batch)
 
+    from orchestrator.sdlc.design import _query_text, _stated_paths
+
+    # The same text the design reads. Read from title + summary alone, the gate saw a ticket
+    # whose file was named in `description` as landing nowhere while §7 listed that file.
     investigation = build_investigation(
         str(spec.get("title") or ""),
-        str(spec.get("summary") or ""),
+        _query_text(spec, title=False),
         store=store,
         root=root_path,
     )
-    landing = []
+    # A path the ticket names is where it lands, whatever retrieval made of its prose.
+    landing = list(_stated_paths(spec, root_path))
     for land in getattr(investigation, "landing", []) or []:
+        # The same floor the design applies: a hit on one shared word is not a landing site,
+        # and handing the gate every weak hit is how an all-weak ticket read as located.
+        if getattr(land, "weak", False):
+            continue
         where = str(getattr(land, "where", "")).split(":", 1)[0]
         if where and where not in landing:
             landing.append(where)
