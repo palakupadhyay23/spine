@@ -188,6 +188,29 @@ def _detect_build_tool(root: Path) -> str:
     return ""
 
 
+#: Directories whose contents are somebody else's code, by convention. `DEFAULT_IGNORE_DIRS`
+#: covers build output and `vendor`; these are the source-shaped ones a placement must never
+#: choose. Measured: a 50-file `third_party/guavaish/src/main/java` beat the repository's own
+#: one-file `services/api` on "most source", so a ticket naming no path would have opened a
+#: PR editing vendored Guava.
+_NOT_OURS = frozenset(
+    {
+        "third_party",
+        "third-party",
+        "thirdparty",
+        "external",
+        "externals",
+        "samples",
+        "sample",
+        "examples",
+        "example",
+        "benchmarks",
+        "fixtures",
+        "testdata",
+    }
+)
+
+
 def _module_roots(root: Path, source_root: str) -> list[Path]:
     """Directories holding a ``src/main/<source_root>`` tree — the repository's modules.
 
@@ -204,7 +227,10 @@ def _module_roots(root: Path, source_root: str) -> list[Path]:
         dirnames[:] = sorted(
             d
             for d in dirnames
-            if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".") and not is_nested_repo(here, d)
+            if d not in DEFAULT_IGNORE_DIRS
+            and d.lower() not in _NOT_OURS
+            and not d.startswith(".")
+            and not is_nested_repo(here, d)
         )
         if (here / "src" / "main" / source_root).is_dir():
             found.append(here)
@@ -385,6 +411,8 @@ def _module_layout(
     target = package_name or derived
     chose = ""
     module = android.module_for_package(root, target)
+    if module is not None:
+        chose = "module already holds this package"
     if module is None and package_name is None:
         # The ticket's own files, but only when nobody asked for a package: a build with
         # several Kotlin modules otherwise stops at "name a module", which is honest and
@@ -403,6 +431,8 @@ def _module_layout(
         # single Kotlin module still has exactly one honest answer; more than one does not.
         with_kotlin = [m for m in modules if android.base_package(m)]
         module = with_kotlin[0] if len(with_kotlin) == 1 else None
+        if module is not None:
+            chose = "only Kotlin module in the build"
         if module is not None:
             # …and the package is that module's, not the repo-derived one. Found in
             # review: falling back to the single Kotlin module while keeping the
@@ -708,7 +738,7 @@ def _project_dir(candidate: Path) -> Path:
     `acme.worker/` has a suffix by `Path`'s reckoning — so a name-based test handed back the
     repository root and let that module claim every file in the repo.
     """
-    return candidate if candidate.is_dir() else candidate.parent
+    return candidate.parent if candidate.is_file() else candidate
 
 
 def _source_file_count(directory: Path, suffixes: frozenset[str] = frozenset()) -> int:
@@ -747,7 +777,11 @@ _SOURCE_SUFFIXES = frozenset(
 
 
 def detect_csharp_layout(
-    root: Path, *, prefer_paths: Sequence[str] = (), why: list[str] | None = None
+    root: Path,
+    *,
+    prefer_paths: Sequence[str] = (),
+    why: list[str] | None = None,
+    project: str = "",
 ) -> tuple[str, str, str] | None:
     """If the repo is a recognizable .NET project, return ``(project, source_dir,
     tests_dir)``. ``source_dir`` is the chosen project's directory. Tests go to a
@@ -761,6 +795,15 @@ def detect_csharp_layout(
     csprojs = sorted(root.rglob("*.csproj"))
     if not csprojs:
         return None
+    # An explicit project name settles it outright. Until this existed there was no lever at
+    # all: `--package-name` renamed the layout without retargeting it, so an operator who knew
+    # the inference was wrong had no way to say so.
+    if project:
+        named = next((p for p in csprojs if p.stem.lower() == project.lower()), None)
+        if named is not None:
+            if why is not None:
+                why.append("named explicitly")
+            return _csharp_from(named, csprojs, root)
     production = [p for p in csprojs if not p.stem.lower().endswith(("test", "tests"))]
     src_proj = (
         choose_project(
@@ -768,12 +811,14 @@ def detect_csharp_layout(
         )
         or csprojs[0]
     )
+    return _csharp_from(src_proj, csprojs, root)
+
+
+def _csharp_from(src_proj: Path, csprojs: Sequence[Path], root: Path) -> tuple[str, str, str]:
+    """``(project, source_dir, tests_dir)`` once the source project is settled."""
     project = src_proj.stem
     source_dir = src_proj.parent.relative_to(root).as_posix()
-    test_proj = next(
-        (p for p in csprojs if p.stem.lower().endswith(("test", "tests"))),
-        None,
-    )
+    test_proj = next((p for p in csprojs if p.stem.lower().endswith(("test", "tests"))), None)
     tests_dir = (
         test_proj.parent.relative_to(root).as_posix() if test_proj is not None else _csharp_dirs(project)[1]
     )
@@ -784,7 +829,7 @@ def _resolve_csharp_layout(
     root: Path, *, mode: str, package_name: str | None, repo: str | None, prefer_paths: Sequence[str] = ()
 ) -> TargetLayout:
     why: list[str] = []
-    existing = detect_csharp_layout(root, prefer_paths=prefer_paths, why=why)
+    existing = detect_csharp_layout(root, prefer_paths=prefer_paths, why=why, project=package_name or "")
     derived = package_name or derive_csharp_namespace(repo or str(root))
     if mode == "existing" or (mode == "auto" and existing is not None):
         if existing is not None:

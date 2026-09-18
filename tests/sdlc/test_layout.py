@@ -630,3 +630,55 @@ def test_the_java_layout_says_which_rule_chose_the_module(tmp_path: Path) -> Non
         prefer_paths=["worker/src/main/java/com/acme/worker/Main.java"],
     )
     assert layout.chosen_reason == "holds 1 of 1 file(s) the design names"
+
+
+def test_naming_the_project_settles_it_outright(tmp_path: Path) -> None:
+    """The lever a human needs when the inference is wrong. Before this, `--package-name`
+    renamed the layout without retargeting it, so an operator who *knew* the run was aimed at
+    the wrong project had no way to say so — reported from the field on NSS-1239."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _nss_1239(tmp_path)
+    layout = resolve_layout(
+        tmp_path,
+        mode="existing",
+        language="csharp",
+        package_name="ApiClient",
+        prefer_paths=["WebApp/C1.cs"],  # the inference would say WebApp; the operator says otherwise
+    )
+    assert (layout.package_name, layout.source_dir) == ("ApiClient", "ApiClient")
+    assert layout.chosen_reason == "named explicitly"
+
+
+def test_a_vendored_java_tree_is_never_a_placement_candidate(tmp_path: Path) -> None:
+    """`third_party/` is source-shaped, so the per-language filter cannot help: a 50-file
+    vendored Guava beat the repository's own one-file service on "most source", and a ticket
+    naming no path would have opened a PR editing somebody else's code."""
+    from orchestrator.sdlc.layout import detect_java_layout
+
+    own = tmp_path / "services" / "api" / "src" / "main" / "java" / "com" / "acme"
+    own.mkdir(parents=True)
+    (own / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+    vendored = tmp_path / "third_party" / "guavaish" / "src" / "main" / "java" / "com" / "google"
+    vendored.mkdir(parents=True)
+    for i in range(50):
+        (vendored / f"G{i}.java").write_text("class G {}\n", encoding="utf-8")
+
+    detected = detect_java_layout(tmp_path)
+    assert detected is not None and detected[1] == "services/api/src/main/java/com/acme"
+
+
+def test_the_kotlin_layout_says_why_it_rewrote_the_package(tmp_path: Path) -> None:
+    """Both remaining Kotlin branches replace the operator's derived package with the module's
+    own — which is right, and is exactly the surprise the `[layout]` line exists to explain."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    d = tmp_path / "app" / "src" / "main" / "kotlin" / "com" / "acme" / "app"
+    d.mkdir(parents=True)
+    (d / "Main.kt").write_text("class Main\n", encoding="utf-8")
+    (tmp_path / "app" / "build.gradle.kts").write_text('plugins { kotlin("jvm") }\n', encoding="utf-8")
+    (tmp_path / "settings.gradle.kts").write_text('include(":app")\n', encoding="utf-8")
+
+    layout = resolve_layout(tmp_path, mode="existing", language="kotlin")
+    assert layout.module == "app"
+    assert layout.chosen_reason == "only Kotlin module in the build"

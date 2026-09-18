@@ -37,11 +37,14 @@ All notable changes to this project are documented here. Format loosely follows
   generated `obj/` tree and a vendored `wwwroot/lib/` of jQuery cannot vote — else the name,
   which now only breaks a tie the first two could not. The `[layout]` line says
   which rule fired: `src=WebApp (project chosen: holds 5 of 5 file(s) the design names)`.
-  `--package-name` still outranks it, and greenfield scaffolding is unchanged.
+  **`--package-name` now retargets, not just renames:** naming a project settles the choice
+  outright, which is the lever a `sdlc feature` run had no way to offer when the inference was
+  wrong. Vendored and sample trees (`third_party/`, `samples/`, …) are never candidates.
+  Greenfield scaffolding is unchanged.
 
 - **Java multi-module repositories resolve at all.** `root/src/main/java` is the single-module
-  shape; a Maven or Gradle monorepo keeps each module's tree under `<module>/src/main/java`,
-  where the lookup previously matched nothing and the layout fell through to a package name
+  shape; a Maven or Gradle build keeps each module's tree under `<module>/src/main/java` at any
+  depth — so `include(":services:worker")` counts — where the lookup previously matched nothing and the layout fell through to a package name
   absent from the repository. The module — and the package inside it — now follow the ticket's
   files. Kotlin was already module-aware but chose by package name and stopped at "name a module"
   when several qualified; the ticket's files settle it, and that honest refusal remains when they
