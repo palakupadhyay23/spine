@@ -32,9 +32,12 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
   CB-686's shape: `auto → typescript`. An empty repository still gets Python (`sdlc_shapes.py`).
 
 - **The coverage probe asks only what a test could answer.** Both the whole-change proof and the
-  per-file probe run over files with a testable suffix and a body (`.kt`, `.kts` and `.cshtml`
-  join that set — Kotlin is a full codegen toolchain whose files the probe had been calling
-  "not source", switching the coverage gate off for the whole run), and say what they excluded:
+  per-file probe run over files with a testable suffix and a body (`.kt` and `.cshtml` join that
+  set — Kotlin is a full codegen toolchain whose files the probe had been calling "not source",
+  switching the coverage gate off for the whole run; `.kts` stays out with `pyproject.toml` and
+  `.csproj`, because in a Kotlin repository it is `build.gradle.kts`, and probing a build script
+  means stashing it and recording the build's collapse as proof that a test reaches it), and say
+  what they excluded:
   `[coverage] excluded (not testable): .gitignore (not source), pyproject.toml (not source),
   __init__.py (empty)`. A scaffold file is never reported as "not exercised".
 
