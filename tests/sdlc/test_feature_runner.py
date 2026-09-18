@@ -1429,3 +1429,43 @@ async def test_perl_missing_toolchain_hint(monkeypatch: pytest.MonkeyPatch, tmp_
     with pytest.raises(FeatureRunError, match="needs `perl` and `prove`") as exc:
         await run_feature("file://./spec.md", language="perl")
     assert exc.value.code == 2
+
+
+# ---- what a test can exercise (CB-686 / CB-760: the scaffold files failed every greenfield run) --
+
+
+def test_scaffold_and_config_files_are_never_probed(tmp_path: Path) -> None:
+    from orchestrator.sdlc.feature_runner import _testable_production
+
+    (tmp_path / "src" / "cb_686").mkdir(parents=True)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / ".gitignore").write_text(".venv\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+    (tmp_path / "src" / "cb_686" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "src" / "cb_686" / "account.py").write_text(
+        "def delete(reason: str) -> str:\n    return reason\n", encoding="utf-8"
+    )
+    (tmp_path / "tests" / "test_account.py").write_text(
+        "def test_it() -> None:\n    pass\n", encoding="utf-8"
+    )
+    files = [
+        ".gitignore",
+        "pyproject.toml",
+        "src/cb_686/__init__.py",
+        "src/cb_686/account.py",
+        "tests/test_account.py",
+    ]
+
+    probe, excluded = _testable_production(tmp_path, files)
+
+    assert probe == ["src/cb_686/account.py"]
+    assert excluded == [".gitignore (not source)", "pyproject.toml (not source)", "__init__.py (empty)"]
+
+
+def test_a_non_empty_init_is_still_probed(tmp_path: Path) -> None:
+    from orchestrator.sdlc.feature_runner import _testable_production
+
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "__init__.py").write_text("from .core import run\n", encoding="utf-8")
+    probe, excluded = _testable_production(tmp_path, ["pkg/__init__.py", "tests/test_core.py"])
+    assert probe == ["pkg/__init__.py"] and excluded == []
