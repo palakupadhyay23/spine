@@ -6,16 +6,6 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
-Two field reports from a React Native engagement (CB-686, CB-760), plus what the NSS-1231 build
-document had scored itself, all diagnosed to defects and each reproduced as a fixture. **CB-686:**
-`sdlc feature --language auto` scaffolded a *Python* package into a React Native app, because
-one build script under `ios/Pods` was the only `.py` the walk reached — and the walk reached
-`ios/Pods` at all, so boost, glog and every React header were the repository's own symbols, with
-`node_modules/` coming back in one header at a time through the symlinks CocoaPods leaves under
-`Pods/Headers/Public`. **CB-760:** the run ended `VERDICT: FAILED` after nine test runs, five of
-them refines editing the module to satisfy a test the run's own cover stage had written, and the
-coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the suite noticed.
-
 ### Fixed
 
 - **Kotlin scope functions are refused by name *and* shape, and an imported extension outranks a
@@ -32,6 +22,20 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
   the source wrote — instead of the invented `Modifier.padding`. Kotlin corpus precision stays
   1.00 on every kind with `CALLS` recall 0.94, invention 0; new `scope_functions` corpus case and
   five tests in `tests/pkg/test_kotlin_fabrication.py`.
+
+## 3.38.0 — 2026-09-18
+
+Two field reports from a React Native engagement (CB-686, CB-760), plus what the NSS-1231 build
+document had scored itself, all diagnosed to defects and each reproduced as a fixture. **CB-686:**
+`sdlc feature --language auto` scaffolded a *Python* package into a React Native app, because
+one build script under `ios/Pods` was the only `.py` the walk reached — and the walk reached
+`ios/Pods` at all, so boost, glog and every React header were the repository's own symbols, with
+`node_modules/` coming back in one header at a time through the symlinks CocoaPods leaves under
+`Pods/Headers/Public`. **CB-760:** the run ended `VERDICT: FAILED` after nine test runs, five of
+them refines editing the module to satisfy a test the run's own cover stage had written, and the
+coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the suite noticed.
+
+### Fixed
 
 - **Vendored trees stay out of the graph.** `Pods` joins `DEFAULT_IGNORE_DIRS` (the CocoaPods
   checkout, like `node_modules` and `vendor`). A symlinked file keeps its own path — provenance
