@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from orchestrator.sdlc.layout import (
     derive_package_name,
     detect_existing_package,
@@ -348,3 +350,150 @@ def test_auto_detects_existing_migrations_dir(tmp_path: Path) -> None:
     (tmp_path / "migrations" / "001_init.sql").write_text("CREATE TABLE t (id INT);\n")
     layout = resolve_layout(tmp_path, mode="auto", language="sql")
     assert layout.language == "sql" and layout.mode == "existing"
+
+
+# ---- B10: which project, when a repository holds several -------------------------------------
+
+
+def _nss_1239(root: Path) -> None:
+    """The NSS-1239 shape: three projects, the work in the one that sorts last, and a generated
+    `obj/` tree that must not vote."""
+    for proj, files in (
+        ("ApiClient", ["Auction.cs"]),
+        ("WebApp", ["C1.cs", "C2.cs", "C3.cs", "C4.cs", "C5.cs"]),
+        ("UnitTests", ["AuctionTests.cs"]),
+    ):
+        (root / proj).mkdir(parents=True, exist_ok=True)
+        for f in files:
+            (root / proj / f).write_text("class X {}\n", encoding="utf-8")
+    (root / "ApiClient" / "ApiClient.csproj").write_text("<Project/>\n", encoding="utf-8")
+    (root / "UnitTests" / "UnitTests.csproj").write_text("<Project/>\n", encoding="utf-8")
+    (root / "WebApp" / "commercial-secondary-sales.csproj").write_text("<Project/>\n", encoding="utf-8")
+    ui = root / "WebApp" / "Features" / "Common" / "Auctions" / "Ui"
+    ui.mkdir(parents=True)
+    (ui / "AuctionCoilsUi.razor").write_text("<div/>\n", encoding="utf-8")
+    obj = root / "ApiClient" / "obj" / "Generated"
+    obj.mkdir(parents=True)
+    for i in range(50):
+        (obj / f"G{i}.cs").write_text("class G {}\n", encoding="utf-8")
+
+
+def test_nss_1239_the_project_holding_the_design_s_files_is_the_target(tmp_path: Path) -> None:
+    """NSS-1239 scaffolded into `ApiClient` — first in sorted order — while its own plan named
+    five files under `WebApp/`. Codegen could not resolve `Product`, spent every refine on
+    `using` directives, and ended FAILED after six test runs."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    _nss_1239(tmp_path)
+    design = [
+        "WebApp/Features/Common/Auctions/Ui/AuctionCoilsUi.razor",
+        "WebApp/C1.cs",
+    ]
+    assert detect_csharp_layout(tmp_path, prefer_paths=design) == (
+        "commercial-secondary-sales",
+        "WebApp",
+        "UnitTests",
+    )
+
+
+def test_without_a_design_the_project_with_the_most_source_wins(tmp_path: Path) -> None:
+    """`sdlc feature` can run with no plan behind it. Alphabetical is not an answer; how much
+    source a project holds is at least evidence — and a generated `obj/` tree does not vote."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    _nss_1239(tmp_path)
+    detected = detect_csharp_layout(tmp_path)
+    assert detected is not None and detected[1] == "WebApp"
+
+
+def test_the_layout_says_which_rule_chose_the_project(tmp_path: Path) -> None:
+    """A run that built in the wrong place should not make the reader guess whether the project
+    was derived from the ticket or defaulted."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _nss_1239(tmp_path)
+    named = resolve_layout(tmp_path, mode="existing", language="csharp", prefer_paths=["WebApp/C1.cs"])
+    assert named.chosen_reason == "holds 1 of 1 file(s) the design names"
+    assert resolve_layout(tmp_path, mode="existing", language="csharp").chosen_reason.startswith(
+        "most source"
+    )
+
+
+def test_a_single_project_repo_is_unchanged_and_says_so(tmp_path: Path) -> None:
+    from orchestrator.sdlc.layout import resolve_layout
+
+    (tmp_path / "Shop").mkdir()
+    (tmp_path / "Shop" / "Shop.csproj").write_text("<Project/>\n", encoding="utf-8")
+    (tmp_path / "Shop" / "Cart.cs").write_text("class Cart {}\n", encoding="utf-8")
+    layout = resolve_layout(tmp_path, mode="existing", language="csharp")
+    assert (layout.package_name, layout.source_dir) == ("Shop", "Shop")
+    assert layout.chosen_reason == "only candidate"
+
+
+def test_the_deepest_project_owns_its_own_files(tmp_path: Path) -> None:
+    """Nested projects are the normal .NET shape. `WebApp/Tests/` owns what is under it, not
+    `WebApp/`, or every nested file would vote for its parent."""
+    from orchestrator.sdlc.layout import choose_project
+
+    outer = tmp_path / "WebApp" / "WebApp.csproj"
+    inner = tmp_path / "WebApp" / "Integration" / "Integration.csproj"
+    inner.parent.mkdir(parents=True)
+    outer.write_text("<Project/>\n", encoding="utf-8")
+    inner.write_text("<Project/>\n", encoding="utf-8")
+
+    chosen = choose_project([outer, inner], prefer_paths=["WebApp/Integration/Thing.cs"], root=tmp_path)
+    assert chosen == inner
+
+
+def test_the_explicit_package_name_still_outranks_the_chooser(tmp_path: Path) -> None:
+    """A flag is a human's instruction; the chooser is an inference."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _nss_1239(tmp_path)
+    layout = resolve_layout(
+        tmp_path, mode="existing", language="csharp", package_name="Chosen", prefer_paths=["WebApp/C1.cs"]
+    )
+    assert layout.package_name == "Chosen"
+
+
+@pytest.mark.parametrize(
+    "language",
+    ["python", "java", "kotlin", "typescript", "csharp", "go", "php", "perl", "c", "cpp", "sql"],
+)
+def test_every_language_accepts_the_preference(tmp_path: Path, language: str) -> None:
+    """`Toolchain.layout` is `Callable[..., TargetLayout]`, so a resolver that did not accept the
+    new keyword would raise TypeError at run time and no type checker would have said so."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    assert resolve_layout(tmp_path, mode="auto", language=language, prefer_paths=["src/a.py"])
+
+
+def test_a_multi_module_java_build_resolves_the_module_the_design_names(tmp_path: Path) -> None:
+    """`root/src/main/java` is the single-module shape. A Maven or Gradle monorepo keeps each
+    module's tree under `<module>/src/main/java`, where the old lookup saw nothing at all and the
+    layout fell through to a package name that does not exist in the repo."""
+    from orchestrator.sdlc.layout import detect_java_layout
+
+    for module, pkg in (("api", "com/acme/api"), ("worker", "com/acme/worker")):
+        d = tmp_path / module / "src" / "main" / "java" / pkg
+        d.mkdir(parents=True)
+        (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+
+    assert detect_java_layout(tmp_path, prefer_paths=["worker/src/main/java/com/acme/worker/Main.java"]) == (
+        "com.acme.worker",
+        "worker/src/main/java/com/acme/worker",
+        "worker/src/test/java/com/acme/worker",
+    )
+
+
+def test_a_single_module_java_build_is_unchanged(tmp_path: Path) -> None:
+    from orchestrator.sdlc.layout import detect_java_layout
+
+    d = tmp_path / "src" / "main" / "java" / "com" / "acme"
+    d.mkdir(parents=True)
+    (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+    assert detect_java_layout(tmp_path) == (
+        "com.acme",
+        "src/main/java/com/acme",
+        "src/test/java/com/acme",
+    )
