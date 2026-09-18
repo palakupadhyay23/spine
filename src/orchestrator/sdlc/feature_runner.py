@@ -16,6 +16,7 @@ run adopts it and creates nothing.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import re
 import time
@@ -82,6 +83,36 @@ class FeatureRunResult:
     # Rebuilding them elsewhere would review one change and fix a differently-configured one.
     codegen: Any = None
     tests: Any = None
+    # Test files the cover stage wrote and the run withdrew because no refine could satisfy
+    # them. Empty on a run whose coverage stands. Rendered into the journey, never silent: a
+    # withdrawn test means the change is *less* proven than a green suite implies.
+    coverage_withdrawn: list[str] = field(default_factory=list)
+
+
+async def _withdraw_cover_tests(
+    path: Path, files: list[str], emit: Callable[[str], None], *, attempts: int
+) -> None:
+    """Undo the tests the run's own cover stage wrote — narrowly, and saying so.
+
+    CB-760: the cover stage wrote `test_main_stdout`, a test asserting `__main__`-guarded
+    output under a monkeypatch, and five refines edited the module chasing it until the
+    budget ran out — FAILED after nine test runs, for a test the ticket never asked for. A
+    cover-authored test is the run's own guess at coverage, not the spec's contract; when the
+    refine budget is spent on it, withdrawing it is honest, and only that: the spec's tests
+    and the run's `author_tests` tests are never touched here.
+    """
+    for rel in files:
+        # A tracked test the cover stage edited goes back to HEAD; a new one has no HEAD to
+        # go back to and is removed.
+        ok, _ = await _git_out(path, "checkout", "--", rel)
+        if not ok:
+            with contextlib.suppress(OSError):
+                (path / rel).unlink()
+    names = ", ".join(Path(f).name for f in files)
+    emit(
+        f"[cover] withdrawn: {names} — the run's own coverage test could not be satisfied after "
+        f"{attempts} refine(s); coverage not proven"
+    )
 
 
 def _testable_production(path: Path, files: list[str]) -> tuple[list[str], list[str]]:
@@ -1007,6 +1038,8 @@ async def run_feature(
     # change was fixable and the run reported FAILED. Each check now gets guaranteed room,
     # with a hard ceiling so a pathological run still terminates.
     spent = {"tests": 0, "types": 0, "coverage": 0}
+    cover_written: list[str] = []
+    withdrawn: list[str] = []
     budgets = {"tests": max_refine, "types": max_refine, "coverage": _MAX_COVERAGE_FIXES}
     ceiling = sum(budgets.values()) + 1
     while iterations < ceiling:
@@ -1040,11 +1073,26 @@ async def run_feature(
                         spec=spec, path=str(path), issue_key=issue_key, gaps=gaps
                     )
                 emit(f"[cover] {[Path(f).name for f in covered.files]} - {covered.summary}")
+                cover_written.extend(f for f in covered.files if _is_test_path(f))
                 if not covered.files:
                     emit("[cover] no tests written for the gap — stopping rather than looping")
                     break
                 continue
         if spent[kind] >= budgets[kind]:
+            # The tests budget died on a test the cover stage itself wrote (CB-760). Withdraw
+            # it — once, only those files — and let the suite the ticket actually asked for
+            # decide. A red test the output does not attribute to a cover file is still fatal.
+            culprits = [f for f in cover_written if Path(f).name in failures] if kind == "tests" else []
+            if culprits and not withdrawn:
+                await _withdraw_cover_tests(path, culprits, emit, attempts=spent["tests"])
+                withdrawn = list(culprits)
+                result = await run_with_autoheal(runner, testenv, str(path), emit=emit)
+                iterations += 1
+                emit(f"[run_tests #{iterations}] passed={result.passed} rc={result.returncode}")
+                if result.passed:
+                    changed = await _changed_files(path)
+                    passed = not await _typecheck_the_change(path, testenv, changed, emit)
+                break
             emit(f"[refine] out of {kind} attempts — stopping")
             break
         spent[kind] += 1
@@ -1156,6 +1204,7 @@ async def run_feature(
         pr_url=pr_url,
         codegen=codegen,
         tests=runner,
+        coverage_withdrawn=withdrawn,
     )
 
 

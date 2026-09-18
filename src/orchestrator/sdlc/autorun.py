@@ -1093,10 +1093,14 @@ async def _stage_implement(
     ctx.worktree = result.worktree
     ctx.pr_url = result.pr_url
     ctx.fixer, ctx.tests = result.codegen, result.tests
+    # A withdrawn cover test rides on the outcome line: the run is green, and less proven than
+    # green implies. Anyone reading the journey later must see that in the same place.
+    withdrawn = ", ".join(Path(f).name for f in getattr(result, "coverage_withdrawn", ()))
     ctx.record_stage(
         "implement",
         "ok",
-        f"{len(result.files)} file(s) changed on {result.branch} after {result.iterations} test run(s)",
+        f"{len(result.files)} file(s) changed on {result.branch} after {result.iterations} test run(s)"
+        + (f"; coverage withdrawn: {withdrawn}" if withdrawn else ""),
     )
     # The disagreement, if there is one, is the most valuable line in the journey: a run
     # that quietly edited three files nobody planned is visible today only by reading the
