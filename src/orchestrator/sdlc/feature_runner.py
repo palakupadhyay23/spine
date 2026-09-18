@@ -617,16 +617,13 @@ def unsupported_language_error(language: str) -> str | None:
 
 
 def _resolve_language(path: Path, requested: str) -> str:
-    """Resolve ``--language`` (``auto`` → detect from the worktree).
+    """``toolchains.resolve_language`` under the name this module's callers and tests import.
 
-    A non-Python language wins only when it's present and Python isn't, so
-    mixed/empty repos default to python. Java is checked before TypeScript."""
-    if requested != "auto":
-        return requested
-    from orchestrator.catalog.profile import ProjectProfile
-    from orchestrator.sdlc.toolchains import detect_language
+    The rule lives there — one resolver for the plan, autorun and this runner — so the
+    approved document and the scaffold cannot disagree about what the repository is."""
+    from orchestrator.sdlc.toolchains import resolve_language
 
-    return detect_language(ProjectProfile.from_repo(path).languages)
+    return resolve_language(path, requested)
 
 
 async def run_feature(

@@ -701,8 +701,9 @@ def sdlc_plan(
     import asyncio
 
     from orchestrator.sdlc.builddoc import build_plan, load_approval, load_journey, persist
-    from orchestrator.sdlc.feature_runner import _resolve_language, unsupported_language_error
+    from orchestrator.sdlc.feature_runner import unsupported_language_error
     from orchestrator.sdlc.spec_file import SpecFileError, load_spec_file
+    from orchestrator.sdlc.toolchains import resolve_language
 
     # `sdlc feature` has validated this since it gained the flag; `plan` never did, so a typo
     # fell through every dispatch chain to the Python branch and scaffolded the wrong project
@@ -770,7 +771,7 @@ def sdlc_plan(
         document = await build_plan(
             resolved,
             root=path,
-            language=_resolve_language(Path(path), language),
+            language=resolve_language(Path(path), language),
             issue_type=resolved_type,
             # Rendered, never stored in the document: a plan that changed since it was
             # approved shows as stale rather than carrying an approval it outgrew.
