@@ -49,8 +49,10 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
   retrieval. The design now records `files_origin`; when it is `landing`, §4 says the files are the
   brief's own reading and §12 scores the row n/a, out of the denominator. Row 08's `stated` is
   earned, not trusted: a filed criterion is `stated` only when found verbatim (whitespace- and
-  case-insensitively) in the intent's own description and scope; otherwise `derived · model`, and
-  the block counts how many. A hand-written `--spec` file has no ticket text: the block says so.
+  case-insensitively) in the ticket's text as intake read it — description, comments,
+  attachments — or, without one, the intent's description and scope; otherwise
+  `derived · model`, and the block counts how many. A hand-written `--spec` file has no ticket
+  text: the block says so.
 
 - **Retrieval reads a ticket's inflections.** CB-686 asked for "account deletion"; the screen is
   `DeleteAccountScreen`, and `deletion` matched nothing. `_tokens` now strips `-ies`→`-y`, plural

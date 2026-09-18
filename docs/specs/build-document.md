@@ -149,9 +149,11 @@ Every criterion carries one of four states:
 
 **`stated` is checked, not trusted.** The spec writer is told to copy filed criteria
 verbatim; NSS-1231 is the measured case of a model not doing it. So the label is earned by
-a whitespace-and-case-insensitive match against the intent's own description and scope,
-which intake carries unchanged. A spec with no such text (a hand-written `--spec` file)
-cannot be checked: the section says so and labels every filed criterion `derived · model`.
+a whitespace-and-case-insensitive match against the ticket's text as intake read it —
+description, comments and attachments, which `sdlc plan --source` has in hand — or, without
+one, the intent's own description and scope, which intake carries unchanged. A spec with no
+such text (a hand-written `--spec` file) cannot be checked: the section says so and labels
+every filed criterion `derived · model`.
 
 **Nothing is deleted.** An already-met criterion stays on the page with its
 evidence, because a run that reports it met having changed nothing is exactly the
