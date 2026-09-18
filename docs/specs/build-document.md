@@ -130,7 +130,7 @@ italic form: `*(model)*` after the claim, not in a footnote.
 
 ---
 
-## 4. Acceptance criteria have three states, not one
+## 4. Acceptance criteria have four states, not one
 
 Section 8 cannot be labelled `stated` and left there. SSPN-49 proves why: the
 spec filed six criteria, the built document carries four, and the two that
@@ -138,13 +138,20 @@ vanished did so because `_check()` already satisfied them. That deletion is the
 single most valuable finding on the page, and it survived only in a side
 document.
 
-Every criterion carries one of three states:
+Every criterion carries one of four states:
 
 | state | means | provenance |
 |---|---|---|
-| **stated** | Filed on the ticket, not yet met by the code. | stated |
+| **stated** | Filed on the ticket — found verbatim in its text — and not yet met by the code. | stated |
 | **stated · already met** | Filed on the ticket, and the code already does it. Names the function and line that satisfies it. | stated claim, **model** judgement |
+| **derived · model** | Filed as stated by the spec writer, but not found in the ticket's text: the model rewrote or inferred it. | derived · model |
 | **proposed** | Nobody filed it; the spec writer inferred it. | derived · model |
+
+**`stated` is checked, not trusted.** The spec writer is told to copy filed criteria
+verbatim; NSS-1231 is the measured case of a model not doing it. So the label is earned by
+a whitespace-and-case-insensitive match against the intent's own description and scope,
+which intake carries unchanged. A spec with no such text (a hand-written `--spec` file)
+cannot be checked: the section says so and labels every filed criterion `derived · model`.
 
 **Nothing is deleted.** An already-met criterion stays on the page with its
 evidence, because a run that reports it met having changed nothing is exactly the

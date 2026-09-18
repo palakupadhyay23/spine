@@ -248,6 +248,7 @@ async def test_heuristic_files_come_from_where_the_ticket_lands() -> None:
 
     assert design["files_to_touch"] == ["src/exporter.py"]
     assert design["grounded"] is True
+    assert design["files_origin"] == "landing"  # the brief's own reading — §12 will not score agreement
 
 
 async def test_a_design_that_cannot_tell_says_so_and_proposes_nothing() -> None:
@@ -364,6 +365,7 @@ def test_the_risks_say_which_reading_produced_the_files(tmp_path: Path) -> None:
 
     assert any("names" in r for r in design["risks"])
     assert not any("confirm the affected files" in r for r in design["risks"])
+    assert design["files_origin"] == "stated"  # independent of the brief — §12 may score agreement
 
 
 def test_a_spec_naming_nothing_still_falls_back_to_the_overview() -> None:

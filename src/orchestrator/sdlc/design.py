@@ -203,6 +203,12 @@ def _fallback_design(
     # An all-weak reading is an answer — "this does not localize" — not a miss to paper over
     # with the overview's own keyword guess, which has no floor at all.
     files = stated or landed or ([] if all_weak else _overview_files(spec, overview))
+    # Which reading produced the list, for the build document's §12. The brief is the same
+    # `build_investigation` call, so a design that took its files from `landed` agrees with
+    # the brief by construction — and NSS-1231 scored "4 of 4" on that agreement while
+    # naming four unrelated files. Only a stated path or a model's design can *independently*
+    # agree with the brief.
+    origin = "stated" if stated else "landing" if landed else "overview" if files else "none"
     ac = [str(a) for a in (spec.get("acceptance_criteria") or [])]
     # Say which it is. A consumer — a human reading design.md, or the codegen prompt now
     # carrying it — has to be able to tell a grounded reading from a shrug.
@@ -236,6 +242,7 @@ def _fallback_design(
         "test_strategy": "Add tests covering each acceptance criterion: " + "; ".join(ac[:6]),
         "grounded": bool(files),
         "llm": False,
+        "files_origin": origin,
     }
 
 
@@ -249,6 +256,7 @@ def _normalise(design: dict[str, Any]) -> dict[str, Any]:
             out[f] = str(v) if v is not None else ""
     out["grounded"] = bool(design.get("grounded", True))
     out["llm"] = bool(design.get("llm", False))
+    out["files_origin"] = str(design.get("files_origin") or ("model" if out["llm"] else ""))
     return out
 
 

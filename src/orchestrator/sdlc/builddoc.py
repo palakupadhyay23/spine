@@ -446,11 +446,11 @@ def _confidence_block(
         ),
         (
             brief.LANDS.title,
-            True,
+            not signals.get("same_reading"),
             bool(signals.get("brief_agrees")),
             "the brief and the design name the same files",
             "the brief names none of the files being changed",
-            "",
+            "the design's files are this brief's own retrieval — the same reading twice is not agreement",
         ),
         (
             "Root cause",
@@ -961,36 +961,66 @@ def _evidence_block(ev: dict[str, Any]) -> str:
 # ---- section 8: criteria, in three states ----------------------------------
 
 
+def _fold(text: str) -> str:
+    """Whitespace-collapsed, case-folded: the comparison a verbatim copy survives and a
+    paraphrase does not."""
+    return " ".join(str(text).split()).casefold()
+
+
 def _criteria_block(spec: dict[str, Any]) -> str:
-    """Stated, stated-but-already-met, and proposed — never silently narrowed.
+    """Stated, stated-but-already-met, derived, and proposed — never silently narrowed.
 
     An already-met criterion stays on the page with the evidence that satisfies it.
     Deleting it is how six criteria became four with no reader able to tell: a run
     would report it met having changed nothing, which is the failure this document
     exists to catch.
+
+    `stated` is checked, not trusted. The spec writer is told to copy filed criteria
+    verbatim, and NSS-1231 is the measured case of a model not doing it; a criterion the
+    model rewrote is its inference wearing the ticket's label. So a filed criterion is
+    `stated` only when it is found, verbatim, in the ticket's own text (the intent's
+    description and scope, carried unchanged); anything else is `derived · model`. With no
+    source text at all — a hand-written `--spec` file has none — nothing can be checked,
+    the block says so, and every criterion is labelled derived.
     """
     stated = [str(c) for c in (spec.get("acceptance_criteria") or [])]
     proposed = [str(c) for c in (spec.get("proposed_criteria") or [])]
     met = {str(k): str(v) for k, v in (spec.get("met_criteria") or {}).items()}
+    source = _fold(f"{spec.get('description') or ''} {spec.get('scope') or ''}")
 
     rows: list[str] = ["| # | Criterion | State | Satisfied by |", "|---|---|---|---|"]
     n = 0
+    derived = 0
     for text in stated:
         n += 1
+        verbatim = bool(source) and _fold(text) in source
+        derived += 0 if verbatim else 1
+        state = "stated" if verbatim else MODEL
         if text in met:
-            rows.append(f"| {n} | {text} | **stated · already met** | {met[text]} |")
+            rows.append(f"| {n} | {text} | **{state} · already met** | {met[text]} |")
         else:
-            rows.append(f"| {n} | {text} | stated | — |")
+            rows.append(f"| {n} | {text} | {state} | — |")
     for text in proposed:
         n += 1
         rows.append(f"| {n} | {text} | proposed *(model)* | — |")
 
     out = "\n".join(rows) + "\n"
 
+    if stated and not source:
+        out += (
+            "\n**Source not available.** The spec carries no ticket text to check the criteria "
+            f"against, so none can be labelled `stated`; all {len(stated)} are `{MODEL}`.\n"
+        )
+    elif derived:
+        out += (
+            f"\n**{derived} of {len(stated)} filed criteria are not in the ticket's text verbatim** "
+            "— the spec writer rewrote or inferred them, so they are labelled derived, not stated.\n"
+        )
+
     already = sum(1 for t in stated if t in met)
     if already:
         out += (
-            f"\n**{already} of {len(stated)} stated criteria already satisfied by code that "
+            f"\n**{already} of {len(stated)} filed criteria already satisfied by code that "
             "exists.** A run would report them met having changed nothing. The delivery is the "
             f"remaining {len(stated) - already}.\n"
         )
@@ -1067,6 +1097,11 @@ def render_build_md(
     ]
     landing_files = {str(getattr(land, "where", "")).split(":", 1)[0] for land in landing}
     agreed = sorted(landing_files & set(files))
+    # Agreement is evidence only when the two readings are independent. A heuristic design
+    # takes its files from the same retrieval the brief is rendered from, so the two agree by
+    # construction; NSS-1231 scored "4 of 4" on exactly that while naming four unrelated
+    # files. Such a design's agreement is scored n/a and said so, in §4 and in §12.
+    same_reading = str(design.get("files_origin") or "") == "landing"
 
     out: list[str] = []
     add = out.append
@@ -1149,6 +1184,12 @@ def render_build_md(
     # so here costs nothing while carrying it silently costs a run.
     if not landing:
         add("**The brief is empty.** Locate the change by hand before building.\n")
+    elif same_reading:
+        add(
+            "**The design's files are this brief's own reading.** No path was stated and no model "
+            "designed, so the files above were taken from this retrieval — their agreement with it "
+            "is not evidence, and §12 does not count it.\n"
+        )
     elif agreed:
         add(
             f"**The brief agrees with the design** on {len(agreed)} file(s): "
@@ -1239,6 +1280,7 @@ def render_build_md(
             signals={
                 "verdict": getattr(raw_verdict, "value", raw_verdict),
                 "brief_agrees": bool(agreed),
+                "same_reading": same_reading,
                 # Whether section 3 rendered at all — not whether it localized well.
                 "root_cause": bool(root_cause),
                 "fault_site": bool(getattr(rca, "fault_site", "")),
