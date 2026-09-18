@@ -145,7 +145,7 @@ def test_verdict_renders_its_value_not_its_repr(tmp_path: Path) -> None:
 
 def test_already_met_criterion_keeps_its_place_and_its_evidence() -> None:
     spec = _spec(
-        description="It stops crashing. It says why.",
+        description="- It stops crashing.\n- It says why.",
         met_criteria={"It says why.": "a.py:10 already prints it"},
     )
     block = _criteria_block(spec)
@@ -1045,3 +1045,50 @@ async def test_approval_revalidation_includes_measured_run_history(tmp_path: Pat
     )
     save_approval(_approval(digest=plan_digest(document)), root=tmp_path)
     assert (await require_approved_plan(_spec(), root=tmp_path, language="php")).decided_by == "falcon"
+
+
+@pytest.mark.asyncio
+async def test_the_gate_passes_for_a_plan_built_from_a_ticket(tmp_path: Path) -> None:
+    """Section 8 reads the ticket text, and the gate proves an approval by re-deriving the
+    document — so the text has to survive the process that wrote it. When it did not, every
+    plan built from `--source` rendered `stated` at plan time and `derived · model` at gate
+    time, and no re-approval could converge: the gate refused every source-derived ticket."""
+    from orchestrator.sdlc.builddoc import (
+        build_plan,
+        plan_digest,
+        require_approved_plan,
+        save_approval,
+        save_source_text,
+    )
+
+    (tmp_path / "src.py").write_text("def helper():\n    return 1\n", encoding="utf-8")
+    ticket = "# TCK-1\n\n## Acceptance criteria\n- It stops crashing.\n- It says why.\n"
+    document = await build_plan(_spec(), root=tmp_path, source_text=ticket)
+    assert "| 1 | It stops crashing. | stated | — |" in document  # the label under test
+    save_source_text("TCK-1", ticket, root=tmp_path)
+    save_approval(_approval(plan_digest(document)), root=tmp_path)
+
+    assert (await require_approved_plan(_spec(), root=tmp_path)).decided_by == "falcon"
+
+
+@pytest.mark.asyncio
+async def test_a_spec_only_plan_clears_the_ticket_text_it_replaces(tmp_path: Path) -> None:
+    """A later `--spec` plan for the same intent must not be checked against a ticket that is
+    no longer in play — the stale text would label criteria nobody filed."""
+    from orchestrator.sdlc.builddoc import load_source_text, save_source_text
+
+    save_source_text("TCK-1", "- It stops crashing.\n", root=tmp_path)
+    assert load_source_text("TCK-1", root=tmp_path)
+    save_source_text("TCK-1", "", root=tmp_path)
+    assert load_source_text("TCK-1", root=tmp_path) == ""
+
+
+def test_a_narrowed_criterion_is_not_stated_just_because_the_ticket_contains_it() -> None:
+    """Containment certifies the rewrite that drops the qualifier — exactly what the check
+    exists to catch. `stated` is a whole line of the ticket, bullet stripped."""
+    ticket = "## Acceptance criteria\n- Deletion is cancellable only for admins.\n- It says why.\n"
+    block = _criteria_block(
+        _spec(acceptance_criteria=["Deletion is cancellable", "It says why."]), source_text=ticket
+    )
+    assert "| 1 | Deletion is cancellable | derived · model | — |" in block
+    assert "| 2 | It says why. | stated | — |" in block

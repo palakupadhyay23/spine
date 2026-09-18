@@ -130,3 +130,11 @@ def test_the_react_native_shape_resolves_to_typescript_from_the_tree(tmp_path: P
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "postinstall.py").write_text("x = 1\n", encoding="utf-8")
     assert resolve_language(tmp_path, "auto") == "typescript"
+
+
+def test_a_tie_between_two_toolchains_is_broken_by_name_not_by_walk_order() -> None:
+    """`cpp` and `kotlin` both sit at auto_priority 5, so an equal count fell through to the
+    order the walk filled the counts dict — adding one file flipped the scaffold silently."""
+    from orchestrator.sdlc.toolchains import detect_language
+
+    assert detect_language({"kotlin": 40, "cpp": 40}) == detect_language({"cpp": 40, "kotlin": 40})

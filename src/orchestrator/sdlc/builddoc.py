@@ -151,6 +151,41 @@ def approval_path(intent_id: str, *, root: Path | str = ".", out: Path | str | N
     return (Path(out) if out else plan_dir(root)) / f"{intent_id}-approval.json"
 
 
+def source_text_path(intent_id: str, *, root: Path | str = ".", out: Path | str | None = None) -> Path:
+    return (Path(out) if out else plan_dir(root)) / f"{intent_id}-source.txt"
+
+
+def save_source_text(
+    intent_id: str, text: str, *, root: Path | str = ".", out: Path | str | None = None
+) -> None:
+    """Keep the ticket text the plan was rendered from, beside the plan.
+
+    Section 8 labels a criterion `stated` only when the ticket says it verbatim, so the
+    ticket text is an *input* to the document — and :func:`require_approved_plan` proves an
+    approval by re-deriving the document and comparing digests. A re-derivation that cannot
+    see this input renders a different section 8 and refuses every plan built from a source,
+    with no re-approval that converges. The journey is persisted and re-read for exactly the
+    same reason; this is the second input that has to survive the process that made it.
+
+    A plan with no ticket behind it (`--spec`) removes the file rather than leaving a stale
+    one, so the next re-derivation cannot be checked against a ticket that is no longer in play.
+    """
+    path = source_text_path(intent_id, root=root, out=out)
+    if not text.strip():
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def load_source_text(intent_id: str, *, root: Path | str = ".", out: Path | str | None = None) -> str:
+    """The ticket text :func:`save_source_text` kept, or "" — never fatal."""
+    try:
+        return source_text_path(intent_id, root=root, out=out).read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
 def load_approval(
     intent_id: str, *, root: Path | str = ".", out: Path | str | None = None
 ) -> PlanApproval | None:
@@ -967,6 +1002,28 @@ def _fold(text: str) -> str:
     return " ".join(str(text).split()).casefold()
 
 
+_BULLET_RE = re.compile(r"^\s*(?:[-*+•]|\(?\d+[.)])\s*")
+
+
+def _source_criteria_lines(text: str) -> set[str]:
+    """Each line of the ticket, bullet or numbering stripped, folded — the unit a criterion
+    is quoted as.
+
+    Whole lines, not containment. A criterion is `stated` because the ticket says *that*, and
+    a substring test calls a narrowed rewrite quoted: a ticket saying "deletion is cancellable
+    only for admins" would certify "deletion is cancellable" — the model dropping the
+    qualifier that mattered, wearing the ticket's label. Short criteria ("add a test") match
+    almost any prose under containment. A criterion the ticket wrapped over two lines now
+    reads `derived · model`, which is the safe direction: unproven, not falsely quoted.
+    """
+    out: set[str] = set()
+    for raw in str(text).splitlines():
+        folded = _fold(_BULLET_RE.sub("", raw))
+        if folded:
+            out.add(folded)
+    return out
+
+
 def _criteria_block(spec: dict[str, Any], source_text: str = "") -> str:
     """Stated, stated-but-already-met, derived, and proposed — never silently narrowed.
 
@@ -987,14 +1044,15 @@ def _criteria_block(spec: dict[str, Any], source_text: str = "") -> str:
     stated = [str(c) for c in (spec.get("acceptance_criteria") or [])]
     proposed = [str(c) for c in (spec.get("proposed_criteria") or [])]
     met = {str(k): str(v) for k, v in (spec.get("met_criteria") or {}).items()}
-    source = _fold(source_text) or _fold(f"{spec.get('description') or ''} {spec.get('scope') or ''}")
+    ticket = source_text or f"{spec.get('description') or ''}\n{spec.get('scope') or ''}"
+    source = _source_criteria_lines(ticket)
 
     rows: list[str] = ["| # | Criterion | State | Satisfied by |", "|---|---|---|---|"]
     n = 0
     derived = 0
     for text in stated:
         n += 1
-        verbatim = bool(source) and _fold(text) in source
+        verbatim = _fold(text) in source
         derived += 0 if verbatim else 1
         state = "stated" if verbatim else MODEL
         if text in met:
@@ -1430,7 +1488,15 @@ async def require_approved_plan(
     # The CLI includes prior runs in its cost/confidence sections. Re-derive with
     # the same history, otherwise any ticket that has run once is permanently stale.
     current = plan_digest(
-        await build_plan(spec, root=root, language=language, journey=load_journey(intent, root=root))
+        await build_plan(
+            spec,
+            root=root,
+            language=language,
+            journey=load_journey(intent, root=root),
+            # The ticket text is an input to section 8, so it has to be re-read here or the
+            # re-derivation is of a different document than the one a human approved.
+            source_text=load_source_text(intent, root=root),
+        )
     )
     if current != approval.digest:
         raise PlanNotApprovedError(

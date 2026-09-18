@@ -522,3 +522,19 @@ async def test_a_malformed_size_does_not_abort_the_fetch() -> None:
     async with http:
         doc = await adapter.fetch_document("K-1")  # no raise
     assert "odd.txt (download failed)" in doc.body
+
+
+async def test_the_attachment_header_never_claims_more_than_the_budget() -> None:
+    """The truncation marker is carried too, so counting only the content let the header print
+    `20,068 of 20,000 chars`."""
+    fields = _fields("T")
+    n = _MAX_ATTACHMENTS
+    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(n)]
+    blobs = {str(i): (f"{i}" * _MAX_ATTACHMENT_CHARS).encode() for i in range(n)}
+    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments=blobs))
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    header = doc.body.split("Attachments read (", 1)[1].split("):", 1)[0]
+    used = int(header.split(", ", 1)[1].split(" of ", 1)[0].replace(",", ""))
+    assert used <= _MAX_ATTACHMENTS_TOTAL_CHARS, header

@@ -700,7 +700,13 @@ def sdlc_plan(
     """
     import asyncio
 
-    from orchestrator.sdlc.builddoc import build_plan, load_approval, load_journey, persist
+    from orchestrator.sdlc.builddoc import (
+        build_plan,
+        load_approval,
+        load_journey,
+        persist,
+        save_source_text,
+    )
     from orchestrator.sdlc.feature_runner import unsupported_language_error
     from orchestrator.sdlc.spec_file import SpecFileError, load_spec_file
     from orchestrator.sdlc.toolchains import resolve_language
@@ -786,6 +792,8 @@ def sdlc_plan(
             # is what refreshes the view; the entries themselves are never rewritten.
             journey=load_journey(intent_key, root=path, out=out),
         )
+        # Beside the plan, so the approval gate's re-derivation sees the same section 8.
+        save_source_text(intent_key, source_text, root=path, out=out)
         written, superseded = persist(document, intent_id=intent_key, root=path, out=out)
         if not quiet:
             typer.echo(document)
