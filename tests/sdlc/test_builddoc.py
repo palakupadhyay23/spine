@@ -170,6 +170,17 @@ def test_stated_is_earned_by_a_verbatim_match_against_the_ticket_text() -> None:
     assert "**1 of 2 filed criteria are not in the ticket's text verbatim**" in block
 
 
+def test_the_source_document_is_what_stated_is_checked_against() -> None:
+    """`sdlc plan --source` has the ticket as intake read it — description, comments,
+    attachments. A criterion copied from the ticket's own criteria block is stated even when
+    the intent's description does not repeat it (the CB-686 reproduction rendered all three
+    filed criteria `derived · model` before this)."""
+    ticket = "# CB-686\n\nAs a user I want a reason.\n\n## Acceptance criteria\n- It stops crashing.\n"
+    block = _criteria_block(_spec(description="As a user I want a reason."), source_text=ticket)
+    assert "| 1 | It stops crashing. | stated | — |" in block
+    assert "| 2 | It says why. | derived · model | — |" in block
+
+
 def test_with_no_ticket_text_nothing_is_labelled_stated_and_the_block_says_why() -> None:
     """A hand-written `--spec` file carries no ticket text, so no criterion can be checked."""
     block = _criteria_block(_spec())

@@ -967,7 +967,7 @@ def _fold(text: str) -> str:
     return " ".join(str(text).split()).casefold()
 
 
-def _criteria_block(spec: dict[str, Any]) -> str:
+def _criteria_block(spec: dict[str, Any], source_text: str = "") -> str:
     """Stated, stated-but-already-met, derived, and proposed — never silently narrowed.
 
     An already-met criterion stays on the page with the evidence that satisfies it.
@@ -978,15 +978,16 @@ def _criteria_block(spec: dict[str, Any]) -> str:
     `stated` is checked, not trusted. The spec writer is told to copy filed criteria
     verbatim, and NSS-1231 is the measured case of a model not doing it; a criterion the
     model rewrote is its inference wearing the ticket's label. So a filed criterion is
-    `stated` only when it is found, verbatim, in the ticket's own text (the intent's
-    description and scope, carried unchanged); anything else is `derived · model`. With no
-    source text at all — a hand-written `--spec` file has none — nothing can be checked,
-    the block says so, and every criterion is labelled derived.
+    `stated` only when it is found, verbatim, in the ticket's own text: ``source_text``,
+    the source document as intake read it (description, comments, attachments), or without
+    one the intent's description and scope, carried unchanged. Anything else is
+    `derived · model`. With no text at all — a hand-written `--spec` file has none — nothing
+    can be checked, the block says so, and every criterion is labelled derived.
     """
     stated = [str(c) for c in (spec.get("acceptance_criteria") or [])]
     proposed = [str(c) for c in (spec.get("proposed_criteria") or [])]
     met = {str(k): str(v) for k, v in (spec.get("met_criteria") or {}).items()}
-    source = _fold(f"{spec.get('description') or ''} {spec.get('scope') or ''}")
+    source = _fold(source_text) or _fold(f"{spec.get('description') or ''} {spec.get('scope') or ''}")
 
     rows: list[str] = ["| # | Criterion | State | Satisfied by |", "|---|---|---|---|"]
     n = 0
@@ -1080,6 +1081,7 @@ def render_build_md(
     rca: Any = None,
     approval: PlanApproval | None = None,
     journey: list[JourneyEntry] | None = None,
+    source_text: str = "",
 ) -> str:
     """Assemble the twelve sections.
 
@@ -1241,7 +1243,7 @@ def render_build_md(
 
     add("## 8. Acceptance criteria")
     add(_label(f"{STATED} + {MODEL}", "the spec, reconciled against the code"))
-    add(_criteria_block(spec))
+    add(_criteria_block(spec, source_text))
 
     add("## 9. Facts the generator needs")
     add(_pending("reading the named source for what must not be duplicated — no phase owns this yet"))
@@ -1311,6 +1313,7 @@ async def build_plan(
     issue_type: str = "",
     approval: PlanApproval | None = None,
     journey: list[JourneyEntry] | None = None,
+    source_text: str = "",
 ) -> str:
     """Run the four cheap stages and render the document. No worktree, no codegen.
 
@@ -1389,6 +1392,7 @@ async def build_plan(
         rca=report,
         approval=approval,
         journey=journey,
+        source_text=source_text,
     )
 
 

@@ -765,6 +765,11 @@ def sdlc_plan(
                 resolved_type = resolve_ticket_meta(plan_result, chosen).issue_type
 
         intent_key = str(resolved.get("intent_id") or "spec")
+        # The ticket as intake read it — description, comments, attachments — is what row 08
+        # checks each filed criterion against. A hand-written `--spec` has none.
+        source_text = (
+            "\n\n".join(d.body for d in getattr(plan_result, "documents", []) or []) if source else ""
+        )
         # Resolved against the repo being planned, not left as the literal "auto" — the
         # codegen prompt, the layout and the test environment all read this, and the old
         # `python` default handed a C# repository Python scaffolding without saying so.
@@ -773,6 +778,7 @@ def sdlc_plan(
             root=path,
             language=resolve_language(Path(path), language),
             issue_type=resolved_type,
+            source_text=source_text,
             # Rendered, never stored in the document: a plan that changed since it was
             # approved shows as stale rather than carrying an approval it outgrew.
             approval=load_approval(intent_key, root=path, out=out),
