@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
+## 3.37.0 — 2026-09-17
 
 Two field reports from a C#/.NET engagement, both diagnosed to defects rather than misuse and
 both reproduced as fixtures. **NSS-1231:** `sdlc plan` proposed five files for an OAuth2 change;
