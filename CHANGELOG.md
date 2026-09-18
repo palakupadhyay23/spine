@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
+## 3.38.0 — 2026-09-18
 
 Two field reports from a React Native engagement (CB-686, CB-760), plus what the NSS-1231 build
 document had scored itself, all diagnosed to defects and each reproduced as a fixture. **CB-686:**
