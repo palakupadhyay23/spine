@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- **Kotlin scope functions are refused by name *and* shape, and an imported extension outranks a
+  receiver-member guess.** `m.let { }` on an imported `Modifier` minted
+  `java:androidx.compose.ui.Modifier.let`, a member `Modifier` does not declare, because
+  `finalize`'s "does the repository declare this?" check has no answer for a third-party receiver
+  (#389). Refusing on the member name alone then cost true edges — `run`, `apply` and `use` are
+  genuine members of `Runnable`, Gradle's `Project` and others, and a three-call probe fell from
+  three `CALLS` to one — so the refusal now also requires the call to *pass a function*, which a
+  scope function does and `r.run()` does not. `with` left the set: Kotlin's `with(x) { }` is
+  top-level and never reached the check, so listing it could only ever drop a real member such as
+  `java.time.LocalDate.with`. Separately, `m.padding(8)` now lands on
+  `androidx.compose.foundation.layout.padding` — the extension the file imports, which is a name
+  the source wrote — instead of the invented `Modifier.padding`. Kotlin corpus precision stays
+  1.00 on every kind with `CALLS` recall 0.94, invention 0; new `scope_functions` corpus case and
+  five tests in `tests/pkg/test_kotlin_fabrication.py`.
+
 ## 3.38.0 — 2026-09-18
 
 Two field reports from a React Native engagement (CB-686, CB-760), plus what the NSS-1231 build
