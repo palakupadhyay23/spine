@@ -16,6 +16,7 @@ from orchestrator.intake.jira_source import (
     _MAX_ATTACHMENT_BYTES,
     _MAX_ATTACHMENT_CHARS,
     _MAX_ATTACHMENTS,
+    _MAX_ATTACHMENTS_TOTAL_CHARS,
     JiraSourceAdapter,
     _adf_to_text,
     _description_text,
@@ -374,7 +375,7 @@ async def test_a_text_attachment_is_read_and_carried_under_its_name() -> None:
     async with http:
         doc = await adapter.fetch_document("NSS-1209")
 
-    assert "Attachments read (1):" in doc.body
+    assert "Attachments read (1, " in doc.body
     assert "--- mapping.md ---" in doc.body and "HR: Hot Rolled" in doc.body
     assert "names only — contents not read): screen.png (image, not read)" in doc.body
     assert mock.downloaded == ["1"]  # the image was never requested
@@ -424,12 +425,41 @@ async def test_at_most_five_attachments_are_read() -> None:
     async with http:
         doc = await adapter.fetch_document("K-1")
 
-    assert f"Attachments read ({_MAX_ATTACHMENTS}):" in doc.body
+    assert f"Attachments read ({_MAX_ATTACHMENTS}, " in doc.body
     assert (
         "names only — contents not read): f5.txt (bound of 5 reached), f6.txt (bound of 5 reached)"
         in doc.body
     )
     assert mock.downloaded == [str(i) for i in range(_MAX_ATTACHMENTS)]
+
+
+async def test_all_attachments_together_stay_under_a_stated_budget() -> None:
+    """Five attachments at the per-file cut are 40,000 chars — past the prompt cut once the
+    comments and description are in, which trimmed the criteria off the tail, silently. The
+    attachments are cut instead, the one that crosses the line says so, and the rest are named."""
+    from orchestrator.intake.intents import _MAX_PROMPT_CHARS
+
+    fields = _fields("T")
+    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(_MAX_ATTACHMENTS)]
+    blobs = {str(i): (f"{i}" * _MAX_ATTACHMENT_CHARS).encode() for i in range(_MAX_ATTACHMENTS)}
+    mock = _JiraMock({"K-1": fields}, attachments=blobs)
+    adapter, http = _adapter(mock)
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    whole, cut = divmod(_MAX_ATTACHMENTS_TOTAL_CHARS, _MAX_ATTACHMENT_CHARS)
+    assert (
+        f"Attachments read ({whole + 1}, " in doc.body
+        and f"of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars):" in doc.body
+    )
+    budget = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+    assert f"…[truncated, {_MAX_ATTACHMENT_CHARS} chars — {budget}]" in doc.body
+    assert (
+        doc.body.count(f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached")
+        == _MAX_ATTACHMENTS - whole
+    )
+    assert mock.downloaded == [str(i) for i in range(whole + 1)]  # the rest cost no request
+    assert len(doc.body) < _MAX_PROMPT_CHARS
 
 
 async def test_a_jql_scan_never_fetches_attachments() -> None:
@@ -473,7 +503,7 @@ async def test_two_attachments_with_one_filename_are_both_read() -> None:
     adapter, http = _adapter(mock)
     async with http:
         doc = await adapter.fetch_document("K-1")
-    assert "Attachments read (2):" in doc.body and "# first" in doc.body and "# second" in doc.body
+    assert "Attachments read (2, " in doc.body and "# first" in doc.body and "# second" in doc.body
 
 
 async def test_a_filename_with_a_directory_is_reported_once_as_read() -> None:
