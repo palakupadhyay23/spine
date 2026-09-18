@@ -144,13 +144,38 @@ def test_verdict_renders_its_value_not_its_repr(tmp_path: Path) -> None:
 
 
 def test_already_met_criterion_keeps_its_place_and_its_evidence() -> None:
-    spec = _spec(met_criteria={"It says why.": "a.py:10 already prints it"})
+    spec = _spec(
+        description="It stops crashing. It says why.",
+        met_criteria={"It says why.": "a.py:10 already prints it"},
+    )
     block = _criteria_block(spec)
     assert "**stated · already met**" in block
     assert "a.py:10 already prints it" in block
     # It is not deleted: a narrowed list is how six criteria became four unnoticed.
     assert "It says why." in block
-    assert "1 of 2 stated criteria already satisfied" in block
+    assert "1 of 2 filed criteria already satisfied" in block
+
+
+def test_stated_is_earned_by_a_verbatim_match_against_the_ticket_text() -> None:
+    """The spec writer is told to copy filed criteria verbatim; NSS-1231 is the measured case
+    of a model not doing it. `stated` is checked against the intent's own text, not trusted:
+    a re-spaced, re-cased copy is still stated; a paraphrase is the model's and says so."""
+    spec = _spec(
+        description="Acceptance:\n- it STOPS   crashing.\n- the error is logged with its cause.",
+        acceptance_criteria=["It stops crashing.", "It says why."],
+    )
+    block = _criteria_block(spec)
+    assert "| 1 | It stops crashing. | stated | — |" in block
+    assert "| 2 | It says why. | derived · model | — |" in block
+    assert "**1 of 2 filed criteria are not in the ticket's text verbatim**" in block
+
+
+def test_with_no_ticket_text_nothing_is_labelled_stated_and_the_block_says_why() -> None:
+    """A hand-written `--spec` file carries no ticket text, so no criterion can be checked."""
+    block = _criteria_block(_spec())
+    assert "**Source not available.**" in block
+    assert "| stated |" not in block
+    assert block.count("| derived · model |") == 2
 
 
 def test_proposed_criteria_are_labelled_model() -> None:
@@ -182,6 +207,25 @@ def test_brief_that_agrees_with_the_design_says_so(tmp_path: Path) -> None:
     inv = _Investigation([_Landing("helper", "src/a.py:10")])
     md = _render(tmp_path, investigation=inv)
     assert "agrees with the design" in md
+
+
+def test_a_design_that_took_its_files_from_the_brief_cannot_agree_with_it(tmp_path: Path) -> None:
+    """NSS-1231 scored "4 of 4" on the brief agreeing with a design whose files *were* the
+    brief's retrieval — the same reading twice, naming four unrelated files. Agreement is
+    evidence only between independent readings; otherwise §4 says so and §12 does not count it."""
+    inv = _Investigation([_Landing("helper", "src/a.py:10")])
+    md = _render(tmp_path, investigation=inv, design=_design(files_origin="landing"))
+    assert "**The design's files are this brief's own reading.**" in md
+    assert "agrees with the design" not in md
+    assert "the same reading twice is not agreement | n/a |" in md
+    assert "of 3 applicable checks" in md  # root cause is n/a in this fixture too
+
+
+def test_a_stated_path_still_earns_the_agreement(tmp_path: Path) -> None:
+    inv = _Investigation([_Landing("helper", "src/a.py:10")])
+    md = _render(tmp_path, investigation=inv, design=_design(files_origin="stated"))
+    assert "agrees with the design" in md
+    assert "of 4 applicable checks" in md
 
 
 # ---- section 5: the diagram -----------------------------------------------
