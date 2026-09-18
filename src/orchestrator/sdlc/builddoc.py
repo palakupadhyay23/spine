@@ -1035,9 +1035,10 @@ def _criteria_block(spec: dict[str, Any], source_text: str = "") -> str:
     `stated` is checked, not trusted. The spec writer is told to copy filed criteria
     verbatim, and NSS-1231 is the measured case of a model not doing it; a criterion the
     model rewrote is its inference wearing the ticket's label. So a filed criterion is
-    `stated` only when it is found, verbatim, in the ticket's own text: ``source_text``,
+    `stated` only when it matches **a whole line** of the ticket's own text — ``source_text``,
     the source document as intake read it (description, comments, attachments), or without
-    one the intent's description and scope, carried unchanged. Anything else is
+    one the intent's description and scope, carried unchanged. See :func:`_source_criteria_lines`
+    for why a line and not a substring, and for what that costs. Anything else is
     `derived · model`. With no text at all — a hand-written `--spec` file has none — nothing
     can be checked, the block says so, and every criterion is labelled derived.
     """
@@ -1072,8 +1073,9 @@ def _criteria_block(spec: dict[str, Any], source_text: str = "") -> str:
         )
     elif derived:
         out += (
-            f"\n**{derived} of {len(stated)} filed criteria are not in the ticket's text verbatim** "
-            "— the spec writer rewrote or inferred them, so they are labelled derived, not stated.\n"
+            f"\n**{derived} of {len(stated)} filed criteria match no line of the ticket's text** "
+            "— the spec writer rewrote or inferred them (or the ticket wrapped one across lines), "
+            "so they are labelled derived, not stated.\n"
         )
 
     already = sum(1 for t in stated if t in met)

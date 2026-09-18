@@ -1684,5 +1684,33 @@ def test_a_kotlin_source_file_is_probed_not_dismissed_as_unsourceable(tmp_path: 
 
     probe, excluded = _testable_production(tmp_path, ["src/Account.kt", "build.gradle.kts"])
 
-    assert probe == ["src/Account.kt", "build.gradle.kts"]
-    assert excluded == []
+    assert probe == ["src/Account.kt"]
+    # The build script is not source a test can exercise: stashing it stops Gradle resolving,
+    # and the red suite that follows would be recorded as proof that a test reaches it.
+    assert excluded == ["build.gradle.kts (not source)"]
+
+
+def test_the_pr_body_says_when_the_run_withdrew_its_own_coverage_test() -> None:
+    """The log and the journey both record a withdrawal; the reviewer reads neither. A green
+    PR whose coverage was withdrawn has to say so where the review happens."""
+    from orchestrator.sdlc.feature_runner import _pr_body
+
+    spec = {"summary": "Add a thing.", "acceptance_criteria": ["It works."], "intent_id": "CB-760"}
+    assert "Coverage withdrawn" not in _pr_body(spec, [])
+    body = _pr_body(spec, ["tests/test_main_stdout.py"])
+    assert "**Coverage withdrawn:** `tests/test_main_stdout.py`" in body
+    assert "That coverage is not proven." in body
+
+
+def test_a_windows_runner_path_is_attributed_to_the_file_that_failed() -> None:
+    """pytest on Windows prints `FAILED tests\\unit\\test_models.py`. Matching only the posix
+    spelling meant D3 never fired there — the run reported FAILED instead of withdrawing."""
+    from orchestrator.sdlc.feature_runner import _named_in_failures
+
+    assert _named_in_failures("tests/unit/test_models.py", r"FAILED tests\unit\test_models.py::test_a")
+    assert _named_in_failures("tests/unit/test_models.py", "FAILED tests/unit/test_models.py::test_a")
+    assert not _named_in_failures(
+        "tests/unit/test_models.py", "FAILED tests/integration/test_models.py::test_a"
+    )
+    # A passing file named in a warnings summary is not a failure.
+    assert not _named_in_failures("tests/unit/test_models.py", "warnings summary: tests/unit/test_models.py")
