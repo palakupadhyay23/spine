@@ -33,8 +33,9 @@ All notable changes to this project are documented here. Format loosely follows
   `Product`, spent every refine on `using` directives and ended `FAILED after 6 test run(s)`. The
   project is now chosen in three steps: the one holding the files the design names (the deepest
   project owns its own files, since nested projects are the normal .NET shape), else the one with
-  the most source counted the way the extractor walks — a generated `obj/` tree cannot vote —
-  else the name, which now only breaks a tie the first two could not. The `[layout]` line says
+  the most source **in the language being resolved**, counted the way the extractor walks — a
+  generated `obj/` tree and a vendored `wwwroot/lib/` of jQuery cannot vote — else the name,
+  which now only breaks a tie the first two could not. The `[layout]` line says
   which rule fired: `src=WebApp (project chosen: holds 5 of 5 file(s) the design names)`.
   `--package-name` still outranks it, and greenfield scaffolding is unchanged.
 

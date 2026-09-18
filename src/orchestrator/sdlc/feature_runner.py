@@ -967,12 +967,14 @@ async def run_feature(
     #     repos (auto/new) so generated files land coherently. Brownfield
     #     (existing package) is detected and reused — never scaffolded.
     lang = _resolve_language(path, language)
-    # The files the plan named, resolved against this worktree. A repository with more than
-    # one project of the same language used to take whichever sorted first, so a ticket whose
-    # design named five files under `WebApp/` built into `ApiClient` and could not compile.
+    # The files the ticket and its approved design name, resolved against this worktree. A
+    # repository with more than one project of the same language used to take whichever sorted
+    # first, so NSS-1239 — whose design named five files under `WebApp/` — built into
+    # `ApiClient` and could not compile. `design` is read alongside the spec because that file
+    # list lived in the build document, not in the ticket's own prose.
     from orchestrator.sdlc.codegen import _paths_from
 
-    design_paths = _paths_from(spec, "", path)
+    design_paths = _paths_from(spec, design, path)
     layout = resolve_layout(
         path,
         mode=layout_mode,

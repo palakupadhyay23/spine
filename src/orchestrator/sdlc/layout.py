@@ -196,17 +196,24 @@ def _module_roots(root: Path, source_root: str) -> list[Path]:
     old lookup found no source tree at all and fell through to a derived layout, naming a package
     that does not exist.
     """
+    from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS, is_nested_repo
+
     found: list[Path] = []
-    if (root / "src" / "main" / source_root).is_dir():
-        found.append(root)
-    for candidate in sorted(root.glob(f"*/src/main/{source_root}")):
-        found.append(candidate.parent.parent.parent)
+    for dirpath, dirnames, _files in os.walk(root):
+        here = Path(dirpath)
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".") and not is_nested_repo(here, d)
+        )
+        if (here / "src" / "main" / source_root).is_dir():
+            found.append(here)
+            # A module's own `src/` never holds a nested module; stop descending it.
+            dirnames[:] = [d for d in dirnames if d != "src"]
     return found
 
 
-def _package_in(
-    main: Path, module: Path, root: Path, prefer_paths: Sequence[str], suffix: str
-) -> tuple[str, str] | None:
+def _package_in(main: Path, root: Path, prefer_paths: Sequence[str], suffix: str) -> tuple[str, str] | None:
     """``(dotted package, path under ``main``)`` for the package the work is in.
 
     The package holding the files the design names, else the first that directly holds source —
@@ -215,11 +222,15 @@ def _package_in(
     """
     wanted = {(root / rel).resolve() for rel in prefer_paths}
     fallback: Path | None = None
-    for dirpath, _dirs, files in os.walk(main):
+    for dirpath, dirs, files in os.walk(main):
         here = Path(dirpath)
+        dirs[:] = sorted(dirs)  # `os.walk` order is arbitrary; a fallback must not be
         if not any(f.endswith(suffix) for f in files):
             continue
-        if any((here / f).resolve() in wanted for f in files):
+        # Only stat when there is something to match: this walk used to resolve every file in
+        # the module even for an empty preference, where the old code returned at the first
+        # directory that held source.
+        if wanted and any((here / f).resolve() in wanted for f in files):
             rel = here.relative_to(main)
             return str(rel).replace(os.sep, "."), rel.as_posix()
         if fallback is None:
@@ -230,7 +241,9 @@ def _package_in(
     return str(rel).replace(os.sep, "."), rel.as_posix()
 
 
-def detect_java_layout(root: Path, *, prefer_paths: Sequence[str] = ()) -> tuple[str, str, str] | None:
+def detect_java_layout(
+    root: Path, *, prefer_paths: Sequence[str] = (), reason: list[str] | None = None
+) -> tuple[str, str, str] | None:
     """If a Java source tree holds a package, return ``(package, source_dir, tests_dir)``.
 
     Multi-module aware. ``root/src/main/java`` alone is the single-module shape; a Gradle or
@@ -240,22 +253,26 @@ def detect_java_layout(root: Path, *, prefer_paths: Sequence[str] = ()) -> tuple
     holding the files ``prefer_paths`` names — else, as before, the first that holds source.
     """
     modules = _module_roots(root, "java")
-    module = choose_project(modules, prefer_paths=prefer_paths, root=root)
+    why: list[str] = []
+    module = choose_project(modules, prefer_paths=prefer_paths, root=root, why=why, language="java")
     if module is None:
         return None
     main = module / "src" / "main" / "java"
-    found = _package_in(main, module, root, prefer_paths, ".java")
+    found = _package_in(main, root, prefer_paths, ".java")
     if found is None:
         return None
     package, rel = found
     prefix = "" if module == root else f"{module.relative_to(root).as_posix()}/"
+    if reason is not None and why:
+        reason.append(why[0])
     return package, f"{prefix}src/main/java/{rel}", f"{prefix}src/test/java/{rel}"
 
 
 def _resolve_java_layout(
     root: Path, *, mode: str, package_name: str | None, repo: str | None, prefer_paths: Sequence[str] = ()
 ) -> TargetLayout:
-    existing = detect_java_layout(root, prefer_paths=prefer_paths)
+    reason: list[str] = []
+    existing = detect_java_layout(root, prefer_paths=prefer_paths, reason=reason)
     derived = package_name or derive_java_package(repo or str(root))
     build_tool = _detect_build_tool(root) or "maven"
     if mode == "existing" or (mode == "auto" and existing is not None):
@@ -269,6 +286,7 @@ def _resolve_java_layout(
                 mode="existing",
                 language="java",
                 build_tool=build_tool,
+                chosen_reason=reason[0] if reason else "",
             )
         src, tst = _java_dirs(derived)
         return TargetLayout(derived, src, tst, True, "existing", language="java", build_tool=build_tool)
@@ -365,11 +383,21 @@ def _module_layout(
     if not modules:
         return None
     target = package_name or derived
-    # The ticket's own files first: a build with several Kotlin modules and no package to go
-    # on otherwise stops at "name a module", which is honest but unnecessary when the design
-    # already named files inside one of them.
-    held = project_holding(modules, prefer_paths=prefer_paths, root=root)
-    module = held[0] if held is not None else android.module_for_package(root, target)
+    chose = ""
+    module = android.module_for_package(root, target)
+    if module is None and package_name is None:
+        # The ticket's own files, but only when nobody asked for a package: a build with
+        # several Kotlin modules otherwise stops at "name a module", which is honest and
+        # unnecessary when the design already named files inside one of them. Never over an
+        # explicit `--package-name` — a flag is an instruction, this is an inference — and
+        # never without taking the package from the module itself, because keeping the
+        # repo-derived name is how a package nobody declared gets written into a brownfield
+        # module (the failure the block below records).
+        held = project_holding(modules, prefer_paths=prefer_paths, root=root)
+        if held is not None and android.base_package(held[0]):
+            module = held[0]
+            target = android.base_package(module)
+            chose = f"holds {held[1]} of {len(prefer_paths)} file(s) the design names"
     if module is None and package_name is None:
         # No package was asked for and the repo-derived one matches nothing. A build with a
         # single Kotlin module still has exactly one honest answer; more than one does not.
@@ -425,6 +453,7 @@ def _module_layout(
         test_library=android.module_test_library(root, module),
         module=rel,
         android=android.is_android_module(module),
+        chosen_reason=chose,
     )
 
 
@@ -586,6 +615,7 @@ def choose_project(
     prefer_paths: Sequence[str] = (),
     root: Path | None = None,
     why: list[str] | None = None,
+    language: str = "",
 ) -> Path | None:
     """Which of several same-language projects the work belongs to.
 
@@ -628,7 +658,8 @@ def choose_project(
         note(f"holds {n} of {len(prefer_paths)} file(s) the design names")
         return winner
 
-    counts = {cand: _source_file_count(_project_dir(cand)) for cand in ordered}
+    suffixes = SOURCE_SUFFIXES_BY_LANGUAGE.get(language, frozenset())
+    counts = {cand: _source_file_count(_project_dir(cand), suffixes) for cand in ordered}
     if any(counts.values()):
         winner = min(ordered, key=lambda c: (-counts[c], c.as_posix()))
         note(f"most source ({counts[winner]} file(s)) — the design named none of these projects")
@@ -671,11 +702,16 @@ def project_holding(
 
 
 def _project_dir(candidate: Path) -> Path:
-    """A project file's directory, or the directory itself when the candidate *is* one."""
-    return candidate.parent if candidate.suffix else candidate
+    """A project file's directory, or the directory itself when the candidate *is* one.
+
+    Asked of the filesystem, not of the name: a Java or Gradle module is a *directory*, and
+    `acme.worker/` has a suffix by `Path`'s reckoning — so a name-based test handed back the
+    repository root and let that module claim every file in the repo.
+    """
+    return candidate if candidate.is_dir() else candidate.parent
 
 
-def _source_file_count(directory: Path) -> int:
+def _source_file_count(directory: Path, suffixes: frozenset[str] = frozenset()) -> int:
     """Source files under ``directory``, skipping what the extractor skips.
 
     Counted rather than guessed, and with the same ignore rules, so a generated `obj/` tree or a
@@ -691,13 +727,20 @@ def _source_file_count(directory: Path) -> int:
             for d in dirnames
             if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".") and not is_nested_repo(here, d)
         )
-        total += sum(1 for f in filenames if Path(f).suffix.lower() in _SOURCE_SUFFIXES)
+        total += sum(1 for f in filenames if Path(f).suffix.lower() in (suffixes or _SOURCE_SUFFIXES))
     return total
 
 
-#: What counts as source when weighing one project against another. Deliberately the union of
-#: the suffixes the front-ends read, not a per-language set: the projects being compared are
-#: already the same language, and a `.razor` beside a `.cs` is the same project's source.
+#: What counts as source when weighing one project against another, **per language**. Counting
+#: the union was wrong in the direction that matters: an ASP.NET app's `wwwroot/lib/` holds
+#: vendored jQuery and Bootstrap, so a ten-file web project with 1,200 vendored `.js` beat an
+#: eighty-file API client on "most source". A project is weighed by the language being resolved.
+SOURCE_SUFFIXES_BY_LANGUAGE: dict[str, frozenset[str]] = {
+    "csharp": frozenset({".cs", ".razor", ".cshtml"}),
+    "java": frozenset({".java"}),
+    "kotlin": frozenset({".kt", ".kts"}),
+}
+#: The fallback when no language is named — only a direct `choose_project` call reaches it.
 _SOURCE_SUFFIXES = frozenset(
     {".cs", ".razor", ".cshtml", ".java", ".kt", ".kts", ".ts", ".tsx", ".js", ".jsx", ".py", ".go"}
 )
@@ -720,7 +763,10 @@ def detect_csharp_layout(
         return None
     production = [p for p in csprojs if not p.stem.lower().endswith(("test", "tests"))]
     src_proj = (
-        choose_project(production or csprojs[:1], prefer_paths=prefer_paths, root=root, why=why) or csprojs[0]
+        choose_project(
+            production or csprojs[:1], prefer_paths=prefer_paths, root=root, why=why, language="csharp"
+        )
+        or csprojs[0]
     )
     project = src_proj.stem
     source_dir = src_proj.parent.relative_to(root).as_posix()

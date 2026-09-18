@@ -497,3 +497,136 @@ def test_a_single_module_java_build_is_unchanged(tmp_path: Path) -> None:
         "src/main/java/com/acme",
         "src/test/java/com/acme",
     )
+
+
+def _two_kotlin_modules(root: Path) -> None:
+    for module, pkg in (("api", "com/acme/api"), ("worker", "com/acme/worker")):
+        d = root / module / "src" / "main" / "kotlin" / pkg
+        d.mkdir(parents=True)
+        (d / "Main.kt").write_text("class Main\n", encoding="utf-8")
+        (root / module / "build.gradle.kts").write_text('plugins { kotlin("jvm") }\n', encoding="utf-8")
+    (root / "settings.gradle.kts").write_text('include(":api", ":worker")\n', encoding="utf-8")
+
+
+def test_an_explicit_package_name_outranks_the_files_a_ticket_mentions(tmp_path: Path) -> None:
+    """A ticket may *mention* a file it only reads. An operator naming the package is giving an
+    instruction, and an inference must not overrule it (D7)."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _two_kotlin_modules(tmp_path)
+    layout = resolve_layout(
+        tmp_path,
+        mode="existing",
+        language="kotlin",
+        package_name="com.acme.api",
+        prefer_paths=["worker/src/main/kotlin/com/acme/worker/Main.kt"],
+    )
+    assert layout.module == "api"
+    assert layout.source_dir == "api/src/main/kotlin/com/acme/api"
+
+
+def test_choosing_a_module_from_the_ticket_takes_that_module_s_own_package(tmp_path: Path) -> None:
+    """Keeping the repo-derived name while switching module is how a package nobody declared gets
+    written into a brownfield module — the failure `_module_layout` already records once."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _two_kotlin_modules(tmp_path)
+    layout = resolve_layout(
+        tmp_path,
+        mode="existing",
+        language="kotlin",
+        prefer_paths=["worker/src/main/kotlin/com/acme/worker/Main.kt"],
+    )
+    assert layout.module == "worker"
+    assert layout.package_name == "com.acme.worker"  # the module's own, never `org.example.<repo>`
+    assert layout.source_dir == "worker/src/main/kotlin/com/acme/worker"
+    assert layout.chosen_reason == "holds 1 of 1 file(s) the design names"
+
+
+def test_a_ticket_that_names_nothing_still_refuses_to_guess_a_module(tmp_path: Path) -> None:
+    """Two modules and no evidence is the case `kotlin_project_error` exists to report. A guess
+    dressed as a choice is worse than the refusal."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    _two_kotlin_modules(tmp_path)
+    layout = resolve_layout(tmp_path, mode="existing", language="kotlin")
+    assert layout.module == "" and layout.source_dir == ""
+
+
+def test_a_module_directory_with_a_dot_in_its_name_owns_only_its_own_files(tmp_path: Path) -> None:
+    """`acme.worker/` has a suffix by `Path`'s reckoning, so a name-based test made it the
+    repository root — and every file in the repo, including a top-level README, counted for it."""
+    from orchestrator.sdlc.layout import detect_java_layout, project_holding
+
+    for module in ("acme.worker", "web"):
+        d = tmp_path / module / "src" / "main" / "java" / "com" / "acme"
+        d.mkdir(parents=True)
+        (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text("# readme\n", encoding="utf-8")
+
+    assert (
+        project_holding(
+            [tmp_path / "acme.worker", tmp_path / "web"], prefer_paths=["README.md"], root=tmp_path
+        )
+        is None
+    )
+    detected = detect_java_layout(tmp_path, prefer_paths=["web/src/main/java/com/acme/Main.java"])
+    assert detected is not None and detected[1] == "web/src/main/java/com/acme"
+
+
+def test_a_vendored_asset_tree_cannot_outvote_a_real_project(tmp_path: Path) -> None:
+    """`wwwroot/lib/` is where an ASP.NET app keeps vendored jQuery and Bootstrap. Counting every
+    front-end suffix let ten C# files plus 1,200 vendored `.js` beat an eighty-file API client."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    (tmp_path / "ApiClient").mkdir()
+    (tmp_path / "ApiClient" / "ApiClient.csproj").write_text("<Project/>\n", encoding="utf-8")
+    for i in range(80):
+        (tmp_path / "ApiClient" / f"C{i}.cs").write_text("class C {}\n", encoding="utf-8")
+    vendor = tmp_path / "WebApp" / "wwwroot" / "lib" / "jquery"
+    vendor.mkdir(parents=True)
+    (tmp_path / "WebApp" / "WebApp.csproj").write_text("<Project/>\n", encoding="utf-8")
+    for i in range(10):
+        (tmp_path / "WebApp" / f"W{i}.cs").write_text("class W {}\n", encoding="utf-8")
+    for i in range(1200):
+        (vendor / f"v{i}.js").write_text("//\n", encoding="utf-8")
+
+    detected = detect_csharp_layout(tmp_path)
+    assert detected is not None and detected[1] == "ApiClient"
+
+
+def test_a_nested_maven_module_is_found(tmp_path: Path) -> None:
+    """`include(":services:worker")` and Maven aggregators nest. One level of globbing found
+    nothing at all and the layout fell through to a package absent from the repository."""
+    from orchestrator.sdlc.layout import detect_java_layout
+
+    for module in ("api", "worker"):
+        d = tmp_path / "services" / module / "src" / "main" / "java" / "com" / "acme" / module
+        d.mkdir(parents=True)
+        (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+
+    detected = detect_java_layout(
+        tmp_path, prefer_paths=["services/worker/src/main/java/com/acme/worker/Main.java"]
+    )
+    assert detected == (
+        "com.acme.worker",
+        "services/worker/src/main/java/com/acme/worker",
+        "services/worker/src/test/java/com/acme/worker",
+    )
+
+
+def test_the_java_layout_says_which_rule_chose_the_module(tmp_path: Path) -> None:
+    from orchestrator.sdlc.layout import resolve_layout
+
+    for module in ("api", "worker"):
+        d = tmp_path / module / "src" / "main" / "java" / "com" / "acme" / module
+        d.mkdir(parents=True)
+        (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+
+    layout = resolve_layout(
+        tmp_path,
+        mode="existing",
+        language="java",
+        prefer_paths=["worker/src/main/java/com/acme/worker/Main.java"],
+    )
+    assert layout.chosen_reason == "holds 1 of 1 file(s) the design names"
