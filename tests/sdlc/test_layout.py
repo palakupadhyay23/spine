@@ -682,3 +682,90 @@ def test_the_kotlin_layout_says_why_it_rewrote_the_package(tmp_path: Path) -> No
     layout = resolve_layout(tmp_path, mode="existing", language="kotlin")
     assert layout.module == "app"
     assert layout.chosen_reason == "only Kotlin module in the build"
+
+
+def test_a_vendored_dotnet_project_is_not_a_candidate_either(tmp_path: Path) -> None:
+    """The exclusion has to reach the language the track exists for: a 99-file
+    `third_party/Vendor.Lib` beat the repository's own five-file project on "most source"."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    (tmp_path / "src" / "Acme.Worker").mkdir(parents=True)
+    (tmp_path / "src" / "Acme.Worker" / "Acme.Worker.csproj").write_text("<Project/>\n", encoding="utf-8")
+    for i in range(5):
+        (tmp_path / "src" / "Acme.Worker" / f"W{i}.cs").write_text("class W {}\n", encoding="utf-8")
+    vendored = tmp_path / "third_party" / "Vendor.Lib"
+    vendored.mkdir(parents=True)
+    (vendored / "Vendor.Lib.csproj").write_text("<Project/>\n", encoding="utf-8")
+    for i in range(99):
+        (vendored / f"V{i}.cs").write_text("class V {}\n", encoding="utf-8")
+
+    detected = detect_csharp_layout(tmp_path)
+    assert detected is not None and detected[1] == "src/Acme.Worker"
+    # …but a ticket that names a file inside one is still obeyed.
+    named = detect_csharp_layout(tmp_path, prefer_paths=["third_party/Vendor.Lib/V1.cs"])
+    assert named is not None and named[1] == "third_party/Vendor.Lib"
+
+
+def test_a_module_the_ticket_names_survives_the_vendored_prune(tmp_path: Path) -> None:
+    """An SDK repository's own `examples/demo` is first-party to whoever filed the ticket about
+    it. Pruning it sent the run into a module nobody named, while the `[layout]` line claimed
+    there had been only one candidate."""
+    from orchestrator.sdlc.layout import detect_java_layout
+
+    for module, pkg in (("services/api", "com/acme"), ("examples/demo", "com/acme/demo")):
+        d = tmp_path / module / "src" / "main" / "java" / pkg
+        d.mkdir(parents=True)
+        (d / "Main.java").write_text("class Main {}\n", encoding="utf-8")
+
+    named = detect_java_layout(tmp_path, prefer_paths=["examples/demo/src/main/java/com/acme/demo/Main.java"])
+    assert named is not None and named[1] == "examples/demo/src/main/java/com/acme/demo"
+    unnamed = detect_java_layout(tmp_path)
+    assert unnamed is not None and unnamed[1] == "services/api/src/main/java/com/acme"
+
+
+def test_the_test_project_belongs_to_the_project_being_built(tmp_path: Path) -> None:
+    """`WebApp.Tests` is not `ApiClient`'s suite. Taking the repository's first `*Tests.csproj`
+    was harmless while both followed one inference, and became a mismatch the moment a project
+    could be named — the codegen prompt would have told the model to write into another project's
+    tests."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    for proj in ("ApiClient", "WebApp", "WebApp.Tests"):
+        (tmp_path / proj).mkdir()
+        (tmp_path / proj / f"{proj}.csproj").write_text("<Project/>\n", encoding="utf-8")
+        (tmp_path / proj / "A.cs").write_text("class A {}\n", encoding="utf-8")
+
+    assert detect_csharp_layout(tmp_path, project="WebApp") == ("WebApp", "WebApp", "WebApp.Tests")
+    assert detect_csharp_layout(tmp_path, project="ApiClient") == (
+        "ApiClient",
+        "ApiClient",
+        "tests/ApiClient.Tests",
+    )
+
+
+def test_a_solution_with_one_shared_suite_still_uses_it(tmp_path: Path) -> None:
+    """NSS-1239's real shape: `UnitTests` is named after no project, so it is the repository's
+    one suite and every project's tests belong in it."""
+    from orchestrator.sdlc.layout import detect_csharp_layout
+
+    for proj in ("ApiClient", "WebApp", "UnitTests"):
+        (tmp_path / proj).mkdir()
+        (tmp_path / proj / f"{proj}.csproj").write_text("<Project/>\n", encoding="utf-8")
+        (tmp_path / proj / "A.cs").write_text("class A {}\n", encoding="utf-8")
+
+    assert detect_csharp_layout(tmp_path, project="WebApp") == ("WebApp", "WebApp", "UnitTests")
+
+
+def test_the_kotlin_layout_names_the_package_match_too(tmp_path: Path) -> None:
+    """The second of the two branches that rewrite the package — asserted so the string cannot be
+    dropped without a failure."""
+    from orchestrator.sdlc.layout import resolve_layout
+
+    d = tmp_path / "app" / "src" / "main" / "kotlin" / "com" / "acme" / "app"
+    d.mkdir(parents=True)
+    (d / "Main.kt").write_text("class Main\n", encoding="utf-8")
+    (tmp_path / "app" / "build.gradle.kts").write_text('plugins { kotlin("jvm") }\n', encoding="utf-8")
+    (tmp_path / "settings.gradle.kts").write_text('include(":app")\n', encoding="utf-8")
+
+    layout = resolve_layout(tmp_path, mode="existing", language="kotlin", package_name="com.acme.app")
+    assert layout.chosen_reason == "module already holds this package"

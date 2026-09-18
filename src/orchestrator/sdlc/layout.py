@@ -211,7 +211,22 @@ _NOT_OURS = frozenset(
 )
 
 
-def _module_roots(root: Path, source_root: str) -> list[Path]:
+def _claimed(path: Path, root: Path, prefer_paths: Sequence[str]) -> bool:
+    """Whether ``path`` is on the way to a file the ticket names.
+
+    The vendored-directory prune must never outrank the ticket: an SDK repository's own
+    `examples/demo` module is first-party to the person who filed the ticket about it, and
+    pruning it sent the run into a module nobody named while the `[layout]` line claimed there
+    had been only one candidate.
+    """
+    for rel in prefer_paths:
+        target = root / rel
+        if target == path or path in target.parents:
+            return True
+    return False
+
+
+def _module_roots(root: Path, source_root: str, prefer_paths: Sequence[str] = ()) -> list[Path]:
     """Directories holding a ``src/main/<source_root>`` tree — the repository's modules.
 
     A single-module repo answers ``[root]``. A Gradle or Maven multi-module one answers a module
@@ -228,7 +243,7 @@ def _module_roots(root: Path, source_root: str) -> list[Path]:
             d
             for d in dirnames
             if d not in DEFAULT_IGNORE_DIRS
-            and d.lower() not in _NOT_OURS
+            and (d.lower() not in _NOT_OURS or _claimed(here / d, root, prefer_paths))
             and not d.startswith(".")
             and not is_nested_repo(here, d)
         )
@@ -278,7 +293,7 @@ def detect_java_layout(
     :func:`choose_project`'s answer over the modules found, and within it the package is the one
     holding the files ``prefer_paths`` names — else, as before, the first that holds source.
     """
-    modules = _module_roots(root, "java")
+    modules = _module_roots(root, "java", prefer_paths)
     why: list[str] = []
     module = choose_project(modules, prefer_paths=prefer_paths, root=root, why=why, language="java")
     if module is None:
@@ -755,7 +770,10 @@ def _source_file_count(directory: Path, suffixes: frozenset[str] = frozenset()) 
         dirnames[:] = sorted(
             d
             for d in dirnames
-            if d not in DEFAULT_IGNORE_DIRS and not d.startswith(".") and not is_nested_repo(here, d)
+            if d not in DEFAULT_IGNORE_DIRS
+            and d.lower() not in _NOT_OURS
+            and not d.startswith(".")
+            and not is_nested_repo(here, d)
         )
         total += sum(1 for f in filenames if Path(f).suffix.lower() in (suffixes or _SOURCE_SUFFIXES))
     return total
@@ -776,6 +794,31 @@ _SOURCE_SUFFIXES = frozenset(
 )
 
 
+def _csproj_candidates(root: Path, prefer_paths: Sequence[str] = ()) -> list[Path]:
+    """Every `.csproj` that could be this repository's own, in sorted order.
+
+    `rglob` alone offered a vendored `third_party/Vendor.Lib` with 99 files against the
+    repository's own five, and "most source" duly chose it — a run that would have opened a
+    PR editing somebody else's .NET code. A project the ticket names is kept whatever
+    directory it sits in.
+    """
+    from orchestrator.pkg.extractor import DEFAULT_IGNORE_DIRS, is_nested_repo
+
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in DEFAULT_IGNORE_DIRS
+            and (d.lower() not in _NOT_OURS or _claimed(here / d, root, prefer_paths))
+            and not d.startswith(".")
+            and not is_nested_repo(here, d)
+        )
+        found.extend(here / f for f in sorted(filenames) if f.endswith(".csproj"))
+    return sorted(found)
+
+
 def detect_csharp_layout(
     root: Path,
     *,
@@ -792,7 +835,7 @@ def detect_csharp_layout(
     sorted first, which is how NSS-1239 built into `ApiClient` against a plan naming only
     `WebApp/` files.
     """
-    csprojs = sorted(root.rglob("*.csproj"))
+    csprojs = _csproj_candidates(root, prefer_paths)
     if not csprojs:
         return None
     # An explicit project name settles it outright. Until this existed there was no lever at
@@ -815,10 +858,30 @@ def detect_csharp_layout(
 
 
 def _csharp_from(src_proj: Path, csprojs: Sequence[Path], root: Path) -> tuple[str, str, str]:
-    """``(project, source_dir, tests_dir)`` once the source project is settled."""
+    """``(project, source_dir, tests_dir)`` once the source project is settled.
+
+    The test project has to belong to *this* source project. Taking the first `*Tests.csproj`
+    in the repository was harmless while both followed the same inference, and became a real
+    mismatch once a project could be named explicitly: retargeting the source silently kept
+    another project's suite, and the codegen prompt then told the model to write tests into it.
+    """
     project = src_proj.stem
     source_dir = src_proj.parent.relative_to(root).as_posix()
-    test_proj = next((p for p in csprojs if p.stem.lower().endswith(("test", "tests"))), None)
+    tests = [p for p in csprojs if p.stem.lower().endswith(("test", "tests"))]
+    production = {p.stem.lower() for p in csprojs if p not in tests}
+    # `<Project>.Tests` is this project's suite. Otherwise a suite named after *another*
+    # project belongs to that one — `WebApp.Tests` is not `ApiClient`'s — and what remains is
+    # the repository's own single suite, which is how a solution with one `UnitTests` project
+    # is meant to work. Anything more ambiguous derives a name rather than borrowing a suite.
+    unclaimed = [
+        p
+        for p in tests
+        if not any(p.stem.lower().startswith(other) for other in production if other != project.lower())
+    ]
+    test_proj = next(
+        (p for p in tests if p.stem.lower().startswith(project.lower())),
+        unclaimed[0] if len(unclaimed) == 1 else None,
+    )
     tests_dir = (
         test_proj.parent.relative_to(root).as_posix() if test_proj is not None else _csharp_dirs(project)[1]
     )

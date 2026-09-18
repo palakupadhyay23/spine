@@ -43,10 +43,10 @@ All notable changes to this project are documented here. Format loosely follows
   Greenfield scaffolding is unchanged.
 
 - **Java multi-module repositories resolve at all.** `root/src/main/java` is the single-module
-  shape; a Maven or Gradle build keeps each module's tree under `<module>/src/main/java` at any
-  depth — so `include(":services:worker")` counts — where the lookup previously matched nothing and the layout fell through to a package name
-  absent from the repository. The module — and the package inside it — now follow the ticket's
-  files. Kotlin was already module-aware but chose by package name and stopped at "name a module"
+  shape; a Maven or Gradle build keeps each module's tree under `<module>/src/main/java` at
+  any depth, so `include(":services:worker")` counts. The lookup previously matched nothing
+  and the layout fell through to a package name absent from the repository; the module, and
+  the package inside it, now follow the ticket's files. Kotlin was already module-aware but chose by package name and stopped at "name a module"
   when several qualified; the ticket's files settle it, and that honest refusal remains when they
   say nothing.
 
