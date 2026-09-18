@@ -798,7 +798,7 @@ def test_the_caveat_names_the_language_that_built_the_graph() -> None:
     from orchestrator.sdlc.builddoc import _blast_prose
 
     prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["csharp"]}, "python")
-    assert "recall for csharp is **0.75**" in prose
+    assert "recall for csharp is **0.80**" in prose
     assert "python" not in prose
 
 
@@ -809,7 +809,7 @@ def test_a_polyglot_blast_radius_scores_each_language() -> None:
     prose = _blast_prose(
         {"call_graph_available": True, "modules": [], "languages": ["csharp", "typescript"]}, "python"
     )
-    assert "recall: csharp **0.75**, typescript **0.86**" in prose
+    assert "recall: csharp **0.80**, typescript **0.86**" in prose
 
 
 def test_an_unmeasured_language_is_named_rather_than_dropped() -> None:

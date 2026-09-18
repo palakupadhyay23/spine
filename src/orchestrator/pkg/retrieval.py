@@ -99,6 +99,26 @@ def _is_test_file(path: str) -> bool:
 
 
 @dataclass(frozen=True)
+class ScoredSymbol:
+    """A retrieval hit with the evidence it rests on, so a consumer can tell strong from weak.
+
+    ``weak`` is the floor: the words the hit shares with the query, **taken together**, also name
+    symbols in other files — it rests on nothing specific. NSS-1231's five proposed files all
+    rested on ``client`` (one word, in four files), and ``PsiHoldApiClient`` on ``api`` +
+    ``client``, a pair that co-occurs in two; the score alone could not say so once it left this
+    module, because nothing downstream carried it. Two things make a hit strong: a word or a
+    combination found in one file only (``ebsorder``, ``exporter``), or the query naming the
+    symbol's **whole** multi-word name — ``OrderService`` is a named thing even where ``order``
+    and ``service`` each appear in twenty files.
+    """
+
+    node: Node
+    score: float
+    matched: tuple[str, ...]
+    weak: bool
+
+
+@dataclass(frozen=True)
 class SymbolImpact:
     """A changed symbol and what depends on it."""
 
@@ -165,11 +185,25 @@ class GroundedRetriever:
         Type/Function outrank Module so the result reads like an API surface.
         Test-file symbols are excluded by default: a spec wants the APIs to
         reuse, not the tests that exercise them.
+
+        The nodes only; :meth:`scored_symbols` carries the evidence too.
+        """
+        return [s.node for s in self.scored_symbols(text, limit=limit, include_tests=include_tests)]
+
+    def scored_symbols(self, text: str, *, limit: int = 8, include_tests: bool = False) -> list[ScoredSymbol]:
+        """:meth:`relevant_symbols` with each hit's score, matched tokens and the ``weak`` floor.
+
+        "Names other symbols" is counted over distinct **files**, over every grounded name in
+        the graph: a module and the function inside it sharing the file's name is one thing
+        named once, not a generic word — `exporter` in `src/exporter.py` is the thing a ticket
+        meant, `client` across four files is not. Measured against the graph in hand, not a
+        constant, so the rule holds on a ten-node fixture and a ten-thousand-node repository.
         """
         query = _tokens(text)
         if not query:
             return []
-        scored: list[tuple[float, str, Node]] = []
+        hits: list[tuple[float, str, Node, frozenset[str], frozenset[str]]] = []
+        file_tokens: dict[str, set[str]] = {}
         for node in self._store.nodes:
             if not node.grounded:
                 continue
@@ -178,15 +212,24 @@ class GroundedRetriever:
             name_tokens = _tokens(node.name)
             if not name_tokens:
                 continue
-            overlap = len(query & name_tokens)
-            if overlap == 0:
+            file = node.provenance.file if node.provenance is not None else node.id
+            file_tokens.setdefault(file, set()).update(name_tokens)
+            overlap = frozenset(query & name_tokens)
+            if not overlap:
                 continue
-            score = 3.0 * (overlap / len(name_tokens)) + 1.0 * overlap
+            score = 3.0 * (len(overlap) / len(name_tokens)) + 1.0 * len(overlap)
             if node.kind in (NodeKind.TYPE, NodeKind.FUNCTION):
                 score += 0.5
-            scored.append((score, node.id, node))
-        scored.sort(key=lambda s: (-s[0], s[1]))
-        return [n for _, _, n in scored[:limit]]
+            hits.append((score, node.id, node, overlap, frozenset(name_tokens)))
+        hits.sort(key=lambda s: (-s[0], s[1]))
+        out: list[ScoredSymbol] = []
+        for score, _, node, shared, own in hits[:limit]:
+            matched = tuple(sorted(shared))
+            whole_name = shared == own and len(own) >= 2
+            co_occurring = sum(1 for toks in file_tokens.values() if shared <= toks)
+            weak = not whole_name and co_occurring >= 2
+            out.append(ScoredSymbol(node=node, score=score, matched=matched, weak=weak))
+        return out
 
     def api_surface(self, text: str, *, limit: int = 8) -> list[Node]:
         """``relevant_symbols`` with Module hits expanded into their classes.
@@ -230,4 +273,4 @@ class GroundedRetriever:
         )
 
 
-__all__ = ["GroundedRetriever", "SymbolImpact"]
+__all__ = ["GroundedRetriever", "ScoredSymbol", "SymbolImpact"]

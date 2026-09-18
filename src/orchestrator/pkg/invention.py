@@ -70,6 +70,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch
+from orchestrator.pkg.razor import razor_to_csharp
 
 _MAX_EXAMPLES = 15
 
@@ -289,7 +290,15 @@ def _walked_invention(language: str, calls: list[Edge], base: Path) -> LanguageI
         if rel not in cache:
             path = base / rel
             try:
-                cache[rel] = scope_mod.scopes_for_source(path.read_bytes(), language, path.suffix)
+                source = path.read_bytes()
+                if path.suffix.lower() == ".razor":
+                    # The oracle must scope what the front-end parsed — the line-aligned C#
+                    # rewrite — or it reads raw markup with a C# grammar and every name a
+                    # component binds looks invented.
+                    source = razor_to_csharp(source.decode("utf-8-sig", errors="replace"), rel).encode(
+                        "utf-8"
+                    )
+                cache[rel] = scope_mod.scopes_for_source(source, language, path.suffix)
             except (OSError, KeyError, RuntimeError, ValueError):
                 cache[rel] = None
         return cache[rel]

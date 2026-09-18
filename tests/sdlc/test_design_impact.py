@@ -135,3 +135,104 @@ async def test_produce_design_without_store_is_unannotated() -> None:
     )
     assert "blast_radius" not in design
     assert "## Blast radius" not in render_design_md({"title": "t"}, design)
+
+
+# --------------------------------------------------------------------------- #
+# NSS-1209 — a namespace-keyed front-end (C#/Java/PHP; Go by directory) emits one
+# MODULE node per namespace, so only the first file walked used to resolve and every
+# sibling came back "absent from the knowledge graph".
+# --------------------------------------------------------------------------- #
+def _csharp_namespace_graph() -> FactBatch:
+    """One MODULE for the namespace (provenance = ColumnKey.cs, the first file walked);
+    three Types across three files; one other module importing the namespace."""
+    b = FactBatch()
+    ns = Node(
+        id="csharp:Shared.Enums",
+        kind=NodeKind.MODULE,
+        name="Shared.Enums",
+        language="csharp",
+        provenance=Provenance("WebApp/Shared/Enums/ColumnKey.cs", 1),
+    )
+    b.add_node(ns)
+    for name, file in (
+        ("ColumnKey", "ColumnKey.cs"),
+        ("ProductGroupHelper", "ProductGroup.cs"),
+        ("ProductHistoryEventType", "ProductHistoryEventType.cs"),
+    ):
+        tid = f"csharp:Shared.Enums.{name}"
+        b.add_node(
+            Node(
+                id=tid,
+                kind=NodeKind.TYPE,
+                name=name,
+                language="csharp",
+                provenance=Provenance(f"WebApp/Shared/Enums/{file}", 3),
+            )
+        )
+        b.add_edge(Edge(ns.id, tid, EdgeKind.CONTAINS))
+    grid = Node(
+        id="csharp:Features.Grid",
+        kind=NodeKind.MODULE,
+        name="Features.Grid",
+        language="csharp",
+        provenance=Provenance("WebApp/Features/Grid.cs", 1),
+    )
+    b.add_node(grid)
+    b.add_edge(Edge(grid.id, ns.id, EdgeKind.IMPORTS))
+    return b
+
+
+def test_nss_1209_a_file_in_a_shared_namespace_is_not_flagged_absent() -> None:
+    """Field report NSS-1209: `ProductGroup.cs` and `ProductHistoryEventType.cs` were listed as
+    "absent from the knowledge graph" two sections after their own symbols had been printed
+    with line numbers. Every file a grounded node lives in must resolve; only a true ghost
+    is absent. A bare basename — how a ticket usually writes it — resolves too."""
+    store = FactStore(_csharp_namespace_graph())
+    files = [
+        "WebApp/Shared/Enums/ProductGroup.cs",
+        "WebApp/Shared/Enums/ProductHistoryEventType.cs",
+        "WebApp/Shared/Enums/ColumnKey.cs",
+        "WebApp/Shared/Enums/Ghost.cs",
+    ]
+    br = blast_radius(store, files)
+    assert unverified_references(br) == ["WebApp/Shared/Enums/Ghost.cs"]
+    assert [m.module for m in br.modules] == ["Shared.Enums"] * 3
+    assert blast_radius(store, ["ProductGroup.cs"]).unresolved == ()
+
+
+def test_a_module_spanning_files_says_so_and_its_importers_are_counted_once() -> None:
+    """The importer count belongs to the namespace, not to whichever file resolved. Say so in
+    the design, and do not sum it once per file in the build document's reading."""
+    from orchestrator.sdlc.builddoc import _blast_prose
+
+    store = FactStore(_csharp_namespace_graph())
+    br = blast_radius(store, ["WebApp/Shared/Enums/ProductGroup.cs", "WebApp/Shared/Enums/ColumnKey.cs"])
+    assert all(m.spans == 3 and m.importers == 1 for m in br.modules)
+    md = render_md(to_dict(br))
+    assert "module `Shared.Enums` spans 3 file(s); imported by 1 module(s): Features.Grid" in md
+    assert "2 module(s) change; 1 module(s) import them" in _blast_prose(to_dict(br))
+
+
+def test_a_new_path_in_another_directory_is_not_resolved_to_a_namesake() -> None:
+    """A design proposing a NEW `Payments/Client.cs` must stay unverified, not resolve to the
+    existing `Legacy/Client.cs` by basename — the honest answer was the old one."""
+    b = FactBatch()
+    ns = Node("csharp:Legacy", NodeKind.MODULE, "Legacy", "csharp", Provenance("Legacy/Soap/Client.cs", 1))
+    b.add_node(ns)
+    b.add_node(
+        Node(
+            "csharp:Legacy.Client", NodeKind.TYPE, "Client", "csharp", Provenance("Legacy/Soap/Client.cs", 3)
+        )
+    )
+    b.add_edge(Edge(ns.id, "csharp:Legacy.Client", EdgeKind.CONTAINS))
+    br = blast_radius(FactStore(b), ["Payments/Oauth/Client.cs", "Client.cs"])
+    assert unverified_references(br) == ["Payments/Oauth/Client.cs"]  # the bare name still resolves
+
+
+def test_an_ambiguous_bare_basename_is_not_guessed() -> None:
+    b = FactBatch()
+    for ns, file in (("A", "a/Product.cs"), ("B", "b/Product.cs")):
+        b.add_node(Node(f"csharp:{ns}", NodeKind.MODULE, ns, "csharp", Provenance(file, 1)))
+        b.add_node(Node(f"csharp:{ns}.Product", NodeKind.TYPE, "Product", "csharp", Provenance(file, 3)))
+        b.add_edge(Edge(f"csharp:{ns}", f"csharp:{ns}.Product", EdgeKind.CONTAINS))
+    assert unverified_references(blast_radius(FactStore(b), ["Product.cs"])) == ["Product.cs"]

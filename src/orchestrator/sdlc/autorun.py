@@ -853,12 +853,13 @@ def _stage_investigate(ctx: RunContext, *, store: Any, emit: Callable[[str], Non
         _adopt_evidence(ctx, emit=emit)
         return
 
+    from orchestrator.sdlc.design import _query_text
     from orchestrator.sdlc.investigate import build_investigation, render_investigation_md
 
     spec = ctx.spec or {}
     investigation = build_investigation(
         str(spec.get("title", "")),
-        str(spec.get("summary", "")),
+        _query_text(spec, title=False),
         store=store,
         root=ctx.root,
     )

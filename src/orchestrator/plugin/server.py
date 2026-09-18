@@ -558,6 +558,9 @@ def investigate(
                     "callers": h.callers,
                     "cross_repo": h.cross_repo,
                     "module": h.module,
+                    "score": h.score,
+                    "matched": list(h.matched),
+                    "weak": h.weak,
                 }
                 for h in inv.landing
             ],

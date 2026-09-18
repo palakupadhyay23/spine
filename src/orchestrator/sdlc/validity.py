@@ -338,6 +338,34 @@ def _check_localization(spec: dict[str, Any], landing: list[str], issue_type: st
     ]
 
 
+def _check_story_landing(landing: list[str], issue_type: str, store: FactStore) -> list[Finding]:
+    """A non-Bug on a grounded graph that lands nowhere: PROCEED, and say so.
+
+    Not a refusal. A feature can legitimately be about code that does not exist yet — that is
+    the whole point of a feature — so the greenfield Story keeps proceeding (the test above
+    this check is older than it). But NSS-1231 proceeded *silently*: every retrieval hit was
+    one shared word, the design should have proposed nothing, and the gate said "nothing
+    contradicts the code", which was true and useless. This is the finding that was missing —
+    the run continues, and the reader is told the design has nothing to build from. On an
+    ungrounded graph landing nowhere is expected of everything, so nothing is said.
+    """
+    if landing or is_bug(issue_type) or store.summary().get("grounded_nodes", 0) == 0:
+        return []
+    return [
+        Finding(
+            check="localization",
+            detail=(
+                "nothing in the graph matches this ticket's words beyond single shared terms, and it "
+                "names no file — the design proposes nothing to build from"
+            ),
+            evidence=(
+                "name the file, class or endpoint the change touches; a path the ticket names is "
+                "taken as written"
+            ),
+        )
+    ]
+
+
 def _check_size(spec: dict[str, Any], files: list[str], max_criteria: int, max_files: int) -> list[Finding]:
     findings: list[Finding] = []
     criteria = _criteria_text(spec)
@@ -529,7 +557,8 @@ def assess(
     if unbuildable:
         return Assessment(verdict=Verdict.TOO_BIG, findings=over_budget)
 
-    return Assessment(verdict=Verdict.PROCEED, findings=findings + over_budget)
+    unlanded = _check_story_landing(landing, issue_type, store)
+    return Assessment(verdict=Verdict.PROCEED, findings=findings + over_budget + unlanded)
 
 
 __all__ = [

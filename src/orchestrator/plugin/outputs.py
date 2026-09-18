@@ -259,6 +259,11 @@ class Landing(TypedDict, total=False):
     callers: int
     repo: str
     cross_repo: list[CrossRepoReach]
+    # The evidence a hit rests on. `weak` means every word it shares with the query, taken
+    # together, also names symbols in other files — a reason to look, not a file to edit.
+    score: float
+    matched: list[str]
+    weak: bool
 
 
 @with_config(_OPEN)

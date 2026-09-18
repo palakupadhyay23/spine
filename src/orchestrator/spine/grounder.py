@@ -22,7 +22,7 @@ from orchestrator.spine.grounding import GroundingBlock
 from orchestrator.spine.ontomesh_client import OntomeshError, OntomeshSearch
 
 # Spec prose fields used to form the domain question (mirrors the PKG grounder).
-_SPEC_FIELDS = ("title", "summary", "user_story", "technical_notes")
+_SPEC_FIELDS = ("title", "summary", "description", "scope", "user_story", "technical_notes")
 
 
 def _spec_question(spec: dict[str, Any]) -> str:

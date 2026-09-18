@@ -38,12 +38,12 @@ it lends the authority of the first to the second.
 
 ## 2. Section map — where each part comes from
 
-Mapped against the SSPN-49 document. **Only two sections are stated; everything
-else is derived.**
+Mapped against the SSPN-49 document. **Only one section — 08, the criteria — is stated;
+everything else is derived.**
 
 | # | Section | Provenance | Source | Exists today |
 |---|---|---|---|---|
-| 01 | Requirement | stated | ticket body | yes — intake |
+| 01 | Requirement | derived · model | the intent's description — the ticket's words as intake carried them, identifiers verbatim; the spec writer's summary when none was carried, and the label says which | yes — intake |
 | 02 | Intent | model | `intake/intents.py` | yes |
 | 03 | Root cause | model | `orchestrator rca` | partly — not wired to plans |
 | 04 | PKG facts | deterministic | `FactStore` | yes |

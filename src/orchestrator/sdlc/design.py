@@ -67,17 +67,11 @@ def _structure_lines(overview: dict[str, Any] | None) -> list[str]:
     return lines
 
 
-# Repo-relative source paths, matching `codegen._PATH_RE`. Duplicated rather than shared:
-# a six-character regex is cheaper to repeat than a new coupling between two modules that
-# otherwise do not know about each other.
-_PATH_RE = re.compile(r"\b((?:src/|tests/)[\w./-]+\.py)\b")
-
-
 def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     """Paths the spec *states*, which outrank paths inferred from its words.
 
-    ``_landing_files`` reads only the title and summary, matching the ticket's language
-    against the graph. A ticket about "the registry API" whose criteria name
+    ``_landing_files`` matches the ticket's language against the graph. A ticket about "the
+    registry API" whose criteria name
     ``src/orchestrator/cli.py`` therefore came back proposing the registry *server* modules
     — the wrong side of the wire — while the file the spec named twice was absent. Codegen
     is then handed a design that contradicts its own spec, and on SSPN-49 it submitted
@@ -87,25 +81,49 @@ def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     read here for the same reason ``codegen._paths_from`` reads them. A stated path that
     does not exist is dropped: naming a file to create is a job for the approach, not for a
     list of files to open.
+
+    Any source suffix, either separator, and a bare basename — ``EBSOrderApiClient.cs`` with
+    no directory is how NSS-1231 wrote it, and it resolves to its one location under ``root``
+    (two locations is a guess and is dropped). Until it did, this lever was Python-only, and
+    on a .NET repository the design fell through to the keyword guess however precisely the
+    ticket had named its file. Without a ``root`` paths are taken as written.
     """
-    blob = " ".join(
-        [
-            str(spec.get("summary") or ""),
-            str(spec.get("technical_notes") or ""),
-            *[str(a) for a in (spec.get("acceptance_criteria") or [])],
-        ]
-    )
+    from orchestrator.sdlc.source_paths import named_paths, resolve
+
     out: list[str] = []
-    for rel in _PATH_RE.findall(blob):
-        if rel in out:
-            continue
-        if root is not None and not (root / rel).is_file():
-            continue
-        out.append(rel)
+    for rel in named_paths(_query_text(spec, title=False)):
+        resolved = resolve(rel, root) if root is not None else rel
+        if resolved and resolved not in out:
+            out.append(resolved)
     return out
 
 
+def _query_text(spec: dict[str, Any], *, title: bool = True) -> str:
+    """Every field of a spec that can carry an identifier, as one string to search with.
+
+    ``summary`` is the spec writer's paraphrase; ``description``/``scope`` are the intent's,
+    under the extractor's verbatim rule; ``technical_notes`` carries whatever the source named
+    and the paraphrase dropped; the criteria are the contract. Searching the paraphrase alone
+    is how NSS-1231 proposed three database models for an OAuth2 change: the summary had
+    invented "system", and the file the ticket named was in a field nothing read.
+    """
+    parts = [str(spec.get("title") or "")] if title else []
+    parts += [
+        str(spec.get("summary") or ""),
+        str(spec.get("description") or ""),
+        str(spec.get("scope") or ""),
+        str(spec.get("technical_notes") or ""),
+        *[str(a) for a in (spec.get("acceptance_criteria") or [])],
+    ]
+    return " ".join(p for p in parts if p)
+
+
 def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
+    """The files the ticket lands in, weak hits dropped. See :func:`_landing_state`."""
+    return _landing_state(spec, store)[0]
+
+
+def _landing_state(spec: dict[str, Any], store: FactStore | None) -> tuple[list[str], bool]:
     """Where this *ticket* lands, from the same reading `investigate` does.
 
     The previous heuristic listed the overview's biggest modules, which is a fact about the
@@ -119,18 +137,25 @@ def _landing_files(spec: dict[str, Any], store: FactStore | None) -> list[str]:
     it is the same code answering.
     """
     if store is None:
-        return []
+        return [], False
     from orchestrator.sdlc.investigate import build_investigation
 
     investigation = build_investigation(
-        str(spec.get("title", "")), str(spec.get("summary", "")), store=store, max_symbols=8
+        str(spec.get("title", "")), _query_text(spec, title=False), store=store, max_symbols=8
     )
     files: list[str] = []
     for landing in investigation.landing:
+        # The floor. A hit on one shared word is a reason to look, not a file to edit; five of
+        # them was NSS-1231's whole design. Dropped here, an all-weak ticket falls through to
+        # "no files are proposed" — the honest answer, and one this function's caller already
+        # knew how to give.
+        if landing.weak:
+            continue
         path = landing.where.split(":", 1)[0]
         if path and path not in files:
             files.append(path)
-    return files[:5]
+    all_weak = bool(investigation.landing) and all(land.weak for land in investigation.landing)
+    return files[:5], all_weak
 
 
 def _overview_files(spec: dict[str, Any], overview: dict[str, Any] | None) -> list[str]:
@@ -144,10 +169,7 @@ def _overview_files(spec: dict[str, Any], overview: dict[str, Any] | None) -> li
     modules = (overview or {}).get("modules") or []
     if not modules:
         return []
-    text = " ".join(
-        [str(spec.get("title", "")), str(spec.get("summary", ""))]
-        + [str(a) for a in (spec.get("acceptance_criteria") or [])]
-    ).lower()
+    text = _query_text(spec).lower()
     tokens = {t for t in re.split(r"[^a-z0-9]+", text) if len(t) > 3}
     if not tokens:
         return []
@@ -177,7 +199,10 @@ def _fallback_design(
     # at all rather than a guess. A path the ticket names is not a heuristic — inferring
     # around it is how a design ends up contradicting the spec it was built from.
     stated = _stated_paths(spec, root)
-    files = stated or _landing_files(spec, store) or _overview_files(spec, overview)
+    landed, all_weak = _landing_state(spec, store)
+    # An all-weak reading is an answer — "this does not localize" — not a miss to paper over
+    # with the overview's own keyword guess, which has no floor at all.
+    files = stated or landed or ([] if all_weak else _overview_files(spec, overview))
     ac = [str(a) for a in (spec.get("acceptance_criteria") or [])]
     # Say which it is. A consumer — a human reading design.md, or the codegen prompt now
     # carrying it — has to be able to tell a grounded reading from a shrug.
@@ -187,7 +212,13 @@ def _fallback_design(
         # from the ticket itself does not need to second-guess them the way a keyword match
         # deserves to be second-guessed.
         risks = ["Files taken from the paths this ticket names, not inferred from its words."]
-    if not files:
+    if not files and all_weak:
+        risks = [
+            "Heuristic design (no LLM): every symbol matching this ticket's words rests only on "
+            "words other files use too, so no files are proposed. Name the file, class or endpoint "
+            "involved rather than trusting this list."
+        ]
+    elif not files:
         risks = [
             "Heuristic design (no LLM) and nothing in the graph matched this ticket's words, "
             "so no files are proposed. Locate the change before building rather than trusting "

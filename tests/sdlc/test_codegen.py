@@ -2045,7 +2045,9 @@ def test_the_repair_still_warns_against_stale_anchors(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "summary,claims",
     [
-        ("Rewrote orchestrator/api_errors.py to export api_call and explain_status", False),
+        # The live-run summary the function was written for: the old regex required `src/`, so
+        # the case it exists to catch evaluated False and the loop stopped early. A path is a path.
+        ("Rewrote orchestrator/api_errors.py to export api_call and explain_status", True),
         ("Rewrote src/orchestrator/api_errors.py to export api_call", True),
         ("Added tests/test_cli.py covering the timeout path", True),
         ("No changes needed — src/orchestrator/cli.py already handles this", False),

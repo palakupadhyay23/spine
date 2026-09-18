@@ -30,6 +30,9 @@ _DRIFT_EXT = frozenset({
     "lock", "xml", "csv", "tsv", "png", "svg", "jpg", "jpeg", "gif", "pdf",
     "go", "py", "ts", "tsx", "js", "jsx", "css", "scss", "sh", "bat", "php", "pl", "pm",
     "kt", "kts",
+    # `razor` joins here with the front-end that emits it; `cs` and `java` stay absent on
+    # purpose — see `docs._FILE_SUFFIXES` for the recorded reason.
+    "razor",
 })
 # fmt: on
 
