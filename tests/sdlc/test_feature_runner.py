@@ -1469,3 +1469,108 @@ def test_a_non_empty_init_is_still_probed(tmp_path: Path) -> None:
     (tmp_path / "pkg" / "__init__.py").write_text("from .core import run\n", encoding="utf-8")
     probe, excluded = _testable_production(tmp_path, ["pkg/__init__.py", "tests/test_core.py"])
     assert probe == ["pkg/__init__.py"] and excluded == []
+
+
+# ---- CB-760: the cover stage wrote a test no production edit could satisfy -------------------
+
+
+class _CoverCodegen(_StubCodegen):
+    """`author_tests` for a coverage gap writes CB-760's `test_main_stdout` — a test asserting
+    `__main__`-guarded output under a monkeypatch — and `refine` only ever edits the module."""
+
+    async def implement(self, **kwargs: Any) -> CodeChange:
+        root = Path(kwargs["path"])
+        (root / "src").mkdir(exist_ok=True)
+        (root / "src" / "x.py").write_text("def main() -> None:\n    print('ok')\n", encoding="utf-8")
+        return CodeChange(files=["src/x.py"], summary="impl")
+
+    async def author_tests(self, **kwargs: Any) -> CodeChange:
+        root = Path(kwargs["path"])
+        (root / "tests").mkdir(exist_ok=True)
+        if kwargs.get("gaps"):
+            self.gaps_seen.append(list(kwargs["gaps"]))
+            (root / "tests" / "test_main_stdout.py").write_text(
+                "import runpy\n\n\ndef test_main_stdout(monkeypatch, capsys):\n"
+                "    runpy.run_module('src.x', run_name='__main__')\n"
+                "    assert capsys.readouterr().out == 'ok'\n",
+                encoding="utf-8",
+            )
+            return CodeChange(files=["tests/test_main_stdout.py"], summary="cover main()")
+        (root / "tests" / "test_x.py").write_text("def test_x() -> None:\n    pass\n", encoding="utf-8")
+        return CodeChange(files=["tests/test_x.py"], summary="tests")
+
+    async def refine(self, **kwargs: Any) -> CodeChange:
+        self.refine_calls += 1
+        return CodeChange(files=["src/x.py"], summary="fix main() entrypoint logic")
+
+
+class _CoverAwareRunner:
+    """Red exactly while the cover-authored test exists; green otherwise."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    async def run(self, *, path: str) -> SimpleNamespace:
+        if (Path(path) / "tests" / "test_main_stdout.py").exists():
+            return SimpleNamespace(
+                passed=False, returncode=1, output="FAILED tests/test_main_stdout.py::test_main_stdout"
+            )
+        return SimpleNamespace(passed=True, returncode=0, output="1 passed")
+
+
+def _one_gap_then_clean() -> Any:
+    probes: list[int] = []
+
+    async def _probe(path: Path, files: list[str], runner: Any, emit: Any) -> list[str]:
+        probes.append(1)
+        return ["src/x.py"] if len(probes) == 1 else []
+
+    return _probe
+
+
+async def test_a_cover_authored_test_no_refine_can_satisfy_is_withdrawn_not_chased(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """CB-760 ended FAILED after nine test runs, five of them refines editing the module to
+    satisfy a test the run itself had written. The run's own guess at coverage is not the
+    ticket's contract: once the budget is spent on it, the test is withdrawn and said so."""
+    from orchestrator.sdlc import feature_runner as fr
+
+    created = _install_pipeline(monkeypatch, tmp_path, runner=_CoverAwareRunner, codegen=_CoverCodegen)
+    monkeypatch.setattr(fr, "_files_no_test_exercises", _one_gap_then_clean())
+    monkeypatch.setattr(fr, "_typecheck_the_change", lambda *a, **k: _aresult(""))
+    monkeypatch.setattr(fr, "_prove_the_tests_test_something", lambda *a, **k: _aresult(None))
+    log: list[str] = []
+
+    result = await run_feature("file://./spec.md", intent_id="intent-a", max_refine=3, log=log.append)
+
+    assert result.passed
+    assert result.coverage_withdrawn == ["tests/test_main_stdout.py"]
+    assert not (tmp_path / "tests" / "test_main_stdout.py").exists()
+    assert (tmp_path / "tests" / "test_x.py").exists()  # the run's own author_tests test stands
+    assert created[0].refine_calls == 3  # the budget was spent before anything was withdrawn
+    assert any(
+        "[cover] withdrawn: test_main_stdout.py" in line and "coverage not proven" in line for line in log
+    ), log
+
+
+async def test_a_red_test_the_cover_stage_did_not_write_is_still_fatal(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Withdrawal is narrow: a failure the output does not attribute to a cover-authored file
+    ends the run as it always did, and nothing is removed."""
+    from orchestrator.sdlc import feature_runner as fr
+
+    class _RedElsewhere(_CoverAwareRunner):
+        async def run(self, *, path: str) -> SimpleNamespace:
+            if (Path(path) / "tests" / "test_main_stdout.py").exists():
+                return SimpleNamespace(passed=False, returncode=1, output="FAILED tests/test_x.py::test_x")
+            return SimpleNamespace(passed=True, returncode=0, output="1 passed")
+
+    _install_pipeline(monkeypatch, tmp_path, runner=_RedElsewhere, codegen=_CoverCodegen)
+    monkeypatch.setattr(fr, "_files_no_test_exercises", _one_gap_then_clean())
+    monkeypatch.setattr(fr, "_typecheck_the_change", lambda *a, **k: _aresult(""))
+
+    with pytest.raises(FeatureRunError, match="VERDICT: FAILED"):
+        await run_feature("file://./spec.md", intent_id="intent-a", max_refine=3)
+    assert (tmp_path / "tests" / "test_main_stdout.py").exists()  # nothing was withdrawn
