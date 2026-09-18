@@ -1,0 +1,49 @@
+{
+  "language": "kotlin",
+  "case": "scope_functions",
+  "why": "#389. `m.let { }`, `.run`, `.takeIf`, `.also` and `f.use { }` are syntactically member calls on `m: Modifier` and `f: File`, both imported (third-party) types. `_settle_calls`'s declared/guessed drop rule (kotlin-support-roadmap.md §11) only refuses a call whose receiver type the repository itself declares, so an imported receiver had nothing to check against and the scope function was minted as a fabricated member of it — `java:androidx.compose.ui.Modifier.let`, a member `Modifier` does not declare. `let`/`run`/`also`/`apply`/`takeIf`/`takeUnless`/`use`/`with`/`runCatching` are `kotlin.*` extensions on `Any`, never members of the receiver they're called through.",
+  "root": ".repo",
+  "nodes": [
+    { "id": "java:app.ui", "kind": "Module" },
+    { "id": "java:app.ui.Screen", "kind": "Type" },
+    { "id": "java:app.ui.Screen.m", "kind": "Field" },
+    { "id": "java:app.ui.Screen.f", "kind": "Field" },
+    { "id": "java:app.ui.Screen.draw", "kind": "Function" }
+  ],
+  "edges": [
+    { "src": "java:app.ui", "dst": "java:app.ui.Screen", "kind": "CONTAINS" },
+    { "src": "java:app.ui.Screen", "dst": "java:app.ui.Screen.m", "kind": "CONTAINS" },
+    { "src": "java:app.ui.Screen", "dst": "java:app.ui.Screen.f", "kind": "CONTAINS" },
+    { "src": "java:app.ui.Screen", "dst": "java:app.ui.Screen.draw", "kind": "CONTAINS" },
+    { "src": "java:app.ui", "dst": "java:androidx.compose.ui.Modifier", "kind": "IMPORTS" },
+    { "src": "java:app.ui", "dst": "java:java.io.File", "kind": "IMPORTS" }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "refusals": [
+    {
+      "edge": { "src": "java:app.ui.Screen.draw", "dst": "java:androidx.compose.ui.Modifier.let", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. `m.let { }` is syntactically a member call on `m: Modifier`; `Modifier` is imported, third-party, and does not declare `let` — `let` is a `kotlin.*` extension on `Any` (#389)."
+    },
+    {
+      "edge": { "src": "java:app.ui.Screen.draw", "dst": "java:androidx.compose.ui.Modifier.run", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. Same fabrication, `m.run { }` on the imported `Modifier` (#389)."
+    },
+    {
+      "edge": { "src": "java:app.ui.Screen.draw", "dst": "java:androidx.compose.ui.Modifier.takeIf", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. Same fabrication, `m.takeIf { true }` on the imported `Modifier` (#389)."
+    },
+    {
+      "edge": { "src": "java:app.ui.Screen.draw", "dst": "java:androidx.compose.ui.Modifier.also", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. Same fabrication, `m.also { }` on the imported `Modifier` (#389)."
+    },
+    {
+      "edge": { "src": "java:app.ui.Screen.draw", "dst": "java:java.io.File.use", "kind": "CALLS" },
+      "why": "PREDICTED BEFORE SCORING. `f.use { }` on the imported `java.io.File`; the shape reproduces with a JDK type rather than an AndroidX one, so the fix must not be Compose-specific (#389)."
+    }
+  ],
+  "excluded": [
+    "java:androidx.compose.ui.Modifier and java:java.io.File are external — imported, never declared here — so they stay out of the node ratio per corpus/README.md's rule; the IMPORTS edges to them still count."
+  ],
+  "open_questions": []
+}

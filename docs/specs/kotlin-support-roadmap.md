@@ -754,8 +754,12 @@ numbers below as "these eleven paths, measured" — not as "the front-end cannot
 - **The scope functions §3.2 lists under "never" were emitted.** *(Found 2026-09-17, review.)*
   `topic.let { }`, `.apply`, `.run`, `.also` all resolved onto the receiver type, so
   `blast_radius` on any type named every file that had ever written `x.let { }`. No blocklist was
-  needed in the end: a type the repository *declares* has known members, so a call naming a
-  member it does not declare is refused by the same `finalize` check.
+  needed for a repo-declared receiver: a type the repository *declares* has known members, so a
+  call naming a member it does not declare is refused by the same `finalize` check. That leaves an
+  **imported** receiver, which has no declared-member list to refuse against — `modifier.let { }`
+  on an imported `Modifier` still minted a placeholder (#389, found 2026-09-17 in maintainer review
+  of #380). Fixed with an explicit `_SCOPE_FUNCTIONS` name check in `_settle_calls`, applied only to
+  the certain-but-undeclared-receiver case.
 - **`string_value` dropped interpolation, so computed paths were emitted as literals.**
   *(Found 2026-09-17, review.)* One helper, five readers. `route("/api/${cfg.version}")` became
   the path `/api/`; `"/users/${user.id}/detail"` became `/users//detail`, an endpoint that exists

@@ -102,6 +102,26 @@ _TYPE_BODIES = frozenset({"class_body", "enum_class_body"})
 
 _LANG = "kotlin"
 
+#: ``kotlin.*`` scope functions — extensions on ``Any``, never a member of the
+#: receiver they're called on. A *certain* (imported) receiver type has no
+#: repo-declared member list to refuse these against, so ``_settle_calls``
+#: checks the call's member name against this set directly before minting an
+#: external placeholder (#389; declared receivers are already covered by the
+#: ``resolve_or_drop``/``declared_ids`` check above it).
+_SCOPE_FUNCTIONS = frozenset(
+    {
+        "let",
+        "run",
+        "also",
+        "apply",
+        "takeIf",
+        "takeUnless",
+        "use",
+        "with",
+        "runCatching",
+    }
+)
+
 
 @dataclass
 class _ImportContext:
@@ -132,11 +152,15 @@ class _DeferredCall:
       a class that does not exist in any package.
     * **Whether the named member exists at all.** ``topic.let { }`` resolved onto
       ``java:app.data.Topic.let``, and ``let`` is not a member of ``Topic`` — it is one of
-      the four scope functions §3.2 lists under "never".
+      the scope functions §3.2 lists under "never".
 
     Both used to reach the graph as an ``external`` placeholder node plus an edge, so
     ``pkg verify`` saw nothing dangling and reported clean. Deferring instead lets
-    ``finalize`` ask the only question that settles it: does the repository declare this?
+    ``finalize`` ask the question that settles most of it: does the repository declare
+    this? That question has no answer when the receiver's type is **imported rather
+    than repo-declared** — ``modifier.let { }`` on an imported ``Modifier`` has nothing
+    to check "does the repo declare this" against, so ``_settle_calls`` also checks the
+    member name directly against ``_SCOPE_FUNCTIONS`` before minting a placeholder (#389).
     """
 
     src: str
@@ -880,7 +904,7 @@ class KotlinExtractor:
     def _settle_calls(self, batch: FactBatch) -> None:
         """Decide every held-back typed-receiver call against the finished repository.
 
-        Three outcomes, and the middle one is the whole point:
+        Four outcomes, and the middle two are the whole point:
 
         * A candidate the repository **declares** wins, first one in priority order.
           A wildcard-imported sibling lands here — ``import app.data.*`` then
@@ -890,13 +914,20 @@ class KotlinExtractor:
         * Nothing grounded, and the receiver's type was **guessed** or is a type this
           repository declares: **drop**. A guessed id has no backstop, and a declared
           type that has no such member means the call is not to that type at all —
-          ``topic.let { }`` being the common shape. This is the case that used to mint a
-          placeholder and so hide itself from ``pkg verify``.
-        * Nothing grounded, the type was read from the source, and the repository does
-          not declare it: a genuine call into a library. It keeps the external
-          placeholder, because the id is the fully-qualified name the file itself wrote
-          (measured: 387 such edges across 161 AndroidX/kotlinx symbols on the
-          validation app, and losing them would be a real recall regression).
+          ``topic.let { }`` on a repo-declared ``Topic`` being the common shape. This is
+          the case that used to mint a placeholder and so hide itself from ``pkg verify``.
+        * Nothing grounded, the type was read from an import, the repository does not
+          declare it, and the member name is a **Kotlin scope function**
+          (``_SCOPE_FUNCTIONS``): **drop**. An imported type has no declared-member list
+          to refuse against, so ``modifier.let { }`` on an imported ``Modifier`` would
+          otherwise mint a placeholder — the receiver's own fabrication, one level
+          further out than the declared-type case above (#389).
+        * Nothing grounded, the type was read from the source, the repository does not
+          declare it, and the member name is not a scope function: a genuine call into a
+          library. It keeps the external placeholder, because the id is the
+          fully-qualified name the file itself wrote (measured: 387 such edges across 161
+          AndroidX/kotlinx symbols on the validation app, and losing them would be a real
+          recall regression).
         """
         declared = declared_ids(batch)
         for call in self._deferred:
@@ -912,6 +943,8 @@ class KotlinExtractor:
             if not call.certain or call.owners[0] in declared:
                 continue
             target = call.candidates[0]
+            if target.rsplit(".", 1)[-1] in _SCOPE_FUNCTIONS:
+                continue
             batch.add_node(Node(target, NodeKind.FUNCTION, target.rsplit(".", 1)[-1], _LANG, external=True))
             batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
         self._deferred.clear()
