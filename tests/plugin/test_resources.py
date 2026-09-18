@@ -132,14 +132,19 @@ async def test_resources_reach_the_host_and_read_back(repo: Path) -> None:
     assert "No build documents" in str(contents[0].content)
 
 
-async def test_the_mcp_plan_tool_clears_a_ticket_text_it_is_not_planning_from(repo: Path) -> None:
-    """This tool takes a drafted spec, never a ticket — the `--spec` path. A `-source.txt` left
-    by an earlier `sdlc plan --source` would make the approval gate re-derive a section 8 this
-    document never had, and refuse every run of the ticket with no re-approval that converges."""
+async def test_the_mcp_plan_tool_reads_the_ticket_text_the_gate_will_and_destroys_nothing(
+    repo: Path,
+) -> None:
+    """The approval gate re-derives the document with whatever ticket text is stored beside the
+    plan, so this tool has to render section 8 from that same file or its document can never be
+    approved. Reading it does that; deleting it would agree just as well and would throw away a
+    ticket this tool cannot fetch again — while the tool is annotated non-destructive, so a host
+    would not even be asked."""
     from orchestrator.plugin.server import sdlc_plan
     from orchestrator.sdlc.builddoc import load_source_text, save_source_text
 
-    save_source_text("TCK-9", "- It stops crashing.\n", root=repo)
+    ticket = "- It stops crashing.\n"
+    save_source_text("TCK-9", ticket, root=repo)
     out = await sdlc_plan(
         str(repo),
         {
@@ -151,5 +156,21 @@ async def test_the_mcp_plan_tool_clears_a_ticket_text_it_is_not_planning_from(re
     )
 
     assert "path" in out
-    assert load_source_text("TCK-9", root=repo) == ""
-    assert "| 1 | It stops crashing. | derived · model | — |" in out["document"]
+    assert load_source_text("TCK-9", root=repo) == ticket  # nothing destroyed
+    assert "| 1 | It stops crashing. | stated | — |" in out["document"]  # the labels the CLI renders
+
+
+async def test_the_mcp_plan_tool_without_a_stored_ticket_labels_nothing_stated(repo: Path) -> None:
+    from orchestrator.plugin.server import sdlc_plan
+
+    out = await sdlc_plan(
+        str(repo),
+        {
+            "intent_id": "TCK-8",
+            "title": "A ticket",
+            "summary": "x",
+            "acceptance_criteria": ["It stops crashing."],
+        },
+    )
+
+    assert "**Source not available.**" in out["document"]
