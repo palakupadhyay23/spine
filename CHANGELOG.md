@@ -18,6 +18,21 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
 
 ### Fixed
 
+- **Kotlin scope functions are refused by name *and* shape, and an imported extension outranks a
+  receiver-member guess.** `m.let { }` on an imported `Modifier` minted
+  `java:androidx.compose.ui.Modifier.let`, a member `Modifier` does not declare, because
+  `finalize`'s "does the repository declare this?" check has no answer for a third-party receiver
+  (#389). Refusing on the member name alone then cost true edges — `run`, `apply` and `use` are
+  genuine members of `Runnable`, Gradle's `Project` and others, and a three-call probe fell from
+  three `CALLS` to one — so the refusal now also requires the call to *pass a function*, which a
+  scope function does and `r.run()` does not. `with` left the set: Kotlin's `with(x) { }` is
+  top-level and never reached the check, so listing it could only ever drop a real member such as
+  `java.time.LocalDate.with`. Separately, `m.padding(8)` now lands on
+  `androidx.compose.foundation.layout.padding` — the extension the file imports, which is a name
+  the source wrote — instead of the invented `Modifier.padding`. Kotlin corpus precision stays
+  1.00 on every kind with `CALLS` recall 0.94, invention 0; new `scope_functions` corpus case and
+  five tests in `tests/pkg/test_kotlin_fabrication.py`.
+
 - **Vendored trees stay out of the graph.** `Pods` joins `DEFAULT_IGNORE_DIRS` (the CocoaPods
   checkout, like `node_modules` and `vendor`). A symlinked file keeps its own path — provenance
   and module name alike — and is admitted only when its target stays inside the root and outside

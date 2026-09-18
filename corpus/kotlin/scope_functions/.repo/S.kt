@@ -1,14 +1,16 @@
 package app.ui
 
 import androidx.compose.ui.Modifier
-import java.io.File
+import java.io.BufferedReader
+import java.lang.Runnable
 
-class Screen(private val m: Modifier, private val f: File) {
+class Screen(private val m: Modifier, private val r: BufferedReader, private val task: Runnable) {
     fun draw() {
         m.let { }
         m.run { }
         m.takeIf { true }
-        f.use { }
+        r.use { }
         m.also { }
+        task.run()
     }
 }
