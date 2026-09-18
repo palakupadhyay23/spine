@@ -78,7 +78,17 @@ and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/do
 
 ## What's new
 
-**3.36.0 (current)** — **Kotlin**, as the 11th language and the 12th front-end: `.kt`
+**3.37.0 (current)** — two field reports from a C#/.NET engagement, both diagnosed to defects
+and both now fixtures. **Blazor components** enter the graph: `.razor` is read as line-aligned C#
+through the C# front-end (no new grammar or extra), every symbol on its true line, with
+`corpus/csharp/razor` at precision 1.00 / recall 1.00. A file in a shared namespace is no longer
+reported "absent from the knowledge graph"; the spec writer no longer drops the identifiers a
+ticket named, and a ticket can name its file in any language, by path or bare name. Retrieval
+carries its evidence and floors weak hits, so an all-weak ticket says *locate the change before
+building* instead of proposing five confident wrong paths. Jira attachments are read on intake,
+not only named.
+
+**3.36.0** — **Kotlin**, as the 11th language and the 12th front-end: `.kt`
 comprehension and a typed-receiver call graph, Room entities and Retrofit calls (so an Android
 app joins a backend as a cross-repo consumer), Compose navigation as routes, Hilt wiring through
 a new `PROVIDES` edge kind, Ktor and Spring MVC routes — the Spring half shared with the Java
