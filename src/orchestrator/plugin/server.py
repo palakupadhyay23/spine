@@ -822,7 +822,13 @@ async def sdlc_plan(repo_path: str, spec: dict[str, Any], persist_plan: bool = T
         # spec, which a stack trace on the host's side does not let it do.
         return {"error": str(exc), "valid_fields": sorted(FeatureSpec.model_fields)}
 
-    from orchestrator.sdlc.builddoc import build_plan, load_approval, load_journey, persist
+    from orchestrator.sdlc.builddoc import (
+        build_plan,
+        load_approval,
+        load_journey,
+        persist,
+        save_source_text,
+    )
 
     intent = str(resolved.get("intent_id") or "spec")
 
@@ -835,6 +841,11 @@ async def sdlc_plan(repo_path: str, spec: dict[str, Any], persist_plan: bool = T
         )
         out: dict[str, Any] = {"intent_id": intent, "document": document}
         if persist_plan:
+            # This tool takes a drafted `spec`, never a ticket — the `--spec` path. The
+            # approval gate re-derives the document with whatever ticket text is stored, so a
+            # stale one left by an earlier `sdlc plan --source` would render a section 8 this
+            # document never had and refuse every run. Clearing it keeps the two the same.
+            save_source_text(intent, "", root=repo)
             written, superseded = persist(document, intent_id=intent, root=repo)
             out["path"] = str(written)
             if superseded is not None:

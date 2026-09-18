@@ -1778,9 +1778,11 @@ _TESTABLE_SUFFIXES = frozenset(
         # Kotlin is a full codegen toolchain with its own layout, runner and prompts. Absent
         # here, every probe that asks "could a test exercise this?" answered no for a Kotlin
         # repository — switching the coverage gate off for the whole run while reporting the
-        # file as "not source", which is false.
+        # file as "not source", which is false. `.kts` stays out with `pyproject.toml` and
+        # `.csproj`: in a Kotlin repository it is `build.gradle.kts`, and probing a build
+        # script means stashing it, watching the build stop resolving, and recording the
+        # red suite as proof that a test exercises it.
         ".kt",
-        ".kts",
         ".ts",
         ".tsx",
         ".js",

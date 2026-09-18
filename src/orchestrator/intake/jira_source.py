@@ -427,7 +427,12 @@ class JiraSourceAdapter:
                 marker = f" …[truncated, {len(text)} chars{why}]"
                 # The marker is part of what is carried, so it comes out of the same budget:
                 # counting only the content let the header print more chars than it allows.
-                keep = max(0, min(_MAX_ATTACHMENT_CHARS, remaining) - len(marker))
+                keep = min(_MAX_ATTACHMENT_CHARS, remaining) - len(marker)
+                if keep <= 0:
+                    # Not even room for the sentence saying it was cut. Naming it costs
+                    # nothing and keeps the header's arithmetic true.
+                    unread[key] = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+                    continue
                 text = text[:keep].rstrip() + marker
             used += len(text)
             read[key] = (name, text)

@@ -538,3 +538,20 @@ async def test_the_attachment_header_never_claims_more_than_the_budget() -> None
     header = doc.body.split("Attachments read (", 1)[1].split("):", 1)[0]
     used = int(header.split(", ", 1)[1].split(" of ", 1)[0].replace(",", ""))
     assert used <= _MAX_ATTACHMENTS_TOTAL_CHARS, header
+
+
+async def test_an_attachment_with_no_room_left_for_its_own_cut_marker_is_named_not_stored() -> None:
+    """When what remains cannot hold the sentence saying the text was cut, storing the marker
+    alone pushed the total past the budget the header prints."""
+    fields = _fields("T")
+    sizes = [_MAX_ATTACHMENT_CHARS, _MAX_ATTACHMENT_CHARS, 3_950, _MAX_ATTACHMENT_CHARS]
+    fields["attachment"] = [_attachment(f"f{i}.txt", str(i)) for i in range(len(sizes))]
+    blobs = {str(i): (f"{i % 10}" * n).encode() for i, n in enumerate(sizes)}
+    adapter, http = _adapter(_JiraMock({"K-1": fields}, attachments=blobs))
+    async with http:
+        doc = await adapter.fetch_document("K-1")
+
+    header = doc.body.split("Attachments read (", 1)[1].split("):", 1)[0]
+    used = int(header.split(", ", 1)[1].split(" of ", 1)[0].replace(",", ""))
+    assert used <= _MAX_ATTACHMENTS_TOTAL_CHARS, header
+    assert f"f3.txt (attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached)" in doc.body
