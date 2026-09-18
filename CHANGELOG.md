@@ -23,6 +23,29 @@ All notable changes to this project are documented here. Format loosely follows
   1.00 on every kind with `CALLS` recall 0.94, invention 0; new `scope_functions` corpus case and
   five tests in `tests/pkg/test_kotlin_fabrication.py`.
 
+## Unreleased
+
+### Fixed
+
+- **`sdlc feature` builds in the project the ticket names.** In a repository holding several
+  projects of the same language the target was whichever one sorted first, so NSS-1239 — whose
+  plan named five files under `WebApp/` — scaffolded into `ApiClient`, could not resolve
+  `Product`, spent every refine on `using` directives and ended `FAILED after 6 test run(s)`. The
+  project is now chosen in three steps: the one holding the files the design names (the deepest
+  project owns its own files, since nested projects are the normal .NET shape), else the one with
+  the most source counted the way the extractor walks — a generated `obj/` tree cannot vote —
+  else the name, which now only breaks a tie the first two could not. The `[layout]` line says
+  which rule fired: `src=WebApp (project chosen: holds 5 of 5 file(s) the design names)`.
+  `--package-name` still outranks it, and greenfield scaffolding is unchanged.
+
+- **Java multi-module repositories resolve at all.** `root/src/main/java` is the single-module
+  shape; a Maven or Gradle monorepo keeps each module's tree under `<module>/src/main/java`,
+  where the lookup previously matched nothing and the layout fell through to a package name
+  absent from the repository. The module — and the package inside it — now follow the ticket's
+  files. Kotlin was already module-aware but chose by package name and stopped at "name a module"
+  when several qualified; the ticket's files settle it, and that honest refusal remains when they
+  say nothing.
+
 ## 3.38.0 — 2026-09-18
 
 Two field reports from a React Native engagement (CB-686, CB-760), plus what the NSS-1231 build
