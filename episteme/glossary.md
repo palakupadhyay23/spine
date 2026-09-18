@@ -12,7 +12,7 @@ _The codebase's vocabulary, most-depended-upon first, then alphabetical. Definit
 | **CorpusError** | [`CorpusError`](../src/orchestrator/pkg/accuracy.py#L56) | — |
 | **CurrentState** | [`CurrentState`](../src/orchestrator/knowledge/current_state.py#L125) | `docs/specs/pkg-navigable-reports.md#risks-the-things-that-will-bite`, `docs/specs/shareable-report-spec.md#components-where-the-code-goes` |
 | **DocPage** | [`DocPage`](../src/orchestrator/pkg/docs.py#L115) | `docs/specs/doc-ingestion-spec.md#components-where-the-code-goes`, `docs/specs/doc-ingestion-spec.md#design-decisions` |
-| **DocReconciler** | [`DocReconciler`](../src/orchestrator/pkg/docs.py#L213) | `docs/specs/doc-binding-walkthrough.md#step-3-the-claims-in-detail`, `docs/specs/doc-binding-walkthrough.md#step-4-the-lookup-in-detail` |
+| **DocReconciler** | [`DocReconciler`](../src/orchestrator/pkg/docs.py#L215) | `docs/specs/doc-binding-walkthrough.md#step-3-the-claims-in-detail`, `docs/specs/doc-binding-walkthrough.md#step-4-the-lookup-in-detail` |
 | **Edge** | [`Edge`](../src/orchestrator/pkg/facts.py#L144) | — |
 | **EdgeKind** | [`EdgeKind`](../src/orchestrator/pkg/facts.py#L55) | `CLAUDE.md#layout-where-things-live`, `docs/evals/clang-semantic-ab-harness.txt` |
 | **FactBatch** | [`FactBatch`](../src/orchestrator/pkg/facts.py#L157) | `CLAUDE.md#layout-where-things-live`, `docs/evals/clang-semantic-step3b-local-red.txt` |
@@ -20,9 +20,9 @@ _The codebase's vocabulary, most-depended-upon first, then alphabetical. Definit
 | **Failure** | [`Failure`](../src/orchestrator/plugin/outputs.py#L38) | — |
 | **FeatureImplementationWorkflow** | [`FeatureImplementationWorkflow`](../src/orchestrator/sdlc/workflows.py#L60) | `docs/specs/archive/BLOCK-C-DESIGN.md#2-reuse-vs-build-new`, `docs/specs/archive/BLOCK-C-DESIGN.md#3-module-layout` |
 | **FeatureRunError** | [`FeatureRunError`](../src/orchestrator/sdlc/feature_runner.py#L51) | `docs/specs/go-support-roadmap.md#packaging-changes`, `docs/specs/kotlin-support-roadmap.md#35-the-added-scopes-fact-mapping` |
+| **FeatureSpec** | [`FeatureSpec`](../src/orchestrator/intake/specs.py#L100) | `CHANGELOG.md`, `CLI_REFERENCE.md` |
 | **GroundingVerifier** | [`GroundingVerifier`](../src/orchestrator/pkg/verifier.py#L52) | `docs/specs/PRODUCT-KNOWLEDGE-GRAPH.md#2-what-ontomesh-produced-evidence`, `docs/specs/PRODUCT-KNOWLEDGE-GRAPH.md#3b-round-trip-verified-2026-06-10` |
 | **IRValidationFailure** | [`IRValidationFailure`](../src/orchestrator/ir/validator.py#L27) | — |
-| **JiraAdapter** | [`JiraAdapter`](../src/orchestrator/intake/jira.py#L114) | `docs/specs/capability-recommendations-kg-grounded.md#where-we-are-today-the-honest-baseline` |
 | **LLMCodegenAdapter** | [`LLMCodegenAdapter`](../src/orchestrator/sdlc/codegen.py#L913) | `CHANGELOG.md`, `docs/specs/cross-run-semantic-memory.md#design-cross-run-semantic-memory-the-experience-true-layer` |
 | **MemoryRow** | [`MemoryRow`](../src/orchestrator/registry/db/models.py#L216) | `KNOWLEDGE_GRAPH.md#where-each-artifact-is-persisted`, `docs/specs/README.md#autonomous-agent-scorecard` |
 | **Node** | [`Node`](../src/orchestrator/pkg/facts.py#L128) | `docs/specs/kotlin-support-roadmap.md#maintainer-review-2026-09-17-the-fabrication-class` |
@@ -46,4 +46,4 @@ _The codebase's vocabulary, most-depended-upon first, then alphabetical. Definit
 | **VersionedRepo** | [`VersionedRepo`](../src/orchestrator/registry/repositories.py#L45) | — |
 | **WorkspaceManager** | [`WorkspaceManager`](../src/orchestrator/sdlc/workspace.py#L59) | `CHANGELOG.md`, `docs/specs/STATE-OF-SPINE.md#6-how-spine-is-adopted-without-entering-anyones-build-image` |
 
-_Top 40 of 748 types by graph centrality._
+_Top 40 of 749 types by graph centrality._

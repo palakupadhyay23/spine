@@ -163,7 +163,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/pkg/accuracy.py:659`](../../src/orchestrator/pkg/accuracy.py#L659)
 
 - **Called by** (1 production · 3 test): [`_scoreboard`](../../src/orchestrator/cli/pkg.py#L723), [`test_the_committed_baseline_matches_the_tree`](../../tests/pkg/test_scoreboard.py#L151), [`test_the_runtime_oracle_is_absent_unless_asked_for`](../../tests/pkg/test_scoreboard.py#L146), [`test_the_scoreboard_is_deterministic`](../../tests/pkg/test_scoreboard.py#L139)
-- **Calls** (9): [`_corpus_repos`](../../src/orchestrator/pkg/accuracy.py#L642), [`_score_entry`](../../src/orchestrator/pkg/accuracy.py#L600), [`localization_entry`](../../src/orchestrator/pkg/accuracy.py#L604), [`score_comprehension`](../../src/orchestrator/pkg/accuracy.py#L475), [`score_corpus`](../../src/orchestrator/pkg/accuracy.py#L326), [`score_drift`](../../src/orchestrator/pkg/accuracy.py#L445), [`score_invention_over`](../../src/orchestrator/pkg/invention.py#L423), [`score_parity`](../../src/orchestrator/pkg/accuracy.py#L401), [`score_runtime`](../../src/orchestrator/pkg/runtime_oracle.py#L308)
+- **Calls** (9): [`_corpus_repos`](../../src/orchestrator/pkg/accuracy.py#L642), [`_score_entry`](../../src/orchestrator/pkg/accuracy.py#L600), [`localization_entry`](../../src/orchestrator/pkg/accuracy.py#L604), [`score_comprehension`](../../src/orchestrator/pkg/accuracy.py#L475), [`score_corpus`](../../src/orchestrator/pkg/accuracy.py#L326), [`score_drift`](../../src/orchestrator/pkg/accuracy.py#L445), [`score_invention_over`](../../src/orchestrator/pkg/invention.py#L432), [`score_parity`](../../src/orchestrator/pkg/accuracy.py#L401), [`score_runtime`](../../src/orchestrator/pkg/runtime_oracle.py#L308)
 - **Documented in**: `docs/specs/build-documents/PKG-ACC-5-build.md#7-files`, `docs/specs/kotlin-support-roadmap.md#11-risks-and-gotchas`
 
 ### `compare_scoreboard`
@@ -216,7 +216,7 @@ _1 of the symbols other code depends on here have no test path the graph can see
 [`src/orchestrator/pkg/accuracy.py:445`](../../src/orchestrator/pkg/accuracy.py#L445)
 
 - **Called by** (2 production · 3 test): [`_drift_oracle`](../../src/orchestrator/cli/pkg.py#L589), [`build_scoreboard`](../../src/orchestrator/pkg/accuracy.py#L659), [`test_drift_counts_claims_the_graph_cannot_support`](../../tests/pkg/test_accuracy.py#L392), [`test_no_documentation_is_not_a_clean_result`](../../tests/pkg/test_accuracy.py#L402), [`test_the_gate_number_is_the_number_state_reports`](../../tests/pkg/test_accuracy.py#L454)
-- **Calls** (7): [`CorpusError`](../../src/orchestrator/pkg/accuracy.py#L56), [`DocReconciler`](../../src/orchestrator/pkg/docs.py#L213), [`DriftReport`](../../src/orchestrator/pkg/accuracy.py#L415), [`RepoCodeExtractor`](../../src/orchestrator/pkg/extractor.py#L627), `pathlib.Path`, [`read_doc_pages`](../../src/orchestrator/pkg/doc_source.py#L153), [`symbolish_drift`](../../src/orchestrator/pkg/doc_link.py#L37)
+- **Calls** (7): [`CorpusError`](../../src/orchestrator/pkg/accuracy.py#L56), [`DocReconciler`](../../src/orchestrator/pkg/docs.py#L215), [`DriftReport`](../../src/orchestrator/pkg/accuracy.py#L415), [`RepoCodeExtractor`](../../src/orchestrator/pkg/extractor.py#L627), `pathlib.Path`, [`read_doc_pages`](../../src/orchestrator/pkg/doc_source.py#L153), [`symbolish_drift`](../../src/orchestrator/pkg/doc_link.py#L40)
 
 ### `score_parity`
 
