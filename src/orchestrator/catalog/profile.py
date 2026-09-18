@@ -188,6 +188,10 @@ def _detect_framework(markers: str, languages: frozenset[str]) -> str | None:
         ("flask", "flask"),
         ("springframework", "spring"),
         ('"react"', "react"),
+        # Blazor before ASP.NET: every Blazor project also references Microsoft.AspNetCore, and
+        # the first needle wins. The Components package or the WebAssembly SDK is the tell.
+        ("microsoft.aspnetcore.components", "blazor"),
+        ("microsoft.net.sdk.blazorwebassembly", "blazor"),
         ("microsoft.aspnetcore", "aspnet"),
         ("microsoft.net.sdk.web", "aspnet"),
         ("io.ktor", "ktor"),
