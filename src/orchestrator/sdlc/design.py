@@ -88,11 +88,14 @@ def _stated_paths(spec: dict[str, Any], root: Path | None = None) -> list[str]:
     on a .NET repository the design fell through to the keyword guess however precisely the
     ticket had named its file. Without a ``root`` paths are taken as written.
     """
-    from orchestrator.sdlc.source_paths import named_paths, resolve
+    from orchestrator.sdlc.source_paths import basename_index, named_paths, resolve
 
     out: list[str] = []
+    index: dict[str, list[str]] | None = None
     for rel in named_paths(_query_text(spec, title=False)):
-        resolved = resolve(rel, root) if root is not None else rel
+        if root is not None and "/" not in rel and index is None:
+            index = basename_index(root)  # one walk for every bare name, not one each
+        resolved = resolve(rel, root, index=index) if root is not None else rel
         if resolved and resolved not in out:
             out.append(resolved)
     return out
