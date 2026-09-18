@@ -798,7 +798,12 @@ def test_the_caveat_names_the_language_that_built_the_graph() -> None:
     from orchestrator.sdlc.builddoc import _blast_prose
 
     prose = _blast_prose({"call_graph_available": True, "modules": [], "languages": ["csharp"]}, "python")
-    assert "recall for csharp is **0.80**" in prose
+    from orchestrator.pkg.accuracy import measured_recall
+
+    # The corpus number, not a literal: every C# case that adds a CALLS edge moved this test.
+    csharp = measured_recall("csharp")
+    assert csharp is not None
+    assert f"recall for csharp is **{csharp:.2f}**" in prose
     assert "python" not in prose
 
 
@@ -809,7 +814,11 @@ def test_a_polyglot_blast_radius_scores_each_language() -> None:
     prose = _blast_prose(
         {"call_graph_available": True, "modules": [], "languages": ["csharp", "typescript"]}, "python"
     )
-    assert "recall: csharp **0.80**, typescript **0.86**" in prose
+    from orchestrator.pkg.accuracy import measured_recall
+
+    csharp, ts = measured_recall("csharp"), measured_recall("typescript")
+    assert csharp is not None and ts is not None
+    assert f"recall: csharp **{csharp:.2f}**, typescript **{ts:.2f}**" in prose
 
 
 def test_an_unmeasured_language_is_named_rather_than_dropped() -> None:

@@ -84,6 +84,38 @@ class FeatureRunResult:
     tests: Any = None
 
 
+def _testable_production(path: Path, files: list[str]) -> tuple[list[str], list[str]]:
+    """The changed files a test could exercise, and the ones it never could, each with why.
+
+    The probes reverted every non-test file and asked whether the suite went red. A scaffold
+    writes `.gitignore`, `pyproject.toml` and an empty `__init__.py`; reverting those reddens
+    nothing, so every greenfield run reported them as "nothing exercises the change" and burned
+    its cover attempts on files no test can reach (CB-686, CB-760: FAILED by construction).
+    Testable means a source suffix a test can import — `codegen._TESTABLE_SUFFIXES`, the same
+    set the cover stage writes tests for — and a body that is not empty.
+    """
+    from orchestrator.sdlc.codegen import _TESTABLE_SUFFIXES
+
+    probe: list[str] = []
+    excluded: list[str] = []
+    for f in files:
+        if _is_test_path(f):
+            continue
+        name = Path(f).name
+        if Path(f).suffix.lower() not in _TESTABLE_SUFFIXES:
+            excluded.append(f"{name} (not source)")
+            continue
+        try:
+            body = (path / f).read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            body = ""
+        if not body:
+            excluded.append(f"{name} (empty)")
+            continue
+        probe.append(f)
+    return probe, excluded
+
+
 async def _prove_the_tests_test_something(
     path: Path, files: list[str], runner: Any, emit: Callable[[str], None]
 ) -> None:
@@ -97,7 +129,9 @@ async def _prove_the_tests_test_something(
     (nothing stashable, a stash that will not apply) is reported and skipped rather than
     failing the run — an unproven suite is a weaker claim, not a broken change.
     """
-    production = [f for f in files if not _is_test_path(f)]
+    production, excluded = _testable_production(path, files)
+    if excluded:
+        emit(f"[proof] excluded (not testable): {', '.join(excluded)}")
     if not production or not any(_is_test_path(f) for f in files):
         return
 
@@ -139,7 +173,9 @@ async def _files_no_test_exercises(
     pass, the wiring in ``cli.py`` is untested — which is exactly what "the criteria are
     behavioural and nothing runs the command" looks like from the outside.
     """
-    production = [f for f in files if not _is_test_path(f)]
+    production, excluded = _testable_production(path, files)
+    if excluded:
+        emit(f"[coverage] excluded (not testable): {', '.join(excluded)}")
     if not production or not any(_is_test_path(f) for f in files):
         return []
     if len(production) > _MAX_COVERAGE_PROBES:
