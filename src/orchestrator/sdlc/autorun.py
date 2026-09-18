@@ -519,10 +519,10 @@ async def _require_plan(
         emit("[plan] gate skipped (--no-plan-gate) — nothing was reviewed before this run")
         return
     try:
-        from orchestrator.sdlc.feature_runner import _resolve_language
+        from orchestrator.sdlc.toolchains import resolve_language
 
         approval = await require_approved_plan(
-            ctx.spec or {}, root=ctx.root, language=_resolve_language(ctx.root, language)
+            ctx.spec or {}, root=ctx.root, language=resolve_language(ctx.root, language)
         )
     except PlanNotApprovedError as exc:
         ctx.record_stage("plan", "failed", str(exc))
