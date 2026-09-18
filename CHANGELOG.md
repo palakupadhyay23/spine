@@ -32,7 +32,9 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
   CB-686's shape: `auto → typescript`. An empty repository still gets Python (`sdlc_shapes.py`).
 
 - **The coverage probe asks only what a test could answer.** Both the whole-change proof and the
-  per-file probe run over files with a testable suffix and a body, and say what they excluded:
+  per-file probe run over files with a testable suffix and a body (`.kt`, `.kts` and `.cshtml`
+  join that set — Kotlin is a full codegen toolchain whose files the probe had been calling
+  "not source", switching the coverage gate off for the whole run), and say what they excluded:
   `[coverage] excluded (not testable): .gitignore (not source), pyproject.toml (not source),
   __init__.py (empty)`. A scaffold file is never reported as "not exercised".
 
@@ -40,19 +42,24 @@ coverage probe had reverted `.gitignore` and `pyproject.toml` to ask whether the
   tests budget dies on a failure the output attributes to a test the run's own cover stage wrote,
   that test is withdrawn (checked out from HEAD, or removed when new), the suite runs once more,
   and a green, type-clean result passes with `FeatureRunResult.coverage_withdrawn` naming it. The
-  log says `[cover] withdrawn: … coverage not proven` and the ticket's journey carries `coverage
-  withdrawn: …` on the outcome line, so the run reads exactly as proven as it is. The spec's tests
-  and the run's `author_tests` tests are never touched; a red test elsewhere is still fatal.
+  log says `[cover] withdrawn: … coverage not proven`, the ticket's journey carries `coverage
+  withdrawn: …` on the outcome line, and the PR body says which test and why — so the run reads
+  exactly as proven as it is. Only a file the cover stage itself *created* can be withdrawn, and
+  only when a failing line names its full path: the spec's tests and the run's `author_tests`
+  tests are never touched, and a red test elsewhere is still fatal.
 
 - **The build document stops grading its own homework.** §12 scored "the brief agrees with the
   design" on NSS-1231 — "4 of 4" — while a heuristic design had taken its files *from* the brief's
   retrieval. The design now records `files_origin`; when it is `landing`, §4 says the files are the
   brief's own reading and §12 scores the row n/a, out of the denominator. Row 08's `stated` is
-  earned, not trusted: a filed criterion is `stated` only when found verbatim (whitespace- and
-  case-insensitively) in the ticket's text as intake read it — description, comments,
-  attachments — or, without one, the intent's description and scope; otherwise
-  `derived · model`, and the block counts how many. A hand-written `--spec` file has no ticket
-  text: the block says so.
+  earned, not trusted: a filed criterion is `stated` only when it matches a **whole line** of
+  the ticket's text as intake read it — description, comments, attachments — bullet stripped,
+  whitespace- and case-insensitively; otherwise `derived · model`, and the block counts how
+  many. Containment would certify a narrowed rewrite ("deletion is cancellable" against a
+  ticket saying "only for admins"), which is the failure the check exists to catch. The
+  ticket text is persisted beside the plan, because the approval gate proves an approval by
+  re-deriving the document and must see the same input. A hand-written `--spec` file has no
+  ticket text: the block says so.
 
 - **Retrieval reads a ticket's inflections.** CB-686 asked for "account deletion"; the screen is
   `DeleteAccountScreen`, and `deletion` matched nothing. `_tokens` now strips `-ies`→`-y`, plural

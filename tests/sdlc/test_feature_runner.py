@@ -1574,3 +1574,115 @@ async def test_a_red_test_the_cover_stage_did_not_write_is_still_fatal(
     with pytest.raises(FeatureRunError, match="VERDICT: FAILED"):
         await run_feature("file://./spec.md", intent_id="intent-a", max_refine=3)
     assert (tmp_path / "tests" / "test_main_stdout.py").exists()  # nothing was withdrawn
+
+
+class _CoverIntoAuthoredFile(_CoverCodegen):
+    """The cover stage answers the gap by appending to the file `author_tests` already wrote —
+    the natural place for "a test that reaches src/x.py" to land."""
+
+    async def author_tests(self, **kwargs: Any) -> CodeChange:
+        root = Path(kwargs["path"])
+        (root / "tests").mkdir(exist_ok=True)
+        target = root / "tests" / "test_x.py"
+        if kwargs.get("gaps"):
+            self.gaps_seen.append(list(kwargs["gaps"]))
+            target.write_text(
+                target.read_text(encoding="utf-8") + "\n\ndef test_main_stdout() -> None:\n"
+                "    import runpy\n    runpy.run_module('src.x', run_name='__main__')\n",
+                encoding="utf-8",
+            )
+            return CodeChange(files=["tests/test_x.py"], summary="cover main()")
+        target.write_text("def test_x() -> None:\n    pass\n", encoding="utf-8")
+        return CodeChange(files=["tests/test_x.py"], summary="tests")
+
+
+class _RedWhileCoverMarkerPresent(_CoverAwareRunner):
+    async def run(self, *, path: str) -> SimpleNamespace:
+        target = Path(path) / "tests" / "test_x.py"
+        if target.exists() and "runpy" in target.read_text(encoding="utf-8"):
+            return SimpleNamespace(
+                passed=False, returncode=1, output="FAILED tests/test_x.py::test_main_stdout"
+            )
+        return SimpleNamespace(passed=True, returncode=0, output="1 passed")
+
+
+async def test_withdrawal_never_deletes_a_test_an_earlier_stage_wrote(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Nothing is committed until the run ends, so a generated test is untracked and cannot be
+    restored. Withdrawing the file `author_tests` created would delete the ticket's own tests
+    and open a PR with none of them — so only a file the cover stage *created* may be withdrawn."""
+    from orchestrator.sdlc import feature_runner as fr
+
+    _install_pipeline(
+        monkeypatch, tmp_path, runner=_RedWhileCoverMarkerPresent, codegen=_CoverIntoAuthoredFile
+    )
+    monkeypatch.setattr(fr, "_files_no_test_exercises", _one_gap_then_clean())
+    monkeypatch.setattr(fr, "_typecheck_the_change", lambda *a, **k: _aresult(""))
+
+    with pytest.raises(FeatureRunError, match="VERDICT: FAILED"):
+        await run_feature("file://./spec.md", intent_id="intent-a", max_refine=3)
+
+    body = (tmp_path / "tests" / "test_x.py").read_text(encoding="utf-8")
+    assert "def test_x()" in body  # the run's own test survived
+    assert "runpy" in body  # and nothing was silently rewritten
+
+
+async def test_a_failure_in_another_file_of_the_same_name_withdraws_nothing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`FAILED tests/integration/test_models.py::…` contains the basename of a cover-written
+    `tests/unit/test_models.py`. Matching the name alone withdrew a test that was green and
+    claimed, in the log, that its coverage had failed."""
+    from orchestrator.sdlc import feature_runner as fr
+
+    class _CoverElsewhere(_CoverCodegen):
+        async def author_tests(self, **kwargs: Any) -> CodeChange:
+            root = Path(kwargs["path"])
+            if kwargs.get("gaps"):
+                (root / "tests" / "unit").mkdir(parents=True, exist_ok=True)
+                (root / "tests" / "unit" / "test_models.py").write_text(
+                    "def test_models() -> None:\n    pass\n", encoding="utf-8"
+                )
+                return CodeChange(files=["tests/unit/test_models.py"], summary="cover models")
+            (root / "tests" / "integration").mkdir(parents=True, exist_ok=True)
+            (root / "tests" / "integration" / "test_models.py").write_text(
+                "def test_models() -> None:\n    pass\n", encoding="utf-8"
+            )
+            return CodeChange(files=["tests/integration/test_models.py"], summary="tests")
+
+    class _RedInIntegration(_CoverAwareRunner):
+        async def run(self, *, path: str) -> SimpleNamespace:
+            if (Path(path) / "tests" / "unit" / "test_models.py").exists():
+                return SimpleNamespace(
+                    passed=False,
+                    returncode=1,
+                    output="FAILED tests/integration/test_models.py::test_models",
+                )
+            return SimpleNamespace(passed=True, returncode=0, output="1 passed")
+
+    _install_pipeline(monkeypatch, tmp_path, runner=_RedInIntegration, codegen=_CoverElsewhere)
+    monkeypatch.setattr(fr, "_files_no_test_exercises", _one_gap_then_clean())
+    monkeypatch.setattr(fr, "_typecheck_the_change", lambda *a, **k: _aresult(""))
+    log: list[str] = []
+
+    with pytest.raises(FeatureRunError, match="VERDICT: FAILED"):
+        await run_feature("file://./spec.md", intent_id="intent-a", max_refine=3, log=log.append)
+
+    assert (tmp_path / "tests" / "unit" / "test_models.py").exists()
+    assert not any("withdrawn" in line for line in log)
+
+
+def test_a_kotlin_source_file_is_probed_not_dismissed_as_unsourceable(tmp_path: Path) -> None:
+    """Kotlin is a full codegen toolchain. Missing from the testable set, every probe answered
+    "a test could not reach this" for a whole Kotlin run — and said `(not source)`, which is false."""
+    from orchestrator.sdlc.feature_runner import _testable_production
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "Account.kt").write_text("class Account { fun id() = 1 }\n", encoding="utf-8")
+    (tmp_path / "build.gradle.kts").write_text('plugins { kotlin("jvm") }\n', encoding="utf-8")
+
+    probe, excluded = _testable_production(tmp_path, ["src/Account.kt", "build.gradle.kts"])
+
+    assert probe == ["src/Account.kt", "build.gradle.kts"]
+    assert excluded == []

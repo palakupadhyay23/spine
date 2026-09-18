@@ -424,10 +424,11 @@ class JiraSourceAdapter:
                     if remaining < min(len(text), _MAX_ATTACHMENT_CHARS)
                     else ""
                 )
-                text = (
-                    text[: min(_MAX_ATTACHMENT_CHARS, remaining)].rstrip()
-                    + f" …[truncated, {len(text)} chars{why}]"
-                )
+                marker = f" …[truncated, {len(text)} chars{why}]"
+                # The marker is part of what is carried, so it comes out of the same budget:
+                # counting only the content let the header print more chars than it allows.
+                keep = max(0, min(_MAX_ATTACHMENT_CHARS, remaining) - len(marker))
+                text = text[:keep].rstrip() + marker
             used += len(text)
             read[key] = (name, text)
         return read, unread

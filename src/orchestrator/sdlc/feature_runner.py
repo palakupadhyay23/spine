@@ -89,6 +89,23 @@ class FeatureRunResult:
     coverage_withdrawn: list[str] = field(default_factory=list)
 
 
+def _named_in_failures(rel: str, failures: str) -> bool:
+    """Whether the runner blamed *this* file — its full path, on a line that reports a failure.
+
+    Matching a basename anywhere in the output withdraws the wrong test: a cover-written
+    `tests/unit/test_models.py` and a spec-authored `tests/integration/test_models.py` share a
+    name, and pytest's `FAILED tests/integration/test_models.py::…` line contains it. A
+    warnings summary naming a file that passed would do the same.
+    """
+    posix = rel.replace("\\", "/")
+    windows = posix.replace("/", "\\\\")
+    for line in failures.splitlines():
+        low = line.lower()
+        if ("fail" in low or "error" in low) and (posix in line or windows in line):
+            return True
+    return False
+
+
 async def _withdraw_cover_tests(
     path: Path, files: list[str], emit: Callable[[str], None], *, attempts: int
 ) -> None:
@@ -1012,18 +1029,23 @@ async def run_feature(
     # ticket back was wired only into the "tests stayed red" path, so a codegen error —
     # the thing most likely to end a run early — sailed past it and left the ticket
     # In Progress anyway. A live run did exactly that, twice.
+    # Every path a stage before the cover stage wrote. The cover stage's own test is the only
+    # thing D3 may withdraw, and only when the cover stage created it.
+    authored: set[str] = set()
     try:
         with llm.stage("implement"):
             impl = await codegen.implement(
                 spec=spec, path=str(path), issue_key=issue_key, skills=capability_plan.skills
             )
         emit(f"[implement] {[Path(f).name for f in impl.files]} - {impl.summary}")
+        authored.update(impl.files)
         # SQL is single-phase: the migration IS the artifact and is validated by applying
         # it to an ephemeral database, so there is no separate test-authoring leg.
         if toolchain.author_tests:
             with llm.stage("author_tests"):
                 tests = await codegen.author_tests(spec=spec, path=str(path), issue_key=issue_key)
             emit(f"[author_tests] {[Path(f).name for f in tests.files]} - {tests.summary}")
+            authored.update(tests.files)
     except Exception:
         # Release and re-raise: the caller still sees the real failure, and the board no
         # longer claims someone is working the ticket.
@@ -1073,7 +1095,13 @@ async def run_feature(
                         spec=spec, path=str(path), issue_key=issue_key, gaps=gaps
                     )
                 emit(f"[cover] {[Path(f).name for f in covered.files]} - {covered.summary}")
-                cover_written.extend(f for f in covered.files if _is_test_path(f))
+                # Only what the cover stage *created*. Nothing is committed until the run
+                # ends, so every generated test is untracked and `git checkout` cannot bring
+                # one back: withdrawing a file an earlier stage wrote — the spec's tests, or
+                # the file `author_tests` created and the cover stage appended to — would
+                # delete the ticket's own tests and open a PR with none of them.
+                cover_written.extend(f for f in covered.files if _is_test_path(f) and f not in authored)
+                authored.update(covered.files)
                 if not covered.files:
                     emit("[cover] no tests written for the gap — stopping rather than looping")
                     break
@@ -1082,7 +1110,9 @@ async def run_feature(
             # The tests budget died on a test the cover stage itself wrote (CB-760). Withdraw
             # it — once, only those files — and let the suite the ticket actually asked for
             # decide. A red test the output does not attribute to a cover file is still fatal.
-            culprits = [f for f in cover_written if Path(f).name in failures] if kind == "tests" else []
+            culprits = (
+                [f for f in cover_written if _named_in_failures(f, failures)] if kind == "tests" else []
+            )
             if culprits and not withdrawn:
                 await _withdraw_cover_tests(path, culprits, emit, attempts=spent["tests"])
                 withdrawn = list(culprits)
@@ -1099,6 +1129,7 @@ async def run_feature(
         with llm.stage("refine"):
             change = await codegen.refine(spec=spec, path=str(path), issue_key=issue_key, failures=failures)
         emit(f"[refine] {[Path(f).name for f in change.files]} - {change.summary}")
+        authored.update(change.files)
         if not change.files:
             # Refine only edits files. Having changed none, the next run is
             # byte-identical to the one that just failed, so another iteration
@@ -1158,6 +1189,16 @@ async def run_feature(
     body = (
         f"{spec['summary']}\n\nAcceptance criteria:\n"
         + "\n".join(f"- {c}" for c in spec["acceptance_criteria"])
+        # A green diff that had a test withdrawn is less proven than it looks, and the
+        # reviewer is the person who most needs to know that.
+        + (
+            "\n\n**Coverage withdrawn:** "
+            + ", ".join(f"`{f}`" for f in withdrawn)
+            + " — written by this run to cover a gap, then withdrawn because no refine could "
+            "satisfy it. That coverage is not proven."
+            if withdrawn
+            else ""
+        )
         + f"\n\nGenerated by the SDLC orchestrator (intent {spec['intent_id']})."
     )
     pr_url: str | None = None

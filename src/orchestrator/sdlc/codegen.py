@@ -1774,6 +1774,13 @@ _TESTABLE_SUFFIXES = frozenset(
         ".hpp",
         ".cs",
         ".razor",
+        ".cshtml",
+        # Kotlin is a full codegen toolchain with its own layout, runner and prompts. Absent
+        # here, every probe that asks "could a test exercise this?" answered no for a Kotlin
+        # repository — switching the coverage gate off for the whole run while reporting the
+        # file as "not source", which is false.
+        ".kt",
+        ".kts",
         ".ts",
         ".tsx",
         ".js",

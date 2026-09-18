@@ -451,10 +451,13 @@ def detect_language(languages: Mapping[str, int] | set[str] | frozenset[str]) ->
     if not candidates:
         return "python"
 
-    def rank(name: str) -> tuple[int, int, int]:
+    def rank(name: str) -> tuple[int, int, int, str]:
         row = TOOLCHAINS.get(name)
         priority = row.auto_priority if row is not None and row.auto_priority is not None else -1
-        return (-counts[name], 0 if name == "python" else 1, priority)
+        # `name` last so two toolchains of equal count and equal priority — cpp and kotlin
+        # both sit at 5 — cannot be separated by the order the walk happened to fill the
+        # counts dict, which would flip on adding one file.
+        return (-counts[name], 0 if name == "python" else 1, priority, name)
 
     return sorted(candidates, key=rank)[0]
 
