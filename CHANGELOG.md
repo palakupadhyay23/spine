@@ -8,6 +8,13 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Fixed
 
+- **The `episteme/` guard cannot be skipped by aiming at `main`.** CI exempts the
+  `develop → main` promotion PR, whose `episteme/` diff is the regeneration bot's own work —
+  but the exemption keyed on the *base* alone, so any PR into `main` from any branch got a
+  free pass. A contributor's feature branch targeting `main` carried `episteme/README.md`
+  through with every check green, because the guard was skipped rather than passed. It now
+  keys on both refs: only `develop → main` is a promotion, and only a promotion is exempt.
+
 - **Kotlin scope functions are refused by name *and* shape, and an imported extension outranks a
   receiver-member guess.** `m.let { }` on an imported `Modifier` minted
   `java:androidx.compose.ui.Modifier.let`, a member `Modifier` does not declare, because

@@ -181,8 +181,16 @@ jobs:
       # answer is structurally no, and there is no way to make it pass without reverting
       # the bank main is owed. Since 3.20.0 regeneration runs on develop only, so a
       # promotion is the *sole* way main's bank moves — see .github/workflows/episteme.yml.
+      #
+      # The exemption keys on **both** refs, not on the base alone. Keyed on the base only,
+      # every PR into main from any branch got a free pass: #407 — a contributor's feature
+      # branch targeting main — carried episteme/README.md through with all seven checks
+      # green, because the guard was skipped rather than passed. Only develop → main is a
+      # promotion, and only a promotion is exempt.
       - name: PR does not modify episteme/
-        if: github.event_name == 'pull_request' && github.base_ref != 'main'
+        if: >-
+          github.event_name == 'pull_request'
+          && !(github.base_ref == 'main' && github.head_ref == 'develop')
         run: |
           # Two-dot, against a freshly fetched base: the question is whether this branch's
           # committed bank differs from the base's, which is answerable in a shallow clone.
