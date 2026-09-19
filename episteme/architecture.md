@@ -152,7 +152,7 @@ _The repo's own prose folded into the graph (`Doc` nodes + `MENTIONS` edges). A 
 
 **1936 docs** ingested, naming **1120 of 10837 symbols** (10% doc coverage).
 
-**1919 potential drift** — the docs name code the graph doesn't have (renamed or removed symbols, or prose the binder can't resolve).
+**1918 potential drift** — the docs name code the graph doesn't have (renamed or removed symbols, or prose the binder can't resolve).
 
 | The docs claim… | …in |
 |---|---|
@@ -164,7 +164,7 @@ _The repo's own prose folded into the graph (`Doc` nodes + `MENTIONS` edges). A 
 | `report_path` | AGENT_GUIDE.md#6-the-tools-spine-exposes |
 | `full_report` | AGENT_GUIDE.md#6-the-tools-spine-exposes |
 | `mappings_path` | AGENT_GUIDE.md#6-the-tools-spine-exposes |
-| … | _+1911 more_ |
+| … | _+1910 more_ |
 
 ## Possibly unused
 _**208 of 1701 internal symbols** have no caller, subclass or doc reference in the graph. **Candidates, not verdicts**: calls through an attribute chain are skipped rather than guessed at, and dynamic dispatch, registries and reflection are invisible. Public symbols are excluded — having no in-repo caller is what being an API looks like._
