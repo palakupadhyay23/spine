@@ -49,7 +49,7 @@ _Everything imported from outside this codebase, by how often — standard libra
 - `pytest` — imported 226 times
 - `dataclasses.dataclass` — imported 162 times
 - `json` — imported 155 times
-- `collections.abc` — imported 153 times
+- `collections.abc` — imported 154 times
 - `os` — imported 116 times
 - `re` — imported 87 times
 - `httpx` — imported 83 times

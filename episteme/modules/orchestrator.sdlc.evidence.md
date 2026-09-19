@@ -77,7 +77,7 @@
 [`src/orchestrator/sdlc/evidence.py:345`](../../src/orchestrator/sdlc/evidence.py#L345)
 
 - **Called by** (1 production · 1 test): [`build_evidence`](../../src/orchestrator/sdlc/evidence.py#L184), [`test_the_autorun_landing_rows_carry_weak_and_are_filtered`](../../tests/sdlc/test_honest_uncertainty.py#L238)
-- **Calls** (1): [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L127)
+- **Calls** (1): [`build_investigation`](../../src/orchestrator/sdlc/investigate.py#L170)
 - **Documented in**: `docs/specs/graphir-sdlc-workflow.md#half-one-parallel-fan-out-measured-30ms-available-declined`
 
 ### `_tool_rca`
