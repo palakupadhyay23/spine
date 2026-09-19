@@ -139,3 +139,26 @@ def test_the_brief_says_how_many_landings_it_did_not_quote(tmp_path: Path) -> No
     ]
     md = render_investigation_md(Investigation(title="t", problem="p", landing=landing, roots={"": tmp_path}))
     assert "_Source shown for 3 of 6 landing(s)" in md
+
+
+def test_an_untested_landing_says_so_and_a_covered_one_says_so(tmp_path: Path) -> None:
+    """ "No test reaches this" is the line a reviewer acts on."""
+    from orchestrator.sdlc.investigate import Investigation, Landing, render_investigation_md
+
+    landing = [
+        Landing(name="hot", where="a.py:1", kind="Function", callers=3, module="a", covered=True),
+        Landing(name="cold", where="a.py:2", kind="Function", callers=0, module="a", covered=False),
+    ]
+    md = render_investigation_md(Investigation(title="t", problem="p", landing=landing))
+    assert "`hot`" in md and "reached by tests" in md
+    assert "**no test reaches this**" in md
+
+
+def test_a_language_with_no_call_graph_is_silent_not_accusing() -> None:
+    """`covered=None` means "cannot tell". A front-end that emits no CALLS edges has not
+    proven an absence of tests, and printing one would be an invention."""
+    from orchestrator.sdlc.investigate import Investigation, Landing, render_investigation_md
+
+    landing = [Landing(name="x", where="a.rb:1", kind="Function", callers=0, module="a")]
+    md = render_investigation_md(Investigation(title="t", problem="p", landing=landing))
+    assert "no test reaches this" not in md and "reached by tests" not in md

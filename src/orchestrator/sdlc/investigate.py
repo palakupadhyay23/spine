@@ -39,6 +39,10 @@ class Landing:
     kind: str  # Function | Type | Module | …
     callers: int
     module: str  # owning module (touch-risk context)
+    #: Does any test transitively reach this symbol? **`None` means "cannot tell"** — the
+    #: language has no call graph — and is rendered as silence, never as "untested". A front
+    #: end that emits no `CALLS` edges has not proven an absence of tests.
+    covered: bool | None = None
     #: The graph node this landing *is*. Kept because the brief has it in hand while building
     #: the row and used to throw it away — and re-deriving it later from ``name`` can return a
     #: different node, so the excerpt and the coverage line would describe a symbol the reader
@@ -201,6 +205,13 @@ def build_investigation(
     hits = hits[:max_symbols]
     parents = store.parents_index()
 
+    # Built once for the whole brief, not per landing: `build_regression_plan` rebuilds a
+    # predecessor index over every edge each time it is called, which its own docstring calls
+    # "far too slow" for exactly this — one lookup per landing site.
+    from orchestrator.sdlc.coverage import CoverageIndex
+
+    coverage = CoverageIndex(store)
+
     landing: list[Landing] = []
     areas: list[str] = []
     repos: list[str] = []
@@ -212,6 +223,7 @@ def build_investigation(
             Landing(
                 name=n.name,
                 node_id=n.id,
+                covered=coverage.is_covered(n.id) if coverage.call_graph_available else None,
                 where=str(n.provenance) if n.provenance else "",
                 kind=n.kind.value,
                 callers=len(store.callers_of(n.id)),
@@ -380,7 +392,14 @@ def render_investigation_md(inv: Investigation) -> str:
             # rather than promoting them to files to touch.
             shared = ", ".join(f"`{t}`" for t in hit.matched)
             basis = f" — weak: only {shared}, which other files use too" if hit.weak and hit.matched else ""
-            head = f"- {prefix}`{hit.name}` ({hit.kind}, {hit.callers} caller(s){reach})"
+            # Stated only when the graph can answer it. "No test reaches this" is a finding;
+            # printing it for a language with no call graph would be an invention.
+            tested = ""
+            if hit.covered is True:
+                tested = " · reached by tests"
+            elif hit.covered is False:
+                tested = " · **no test reaches this**"
+            head = f"- {prefix}`{hit.name}` ({hit.kind}, {hit.callers} caller(s){reach}{tested})"
             out.append(f"{head}{in_mod}{loc}{served}{basis}")
             if (excerpt := excerpts.get(i)) is not None:
                 # Indented so it reads as part of the bullet, not as a sibling of it.
