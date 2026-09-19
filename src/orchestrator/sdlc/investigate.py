@@ -20,6 +20,7 @@ design (C1): research first, then design with the findings in hand.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -124,16 +125,64 @@ def _cross_repo_dependents(store: FactStore, node_id: str, repo: str) -> int:
     return sum(1 for node, _ in store.impact_of(node_id) if unscope_id(node.id)[0] not in ("", repo))
 
 
+#: The single-repo grounding budget, split across the repositories a merged brief reads —
+#: never multiplied by them. A section that grows with the repository count crowds out the
+#: landing sites, which are the thing the reader came for.
+_MERGED_KNOWLEDGE_BUDGET = 2500
+
+
+def _merged_knowledge(repo_roots: Mapping[str, Path], repos: list[str]) -> str:
+    """Each landed-in repository's own ``episteme/``, headed by its key (D8).
+
+    **Only the repositories this ticket lands in.** A merged graph may declare four
+    repositories; a brief that landed in one should not carry another service's domain model,
+    and the brief already knows which repos its landing sites are in.
+
+    **A declared repository whose bank is missing is named, not skipped.** Silence would read
+    as "that repository has nothing to say", when what it means is "nobody ran `understand`
+    there" — the same distinction the brief keeps everywhere else.
+    """
+    from orchestrator.knowledge.access import memory_bank_grounding
+
+    landed = [key for key in repos if key in repo_roots]
+    if not landed:
+        return ""
+
+    per_repo = max(_MERGED_KNOWLEDGE_BUDGET // len(landed), 400)
+    blocks: list[str] = []
+    absent: list[str] = []
+    for key in landed:
+        body = memory_bank_grounding(repo_roots[key], budget=per_repo)
+        if body:
+            blocks.append(f"### `{key}`\n\n{body}")
+        else:
+            absent.append(key)
+
+    if absent:
+        names = ", ".join(f"`{k}`" for k in absent)
+        blocks.append(
+            f"_No committed `episteme/` in {names} — run `orchestrator understand .` there. "
+            "Absent, not empty._"
+        )
+    return "\n\n".join(blocks)
+
+
 def build_investigation(
     title: str,
     problem: str,
     *,
     store: FactStore,
     root: Path | str | None = None,
+    repo_roots: Mapping[str, Path] | None = None,
     prior_notes: list[str] | None = None,
     max_symbols: int = 10,
 ) -> Investigation:
-    """Research ``title``/``problem`` against the PKG + episteme. Deterministic."""
+    """Research ``title``/``problem`` against the PKG + episteme. Deterministic.
+
+    ``root`` is the single repository whose ``episteme/`` to read. ``repo_roots`` is the
+    multi-repo form — every declared repository by key — from which only the repos this
+    ticket actually lands in are read (D8). Pass one or the other, not both.
+    """
     from orchestrator.pkg.retrieval import GroundedRetriever
     from orchestrator.pkg.scoping import unscope_id
 
@@ -182,6 +231,8 @@ def build_investigation(
         from orchestrator.knowledge.access import memory_bank_grounding
 
         knowledge = memory_bank_grounding(root)
+    elif repo_roots:
+        knowledge = _merged_knowledge(repo_roots, repos)
 
     return Investigation(
         title=title,

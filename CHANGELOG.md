@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- **A merged multi-repo brief carries project knowledge again.** `investigate --repos` passed
+  `root=None` and omitted "Relevant project knowledge" entirely — `episteme/` belongs to one
+  repository and a merged brief has no single owner for it, so rather than fill the section
+  from an arbitrary repo it said nothing. Correct in isolation, and the consequence was that
+  the mode a cross-cutting ticket needs was the only mode with no project knowledge at all:
+  on a real two-repo pair with both knowledge bases committed, the brief still reported the
+  section absent. It now reads **each repository the ticket actually lands in**, headed by its
+  repo key — a fact the brief already had, so a four-repo declaration does not put a second
+  service's domain model in front of a reader whose ticket never touches it. The single-repo
+  budget is **split across those repos, never multiplied**, and a declared repository whose
+  bank is missing is **named rather than skipped**, because silence there reads as "that
+  repository has nothing to say" when it means nobody ran `understand` there.
+
 ## 3.39.0 — 2026-09-19
 
 A field report from the Nucor engagement (NSS-1239) and the follow-ups a maintainer review
