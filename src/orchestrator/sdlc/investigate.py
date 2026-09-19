@@ -392,13 +392,16 @@ def render_investigation_md(inv: Investigation) -> str:
             # rather than promoting them to files to touch.
             shared = ", ".join(f"`{t}`" for t in hit.matched)
             basis = f" — weak: only {shared}, which other files use too" if hit.weak and hit.matched else ""
-            # Stated only when the graph can answer it. "No test reaches this" is a finding;
-            # printing it for a language with no call graph would be an invention.
+            # Stated only when the graph can answer it *and* the row is worth the reader's
+            # attention. "No test reaches this" is a finding on a strong landing and noise on
+            # a weak one — on a real ticket it fired in bold on all ten rows, including DTO
+            # fields nobody would test, which is a signal that has stopped being one.
             tested = ""
-            if hit.covered is True:
-                tested = " · reached by tests"
-            elif hit.covered is False:
-                tested = " · **no test reaches this**"
+            if not hit.weak:
+                if hit.covered is True:
+                    tested = " · reached by tests"
+                elif hit.covered is False:
+                    tested = " · **no test reaches this**"
             head = f"- {prefix}`{hit.name}` ({hit.kind}, {hit.callers} caller(s){reach}{tested})"
             out.append(f"{head}{in_mod}{loc}{served}{basis}")
             if (excerpt := excerpts.get(i)) is not None:

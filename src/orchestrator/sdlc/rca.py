@@ -161,7 +161,7 @@ def _deterministic_fix_approach(loc: Localization) -> str:
     return (
         f"Add a regression test that reproduces{exc} at `{loc.fault.func}` ({loc.fault.where}) first "
         "(red → green), then guard/handle the offending input at the fault site. Re-run the tests "
-        "over the regression surface below before merging."
+        "over the regression surface above before merging."
     )
 
 
