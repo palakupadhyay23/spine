@@ -39,6 +39,11 @@ class Landing:
     kind: str  # Function | Type | Module | …
     callers: int
     module: str  # owning module (touch-risk context)
+    #: The graph node this landing *is*. Kept because the brief has it in hand while building
+    #: the row and used to throw it away — and re-deriving it later from ``name`` can return a
+    #: different node, so the excerpt and the coverage line would describe a symbol the reader
+    #: is not looking at. Empty only for a `Landing` constructed outside the retriever.
+    node_id: str = ""
     #: Dependents in **other** repositories — what breaks elsewhere if this changes.
     #:
     #: `callers` counts inbound ``CALLS`` and nothing else, which is right for a function and
@@ -203,6 +208,7 @@ def build_investigation(
         landing.append(
             Landing(
                 name=n.name,
+                node_id=n.id,
                 where=str(n.provenance) if n.provenance else "",
                 kind=n.kind.value,
                 callers=len(store.callers_of(n.id)),
