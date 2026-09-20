@@ -29,9 +29,15 @@ All notable changes to this project are documented here. Format loosely follows
   repository with nothing to find — read as *"we looked and found nothing"*, never *"this
   ticket touches nothing"*); grounded against an **uncommitted** tree, recorded in the file
   rather than on stderr, because a drafted change is committed and read months later while a
-  warning scrolls away; and **ungrounded**, which is byte-for-byte the draft this command
-  produced before and says so on its own face. No task ever cites a file: an instruction is
-  derived, and a citation on one would lend it authority it has not earned.
+  warning scrolls away; and **ungrounded**, which says so on its own face. No task ever cites
+  a file: an instruction is derived, and a citation on one would lend it authority it has not
+  earned.
+
+  **Two of these changes land with or without a repository**, and the distinction is worth
+  stating because an earlier draft of this entry got it wrong: `proposal.md` always gains the
+  banner line and the `## Grounding` section naming its mode, and `tasks.md` is always one
+  checkbox per criterion. A repository adds the *facts*; it is not what turns the task list
+  on. `specs/<cap>/spec.md` — the contract codegen hits — is unchanged in every mode.
 
 ### Changed
 

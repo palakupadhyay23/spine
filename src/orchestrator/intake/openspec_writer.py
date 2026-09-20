@@ -127,8 +127,14 @@ def _tasks_md(spec: FeatureSpec, grounding: Grounding | None = None) -> str:
     documents — though it takes ``tasks_md`` and never reads it, so criteria round-trip
     through ``specs/<cap>/spec.md`` regardless.
     """
+    # Normalised on both sides. The binder strips each criterion before it ever sees the graph
+    # (`criteria_binding._criteria_text`), so a raw-text comparison misses any criterion the
+    # model emitted with a trailing newline or leading indent — which is most of them. The
+    # symptom was silent and exactly inverted: the criterion bound in the Grounding section and
+    # the checkbox beside it lost its "verify first", which is the SSPN-49 case this note
+    # exists to raise.
     bound = (
-        {row.text for row in grounding.binding.rows if row.status == "bound"}
+        {_one_line(row.text) for row in grounding.binding.rows if row.status == "bound"}
         if grounding and grounding.binding
         else set()
     )
@@ -140,12 +146,13 @@ def _tasks_md(spec: FeatureSpec, grounding: Grounding | None = None) -> str:
             # `verify first`, not `already done`: the binder found code this criterion names,
             # which is evidence and not a verdict. Ticking it off here would be exactly the
             # SSPN-49 failure — a run reporting a criterion met having changed nothing.
+            one_line = _one_line(crit)
             note = (
                 " — **verify first:** code this names already exists (see *Grounding*)"
-                if crit in bound
+                if one_line in bound
                 else ""
             )
-            lines.append(f"- [ ] {group}.{i} {_one_line(crit)}{note}")
+            lines.append(f"- [ ] {group}.{i} {one_line}{note}")
         group += 1
     else:
         lines += [f"## {group}. Implementation", f"- [ ] {group}.1 Implement the requirement"]

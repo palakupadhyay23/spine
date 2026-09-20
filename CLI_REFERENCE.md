@@ -916,9 +916,15 @@ half is which. A line with no `file:line` has not been checked by anything.
 empty** (a language Spine has no front-end for yields zero nodes and looks exactly like a
 repository with nothing to find); **grounded against an uncommitted tree**, whose citations
 cannot be re-derived at a commit; and **ungrounded**, which is what you get with no
-repository and is byte-for-byte the draft this command produced before. No task ever cites a
-file — an instruction is derived, and a citation on one would lend it authority it has not
-earned.
+repository. No task ever cites a file — an instruction is derived, and a citation on one
+would lend it authority it has not earned.
+
+**What changes even without a repository.** The requirements and scenarios are untouched, and
+`specs/<cap>/spec.md` — the contract codegen hits — is byte-for-byte what it always was. Two
+things do change in every mode: `proposal.md` gains the banner line and a `## Grounding`
+section naming which mode produced it, and `tasks.md` is now one checkbox per criterion
+rather than the two fixed lines it emitted for every change ever drafted. A repository adds
+the facts; it is not what turns the task list on.
 
 ```
 orchestrator openspec draft [OPTIONS] [PATH]

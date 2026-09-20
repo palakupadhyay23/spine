@@ -157,9 +157,10 @@ def openspec_draft(
         orchestrator sdlc feature --source openspec://<id> --safe
 
     Pass a repo path (or `--repos`) to ground the draft against the code — the proposal then
-    carries what the graph says, fenced off from the model's prose and labelled. **Without
-    one the draft is unchanged from before**, and says so on its own face rather than leaving
-    a reader to wonder which mode produced it.
+    carries what the graph says, fenced off from the model's prose and labelled. Without one
+    the draft is **ungrounded, and says so on its own face** rather than leaving a reader to
+    wonder which mode produced it: the requirements and scenarios are unchanged, and the page
+    states that nothing checked them.
     """
     import asyncio
 
@@ -197,7 +198,7 @@ def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> 
     from orchestrator.pkg import FactStore, load_or_extract
     from orchestrator.pkg.persistence import repo_state
 
-    with _repo_arg(str(path)) as (repo, _):
+    with _repo_arg(str(path)) as (repo, is_remote):
         batch = load_or_extract(repo, extractor=RepoCodeExtractor(sql_dialect=dialect))
         # The single-repo path gets no standing for free the way a merged graph does, so ask
         # for it. Without this, D18's warning would fire only under `--repos` — and a dirty
@@ -205,10 +206,14 @@ def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> 
         _sha, dirty = repo_state(repo)
         store = FactStore(batch)
         base = pkg_evidence.from_store(store, where=str(path), untrusted=(str(path),) if dirty else ())
-        # `repo` is a context-managed path: a git URL is cloned and removed on exit, so nothing
-        # downstream may read files from it. The bullets carry `file:line` either way — a
-        # drafted change cites the code, it does not copy it into a committed document.
-        return base, store, repo, None
+        # `repo` is context-managed: a git URL is cloned here and **removed when this block
+        # exits**, so returning it would hand the per-spec pass a path that no longer exists.
+        # Nothing raises when that happens — `rglob` on a missing directory yields nothing and
+        # `is_file()` is False — so a criterion naming a real file would be reported as one the
+        # graph cannot find. A false statement of absence inside the fact block is the exact
+        # failure this track exists to prevent, so the degradation is **chosen and narrowed**:
+        # a remote draft binds against the graph only, never the tree.
+        return base, store, (None if is_remote else repo), None
 
 
 def _facts_for_spec(base: Any, store: Any, root: Any, repo_roots: Any, spec: Any) -> Any:
@@ -228,8 +233,13 @@ def _facts_for_spec(base: Any, store: Any, root: Any, repo_roots: Any, spec: Any
     groups: list[Any] = []
     if repo_roots:
         # Grouped by repository key, following the shape `investigate` settled on for a merged
-        # brief: a landed-in repository with nothing to show is named, never silently dropped.
-        by_repo: dict[str, list[Any]] = {key: [] for key in inv.repos}
+        # brief: a **declared** repository with nothing to show is named, never silently
+        # dropped. Seeded from `repo_roots` — the declared set — and not from `inv.repos`,
+        # which `investigate` builds *inside* its hit loop and is therefore exactly the set of
+        # repos that did land. Seeding from that made `absent` unreachable: every key already
+        # had a hit, so the honesty branch this comment describes was dead code, and a repo the
+        # change does not touch simply vanished from the page.
+        by_repo: dict[str, list[Any]] = {key: [] for key in repo_roots}
         for hit in inv.landing:
             by_repo.setdefault(hit.repo, []).append(hit)
         for key in sorted(by_repo):

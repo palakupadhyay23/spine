@@ -125,11 +125,25 @@ def test_an_untrusted_draft_records_it_in_the_file_not_only_on_stderr() -> None:
 # --- render: the default must be the old behaviour ----------------------------------------
 
 
-def test_the_ungrounded_default_renders_exactly_what_it_did_before() -> None:
-    """`grounding=None` is not a fourth state — it is the command as it shipped."""
+def test_grounding_none_is_the_library_default_the_cli_never_takes() -> None:
+    """`grounding=None` renders no Grounding section — but the CLI always passes a state.
+
+    Pinned as a *library* default, and named as one. An earlier version of this test read as
+    proof that the ungrounded **command** was unchanged, which it is not: `_grounding_for`
+    returns `ungrounded()`, never `None`, so every draft gains the banner and the section.
+    Three user-facing documents repeated that wrong reading.
+    """
     files = render_change(SPEC, INTENT)
     assert "## Grounding" not in files["proposal.md"]
     assert "Auto-drafted by Spine" in files["proposal.md"]
+
+
+def test_the_delta_spec_is_the_one_file_no_mode_changes() -> None:
+    """`specs/<cap>/spec.md` is the contract codegen hits — it must not move."""
+    baseline = render_change(SPEC, INTENT)
+    key = next(k for k in baseline if k.endswith("spec.md"))
+    for g in (None, *STATES):
+        assert render_change(SPEC, INTENT, g)[key] == baseline[key]
 
 
 @pytest.mark.parametrize("grounding", STATES)
@@ -323,6 +337,36 @@ def test_proposed_criteria_are_kept_apart_and_labelled() -> None:
     assert tasks.index("Retry on 5xx") > tasks.index("## 2.")
 
 
+def test_verify_first_survives_the_whitespace_an_llm_emits() -> None:
+    """The note is keyed on criterion text, and the binder strips before it binds.
+
+    Built through `bind_criteria` against a real store rather than by hand, because a
+    hand-built `CriteriaBinding` uses the spec's own string and so cannot exercise the
+    coupling at all — which is how the raw-vs-stripped mismatch shipped.
+    """
+    from orchestrator.pkg.criteria_binding import bind_criteria
+
+    batch = FactBatch()
+    batch.add_node(
+        Node(
+            id="py:svc.refund",
+            kind=NodeKind.FUNCTION,
+            name="refund",
+            language="python",
+            provenance=Provenance(file="svc/charge.py", line=9),
+        )
+    )
+    store = FactStore(batch)
+    criterion = "`refund` reverses a charge"
+    for raw in (criterion, f"  {criterion}\n", f"{criterion}\n\n"):
+        spec = FeatureSpec(intent_id="i", title="Cart", acceptance_criteria=[raw])
+        binding = bind_criteria(spec.model_dump(), store=store)
+        assert binding.bound, f"precondition: {raw!r} must bind"
+        g = pkg_evidence.with_facts(GROUNDED, binding=binding)
+        tasks = render_change(spec, INTENT, g)["tasks.md"]
+        assert "**verify first:**" in tasks, f"note lost for {raw!r}"
+
+
 def test_a_bound_criterion_says_verify_never_done() -> None:
     """Evidence, not a verdict — ticking it off here would be the SSPN-49 failure."""
     binding = CriteriaBinding(rows=(_bound("`refund` reverses a charge", "refund", "svc/charge.py:9"),))
@@ -358,3 +402,42 @@ def test_tasks_keep_the_shape_openspec_source_documents() -> None:
     assert groups == ["1", "2", "3"]
     for line in [ln for ln in tasks.splitlines() if ln.startswith("- [ ]")]:
         assert re.match(r"^- \[ \] \d+\.\d+ \S", line), line
+
+
+def test_a_declared_repo_with_no_landing_is_named_by_the_production_path() -> None:
+    """D14's honesty branch, exercised end to end rather than constructed.
+
+    `absent=True` was unreachable for one commit: the grouping seeded itself from the repos
+    the change *landed in*, so every key already had a hit. The old test built the flag by
+    hand and passed on code that could never set it — which is exactly why this one goes
+    through `_facts_for_spec` with two declared repos and hits in only one.
+    """
+    from pathlib import Path
+
+    from orchestrator.cli.build import _facts_for_spec
+    from orchestrator.pkg.scoping import scope_id
+
+    batch = FactBatch()
+    batch.add_node(
+        Node(
+            id=scope_id("py:app.Cart", "web"),
+            kind=NodeKind.TYPE,
+            name="Cart",
+            language="python",
+            provenance=Provenance(file="app/cart.py", line=5),
+        )
+    )
+    store = FactStore(batch)
+    spec = FeatureSpec(intent_id="i", title="Cart", summary="The Cart holds items.")
+    g = _facts_for_spec(
+        pkg_evidence.from_store(store, where="repos.yaml"),
+        store,
+        None,
+        {"web": Path("."), "billing": Path(".")},
+        spec,
+    )
+    by_repo = {grp.repo: grp for grp in g.landings}
+    assert set(by_repo) == {"web", "billing"}, "a declared repo was dropped from the page"
+    assert by_repo["billing"].absent is True
+    assert by_repo["web"].absent is False
+    assert "lands in this repository, but no symbol matched" in pkg_evidence.fact_section(g)

@@ -404,11 +404,11 @@ orchestrator sdlc feature --source confluence://<page_id> --safe
   to polish — run `orchestrator openspec draft --source confluence://<id> --out ./openspec`,
   edit the generated `openspec/changes/<id>/`, then `sdlc feature --source openspec://<id>`.
   Add a repo path (`openspec draft ./my-service --source …`, or `--repos` for several) and
-  the draft is **grounded**: the proposal gains a `## Grounding` section giving the landing
-  sites with `file:line` and each criterion bound against the graph, and `tasks.md` becomes
-  one checkbox per criterion. The prose is unchanged — grounding adds the code's facts beside
-  it, labelled, so you can tell a checked line from a written one. Without a repo the draft is
-  exactly what it was, and says so on its own face.
+  the draft is **grounded**: the `## Grounding` section gains the landing sites with
+  `file:line` and each criterion bound against the graph. The prose is unchanged — grounding
+  adds the code's facts beside it, labelled, so you can tell a checked line from a written
+  one. Without a repo you still get that section, saying the draft is ungrounded and that
+  nothing checked it. `tasks.md` is one checkbox per criterion in **either** mode.
 - `--safe` is the safe default: dry-run tracker, local commit, **no push**.
 - Pin one requirement with `--intent <intent-id>` if a page has several.
 

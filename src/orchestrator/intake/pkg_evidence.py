@@ -218,7 +218,10 @@ def _landings_md(g: Grounding) -> list[str]:
     out = ["### Where it lands", ""]
     single = len(g.landings) == 1 and not g.landings[0].repo
     for group in g.landings:
-        if not single:
+        # An unscoped hit can reach a merged graph (an id with no repo prefix), and heading it
+        # with an empty code span would name a repository that does not exist. No heading is
+        # the honest rendering: the bullets still carry their own `repo:file:line`.
+        if not single and group.repo:
             out.append(f"#### `{group.repo}`")
             out.append("")
         if group.absent:
