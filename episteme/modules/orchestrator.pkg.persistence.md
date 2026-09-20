@@ -157,7 +157,7 @@
 
 [`src/orchestrator/pkg/persistence.py:145`](../../src/orchestrator/pkg/persistence.py#L145)
 
-- **Called by** (8): [`_grounding_for`](../../src/orchestrator/cli/build.py#L174), [`_per_repo`](../../src/orchestrator/plugin/server.py#L992), [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`check_declared_repos`](../../scripts/sdlc_shapes.py#L264), [`check_memory_bank`](../../src/orchestrator/knowledge/understand.py#L314), [`load_or_extract`](../../src/orchestrator/pkg/persistence.py#L237), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L378), [`render_memory_bank`](../../src/orchestrator/knowledge/understand.py#L122)
+- **Called by** (8): [`_grounding_for`](../../src/orchestrator/cli/build.py#L180), [`_per_repo`](../../src/orchestrator/plugin/server.py#L992), [`_render_state_html`](../../src/orchestrator/cli/understand.py#L275), [`check_declared_repos`](../../scripts/sdlc_shapes.py#L264), [`check_memory_bank`](../../src/orchestrator/knowledge/understand.py#L314), [`load_or_extract`](../../src/orchestrator/pkg/persistence.py#L237), [`load_or_extract_repos`](../../src/orchestrator/pkg/persistence.py#L378), [`render_memory_bank`](../../src/orchestrator/knowledge/understand.py#L122)
 - **Calls** (2): [`_git`](../../src/orchestrator/pkg/persistence.py#L138), `pathlib.Path`
 - **Documented in**: `docs/specs/multi-repo-roadmap.md#submodules-a-multi-repo-laid-out-inside-one-checkout-2026-09-09`, `docs/specs/pkg-accuracy-gaps.md#6-operational-open-right-now`
 

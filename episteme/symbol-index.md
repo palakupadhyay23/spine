@@ -308,7 +308,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 4302 symbols; 
 | `_create_versioned_table` | `migrations.versions.0001_initial_registry_tables` | [`_create_versioned_table`](../migrations/versions/0001_initial_registry_tables.py#L25) |
 | `_criteria_block` | [`orchestrator.sdlc.builddoc`](modules/orchestrator.sdlc.builddoc.md#_criteria_block) | [`_criteria_block`](../src/orchestrator/sdlc/builddoc.py#L1027) |
 | `_criteria_cell` | `orchestrator.intake.report` | [`_criteria_cell`](../src/orchestrator/intake/report.py#L36) |
-| `_criteria_md` | `orchestrator.intake.pkg_evidence` | [`_criteria_md`](../src/orchestrator/intake/pkg_evidence.py#L255) |
+| `_criteria_md` | `orchestrator.intake.pkg_evidence` | [`_criteria_md`](../src/orchestrator/intake/pkg_evidence.py#L266) |
 | `_criteria_text` | [`orchestrator.sdlc.validity`](modules/orchestrator.sdlc.validity.md#_criteria_text) | [`_criteria_text`](../src/orchestrator/sdlc/validity.py#L113) |
 | `_criteria_text` | `orchestrator.pkg.criteria_binding` | [`_criteria_text`](../src/orchestrator/pkg/criteria_binding.py#L188) |
 | `_cross_repo_dependents` | `orchestrator.sdlc.investigate` | [`_cross_repo_dependents`](../src/orchestrator/sdlc/investigate.py#L68) |
@@ -502,7 +502,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 4302 symbols; 
 | `_extract_tool_calls` | `orchestrator.core.llm.litellm_client` | [`_extract_tool_calls`](../src/orchestrator/core/llm/litellm_client.py#L326) |
 | `_extractor_for` | `orchestrator.pkg.verifier` | [`_extractor_for`](../src/orchestrator/pkg/verifier.py#L75) |
 | `_factory` | `orchestrator.registry.api.connections` | [`_factory`](../src/orchestrator/registry/api/connections.py#L73) |
-| `_facts_for_spec` | `orchestrator.cli.build` | [`_facts_for_spec`](../src/orchestrator/cli/build.py#L219) |
+| `_facts_for_spec` | `orchestrator.cli.build` | [`_facts_for_spec`](../src/orchestrator/cli/build.py#L228) |
 | `_failure_finding` | `orchestrator.codereview.semgrep` | [`_failure_finding`](../src/orchestrator/codereview/semgrep.py#L126) |
 | `_failure_kind` | [`orchestrator.sdlc.codegen`](modules/orchestrator.sdlc.codegen.md#_failure_kind) | [`_failure_kind`](../src/orchestrator/sdlc/codegen.py#L2390) |
 | `_failure_mode` | `orchestrator.evals.skill_ab` | [`_failure_mode`](../src/orchestrator/evals/skill_ab.py#L58) |
@@ -593,7 +593,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 4302 symbols; 
 | `_go_parser` | `orchestrator.pkg.go_extractor` | [`_go_parser`](../src/orchestrator/pkg/go_extractor.py#L514) |
 | `_governance` | [`orchestrator.registry.api.audit`](modules/orchestrator.registry.api.audit.md#_governance) | [`_governance`](../src/orchestrator/registry/api/audit.py#L186) |
 | `_grounding` | [`orchestrator.sdlc.codegen`](modules/orchestrator.sdlc.codegen.md#_grounding) | [`_grounding`](../src/orchestrator/sdlc/codegen.py#L1107) |
-| `_grounding_for` | `orchestrator.cli.build` | [`_grounding_for`](../src/orchestrator/cli/build.py#L174) |
+| `_grounding_for` | `orchestrator.cli.build` | [`_grounding_for`](../src/orchestrator/cli/build.py#L180) |
 | `_group_prefix_of_chain` | [`orchestrator.pkg.php_routes`](modules/orchestrator.pkg.php_routes.md#_group_prefix_of_chain) | [`_group_prefix_of_chain`](../src/orchestrator/pkg/php_routes.py#L309) |
 | `_grow_window` | `orchestrator.sdlc.excerpt` | [`_grow_window`](../src/orchestrator/sdlc/excerpt.py#L49) |
 | `_guid` | [`orchestrator.sdlc.scaffold`](modules/orchestrator.sdlc.scaffold.md#_guid) | [`_guid`](../src/orchestrator/sdlc/scaffold.py#L371) |
@@ -1291,10 +1291,10 @@ _Every first-party symbol, A–Z, and the page that describes it. 4302 symbols; 
 | `_run_cmd` | `orchestrator.sdlc.review_response` | [`_run_cmd`](../src/orchestrator/sdlc/review_response.py#L38) |
 | `_run_git` | `orchestrator.sdlc.workspace` | [`_run_git`](../src/orchestrator/sdlc/workspace.py#L42) |
 | `_run_in` | [`orchestrator.sdlc.testenv`](modules/orchestrator.sdlc.testenv.md#_run_in) | [`_run_in`](../src/orchestrator/sdlc/testenv.py#L758) |
-| `_run_ingest` | `orchestrator.cli.build` | [`_run_ingest`](../src/orchestrator/cli/build.py#L62) |
+| `_run_ingest` | `orchestrator.cli.build` | [`_run_ingest`](../src/orchestrator/cli/build.py#L68) |
 | `_run_migrations` | [`orchestrator.launch`](modules/orchestrator.launch.md#_run_migrations) | [`_run_migrations`](../src/orchestrator/launch.py#L277) |
 | `_run_one` | `orchestrator.runtime.manager_graph` | [`_run_one`](../src/orchestrator/runtime/manager_graph.py#L234) |
-| `_run_openspec_draft` | `orchestrator.cli.build` | [`_run_openspec_draft`](../src/orchestrator/cli/build.py#L281) |
+| `_run_openspec_draft` | `orchestrator.cli.build` | [`_run_openspec_draft`](../src/orchestrator/cli/build.py#L305) |
 | `_run_sdlc` | [`orchestrator.cli.sdlc`](modules/orchestrator.cli.sdlc.md#_run_sdlc) | [`_run_sdlc`](../src/orchestrator/cli/sdlc.py#L79) |
 | `_run_sdlc_complete` | [`orchestrator.cli.sdlc`](modules/orchestrator.cli.sdlc.md#_run_sdlc_complete) | [`_run_sdlc_complete`](../src/orchestrator/cli/sdlc.py#L1126) |
 | `_run_sdlc_feature` | [`orchestrator.cli.sdlc`](modules/orchestrator.cli.sdlc.md#_run_sdlc_feature) | [`_run_sdlc_feature`](../src/orchestrator/cli/sdlc.py#L956) |
