@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
+from orchestrator.pkg import RepoCodeExtractor
+
 from ._app import PANEL_BUILD, app
-from ._common import _print
+from ._common import _merged_store, _print, _repo_arg
 
 openspec_app = typer.Typer(help="Spec-driven development with OpenSpec (openspec.dev).", no_args_is_help=True)
 
@@ -132,6 +134,17 @@ def openspec_draft(
         bool,
         typer.Option("--overwrite", help="Overwrite existing change files (default: never clobber)."),
     ] = False,
+    path: Annotated[
+        str | None,
+        typer.Argument(help="Repo path to ground the draft against (default: ungrounded)."),
+    ] = None,
+    repos: Annotated[
+        str | None,
+        typer.Option("--repos", help="A `.spine/repos.yaml` — ground against every declared repo."),
+    ] = None,
+    dialect: Annotated[
+        str | None, typer.Option("--dialect", help="SQL dialect; default: auto-detect.")
+    ] = None,
 ) -> None:
     """Bootstrap OpenSpec change proposals FROM an unstructured source (the write-back).
 
@@ -142,13 +155,64 @@ def openspec_draft(
         orchestrator openspec draft --source confluence://<id> --out ./openspec
         # …review/edit openspec/changes/<id>/…
         orchestrator sdlc feature --source openspec://<id> --safe
+
+    Pass a repo path (or `--repos`) to ground the draft against the code — the proposal then
+    carries what the graph says, fenced off from the model's prose and labelled. **Without
+    one the draft is unchanged from before**, and says so on its own face rather than leaving
+    a reader to wonder which mode produced it.
     """
     import asyncio
 
-    asyncio.run(_run_openspec_draft(source, out=out, refresh=refresh, overwrite=overwrite))
+    asyncio.run(
+        _run_openspec_draft(
+            source, out=out, refresh=refresh, overwrite=overwrite, path=path, repos=repos, dialect=dialect
+        )
+    )
 
 
-async def _run_openspec_draft(source: str, *, out: str, refresh: bool, overwrite: bool) -> None:
+def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> Any:
+    """Read the repository the draft was pointed at, and classify what came back.
+
+    **This is the composition root, on purpose.** The evidence needs landing sites, which are
+    computed in `sdlc`; `intake` may not import `sdlc` at module level, and moving the landing
+    machinery down into `pkg` would drag `CoverageIndex`, `excerpt` and `brief` with it. The
+    CLI is the one layer allowed to read both, so it reads both and hands the result down —
+    which is also why `render_change` takes grounding as an argument rather than fetching it.
+    """
+    from orchestrator.intake import pkg_evidence
+
+    if not path and not repos:
+        return pkg_evidence.ungrounded()
+    if repos:
+        store, merged, _repo_set = _merged_store(
+            repos, command="openspec draft", extractor=RepoCodeExtractor(sql_dialect=dialect)
+        )
+        untrusted = tuple(merged.untrusted_keys) if not merged.trusted else ()
+        return pkg_evidence.from_store(store, where=repos, untrusted=untrusted)
+    from orchestrator.pkg import FactStore, load_or_extract
+    from orchestrator.pkg.persistence import repo_state
+
+    with _repo_arg(str(path)) as (repo, _):
+        batch = load_or_extract(repo, extractor=RepoCodeExtractor(sql_dialect=dialect))
+        # The single-repo path gets no standing for free the way a merged graph does, so ask
+        # for it. Without this, D18's warning would fire only under `--repos` — and a dirty
+        # single checkout is the far commoner way to draft against unreproducible evidence.
+        _sha, dirty = repo_state(repo)
+        return pkg_evidence.from_store(
+            FactStore(batch), where=str(path), untrusted=(str(path),) if dirty else ()
+        )
+
+
+async def _run_openspec_draft(
+    source: str,
+    *,
+    out: str,
+    refresh: bool,
+    overwrite: bool,
+    path: str | None = None,
+    repos: str | None = None,
+    dialect: str | None = None,
+) -> None:
     from pathlib import Path
 
     from orchestrator.core.env import load_local_env
@@ -173,13 +237,16 @@ async def _run_openspec_draft(source: str, *, out: str, refresh: bool, overwrite
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=2) from exc
     root = Path(out)
+    # Once, before the loop. One source drafts N changes, and extraction is the expensive half
+    # — per-spec it would be paid N times for an answer that cannot differ (D9).
+    grounding = _grounding_for(path, repos, dialect)
     intents_by_id = {i.id: i for i in plan.intents}
     drafted: list[dict[str, object]] = []
     for spec in plan.specs:
         intent = intents_by_id.get(spec.intent_id)
         if intent is None:
             continue
-        written = write_change(root, intent, render_change(spec, intent), overwrite=overwrite)
+        written = write_change(root, intent, render_change(spec, intent, grounding), overwrite=overwrite)
         drafted.append(
             {
                 "change_id": change_id_for(intent),

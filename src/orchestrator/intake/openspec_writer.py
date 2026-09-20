@@ -18,6 +18,7 @@ import re
 from pathlib import Path
 
 from orchestrator.intake.intents import Intent, _slug
+from orchestrator.intake.pkg_evidence import Grounding, absence_section, banner_sentence
 from orchestrator.intake.specs import FeatureSpec
 
 _DRAFT_NOTE = (
@@ -25,6 +26,10 @@ _DRAFT_NOTE = (
     "sharpen each requirement into a SHALL/MUST statement and each scenario into "
     "Given/When/Then, then run `orchestrator sdlc feature --source openspec://{change_id}`.\n"
 )
+#: The grounding line rides *in* the banner, not only in its own section. A reader who skims
+#: `proposal.md` sees the banner and nothing else, and "which mode produced this page" is
+#: exactly the question they must not have to answer by scrolling.
+_GROUNDING_NOTE = "> {sentence}\n"
 
 _GWT = re.compile(r"\b(GIVEN|WHEN|THEN|AND|BUT)\b", re.IGNORECASE)
 # BDD keywords for *splitting* a criterion into bullets are UPPERCASE by convention —
@@ -75,7 +80,9 @@ def _short_label(criterion: str) -> str:
     return head[:60].strip()
 
 
-def _proposal_md(spec: FeatureSpec, intent: Intent, change_id: str) -> str:
+def _proposal_md(
+    spec: FeatureSpec, intent: Intent, change_id: str, grounding: Grounding | None = None
+) -> str:
     why = (intent.description or spec.summary or "").strip()
     what = (intent.scope or spec.user_story or "").strip()
     impact = spec.technical_notes.strip()
@@ -83,14 +90,20 @@ def _proposal_md(spec: FeatureSpec, intent: Intent, change_id: str) -> str:
         f"# Proposal: {spec.title}",
         "",
         _DRAFT_NOTE.format(change_id=change_id),
-        "## Why",
-        why or "TODO",
     ]
+    if grounding is not None:
+        parts.append(_GROUNDING_NOTE.format(sentence=banner_sentence(grounding)))
+    parts += ["## Why", why or "TODO"]
     parts += ["", "## What Changes", what or "TODO"]
     if impact:
         parts += ["", "## Impact", impact]
     if intent.open_questions:
         parts += ["", "## Open Questions"] + [f"- {q}" for q in intent.open_questions]
+    if grounding is not None:
+        # Last, and fenced off by its own heading: a fact region must never be interleaved
+        # with the derived prose above it, or the citation lends its authority to the sentence
+        # beside it rather than to the line it names.
+        parts += ["", "## Grounding", absence_section(grounding)]
     return "\n".join(parts).rstrip() + "\n"
 
 
@@ -105,16 +118,22 @@ def _tasks_md(spec: FeatureSpec) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_change(spec: FeatureSpec, intent: Intent) -> dict[str, str]:
+def render_change(spec: FeatureSpec, intent: Intent, grounding: Grounding | None = None) -> dict[str, str]:
     """Render one derived spec into OpenSpec change files: ``{relpath: content}``.
 
     Keys are paths **relative to the change dir** (``proposal.md``, ``tasks.md``,
     ``specs/<cap>/spec.md``). ``write_change`` places them under ``<root>/changes/<id>/``.
+
+    ``grounding`` is what the code said about this change, produced by the caller — the CLI is
+    the only layer that may read both a repository and an intake plan, and passing it in keeps
+    ``intake`` free of any import of ``sdlc``. ``None`` is the ungrounded draft exactly as it
+    was rendered before grounding existed, which is what makes the old behaviour the default
+    rather than a branch someone has to remember to take.
     """
     change_id = change_id_for(intent)
     cap = _slug(spec.title) or change_id
     return {
-        "proposal.md": _proposal_md(spec, intent, change_id),
+        "proposal.md": _proposal_md(spec, intent, change_id, grounding),
         "tasks.md": _tasks_md(spec),
         f"specs/{cap}/spec.md": _spec_md(spec),
     }
