@@ -152,10 +152,9 @@ def test_the_fact_region_is_fenced_below_the_prose_never_interleaved(
 
 
 @pytest.mark.parametrize("grounding", STATES)
-def test_grounding_does_not_leak_into_the_other_two_files(grounding: pkg_evidence.Grounding) -> None:
-    """`tasks.md` and the delta spec are P3(e)'s and unchanged here — asserted, not assumed."""
+def test_grounding_never_reaches_the_delta_spec(grounding: pkg_evidence.Grounding) -> None:
+    """The delta spec is the contract codegen hits; grounding is commentary on it."""
     files = render_change(SPEC, INTENT, grounding)
-    assert files["tasks.md"] == render_change(SPEC, INTENT)["tasks.md"]
     spec_key = next(k for k in files if k.endswith("spec.md"))
     assert files[spec_key] == render_change(SPEC, INTENT)[spec_key]
 
@@ -288,3 +287,74 @@ def test_every_file_line_in_a_fact_block_resolves_in_the_graph() -> None:
     assert cited, "the block cited nothing, so this test proved nothing"
     assert "name code that already exists" in body, "the bound path was not exercised"
     assert cited <= known, f"unresolvable citation(s): {sorted(cited - known)}"
+
+
+# --- tasks.md: P3(e), D20 ------------------------------------------------------------------
+
+
+TASK_SPEC = FeatureSpec(
+    intent_id="intent-cart",
+    title="Cart checkout",
+    acceptance_criteria=["GIVEN a cart\nWHEN checkout\nTHEN it charges", "`refund` reverses a charge"],
+    proposed_criteria=["Retry on 5xx"],
+)
+
+
+def test_tasks_are_one_per_criterion_not_two_constants() -> None:
+    """The defect the premise names: `_tasks_md` took `spec` and read nothing from it."""
+    tasks = render_change(TASK_SPEC, INTENT)["tasks.md"]
+    assert "- [ ] 1.1 GIVEN a cart WHEN checkout THEN it charges" in tasks
+    assert "- [ ] 1.2 `refund` reverses a charge" in tasks
+    assert "Implement the requirement" not in tasks
+
+
+def test_a_multiline_criterion_becomes_one_checkbox() -> None:
+    """A Given/When/Then criterion spans lines; a checkbox that does would break the list."""
+    tasks = render_change(TASK_SPEC, INTENT)["tasks.md"]
+    assert "\n- [ ] 1.1 GIVEN a cart WHEN checkout THEN it charges\n" in tasks
+
+
+def test_proposed_criteria_are_kept_apart_and_labelled() -> None:
+    """A suggestion the model inferred is not a contract the source signed."""
+    tasks = render_change(TASK_SPEC, INTENT)["tasks.md"]
+    assert "## 2. Proposed — inferred by Spine, not stated by the source" in tasks
+    assert "- [ ] 2.1 Retry on 5xx" in tasks
+    # …and it must not be mistaken for a stated one by sitting in the same group.
+    assert tasks.index("Retry on 5xx") > tasks.index("## 2.")
+
+
+def test_a_bound_criterion_says_verify_never_done() -> None:
+    """Evidence, not a verdict — ticking it off here would be the SSPN-49 failure."""
+    binding = CriteriaBinding(rows=(_bound("`refund` reverses a charge", "refund", "svc/charge.py:9"),))
+    tasks = render_change(TASK_SPEC, INTENT, pkg_evidence.with_facts(GROUNDED, binding=binding))["tasks.md"]
+    assert "- [ ] 1.2 `refund` reverses a charge — **verify first:**" in tasks
+    assert "- [ ] 1.1 GIVEN a cart WHEN checkout THEN it charges\n" in tasks  # unbound: no note
+
+
+@pytest.mark.parametrize("grounding", [None, *STATES])
+def test_no_task_ever_cites_a_file(grounding: pkg_evidence.Grounding | None) -> None:
+    """D20(c) refused, and enforced rather than remembered.
+
+    A task is an instruction, and "change `foo.py:41`" is a derived claim wearing a citation.
+    Landing sites belong in the proposal's fact block.
+    """
+    binding = CriteriaBinding(rows=(_bound("`refund` reverses a charge", "refund", "svc/charge.py:9"),))
+    g = pkg_evidence.with_facts(grounding, binding=binding) if grounding is not None else None
+    tasks = render_change(TASK_SPEC, INTENT, g)["tasks.md"]
+    assert not re.search(r"[\w/]+\.(py|ts|java|cs|go|php|pl|kt|sql):\d+", tasks), tasks
+
+
+def test_a_spec_with_no_criteria_still_renders_a_usable_task_list() -> None:
+    bare = FeatureSpec(intent_id="intent-cart", title="Cart")
+    tasks = render_change(bare, INTENT)["tasks.md"]
+    assert "- [ ] 1.1 Implement the requirement" in tasks
+    assert "## 2. Verification" in tasks
+
+
+def test_tasks_keep_the_shape_openspec_source_documents() -> None:
+    """`## N. Group` + `- [ ] N.M task` — the layout the reader half describes."""
+    tasks = render_change(TASK_SPEC, INTENT)["tasks.md"]
+    groups = re.findall(r"^## (\d+)\. ", tasks, re.M)
+    assert groups == ["1", "2", "3"]
+    for line in [ln for ln in tasks.splitlines() if ln.startswith("- [ ]")]:
+        assert re.match(r"^- \[ \] \d+\.\d+ \S", line), line

@@ -109,15 +109,62 @@ def _proposal_md(
     return "\n".join(parts).rstrip() + "\n"
 
 
-def _tasks_md(spec: FeatureSpec) -> str:
-    lines = [
-        "# Tasks",
-        "",
-        "## 1. Implementation",
-        "- [ ] 1.1 Implement the requirement",
-        "- [ ] 1.2 Add tests",
-    ]
+def _tasks_md(spec: FeatureSpec, grounding: Grounding | None = None) -> str:
+    """One checkbox per criterion — not two constants for every change in the world.
+
+    This function took ``spec`` and read nothing from it, emitting *"Implement the
+    requirement"* / *"Add tests"* for every change ever drafted. That is a large part of the
+    "doesn't give enough clarity" finding this track answers, and unlike the prose it is
+    fixable **deterministically**: the criteria already exist, stated and proposed are already
+    separate fields, and the binder already says which name code that exists.
+
+    **No task cites a file, ever.** A task is an instruction — *derived* — and "change
+    `foo.py:41`" is a derived claim wearing a citation, which is the one failure this track
+    exists to prevent. Landing sites belong in the proposal's fact block, where a reader can
+    see what they are. The most a task may say is *verify before building*, and why.
+
+    Shape is unchanged (``## N. Group`` + ``- [ ] N.M``), which is what `openspec_source`
+    documents — though it takes ``tasks_md`` and never reads it, so criteria round-trip
+    through ``specs/<cap>/spec.md`` regardless.
+    """
+    bound = (
+        {row.text for row in grounding.binding.rows if row.status == "bound"}
+        if grounding and grounding.binding
+        else set()
+    )
+    lines = ["# Tasks", ""]
+    group = 1
+    if spec.acceptance_criteria:
+        lines.append(f"## {group}. Implementation")
+        for i, crit in enumerate(spec.acceptance_criteria, 1):
+            # `verify first`, not `already done`: the binder found code this criterion names,
+            # which is evidence and not a verdict. Ticking it off here would be exactly the
+            # SSPN-49 failure — a run reporting a criterion met having changed nothing.
+            note = (
+                " — **verify first:** code this names already exists (see *Grounding*)"
+                if crit in bound
+                else ""
+            )
+            lines.append(f"- [ ] {group}.{i} {_one_line(crit)}{note}")
+        group += 1
+    else:
+        lines += [f"## {group}. Implementation", f"- [ ] {group}.1 Implement the requirement"]
+        group += 1
+    if spec.proposed_criteria:
+        # Labelled and kept apart, for the same reason the schema keeps the fields apart: a
+        # suggestion the spec writer inferred is not a contract the source signed, and a
+        # reader deciding what to build must be able to tell them apart at a glance.
+        lines += ["", f"## {group}. Proposed — inferred by Spine, not stated by the source"]
+        for i, crit in enumerate(spec.proposed_criteria, 1):
+            lines.append(f"- [ ] {group}.{i} {_one_line(crit)}")
+        group += 1
+    lines += ["", f"## {group}. Verification", f"- [ ] {group}.1 Add tests covering each criterion above"]
     return "\n".join(lines) + "\n"
+
+
+def _one_line(text: str) -> str:
+    """A criterion as a single checkbox line. Multi-line Given/When/Then would break the list."""
+    return " ".join(text.split())
 
 
 def render_change(spec: FeatureSpec, intent: Intent, grounding: Grounding | None = None) -> dict[str, str]:
@@ -136,7 +183,7 @@ def render_change(spec: FeatureSpec, intent: Intent, grounding: Grounding | None
     cap = _slug(spec.title) or change_id
     return {
         "proposal.md": _proposal_md(spec, intent, change_id, grounding),
-        "tasks.md": _tasks_md(spec),
+        "tasks.md": _tasks_md(spec, grounding),
         f"specs/{cap}/spec.md": _spec_md(spec),
     }
 
