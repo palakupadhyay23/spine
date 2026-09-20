@@ -899,16 +899,43 @@ A human polishes the draft, then implements deterministically:
     # …review/edit openspec/changes/<id>/…
     orchestrator sdlc feature --source openspec://<id> --safe
 
+Pass a repository to **ground** the draft against the code. The proposal then carries a
+`## Grounding` section — where the change lands, with `file:line`, and each stated criterion
+bound against the graph — and `tasks.md` becomes one checkbox per criterion instead of two
+fixed lines:
+
+    orchestrator openspec draft ./my-service --source jira://PROJ-123
+    orchestrator openspec draft --repos .spine/repos.yaml --source jira://PROJ-123
+
+**What grounding does and does not change.** The requirements and scenarios are still the
+model's prose, written from the source document alone — this does not make them better. What
+it adds is the code's facts *beside* them, fenced off and cited, so a reader can tell which
+half is which. A line with no `file:line` has not been checked by anything.
+
+**Four states, and the page always says which.** Grounded; **grounded but the graph was
+empty** (a language Spine has no front-end for yields zero nodes and looks exactly like a
+repository with nothing to find); **grounded against an uncommitted tree**, whose citations
+cannot be re-derived at a commit; and **ungrounded**, which is what you get with no
+repository and is byte-for-byte the draft this command produced before. No task ever cites a
+file — an instruction is derived, and a citation on one would lend it authority it has not
+earned.
+
 ```
-orchestrator openspec draft [OPTIONS]
+orchestrator openspec draft [OPTIONS] [PATH]
 ```
+
+| Argument | Description |
+|---|---|
+| `PATH` | Repo path to ground the draft against (default: ungrounded). |
 
 | Option | Description |
 |---|---|
 | `--source` | Unstructured source to bootstrap FROM, e.g. confluence://<id>. |
 | `--out` | OpenSpec root to write into (changes/<id>/ is created under it). (default: `openspec`) |
-| `--refresh` | Re-extract from the source (default: reuse the cached backlog). |
+| `--refresh` | Re-extract from the source (default: reuse the cached backlog). **Not the PKG** — that cache is commit-keyed and invalidates itself. |
 | `--overwrite` | Overwrite existing change files (default: never clobber). |
+| `--repos` | A `.spine/repos.yaml` — ground against every declared repo. Landing sites are then grouped by repository key. |
+| `--dialect` | SQL dialect; default: auto-detect. |
 
 ---
 
