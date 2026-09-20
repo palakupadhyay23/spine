@@ -30,13 +30,42 @@ zero-node graph as "no repository given" would claim nothing was consulted when 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from orchestrator.pkg import FactStore
+    from orchestrator.pkg.criteria_binding import CriteriaBinding
 
-__all__ = ["Grounding", "GroundingState", "absence_section", "banner_sentence", "from_store", "ungrounded"]
+__all__ = [
+    "Grounding",
+    "GroundingState",
+    "LandingGroup",
+    "absence_section",
+    "banner_sentence",
+    "fact_section",
+    "from_store",
+    "ungrounded",
+    "with_facts",
+]
+
+
+@dataclass(frozen=True)
+class LandingGroup:
+    """Landing bullets for one repository, already rendered by `sdlc.landings`.
+
+    Pre-rendered on purpose. The bullets come from the renderer `investigate` and the codegen
+    agent share, and calling it from here would make `intake` import `sdlc` — which the CLI
+    exists to prevent by composing both. So this package receives strings it does not format.
+    """
+
+    #: Repository key. Empty for the single-repo case, where there is nothing to disambiguate.
+    repo: str
+    bullets: tuple[str, ...]
+    #: A repository the change lands in that had nothing to show. **Named, not skipped** (D14):
+    #: silence would read as "this repository has nothing to say", which is a different claim.
+    absent: bool = False
+
 
 GroundingState = Literal["ungrounded", "empty", "untrusted", "grounded"]
 
@@ -55,6 +84,14 @@ class Grounding:
     languages: tuple[str, ...] = ()
     #: Repository keys with uncommitted work, when the graph is merged.
     untrusted: tuple[str, ...] = ()
+    #: Per-spec facts, attached by `with_facts` after the per-spec retrieval (D21). Empty on
+    #: the base grounding, which describes the *repository* rather than any one change.
+    landings: tuple[LandingGroup, ...] = ()
+    #: Matches cut by the retrieval bound. Stated as "top N of M", never a clipped list
+    #: implying completeness.
+    elided: int = 0
+    areas: tuple[str, ...] = ()
+    binding: CriteriaBinding | None = None
 
     @property
     def cites(self) -> bool:
@@ -95,6 +132,24 @@ def from_store(store: FactStore, *, where: str, untrusted: tuple[str, ...] = ())
         languages=languages,
         untrusted=untrusted,
     )
+
+
+def with_facts(
+    base: Grounding,
+    *,
+    landings: tuple[LandingGroup, ...] = (),
+    elided: int = 0,
+    areas: tuple[str, ...] = (),
+    binding: CriteriaBinding | None = None,
+) -> Grounding:
+    """Attach one change's facts to the repository-level grounding.
+
+    Two steps because they have different scopes: the repository is read once (extraction is
+    the expensive half, D9), while retrieval and binding are per change — a source drafts N of
+    them, and one shared block would cite identical sites in all N the moment the specs diverge
+    (D21).
+    """
+    return replace(base, landings=landings, elided=elided, areas=areas, binding=binding)
 
 
 def banner_sentence(g: Grounding) -> str:
@@ -147,3 +202,99 @@ def absence_section(g: Grounding) -> str:
         "The requirements and scenarios above are the model's prose and carry no citation — "
         "if a line has no `file:line`, nothing has checked it."
     )
+
+
+def _landings_md(g: Grounding) -> list[str]:
+    """Where this change lands, grouped by repository (D14)."""
+    if not g.landings:
+        return [
+            "### Where it lands",
+            "",
+            "_No symbol matched this change's terms. Retrieval is **lexical** — a landing site "
+            "that uses different words for the same thing is not here._",
+        ]
+    out = ["### Where it lands", ""]
+    single = len(g.landings) == 1 and not g.landings[0].repo
+    for group in g.landings:
+        if not single:
+            out.append(f"#### `{group.repo}`")
+            out.append("")
+        if group.absent:
+            # Named rather than skipped: this change reaches this repository, and "nothing
+            # matched here" is a finding a reader should see, not an omission to infer.
+            out.append("_This change lands in this repository, but no symbol matched its terms._")
+        else:
+            out.extend(group.bullets)
+        out.append("")
+    if g.elided:
+        shown = sum(len(x.bullets) for x in g.landings)
+        out.append(f"_Showing the top {shown}; {g.elided} further match(es) not listed._")
+    if g.areas:
+        out.append(f"_Likely areas: {', '.join(g.areas)}_")
+    return out
+
+
+def _criteria_md(g: Grounding) -> list[str]:
+    """Each stated criterion against the graph — and what that does *not* establish.
+
+    Only ``acceptance_criteria`` reach the binder (`criteria_binding._criteria_text`), so a
+    criterion the model invented can never acquire a citation here. That is not a filter this
+    module applies; it is one the binder already refuses to lift.
+
+    **There is no separate "already met" section, deliberately.** The binder cannot judge
+    whether code *satisfies* a criterion — `specs.py` is explicit that no deterministic pass
+    can — so the candidate set is exactly the bound set seen as a question. Two headings over
+    one set of rows would read as two findings.
+    """
+    binding = g.binding
+    if binding is None or not binding.rows:
+        return []
+    out = ["### Criteria against the code", ""]
+    if binding.bound:
+        out.append(
+            "**These name code that already exists.** That is evidence, not a verdict: "
+            "confirm whether the behaviour is already satisfied before building it. SSPN-49 "
+            "filed six criteria of which two described behaviour that already existed, and a "
+            "run would have reported them met having changed nothing."
+        )
+        out.append("")
+        for row in binding.bound:
+            out.append(f"- {row.text}")
+            for anchor in row.anchors:
+                seen = " · in the landing files" if anchor.in_evidence else ""
+                out.append(f"  - `{anchor.symbol}` — `{anchor.where}`{seen}")
+        out.append("")
+    if binding.unbound:
+        out.append(
+            "**These name code the graph cannot find.** Either the work is new, or the "
+            "criterion names something by a word the code does not use — the two look "
+            "identical from here, and only a human can tell them apart."
+        )
+        out.append("")
+        for row in binding.unbound:
+            claims = ", ".join(f"`{c}`" for c in row.claims)
+            out.append(f"- {row.text}" + (f" — unresolved: {claims}" if claims else ""))
+        out.append("")
+    if binding.no_claim:
+        out.append(
+            f"_{len(binding.no_claim)} further criterion(s) make no claim about existing code, "
+            "so there was nothing to bind. That is not a failure to bind._"
+        )
+        out.append("")
+    return out
+
+
+def fact_section(g: Grounding) -> str:
+    """The fenced fact region: everything here is re-derivable from the graph.
+
+    Returns ``""`` for a state that may not cite, which is what keeps the rule mechanical —
+    the honest-absence text lives in `absence_section` and a page never carries both a "we
+    could not read this" notice and a citation.
+    """
+    if not g.cites:
+        return ""
+    parts = _landings_md(g)
+    criteria = _criteria_md(g)
+    if criteria:
+        parts += ["", *criteria]
+    return "\n".join(parts).rstrip() + "\n"

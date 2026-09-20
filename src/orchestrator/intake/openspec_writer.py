@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 from orchestrator.intake.intents import Intent, _slug
-from orchestrator.intake.pkg_evidence import Grounding, absence_section, banner_sentence
+from orchestrator.intake.pkg_evidence import Grounding, absence_section, banner_sentence, fact_section
 from orchestrator.intake.specs import FeatureSpec
 
 _DRAFT_NOTE = (
@@ -104,6 +104,8 @@ def _proposal_md(
         # with the derived prose above it, or the citation lends its authority to the sentence
         # beside it rather than to the line it names.
         parts += ["", "## Grounding", absence_section(grounding)]
+        if facts := fact_section(grounding):
+            parts += ["", facts.rstrip()]
     return "\n".join(parts).rstrip() + "\n"
 
 

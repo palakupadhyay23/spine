@@ -170,8 +170,12 @@ def openspec_draft(
     )
 
 
-def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> Any:
-    """Read the repository the draft was pointed at, and classify what came back.
+def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> tuple[Any, Any, Any, Any]:
+    """Read the repository once, and classify what came back.
+
+    Returns ``(grounding, store, root, repo_roots)`` — the store and roots are what the
+    per-spec pass needs, and reading them once is the whole point: extraction is the expensive
+    half and cannot differ between the N changes one source drafts (D9).
 
     **This is the composition root, on purpose.** The evidence needs landing sites, which are
     computed in `sdlc`; `intake` may not import `sdlc` at module level, and moving the landing
@@ -182,13 +186,14 @@ def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> 
     from orchestrator.intake import pkg_evidence
 
     if not path and not repos:
-        return pkg_evidence.ungrounded()
+        return pkg_evidence.ungrounded(), None, None, None
     if repos:
-        store, merged, _repo_set = _merged_store(
+        store, merged, repo_set = _merged_store(
             repos, command="openspec draft", extractor=RepoCodeExtractor(sql_dialect=dialect)
         )
         untrusted = tuple(merged.untrusted_keys) if not merged.trusted else ()
-        return pkg_evidence.from_store(store, where=repos, untrusted=untrusted)
+        base = pkg_evidence.from_store(store, where=repos, untrusted=untrusted)
+        return base, store, None, dict(repo_set.roots)
     from orchestrator.pkg import FactStore, load_or_extract
     from orchestrator.pkg.persistence import repo_state
 
@@ -198,9 +203,55 @@ def _grounding_for(path: str | None, repos: str | None, dialect: str | None) -> 
         # for it. Without this, D18's warning would fire only under `--repos` — and a dirty
         # single checkout is the far commoner way to draft against unreproducible evidence.
         _sha, dirty = repo_state(repo)
-        return pkg_evidence.from_store(
-            FactStore(batch), where=str(path), untrusted=(str(path),) if dirty else ()
-        )
+        store = FactStore(batch)
+        base = pkg_evidence.from_store(store, where=str(path), untrusted=(str(path),) if dirty else ())
+        # `repo` is a context-managed path: a git URL is cloned and removed on exit, so nothing
+        # downstream may read files from it. The bullets carry `file:line` either way — a
+        # drafted change cites the code, it does not copy it into a committed document.
+        return base, store, repo, None
+
+
+def _facts_for_spec(base: Any, store: Any, root: Any, repo_roots: Any, spec: Any) -> Any:
+    """Retrieval and binding for **one** change (D21).
+
+    Per spec, not per source: a shared block would cite identical sites in every change dir,
+    which is actively misleading the moment the specs diverge — the "looks verified" failure
+    one level out from the one this whole track is about.
+    """
+    from orchestrator.intake import pkg_evidence
+    from orchestrator.pkg.criteria_binding import bind_criteria
+    from orchestrator.sdlc.investigate import build_investigation
+    from orchestrator.sdlc.landings import render_landings
+
+    problem = (spec.description or spec.summary or "").strip()
+    inv = build_investigation(spec.title, problem, store=store, root=root, repo_roots=repo_roots)
+    groups: list[Any] = []
+    if repo_roots:
+        # Grouped by repository key, following the shape `investigate` settled on for a merged
+        # brief: a landed-in repository with nothing to show is named, never silently dropped.
+        by_repo: dict[str, list[Any]] = {key: [] for key in inv.repos}
+        for hit in inv.landing:
+            by_repo.setdefault(hit.repo, []).append(hit)
+        for key in sorted(by_repo):
+            hits = by_repo[key]
+            groups.append(
+                pkg_evidence.LandingGroup(repo=key, bullets=tuple(render_landings(hits)), absent=not hits)
+            )
+    elif inv.landing:
+        groups.append(pkg_evidence.LandingGroup(repo="", bullets=tuple(render_landings(inv.landing))))
+    binding = bind_criteria(
+        spec.model_dump(),
+        store=store,
+        evidence_files=tuple({hit.where.split(":", 1)[0] for hit in inv.landing if hit.where}),
+        root=root,
+    )
+    return pkg_evidence.with_facts(
+        base,
+        landings=tuple(groups),
+        elided=inv.elided,
+        areas=tuple(inv.areas),
+        binding=binding,
+    )
 
 
 async def _run_openspec_draft(
@@ -239,13 +290,18 @@ async def _run_openspec_draft(
     root = Path(out)
     # Once, before the loop. One source drafts N changes, and extraction is the expensive half
     # — per-spec it would be paid N times for an answer that cannot differ (D9).
-    grounding = _grounding_for(path, repos, dialect)
+    base_grounding, store, repo_root, repo_roots = _grounding_for(path, repos, dialect)
     intents_by_id = {i.id: i for i in plan.intents}
     drafted: list[dict[str, object]] = []
     for spec in plan.specs:
         intent = intents_by_id.get(spec.intent_id)
         if intent is None:
             continue
+        grounding = (
+            _facts_for_spec(base_grounding, store, repo_root, repo_roots, spec)
+            if store is not None
+            else base_grounding
+        )
         written = write_change(root, intent, render_change(spec, intent, grounding), overwrite=overwrite)
         drafted.append(
             {
