@@ -28,66 +28,7 @@ from orchestrator.pkg import FactStore
 from orchestrator.pkg.facts import NodeKind
 from orchestrator.sdlc import brief
 from orchestrator.sdlc.brief import Brief, Tier
-from orchestrator.sdlc.landings import render_landings
-
-
-@dataclass(frozen=True)
-class Landing:
-    """One place in the code a ticket lexically lands."""
-
-    name: str
-    where: str  # "file:line"
-    kind: str  # Function | Type | Module | …
-    callers: int
-    module: str  # owning module (touch-risk context)
-    #: Does any test transitively reach this symbol? **`None` means "cannot tell"** — the
-    #: language has no call graph — and is rendered as silence, never as "untested". A front
-    #: end that emits no `CALLS` edges has not proven an absence of tests.
-    covered: bool | None = None
-    #: The graph node this landing *is*. Kept because the brief has it in hand while building
-    #: the row and used to throw it away — and re-deriving it later from ``name`` can return a
-    #: different node, so the excerpt and the coverage line would describe a symbol the reader
-    #: is not looking at. Empty only for a `Landing` constructed outside the retriever.
-    node_id: str = ""
-    #: Dependents in **other** repositories — what breaks elsewhere if this changes.
-    #:
-    #: `callers` counts inbound ``CALLS`` and nothing else, which is right for a function and
-    #: catastrophic for an HTTP handler: nothing in the source *calls* one, so it reports
-    #: **0 callers** while a client in another service depends on it entirely. Reading that as
-    #: "nothing depends on this" is the most dangerous answer the graph can give, and it is the
-    #: exact question a multi-repo graph exists to answer. Computed from ``impact_of``, which
-    #: follows ``CALLS`` then ``EXPOSES`` then ``CONSUMES`` — so a handler reaches the endpoint
-    #: it serves and then the code, anywhere, that calls it.
-    cross_repo: int = 0
-    #: Which repository, in a merged multi-repo graph. Empty for the single-repo case.
-    #:
-    #: Not decoration. Module *names* are not scoped — only ids are — so two services that
-    #: both have `app.models` produce two landing sites reading `app.models`, and a reader
-    #: cannot tell which checkout to open. `where` does not disambiguate either: both say
-    #: `app/models.py:14`.
-    repo: str = ""
-    #: Tickets this symbol was **last changed for**, from `SERVES`. Empty unless the recorded
-    #: intent tier was scanned (`--intents`), and empty is *"not scanned or not attributed"* —
-    #: never *"no prior work"*. The distinction is why the report states coverage once rather
-    #: than leaving a reader to infer it from blanks.
-    intents: tuple[str, ...] = ()
-    #: The retrieval score and the query tokens the name shared, and whether that evidence is
-    #: **weak** — resting only on words that name other files too. Carried because the score used
-    #: to be discarded here, which left every consumer unable to tell "matched on `oauth2`"
-    #: from "matched on `client`": NSS-1231's five wrong files were all the second kind, and
-    #: the design promoted them to "Files to touch" with no way to know.
-    score: float = 0.0
-    matched: tuple[str, ...] = ()
-    weak: bool = False
-
-    @property
-    def location(self) -> str:
-        """`repo:file:line` when the repo is known, else `file:line`.
-
-        Rendered only. `where` keeps its shape because six call sites parse it back with
-        `split(":", 1)[0]` to recover the file — see `pkg/facts.Provenance`.
-        """
-        return f"{self.repo}:{self.where}" if self.repo and self.where else self.where
+from orchestrator.sdlc.landings import Landing, render_landings
 
 
 @dataclass

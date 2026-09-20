@@ -40,8 +40,7 @@ from orchestrator.pkg import FactStore
 from orchestrator.sdlc import brief
 from orchestrator.sdlc.churn import DEFAULT_COMMITS as _CHURN_COMMITS
 from orchestrator.sdlc.churn import changed_recently
-from orchestrator.sdlc.investigate import Landing
-from orchestrator.sdlc.landings import render_landings
+from orchestrator.sdlc.landings import Landing, render_landings
 
 __all__ = [
     "Evidence",

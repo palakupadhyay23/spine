@@ -55,12 +55,18 @@ HITS = [
 #: What `investigate` has rendered since before the extraction. Plain location, no backticks.
 BRIEF_STYLE = [
     "- `Brief` (Type, 7 caller(s) · reached by tests) _(in orchestrator.sdlc.brief)_ — b.py:44",
-    "- **web** · `handle_webhook` (Function, 0 caller(s), **3 dependent(s) in other repos** · "
-    "**no test reaches this**) _(in orchestrator.api.hooks)_ — web:h.py:55",
-    "- `Cart` (Type, 12 caller(s) · reached by tests) _(in app.models)_ — c.py:14 — "
-    "last changed for N-1, N-2, N-3 +2 more",
-    "- `render` (Function, 3 caller(s)) _(in app.view)_ — r.py:9 — weak: only `render`, `view`, "
-    "which other files use too",
+    (
+        "- **web** · `handle_webhook` (Function, 0 caller(s), **3 dependent(s) in other repos** · "
+        "**no test reaches this**) _(in orchestrator.api.hooks)_ — web:h.py:55"
+    ),
+    (
+        "- `Cart` (Type, 12 caller(s) · reached by tests) _(in app.models)_ — c.py:14 — "
+        "last changed for N-1, N-2, N-3 +2 more"
+    ),
+    (
+        "- `render` (Function, 3 caller(s)) _(in app.view)_ — r.py:9 — weak: only `render`, `view`, "
+        "which other files use too"
+    ),
     "- `app.models` (Module, 0 caller(s)) — i.py:1",
 ]
 

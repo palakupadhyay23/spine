@@ -210,8 +210,10 @@ def _landings_md(g: Grounding) -> list[str]:
         return [
             "### Where it lands",
             "",
-            "_No symbol matched this change's terms. Retrieval is **lexical** — a landing site "
-            "that uses different words for the same thing is not here._",
+            (
+                "_No symbol matched this change's terms. Retrieval is **lexical** — a landing "
+                "site that uses different words for the same thing is not here._"
+            ),
         ]
     out = ["### Where it lands", ""]
     single = len(g.landings) == 1 and not g.landings[0].repo
