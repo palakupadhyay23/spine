@@ -441,3 +441,52 @@ def test_a_declared_repo_with_no_landing_is_named_by_the_production_path() -> No
     assert by_repo["billing"].absent is True
     assert by_repo["web"].absent is False
     assert "lands in this repository, but no symbol matched" in pkg_evidence.fact_section(g)
+
+
+def test_one_declared_repo_still_checks_the_tree_several_do_not() -> None:
+    """`bind_criteria` takes one root and a merged graph has several.
+
+    With one declared repository there is no ambiguity, so the tree is searched as usual.
+    With several there is no single tree, and the page must say so — otherwise a criterion
+    naming a config file reads as "the graph cannot find this" when nothing looked for it.
+    """
+    from pathlib import Path
+
+    from orchestrator.cli.build import _facts_for_spec
+
+    batch = FactBatch()
+    batch.add_node(
+        Node(
+            id="py:app.Cart",
+            kind=NodeKind.TYPE,
+            name="Cart",
+            language="python",
+            provenance=Provenance(file="app/cart.py", line=5),
+        )
+    )
+    store = FactStore(batch)
+    spec = FeatureSpec(
+        intent_id="i",
+        title="Cart",
+        summary="The Cart reads limits.",
+        acceptance_criteria=["`config/limits.yaml` caps the basket."],
+    )
+    base = pkg_evidence.from_store(store, where="repos.yaml")
+
+    one = _facts_for_spec(base, store, None, {"web": Path(".")}, spec)
+    assert one.tree_checked is True
+    assert "File mentions were checked against the graph only" not in pkg_evidence.fact_section(one)
+
+    several = _facts_for_spec(base, store, None, {"web": Path("."), "billing": Path(".")}, spec)
+    assert several.tree_checked is False
+    assert "no single working tree to search" in pkg_evidence.fact_section(several)
+
+
+def test_the_tree_notice_stays_off_when_nothing_failed_to_bind() -> None:
+    """A caveat printed under a fully-bound section is noise, not honesty."""
+    g = pkg_evidence.with_facts(
+        GROUNDED,
+        binding=CriteriaBinding(rows=(_bound("x", "charge", "svc/charge.py:4"),)),
+        tree_checked=False,
+    )
+    assert "no single working tree" not in pkg_evidence.fact_section(g)

@@ -92,6 +92,11 @@ class Grounding:
     elided: int = 0
     areas: tuple[str, ...] = ()
     binding: CriteriaBinding | None = None
+    #: Was the working tree consulted for file mentions, or only the graph? False for a merged
+    #: graph of several repositories, where `bind_criteria`'s single ``root`` cannot name one
+    #: of them. Carried so the page can say it: reporting a criterion as unfindable when
+    #: nothing looked on disk is a claim of absence the evidence does not support.
+    tree_checked: bool = True
 
     @property
     def cites(self) -> bool:
@@ -141,6 +146,7 @@ def with_facts(
     elided: int = 0,
     areas: tuple[str, ...] = (),
     binding: CriteriaBinding | None = None,
+    tree_checked: bool = True,
 ) -> Grounding:
     """Attach one change's facts to the repository-level grounding.
 
@@ -149,7 +155,14 @@ def with_facts(
     them, and one shared block would cite identical sites in all N the moment the specs diverge
     (D21).
     """
-    return replace(base, landings=landings, elided=elided, areas=areas, binding=binding)
+    return replace(
+        base,
+        landings=landings,
+        elided=elided,
+        areas=areas,
+        binding=binding,
+        tree_checked=tree_checked,
+    )
 
 
 def banner_sentence(g: Grounding) -> str:
@@ -279,6 +292,18 @@ def _criteria_md(g: Grounding) -> list[str]:
         for row in binding.unbound:
             claims = ", ".join(f"`{c}`" for c in row.claims)
             out.append(f"- {row.text}" + (f" — unresolved: {claims}" if claims else ""))
+        out.append("")
+    if not g.tree_checked and (binding.unbound or binding.no_claim):
+        # Said once, at section level. Per row it would be noise; omitted entirely, an unbound
+        # criterion naming a config file would read as "the graph cannot find this" when the
+        # truth is "nobody looked on disk, because several repositories were merged and there
+        # is no single tree to look in".
+        out.append(
+            "_File mentions were checked against the graph only. With several repositories "
+            "merged there is no single working tree to search, so a criterion naming a file "
+            "the extractor never parsed — a config, a markdown page — could not be resolved "
+            "here even if it exists._"
+        )
         out.append("")
     if binding.no_claim:
         out.append(

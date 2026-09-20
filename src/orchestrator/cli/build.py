@@ -249,11 +249,24 @@ def _facts_for_spec(base: Any, store: Any, root: Any, repo_roots: Any, spec: Any
             )
     elif inv.landing:
         groups.append(pkg_evidence.LandingGroup(repo="", bullets=tuple(render_landings(inv.landing))))
+    # `bind_criteria` takes **one** root, and a merged graph has several. Symbol anchors and
+    # file anchors drawn from node provenance need no root at all, so most binding is
+    # unaffected — but two last-resort paths do read the tree: the existence check for a file
+    # the extractor never parsed (a config, a markdown page), and snake-token stem resolution.
+    # With exactly one declared repository there is no ambiguity, so pass it. With several,
+    # binding stays graph-only and the page **says so** rather than reporting a criterion as
+    # unfindable when nothing looked for it on disk.
+    bind_root = root
+    tree_checked = True
+    if repo_roots:
+        roots = list(repo_roots.values())
+        bind_root = roots[0] if len(roots) == 1 else None
+        tree_checked = bind_root is not None
     binding = bind_criteria(
         spec.model_dump(),
         store=store,
-        evidence_files=tuple({hit.where.split(":", 1)[0] for hit in inv.landing if hit.where}),
-        root=root,
+        evidence_files=tuple(sorted({hit.where.split(":", 1)[0] for hit in inv.landing if hit.where})),
+        root=bind_root,
     )
     return pkg_evidence.with_facts(
         base,
@@ -261,6 +274,7 @@ def _facts_for_spec(base: Any, store: Any, root: Any, repo_roots: Any, spec: Any
         elided=inv.elided,
         areas=tuple(inv.areas),
         binding=binding,
+        tree_checked=tree_checked,
     )
 
 
