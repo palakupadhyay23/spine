@@ -196,6 +196,11 @@ class _DeferredCall:
     #: or ``""``. Written in the source, so it outranks the receiver-member guess as the
     #: external placeholder (see ``_settle_calls``).
     imported_extension: str
+    #: The bare receiver type name at *this* call site (e.g. ``"Topic"``), read from the
+    #: source alongside ``imported_extension``. #390: ``imported_extension`` is only the
+    #: right reading when the repo-wide extension table says the import is genuinely an
+    #: extension of *this* type — a name match alone is not evidence of that.
+    extension_receiver: str
     provenance: Provenance
 
 
@@ -273,6 +278,12 @@ class KotlinExtractor:
         self._ktor = KtorState()
         # Calls through a typed receiver, judged in `finalize` — see `_DeferredCall`.
         self._deferred: list[_DeferredCall] = []
+        #: Every extension function declared *anywhere* in the repository, id -> the bare
+        #: receiver type name from its own signature. #390: `ctx.imports.by_simple` maps a
+        #: name to *any* import regardless of whether it is a function, let alone an
+        #: extension of the receiver at the call site — this repo-wide table is what
+        #: `_settle_calls` checks the import against instead of trusting the name alone.
+        self._extensions: dict[str, str] = {}
 
     def module_name(self, path: Path, root: Path) -> str:
         # Kotlin's module is the package declaration, which lives in the file and
@@ -327,6 +338,7 @@ class KotlinExtractor:
                 self._nav,
                 package=module,
                 imports=ctx.imports.by_simple,
+                wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
             )
             scan_ktor_calls(
                 pend.body,
@@ -336,6 +348,7 @@ class KotlinExtractor:
                 owner=pend.func_id if pend.route_module else None,
                 package=module,
                 imports=ctx.imports.by_simple,
+                wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
             )
         return batch
 
@@ -563,6 +576,12 @@ class KotlinExtractor:
                 # An extension: resolvable by name at a call site, and kept with
                 # its receiver so `x.ext()` is only claimed when `x` fits (D4).
                 ctx.extensions[name] = receiver
+                # Repo-wide, keyed by id rather than simple name — #390's check in
+                # `_settle_calls` needs to ask "is *this* imported id genuinely an
+                # extension of the receiver at the call site", which a per-file,
+                # per-name table cannot answer once the call and the declaration are
+                # in different files.
+                self._extensions[func_id] = receiver
             else:
                 ctx.top_level_funcs.add(name)
 
@@ -737,6 +756,7 @@ class KotlinExtractor:
                 certain=False,
                 takes_function_argument=passes_function,
                 imported_extension="",
+                extension_receiver="",
                 provenance=Provenance("", 0),
             )
         return None
@@ -857,6 +877,7 @@ class KotlinExtractor:
             certain=certain and bool(owners),
             takes_function_argument=passes_function,
             imported_extension=also[0] if also else "",
+            extension_receiver=_bare_type(type_name) if also else "",
             provenance=Provenance(rel, line),
         )
 
@@ -1010,26 +1031,104 @@ class KotlinExtractor:
         may still be a fabrication. Narrowed, not closed.
         """
         declared = declared_ids(batch)
+        supertypes: dict[str, list[str]] = {}
+        for edge in batch.edges:
+            if edge.kind is EdgeKind.IMPLEMENTS:
+                supertypes.setdefault(edge.src, []).append(edge.dst)
         for call in self._deferred:
+            # #390: an import matching the called name is not evidence it is a genuine
+            # extension of *this* receiver — checked once, here, and reused by both
+            # branches below. A first pass filtered only the `resolve_or_drop` candidate
+            # list and left the external-placeholder fallback further down re-reading the
+            # raw, unverified field independently — which still landed on a real declared
+            # symbol (a same-named top-level function or class) whenever the receiver's own
+            # type was itself undeclared/external, the dominant real-world shape
+            # (`androidx.*`, `java.io.*`, …) and exactly the one #390 was filed against.
+            #
+            # An unverified import is still the best-evidenced *external*-placeholder
+            # guess when this repo declares nothing under that id at all — that is the
+            # legitimate, unverifiable case (`androidx.compose.foundation.layout.padding`,
+            # a genuine third-party extension this repo cannot introspect). It stops being
+            # safe the moment the repo *does* declare something under that id: using it
+            # then would ground the call onto that real, unrelated declaration (through
+            # `FactBatch.add_node`'s dedup, which keeps a pre-existing grounded node over
+            # a later `external=True` one) instead of refusing it, which is #390 exactly.
+            extension_verified = bool(call.imported_extension) and (
+                self._extensions.get(call.imported_extension) == call.extension_receiver
+            )
+            extension_unsafe = (
+                bool(call.imported_extension)
+                and not extension_verified
+                and call.imported_extension in declared
+            )
+            imported_extension = "" if extension_unsafe else call.imported_extension
+            candidates = call.candidates
+            if extension_unsafe:
+                candidates = tuple(c for c in candidates if c != call.imported_extension)
             if resolve_or_drop(
                 batch,
                 call.src,
-                call.candidates,
+                candidates,
                 EdgeKind.CALLS,
                 call.provenance,
                 declared=declared,
             ):
                 continue
-            if not call.certain or call.owners[0] in declared:
-                continue
             member = call.candidates[0].rsplit(".", 1)[-1]
+            if call.owners[0] in declared:
+                # The receiver's own type is declared but does not declare this member —
+                # #391: an *inherited* member is exactly that shape (`Impl` declares no
+                # `ping`, `Base` does), and dropping here lost every instance call through
+                # inheritance, the most ordinary OO shape in the language. Retry the
+                # member against each supertype `IMPLEMENTS` already recorded; a unique
+                # hit is resolved, an ambiguous or absent one is dropped as before.
+                #
+                # This applies even when the receiver type was only guessed (a same-package
+                # sibling with no import line, `certain=False`): the guess is checked here
+                # against what the repository actually declares, same as `_resolve_type`'s
+                # own same-package guess is "checked again in finalize" — a guess that lands
+                # on a real declared type is not a guess about *whether* it's the target.
+                target = _resolve_inherited_member(call.owners[0], member, declared, supertypes)
+                if target is not None:
+                    batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
+                continue
+            if not call.certain:
+                continue
             if member in _SCOPE_FUNCTIONS and call.takes_function_argument:
                 continue
-            # The import outranks the receiver-member guess — see the docstring.
-            target = call.imported_extension or call.candidates[0]
+            # The import outranks the receiver-member guess — see the docstring. Only the
+            # *verified* import does, per the check above; an unverified one falls back to
+            # the receiver-member guess exactly as if no import had matched at all.
+            target = imported_extension or call.candidates[0]
             batch.add_node(Node(target, NodeKind.FUNCTION, target.rsplit(".", 1)[-1], _LANG, external=True))
             batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
         self._deferred.clear()
+
+
+def _resolve_inherited_member(
+    owner: str, member: str, declared: frozenset[str], supertypes: dict[str, list[str]]
+) -> str | None:
+    """``owner.member`` walked up ``IMPLEMENTS``, or ``None`` on zero or ambiguous hits.
+
+    Breadth-first over the supertype graph already recorded for this repository — a
+    diamond or multi-level hierarchy is walked once, not re-declared. More than one
+    supertype declaring the same member name is a real ambiguity Kotlin itself would
+    reject as unresolved without an explicit override, so it is refused here rather
+    than guessed.
+    """
+    seen = {owner}
+    queue = list(supertypes.get(owner, ()))
+    matches: set[str] = set()
+    while queue:
+        current = queue.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+        candidate = f"{current}.{member}"
+        if candidate in declared:
+            matches.add(candidate)
+        queue.extend(supertypes.get(current, ()))
+    return matches.pop() if len(matches) == 1 else None
 
 
 # ---- scope, for typed receivers ---------------------------------------------
@@ -1094,6 +1193,14 @@ def _collect_bindings(body: TSNode, source: bytes, scope: _Scope) -> None:
             for child in node.named_children:
                 if child.type == "variable_declaration":
                     scope.bind(_declared_name_or_first(child, source))
+                elif child.type == "multi_variable_declaration":
+                    # `for ((key, value) in m)` hangs a destructuring declaration off the
+                    # `for_statement` instead of a plain `variable_declaration` — without this,
+                    # `key`/`value` were never bound, so `key()` in the body resolved to a
+                    # sibling member `key` the loop never calls.
+                    for inner in child.named_children:
+                        if inner.type == "variable_declaration":
+                            scope.bind(_declared_name_or_first(inner, source))
         elif node.type == "catch_block":
             # `catch (report: Throwable)` binds `report` — same rule, and the grammar
             # puts the name as a bare `identifier` child of the catch.

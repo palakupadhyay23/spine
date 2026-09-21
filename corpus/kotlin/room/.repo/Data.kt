@@ -3,6 +3,7 @@ package shop.db
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
@@ -42,4 +43,7 @@ interface TopicDao {
 
     @Upsert
     suspend fun upsert(entities: List<TopicEntity>)
+
+    @Insert
+    fun insertMystery(dto: MysteryThing)
 }

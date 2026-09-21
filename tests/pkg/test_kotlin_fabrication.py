@@ -173,6 +173,31 @@ class Runner {
     assert ("java:app.Runner.go", "java:app.Runner.helper") not in _calls(batch)
 
 
+def test_a_destructuring_for_loop_variable_shadows_a_bare_call(tmp_path: Path) -> None:
+    """#392. `for ((key, value) in m) { key() }` invokes the destructured local, not the
+
+    member. The grammar hangs a `multi_variable_declaration` off the `for_statement`
+    instead of a plain `variable_declaration`, which is the same shape `val (a, b) = pair`
+    already handles for `property_declaration` — the `for` branch just didn't call it.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Screen.kt": """\
+package app
+
+class Screen {
+    fun key(): String = "k"
+    fun show(m: Map<String, String>) {
+        for ((key, value) in m) { key() }
+    }
+}
+"""
+        },
+    )
+    assert ("java:app.Screen.show", "java:app.Screen.key") not in _calls(batch)
+
+
 def test_a_catch_parameter_shadows_a_bare_call(tmp_path: Path) -> None:
     """The same rule for `catch (report: Throwable) { report() }`."""
     batch = _facts(
@@ -403,3 +428,186 @@ class Screen {
     )
     assert ("java:app.ui.Screen.pad", "java:androidx.compose.foundation.layout.padding") in _calls(batch)
     assert "java:androidx.compose.ui.Modifier.padding" not in _ids(batch)
+
+
+# ---- #391: an inherited member call must resolve through IMPLEMENTS, not drop ---
+
+
+def test_a_call_to_an_inherited_member_resolves_through_implements(tmp_path: Path) -> None:
+    """`i.ping()` where `ping` is declared on `Impl`'s supertype, not on `Impl` itself.
+
+    Before #391's fix `_settle_calls` dropped this: the receiver's own type (`Impl`) is
+    declared, but does not declare `ping`, and the call was refused outright rather than
+    walking the `IMPLEMENTS` edge already recorded for the same batch. Inheritance plus an
+    instance call is the most ordinary shape in the language, so this was a real recall
+    loss, not merely a theoretical one.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Base.kt": "package app\n\nopen class Base { fun ping() {} }\n",
+            "Impl.kt": "package app\n\nclass Impl : Base()\n",
+            "User.kt": "package app\n\nclass User { fun go(i: Impl) { i.ping() } }\n",
+        },
+    )
+    assert ("java:app.User.go", "java:app.Base.ping") in _calls(batch)
+
+
+def test_an_inherited_member_two_levels_up_still_resolves(tmp_path: Path) -> None:
+    """The walk is not limited to one hop: `Child : Parent`, `Parent : Grandparent`."""
+    batch = _facts(
+        tmp_path,
+        {
+            "G.kt": "package app\n\nopen class Grandparent { fun ping() {} }\n",
+            "P.kt": "package app\n\nopen class Parent : Grandparent()\n",
+            "C.kt": "package app\n\nclass Child : Parent()\n",
+            "U.kt": "package app\n\nclass User { fun go(c: Child) { c.ping() } }\n",
+        },
+    )
+    assert ("java:app.User.go", "java:app.Grandparent.ping") in _calls(batch)
+
+
+def test_an_inherited_member_ambiguous_between_two_supertypes_is_refused(tmp_path: Path) -> None:
+    """`C : A(), B()` and both declare `ping` — Kotlin itself would reject this as
+
+    unresolved without an explicit override, so a unique-hit-only walk refuses it too
+    rather than guessing one of the two.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "A.kt": "package app\n\nopen class A { fun ping() {} }\n",
+            "B.kt": "package app\n\nopen class B { fun ping() {} }\n",
+            "C.kt": "package app\n\nclass C : A(), B()\n",
+            "U.kt": "package app\n\nclass User { fun go(c: C) { c.ping() } }\n",
+        },
+    )
+    assert not {e for e in _calls(batch) if e[0] == "java:app.User.go"}
+
+
+# ---- #390: an import matching the called name is not evidence it's an extension ---
+
+
+def test_an_import_matching_the_name_is_not_a_call_to_a_plain_function(tmp_path: Path) -> None:
+    """`t.format()` where `app.util.format` is imported but is an ordinary top-level
+
+    function, not an extension of `Topic`. Before #390's fix, `_resolve_navigated`
+    offered any import whose simple name matched the member as a candidate with no check
+    that it was even a function, let alone an extension of the receiver — so this
+    resolved onto `app.util.format`, a real, first-party `CALLS` edge to the wrong target
+    entirely.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.data\n\nclass Topic\n",
+            "U.kt": 'package app.util\n\nfun format(x: Int): String = "$x"\n',
+            "S.kt": """\
+package app.ui
+
+import app.data.Topic
+import app.util.format
+
+class Screen(private val t: Topic) {
+    fun show() {
+        t.format()
+    }
+}
+""",
+        },
+    )
+    assert not _calls(batch)
+
+
+def test_an_import_matching_the_name_is_not_a_call_to_a_type(tmp_path: Path) -> None:
+    """`t.render()` where `app.util.render` is imported but is a class, not a function.
+
+    Same shape as the plain-function case above, and #390's original report: a
+    receiver call must never resolve onto a `Type` node just because an import shares
+    the called member's simple name.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.data\n\nclass Topic\n",
+            "U.kt": "package app.util\n\nclass render\n",
+            "S.kt": """\
+package app.ui
+
+import app.data.Topic
+import app.util.render
+
+class Screen(private val t: Topic) {
+    fun show() {
+        t.render()
+    }
+}
+""",
+        },
+    )
+    assert not _calls(batch)
+
+
+def test_an_import_matching_the_name_is_not_a_call_when_the_receiver_is_undeclared(
+    tmp_path: Path,
+) -> None:
+    """The same fabrication, one hop further out: the receiver's own type is not
+
+    declared in this repo at all — the dominant real-world shape (`androidx.*`,
+    `java.io.*`, …), and the one #390 was originally filed against. The receiver
+    being undeclared used to reach a *different* branch of `_settle_calls`, one that
+    re-read the raw, unverified `imported_extension` field independently of the
+    candidate filter above it — so an import matching the called name still grounded
+    onto a real, unrelated declaration through `FactBatch.add_node`'s dedup, even
+    though the exact same call refused correctly when `Topic` was declared locally.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "U.kt": 'package app.util\n\nfun format(x: Int): String = "$x"\n\nclass render\n',
+            "S.kt": """\
+package app.ui
+
+import app.data.Topic
+import app.util.format
+import app.util.render
+
+class Screen(private val t: Topic) {
+    fun show() {
+        t.format()
+        t.render()
+    }
+}
+""",
+        },
+    )
+    assert not (_targets(batch) & {"java:app.util.format", "java:app.util.render"})
+
+
+def test_an_import_extending_a_different_type_is_not_offered_for_this_receiver(tmp_path: Path) -> None:
+    """`app.util.slugify` is a genuine extension, but of `Other`, not `Topic`.
+
+    A repo-wide extension table has to check the *receiver*, not just "is this id an
+    extension of something" — otherwise any extension anywhere would satisfy any call
+    that happens to import it under the right name.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.data\n\nclass Topic\nclass Other\n",
+            "Slug.kt": 'package app.util\n\nimport app.data.Other\n\nfun Other.slugify(): String = ""\n',
+            "S.kt": """\
+package app.ui
+
+import app.data.Topic
+import app.util.slugify
+
+class Screen(private val t: Topic) {
+    fun show() {
+        t.slugify()
+    }
+}
+""",
+        },
+    )
+    assert not _calls(batch)

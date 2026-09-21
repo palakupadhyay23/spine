@@ -130,6 +130,10 @@ class _Mount:
     name: str
     package: str
     imports: Mapping[str, str]
+    #: this file's ``import a.b.*`` prefixes — #395: the repo-wide unique-name
+    #: fallback in ``_mounted_module`` is restricted to names reachable through one
+    #: of these, the same rule ``_type_candidates`` already applies in the extractor.
+    wildcard_prefixes: frozenset[str]
 
 
 @dataclass
@@ -170,6 +174,7 @@ def scan_calls(
     owner: str | None,
     package: str = "",
     imports: Mapping[str, str] | None = None,
+    wildcard_prefixes: frozenset[str] = frozenset(),
 ) -> None:
     """Collect the Ktor routes and mounts in one function body.
 
@@ -178,7 +183,7 @@ def scan_calls(
     ``package`` and ``imports`` travel with every mount recorded here, because by
     ``emit`` the file they came from is gone (see :class:`_Mount`).
     """
-    _scan(body, owner, "", state, source, rel, _Site(package, imports or {}))
+    _scan(body, owner, "", state, source, rel, _Site(package, imports or {}, wildcard_prefixes))
 
 
 def emit(state: KtorState, batch: FactBatch, resolve: Any) -> int:
@@ -210,6 +215,7 @@ class _Site:
 
     package: str
     imports: Mapping[str, str]
+    wildcard_prefixes: frozenset[str] = frozenset()
 
 
 def _scan(
@@ -249,7 +255,7 @@ def _call(
         # A bare call in route context with no lambda is Ktor's idiom for mounting a
         # route module (`videos(database)`). Recorded as a candidate only: it resolves
         # in `emit` if some `fun Route.<name>` declares it, and is dropped otherwise.
-        state.mounts.append(_Mount(owner, prefix, name, site.package, site.imports))
+        state.mounts.append(_Mount(owner, prefix, name, site.package, site.imports, site.wildcard_prefixes))
         return
     # Anything else: a wrapper that nests routes without changing the path
     # (`authenticate("x") { … }`, `install(…) { … }`), or a chained call whose
@@ -333,9 +339,15 @@ def _mounted_module(mount: _Mount, state: KtorState) -> str | None:
 
     Resolved from the *calling* file's point of view, in the order Kotlin itself
     resolves a name: a declaration in the same package, then one an explicit import
-    names, then — only when exactly one exists — a declaration anywhere in the
-    repository. The last step is what the whole resolver used to be, and on its own it
-    crosses service boundaries: a bare name is not a repository-wide address.
+    names, then — only when exactly one exists — a declaration reachable through one
+    of this file's ``import a.b.*`` prefixes.
+
+    #395: the third tier used to fire on a declaration *anywhere in the repository*,
+    with no restriction to what this file could actually see — a mount would then
+    cross package and service boundaries with no import at all, mounting a route
+    module Kotlin itself could not have compiled the call against. Restricting it to
+    a recorded wildcard prefix, the same rule ``_type_candidates`` applies in the
+    extractor, closes that while keeping the genuine wildcard-import case working.
 
     A name several candidates answer to is not resolved at all, the same rule the
     Compose screen resolver uses.
@@ -352,7 +364,9 @@ def _mounted_module(mount: _Mount, state: KtorState) -> str | None:
         candidate = f"java:{imported}"
         if candidate in ids:
             return candidate
-    return ids[0] if len(ids) == 1 else None
+    candidates = {f"java:{prefix}.{mount.name}" for prefix in mount.wildcard_prefixes}
+    reachable = [i for i in ids if i in candidates]
+    return reachable[0] if len(reachable) == 1 else None
 
 
 # ---- Spring, adapted to the Kotlin grammar ----------------------------------

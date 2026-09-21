@@ -42,6 +42,7 @@ from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Provenance
 from orchestrator.pkg.kotlin_names import (
     Annotation,
     annotations_of,
+    bare_type,
     element_type,
     field_text,
     text,
@@ -58,6 +59,14 @@ _PROVIDES = "Provides"
 #: Annotations Dagger treats as qualifiers. Recorded on provenance only (D15) —
 #: two providers for one type behind different qualifiers both keep their edge.
 _QUALIFIERS = frozenset({"Named", "Qualifier"})
+
+#: Generic wrappers `element_type` may peel through for a `PROVIDES` target.
+#: `Lazy<T>`/`Provider<T>` are indirection Dagger unwraps for you — a provider of
+#: `Lazy<Repo>` makes `Repo` available, same as a plain `Repo` return. Everything
+#: else generic — `Set<T>`, `List<T>`, `Flow<T>`, `Optional<T>` — is either a
+#: distinct Dagger multibinding key or not a Dagger unwrap at all, so peeling to
+#: the element would assert a binding key that does not exist (#393).
+_UNWRAPPED = frozenset({"Lazy", "Provider"})
 
 
 def read_module(
@@ -144,12 +153,23 @@ def _returned_type(method: TSNode, resolve: Any, source: bytes) -> str:
         return ""
     for child in method.named_children:
         if child.type == "user_type" and child.start_byte > params.end_byte:
-            # `element_type`, not `bare_type` — the same peel `_first_parameter_type`
-            # fifteen lines below has always done. Found in review: `@Provides fun
-            # provideClients(): Set<OkHttpClient>` read its return type as `Set` and
-            # minted a `Set` class in the module's own package as the PROVIDES target,
-            # which `FactStore.injection_reach_of` then walked in `blast_radius`.
-            resolved = resolve(element_type(text(child, source)).rsplit(".", 1)[-1])
+            declared = text(child, source)
+            outer = bare_type(declared)
+            if "<" in declared and outer not in _UNWRAPPED:
+                # #393: `Set<OkHttpClient>`/`List<T>`/`Flow<T>`/`Optional<T>` name a
+                # distinct binding key (a multibinding, for the collection types) — not
+                # the same key as a plain `OkHttpClient` provider. Peeling to the
+                # element here previously asserted a binding key that does not exist;
+                # provide nothing rather than assert the wrong one.
+                return ""
+            # `element_type`, not `bare_type`, for the cases that *are* an unwrap — the
+            # same peel `_first_parameter_type` fifteen lines below has always done.
+            # Found in review: `@Provides fun provideClients(): Set<OkHttpClient>` read
+            # its return type as `Set` and minted a `Set` class in the module's own
+            # package as the PROVIDES target, which `FactStore.injection_reach_of` then
+            # walked in `blast_radius` — fixed for that shape by the peel, which then
+            # went too far and did the same to a genuine multibinding (#393).
+            resolved = resolve(element_type(declared).rsplit(".", 1)[-1])
             return resolved or ""
     return ""
 
