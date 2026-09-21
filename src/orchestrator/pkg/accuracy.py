@@ -1044,6 +1044,20 @@ def compare_scoreboard(baseline: dict[str, Any], current: dict[str, Any]) -> lis
                 )
             )
 
+    # Audited 2026-09-21 against the defect fixed for corpus recall above, and it does not
+    # share it. That defect was a *correct, deliberate* action — labelling a gap — moving the
+    # gated number while the underlying reality was byte-identical, because the number was a
+    # ratio over a population the annotation grew. `shortfall` is an absolute count of
+    # constructs the source declares and the graph does not hold, and there is no annotation
+    # anywhere in its path: it moves only when that reality moves. Adding source we cannot yet
+    # extract does raise it, but that is not a false alarm — the graph really did fall further
+    # behind the source, which is the one question this oracle exists to ask.
+    #
+    # Worth watching rather than fixing: parity has no way to say "this shortfall is known and
+    # accepted". It sits at 0 today, so the question has never arisen; if it ever does, the
+    # only moves are fix it or ratchet the baseline up, and ratcheting a baseline to absorb one
+    # accepted case also absorbs every unnoticed one — which is exactly the all-or-nothing
+    # escape hatch that made the corpus gate worth changing.
     was_short = baseline.get("metrics", {}).get("parity", {}).get("shortfall")
     now_short = current.get("metrics", {}).get("parity", {}).get("shortfall")
     if was_short is not None and now_short is not None and now_short > was_short:
