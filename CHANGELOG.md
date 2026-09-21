@@ -4,6 +4,47 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- **A Kotlin extension call resolved onto an id nothing declares.** The check that was added
+  to stop a fabrication became one. It asked whether an extension's declared receiver *name*
+  equalled the call site's and treated "no" as grounds to refuse — but Kotlin's rule is a
+  subtype-compatible receiver, so `fun NavController.navigateToSearch()` called on a
+  `NavHostController`, which is the standard Compose navigation pattern, answered "no". The
+  refusal did not drop the edge; it discarded the `import` the file had actually written and
+  minted `androidx.navigation.NavHostController.navigateToSearch` in its place. Four such
+  edges on the Android validation app and three on KaMPKit, all with no provenance, and
+  `pkg verify` called both graphs clean because a placeholder never dangles. The `CALLS`
+  count did not move either, because the edges were redirected rather than lost.
+
+  The question is now three-valued: compatible when the receiver ids intersect, when the
+  extension takes a type parameter, or when `IMPLEMENTS` runs from the receiver up to a
+  declared receiver; incompatible only when the repository declares *both* types and no such
+  path exists; unknown otherwise — and unknown accepts, because an external receiver has no
+  supertype list to walk and a name mismatch against it proves nothing. Comparing resolved
+  ids rather than bare names also stops `app.data.Topic` and `app.legacy.Topic` being read as
+  one receiver, which closes [#390](https://github.com/synaptixs/spine/issues/390).
+
+  The same comparison had refused two other ordinary shapes: `fun Int.toDp()` and
+  `fun Float.toDp()` share one id, and a single-receiver slot kept whichever file was parsed
+  last — so which call resolved depended on filesystem order — while `fun <T> T.x()` stored
+  the literal `T`, which equals no real receiver.
+
+- **A warm cache and a cold cache disagreed about the same commit.** The repository-wide
+  Kotlin extension table was never cleared, though the four other accumulators on the same
+  class are all cleared in `finalize`. `pkg extract --repos` and `investigate --repos` reuse
+  one extractor across every declared repository, so the first repository's extensions
+  verified the second's imports; and because a cache hit returns before `finalize` runs,
+  whether a repository happened to be cached changed what the *next* one emitted.
+
+- **A Ktor mount and a Compose route constant stopped resolving in the default package.**
+  "Same package" was compared as a string, and a file that declares no `package` has none —
+  its module falls back to the repo-relative path, so two such files read as two different
+  packages. Kotlin resolves these with no import at all and both sources compile, so this was
+  a real edge lost. The declared package is now read from the parse tree.
+
 ## 3.41.1 — 2026-09-21
 
 ### Fixed
