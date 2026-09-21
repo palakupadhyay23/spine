@@ -8,6 +8,36 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Fixed
 
+- **The accuracy gate failed a build for writing down a known limitation.** `expected` counts
+  every labelled edge, and a `known_gaps` entry still counts as a miss — deliberately, so a low
+  number stays honest. But the gate compared the recall *ratio*, so labelling a gap lowered it
+  and reported a regression with nothing about the extractor having moved. The only remedy was
+  regenerating the committed baseline, which accepts **everything** that moved rather than the
+  one thing intended. The cheapest way to keep CI green was to not label your gaps, which is
+  the opposite of what the corpus is for.
+
+  Corpus recall is now gated on *unexplained* misses — `expected - matched - known_gaps` — and
+  on `matched` never falling. Two conditions, because either alone has a hole: the first catches
+  a new miss nobody accounted for, including the case a ratio cannot see at all (8/10 and 12/15
+  are both 0.80 while the misses go from two to three); the second catches an edge that stopped
+  resolving even when a gap labelled in the same commit would otherwise pay for it. **The
+  published score is unchanged** — precision and recall are still `matched/emitted` and
+  `matched/expected`, and a known gap still counts as a miss. A drop where every new miss is
+  explained is now reported on the trend channel rather than failing, because the number did
+  move and a reader comparing releases deserves the reason.
+
+  Precision stays a plain ratio: no annotation makes a fabrication acceptable, so there is
+  nothing to net off.
+
+- **Four `known_gaps` entries asserted limitations that no longer existed.** Validation asked
+  only whether a gap named an edge in `edges`, which a *closed* gap still satisfies. Three in
+  `typescript/instance_calls` and one in `cpp/instance_calls` named edges the front-ends emit
+  today. Because the gate subtracts gaps per language and per kind rather than per case, the
+  three dead TypeScript entries were paying for two genuine unexplained misses in
+  `receiver_shapes` — credit the gate had not earned, hiding real misses. A gap naming an edge
+  the extractor emits now fails the case to load, the same way a broken `refusal` does.
+  Removing them moved no score: those edges are labelled *and* matched.
+
 - **A Kotlin extension call resolved onto an id nothing declares.** The check that was added
   to stop a fabrication became one. It asked whether an extension's declared receiver *name*
   equalled the call site's and treated "no" as grounds to refuse — but Kotlin's rule is a
@@ -44,6 +74,15 @@ All notable changes to this project are documented here. Format loosely follows
   its module falls back to the repo-relative path, so two such files read as two different
   packages. Kotlin resolves these with no import at all and both sources compile, so this was
   a real edge lost. The declared package is now read from the parse tree.
+
+### Changed
+
+- **`scoreboard.json` is version 2** and every corpus edge entry carries `known_gaps` alongside
+  `expected`/`emitted`/`matched`. The version field is now *read* — it was written, exported and
+  checked nowhere — because an older baseline silently lacking the key would quietly stop gating
+  every kind it touched. Regenerate with `orchestrator pkg accuracy --scoreboard`; the check
+  refuses an older baseline rather than guessing, and only for boards that carry a corpus
+  section, so the evals' comprehension-only boards are unaffected.
 
 ## 3.41.1 — 2026-09-21
 
