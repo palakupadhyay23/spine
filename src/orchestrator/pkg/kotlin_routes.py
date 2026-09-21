@@ -134,6 +134,9 @@ class _Mount:
     #: fallback in ``_mounted_module`` is restricted to names reachable through one
     #: of these, the same rule ``_type_candidates`` already applies in the extractor.
     wildcard_prefixes: frozenset[str]
+    #: whether the mounting file declares no ``package``; ``package`` is then a path
+    #: and names no package at all, so the own-package tier keys on this instead.
+    default_package: bool = False
 
 
 @dataclass
@@ -146,22 +149,30 @@ class KtorState:
 
     #: simple name → the ids of every ``fun Route.<name>`` declaring it
     modules_by_name: dict[str, list[str]] = field(default_factory=dict)
+    #: the ids among those whose file declares no ``package`` — #395: their module is
+    #: the repo-relative path, so "same package" cannot be a string comparison there
+    default_package_modules: set[str] = field(default_factory=set)
     routes: list[_Route] = field(default_factory=list)
     mounts: list[_Mount] = field(default_factory=list)
 
     def clear(self) -> None:
         self.modules_by_name.clear()
+        self.default_package_modules.clear()
         self.routes.clear()
         self.mounts.clear()
 
 
-def register_module(name: str, func_id: str, receiver: str, state: KtorState) -> bool:
+def register_module(
+    name: str, func_id: str, receiver: str, state: KtorState, *, default_package: bool = False
+) -> bool:
     """Record ``fun Route.<name>()`` as a route module. Returns whether it is one."""
     if receiver.rsplit(".", 1)[-1] not in ROUTE_RECEIVERS:
         return False
     ids = state.modules_by_name.setdefault(name, [])
     if func_id not in ids:
         ids.append(func_id)
+    if default_package:
+        state.default_package_modules.add(func_id)
     return True
 
 
@@ -173,6 +184,7 @@ def scan_calls(
     *,
     owner: str | None,
     package: str = "",
+    default_package: bool = False,
     imports: Mapping[str, str] | None = None,
     wildcard_prefixes: frozenset[str] = frozenset(),
 ) -> None:
@@ -183,7 +195,9 @@ def scan_calls(
     ``package`` and ``imports`` travel with every mount recorded here, because by
     ``emit`` the file they came from is gone (see :class:`_Mount`).
     """
-    _scan(body, owner, "", state, source, rel, _Site(package, imports or {}, wildcard_prefixes))
+    _scan(
+        body, owner, "", state, source, rel, _Site(package, imports or {}, wildcard_prefixes, default_package)
+    )
 
 
 def emit(state: KtorState, batch: FactBatch, resolve: Any) -> int:
@@ -216,6 +230,7 @@ class _Site:
     package: str
     imports: Mapping[str, str]
     wildcard_prefixes: frozenset[str] = frozenset()
+    default_package: bool = False
 
 
 def _scan(
@@ -255,7 +270,11 @@ def _call(
         # A bare call in route context with no lambda is Ktor's idiom for mounting a
         # route module (`videos(database)`). Recorded as a candidate only: it resolves
         # in `emit` if some `fun Route.<name>` declares it, and is dropped otherwise.
-        state.mounts.append(_Mount(owner, prefix, name, site.package, site.imports, site.wildcard_prefixes))
+        state.mounts.append(
+            _Mount(
+                owner, prefix, name, site.package, site.imports, site.wildcard_prefixes, site.default_package
+            )
+        )
         return
     # Anything else: a wrapper that nests routes without changing the path
     # (`authenticate("x") { … }`, `install(…) { … }`), or a chained call whose
@@ -355,6 +374,12 @@ def _mounted_module(mount: _Mount, state: KtorState) -> str | None:
     ids = state.modules_by_name.get(mount.name, [])
     if not ids:
         return None
+    if mount.default_package:
+        # Both files are in the *default* package, which is one package however many
+        # files it spans — but their modules are repo-relative paths, so the string
+        # comparison below can never see it. Same "exactly one, or unresolved" rule.
+        here = [i for i in ids if i in state.default_package_modules]
+        return here[0] if len(here) == 1 else None
     if mount.package:
         own = f"java:{mount.package}.{mount.name}"
         if own in ids:

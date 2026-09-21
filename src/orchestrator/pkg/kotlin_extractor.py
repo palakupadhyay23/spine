@@ -262,6 +262,9 @@ class _FileContext:
 
     package: str
     imports: _ImportContext
+    #: whether this file declares no `package` at all — #395: `package` is then the
+    #: repo-relative path, which is not a package and matches no other file's.
+    default_package: bool = False
     #: type id → the member names it declares, companion members folded in (D5)
     type_members: dict[str, set[str]] = field(default_factory=dict)
     #: type id → {property name: its declared type as written} — the typed receivers
@@ -337,12 +340,24 @@ class KotlinExtractor:
         batch.add_node(Node(module_id, NodeKind.MODULE, module or rel, _LANG, Provenance(rel, 1)))
 
         imports = self._imports(tree.root_node, module_id, source, rel, batch)
-        ctx = _FileContext(package=module, imports=imports, source_set=source_set_of(rel))
+        # #395's fix compares packages, and `module` is not one for a file that declares
+        # none: `module_name` falls back to the repo-relative path there (14 of 263 in
+        # the validation app), so two default-package files look like two *different*
+        # packages and neither the Ktor nor the Compose resolver could ever match them —
+        # a mount and a route constant Kotlin resolves with no import at all. Read from
+        # the tree rather than `module`, so a `package` inside a string cannot answer.
+        declared_package = _declared_package(tree.root_node, source)
+        ctx = _FileContext(
+            package=module,
+            imports=imports,
+            source_set=source_set_of(rel),
+            default_package=not declared_package,
+        )
         # Retrofit puts the host in the builder, not the annotations, so the base
         # path (when it is a literal at all) has to be read before the interfaces.
         ctx.base_path = base_url_path(tree.root_node, source)
         ctx.constants = string_constants(tree.root_node, source)
-        collect_route_consts(tree.root_node, source, self._nav, package=module)
+        collect_route_consts(tree.root_node, source, self._nav, package=declared_package)
 
         # Pass 1 — every declaration, and the resolver table that describes them.
         for node in tree.root_node.named_children:
@@ -369,7 +384,7 @@ class KotlinExtractor:
                 source,
                 rel,
                 self._nav,
-                package=module,
+                package=declared_package,
                 imports=ctx.imports.by_simple,
                 wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
             )
@@ -380,6 +395,7 @@ class KotlinExtractor:
                 self._ktor,
                 owner=pend.func_id if pend.route_module else None,
                 package=module,
+                default_package=ctx.default_package,
                 imports=ctx.imports.by_simple,
                 wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
             )
@@ -601,7 +617,9 @@ class KotlinExtractor:
         # Read regardless of nesting: a Ktor route module is normally top level, but
         # `override fun Routing.registerRoutes()` inside a class is the same thing.
         receiver = _extension_receiver(node, source)
-        route_module = bool(receiver) and register_module(name, func_id, receiver, self._ktor)
+        route_module = bool(receiver) and register_module(
+            name, func_id, receiver, self._ktor, default_package=ctx.default_package
+        )
         if owner is not None:
             ctx.type_members.setdefault(owner, set()).add(name)
         else:
@@ -1413,6 +1431,21 @@ def _parameter_types(func: TSNode, source: bytes) -> dict[str, str]:
         if name:
             out[name] = declared
     return out
+
+
+def _declared_package(root: TSNode, source: bytes) -> str:
+    """The file's ``package`` declaration, or ``""`` when it declares none.
+
+    Read from the tree rather than from ``module``: ``module_name`` falls back to the
+    repo-relative path when there is no declaration, so ``module`` cannot distinguish
+    "package ``App.kt``" from "no package at all", and a file in the default package
+    would be compared against every other default-package file as if each were its own.
+    """
+    header = next((c for c in root.named_children if c.type == "package_header"), None)
+    if header is None:
+        return ""
+    name = next((c for c in header.named_children if c.type == "qualified_identifier"), None)
+    return _text(name, source) if name is not None else ""
 
 
 def _type_parameter_names(func: TSNode, source: bytes) -> frozenset[str]:

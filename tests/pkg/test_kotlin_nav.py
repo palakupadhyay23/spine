@@ -238,3 +238,36 @@ fun TopicRoute() {}
         },
     )
     assert not [n for n in batch.nodes if n.kind is NodeKind.ENDPOINT]
+
+
+def test_a_route_constant_resolves_inside_the_default_package(tmp_path: Path) -> None:
+    """#395's fix keyed on the package, and a file declaring none has no package.
+
+    `module_name` falls back to the repo-relative path, so `Routes.kt` and `Screen.kt`
+    keyed on two different strings and the constant was never found — though Kotlin
+    resolves it with no import at all and the source compiles.
+    """
+    (tmp_path / "Routes.kt").write_text('const val searchRoute = "search_route"\n', encoding="utf-8")
+    (tmp_path / "Screen.kt").write_text(
+        "import androidx.navigation.compose.composable\n\n"
+        "fun searchScreen() {\n    composable(route = searchRoute) { SearchRoute() }\n}\n\n"
+        "fun SearchRoute() {}\n",
+        encoding="utf-8",
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert "NAV search_route" in _endpoints(batch)
+
+
+def test_a_default_package_screen_does_not_reach_a_packaged_constant(tmp_path: Path) -> None:
+    """A file with no package cannot see `shop.nav`, with or without the widened tier."""
+    (tmp_path / "Routes.kt").write_text(
+        'package shop.nav\n\nconst val searchRoute = "search_route"\n', encoding="utf-8"
+    )
+    (tmp_path / "Screen.kt").write_text(
+        "import androidx.navigation.compose.composable\n\n"
+        "fun searchScreen() {\n    composable(route = searchRoute) { SearchRoute() }\n}\n\n"
+        "fun SearchRoute() {}\n",
+        encoding="utf-8",
+    )
+    batch = RepoCodeExtractor().extract(tmp_path)
+    assert _endpoints(batch) == set()
