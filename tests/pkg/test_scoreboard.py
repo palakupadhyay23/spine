@@ -71,6 +71,56 @@ def test_a_corpus_recall_drop_is_a_regression() -> None:
     assert any("recall" in r.detail for r in compare_scoreboard(before, after))
 
 
+def _with_gaps(board: dict[str, Any], gaps: int) -> dict[str, Any]:
+    """The same board, with `known_gaps` recorded for python/edges/CALLS."""
+    board["metrics"]["corpus"]["languages"]["python"]["edges"]["CALLS"]["known_gaps"] = gaps
+    return board
+
+
+def test_labelling_a_known_gap_is_not_a_regression() -> None:
+    """The defect. One newly labelled edge, missed and *explained*, and nothing else moved.
+
+    `expected` counts every labelled edge and `corpus/README.md` is explicit that a
+    `known_gaps` entry still counts as a miss — so labelling one lowers recall with no
+    change to the extractor at all. Reproduced on #429: Kotlin CALLS went 0.9429 to 0.930
+    for exactly this reason, and passed CI only because the baseline was regenerated in the
+    same commit, which accepts *everything* that moved rather than this one thing.
+    """
+    before = _with_gaps(_board(matched=8, expected=10), 2)
+    after = _with_gaps(_board(matched=8, expected=11), 3)
+    assert compare_scoreboard(before, after) == []
+
+
+def test_a_real_recall_loss_still_fails_when_gaps_are_labelled() -> None:
+    """The half that is easy to lose: an edge that stopped resolving, gaps unchanged."""
+    before = _with_gaps(_board(matched=8, expected=10), 2)
+    after = _with_gaps(_board(matched=7, expected=10), 2)
+    assert any("recall" in r.detail for r in compare_scoreboard(before, after))
+
+
+def test_a_lost_edge_cannot_hide_behind_a_newly_labelled_gap() -> None:
+    """An edge stops resolving *and* an old miss is explained, in one commit.
+
+    Unexplained misses are flat — 2-1 before, 2-1 after — so a gate keyed on that alone
+    passes this. `matched` falling is what catches it, which is why there are two
+    conditions rather than one.
+    """
+    before = _with_gaps(_board(matched=8, expected=10), 1)
+    after = _with_gaps(_board(matched=7, expected=9), 0)
+    assert any(r.metric == "corpus" for r in compare_scoreboard(before, after))
+
+
+def test_a_new_unexplained_miss_fails_even_though_recall_is_unchanged() -> None:
+    """The converse: the ratio holds steady while an unexplained miss is added.
+
+    matched 8/expected 10 and matched 12/expected 15 are both 0.80, so a ratio-based gate
+    sees nothing — but the second has three unexplained misses where the first had two.
+    """
+    before = _with_gaps(_board(matched=8, expected=10), 0)
+    after = _with_gaps(_board(matched=12, expected=15), 0)
+    assert any(r.metric == "corpus" for r in compare_scoreboard(before, after))
+
+
 def test_a_corpus_improvement_is_not_a_regression() -> None:
     before, after = _board(matched=6), _board(matched=8)
     assert compare_scoreboard(before, after) == []
