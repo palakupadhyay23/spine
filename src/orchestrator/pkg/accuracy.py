@@ -37,6 +37,7 @@ abstract:
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -90,6 +91,12 @@ class CaseReport:
     missing: tuple[str, ...]
     unlabelled: tuple[str, ...]
     known_gaps: int
+    #: The same gaps, broken down by the edge kind each one names. The scalar above is what
+    #: the human report prints; this is what the *gate* needs, because a miss is only
+    #: explained for the kind it belongs to — a labelled `CALLS` gap says nothing about
+    #: `IMPORTS` recall. `known_gaps` names edges only, and load-time validation already
+    #: refuses an entry that is not in `edges`, so the group is always "edges".
+    known_gaps_by_kind: Mapping[str, int]
     declared_false_positives: int
     provenance_checked: int
     provenance_drift: tuple[str, ...]
@@ -121,6 +128,30 @@ class AccuracyReport:
                 "edges": _sum_scores([s for c in cases for s in c.edges]),
             }
         return out
+
+    def known_gaps_totals(self) -> dict[str, dict[str, int]]:
+        """``{language: {edge_kind: gaps}}`` — summed across cases, same shape as `totals`."""
+        out: dict[str, dict[str, int]] = {}
+        for case in self.cases:
+            lang = out.setdefault(case.language, {})
+            for kind, n in case.known_gaps_by_kind.items():
+                lang[kind] = lang.get(kind, 0) + n
+        return out
+
+
+def _gaps_by_kind(spec: dict[str, Any]) -> Mapping[str, int]:
+    """``known_gaps`` counted per edge kind, for the gate.
+
+    A gap explains a miss *of its own kind*: a labelled `CALLS` gap is not a reason for an
+    `IMPORTS` edge to be missing, and folding them into one number would let one kind's
+    annotation pay for another kind's loss.
+    """
+    counts: dict[str, int] = {}
+    for gap in spec.get("known_gaps", []):
+        kind = str(gap.get("edge", {}).get("kind", ""))
+        if kind:
+            counts[kind] = counts.get(kind, 0) + 1
+    return counts
 
 
 def _sum_scores(scores: list[KindScore]) -> tuple[KindScore, ...]:
@@ -317,6 +348,7 @@ def score_case(case_dir: Path, *, sql_dialect: str | None = None) -> CaseReport:
         missing=_describe(missing)[:_MAX_EXAMPLES],
         unlabelled=_describe(unlabelled)[:_MAX_EXAMPLES],
         known_gaps=len(spec.get("known_gaps", [])),
+        known_gaps_by_kind=_gaps_by_kind(spec),
         declared_false_positives=len(spec.get("false_positives", [])),
         provenance_checked=checked,
         provenance_drift=tuple(drift),
@@ -495,7 +527,12 @@ def score_comprehension(repo: Path | str, *, sql_dialect: str | None = None) -> 
 
 # ---- the scoreboard --------------------------------------------------------
 
-SCOREBOARD_VERSION = 1
+SCOREBOARD_VERSION = 2
+
+#: The version at which every corpus edge entry gained `known_gaps`. Below this a baseline
+#: cannot be compared against a current run, because a missing annotation is indistinguishable
+#: from no annotation. Named rather than inlined so the reason travels with the number.
+_KNOWN_GAPS_VERSION = 2
 
 # The baseline lives *inside the package* so it ships in the wheel. `pyproject.toml` builds
 # `src/orchestrator` only, so a copy at the repo root would be invisible to a pip-installed
@@ -597,8 +634,15 @@ def _ratio(matched: int, total: int) -> Fraction | None:
     return Fraction(matched, total) if total else None
 
 
-def _score_entry(s: KindScore) -> dict[str, int]:
-    return {"expected": s.expected, "emitted": s.emitted, "matched": s.matched}
+def _score_entry(s: KindScore, known_gaps: int = 0) -> dict[str, int]:
+    """The counts, plus how many of the misses carry a stated reason.
+
+    ``known_gaps`` does **not** change `expected`, `matched` or any published ratio — the
+    module docstring's rule that an annotation never moves a score still holds exactly. It
+    rides alongside so `compare_scoreboard` can tell a newly *explained* miss from a newly
+    *unexplained* one, which the ratio alone cannot.
+    """
+    return {"expected": s.expected, "emitted": s.emitted, "matched": s.matched, "known_gaps": known_gaps}
 
 
 def localization_entry(report: Any = None) -> dict[str, Any]:
@@ -682,9 +726,14 @@ def build_scoreboard(
     except CorpusError:
         corpus = None
     if corpus is not None:
+        gaps = corpus.known_gaps_totals()
         for lang, groups in corpus.totals().items():
             languages[lang] = {
-                group: {s.kind: _score_entry(s) for s in scores} for group, scores in groups.items()
+                group: {
+                    s.kind: _score_entry(s, gaps.get(lang, {}).get(s.kind, 0) if group == "edges" else 0)
+                    for s in scores
+                }
+                for group, scores in groups.items()
             }
 
     parity = score_parity(repo)
@@ -815,6 +864,25 @@ def compare_scoreboard(baseline: dict[str, Any], current: dict[str, Any]) -> lis
     cur_corpus = current.get("metrics", {}).get("corpus", {})
     cur_langs = cur_corpus.get("languages", {})
     unmeasured = set(cur_corpus.get("skipped_languages", []))
+
+    # The corpus gate reads `known_gaps` off every edge entry (v2). A baseline written before
+    # that carries the counts and not the annotation, and "absent" would then read as "no gap
+    # was ever labelled" — which is the same zero-means-unexamined mistake the invention gate
+    # is careful to avoid, and it would silently un-gate every kind it touched.
+    #
+    # Scoped to corpus on purpose: `tests/evals/test_labels_and_localization` compares boards
+    # carrying only a `comprehension` metric, with no version and no corpus block at all, and
+    # a blanket version check would refuse those for no reason.
+    if cur_langs and base_langs and int(baseline.get("version", 1)) < _KNOWN_GAPS_VERSION:
+        return [
+            Regression(
+                "corpus",
+                f"baseline predates scoreboard v{_KNOWN_GAPS_VERSION} and carries no `known_gaps`; "
+                "regenerate it with `orchestrator pkg accuracy --scoreboard`",
+                f"v{int(baseline.get('version', 1))}",
+                f"v{SCOREBOARD_VERSION}",
+            )
+        ]
     for lang, groups in base_langs.items():
         if lang in unmeasured:
             continue  # not measured here, so nothing to compare — see build_scoreboard

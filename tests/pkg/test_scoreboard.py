@@ -19,6 +19,7 @@ from typing import Any
 from orchestrator.pkg.accuracy import (
     BASELINE,
     GATES,
+    SCOREBOARD_VERSION,
     build_scoreboard,
     compare_scoreboard,
     scoreboard_improvements,
@@ -32,9 +33,12 @@ def _board(
 ) -> dict[str, Any]:
     """A healthy board. `invented` defaults to 0 because a fabricated edge now fails the gate,
     so a fixture carrying one would make every unrelated test in this file fail for the wrong
-    reason."""
+    reason.
+
+    The version is the *current* one: these stand in for boards the running code wrote, and a
+    v1 board is refused outright by the corpus gate because it carries no `known_gaps`."""
     return {
-        "version": 1,
+        "version": SCOREBOARD_VERSION,
         "metrics": {
             "corpus": {
                 "gated": "strict",
