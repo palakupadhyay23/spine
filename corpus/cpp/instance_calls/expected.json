@@ -60,7 +60,7 @@
   "known_gaps": [],
   "false_positives": [],
   "excluded": [
-    "The `known_gaps` this case carried are gone, and not because they were waived: the front-end learned to emit every edge they named, so each entry had become an assertion that a limitation still existed when it did not. Found 2026-09-21 by the check added alongside — a gap naming an edge the extractor now emits fails the case to load, the same way a broken `refusal` does. Until then load-time validation only asked whether the gap named an edge in `edges`, which a closed gap still satisfies."
+    "The `known_gaps` entry this case carried is gone, and the reason is narrower than 'the gap closed'. With the optional `clang` extra a semantic post-pass resolves the reference-parameter call, so the edge is emitted and the entry asserted a limitation that did not exist; without the extra the CST-only path still cannot do it. The scoreboard — and CI, which syncs `--extra clang` — measures the configuration where the edge resolves, so that is the configuration the labels describe. The CST-only limitation is real and is documented in corpus/README.md rather than as a gap that is false wherever the baseline is built."
   ],
   "open_questions": []
 }
