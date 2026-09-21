@@ -611,3 +611,220 @@ class Screen(private val t: Topic) {
         },
     )
     assert not _calls(batch)
+
+
+def test_an_extension_on_a_supertype_resolves_through_an_external_receiver(tmp_path: Path) -> None:
+    """The shape that made the #390 check fabricate: a subtype receiver it cannot see.
+
+    `fun NavController.navigateToSearch()` called on a `NavHostController` is the standard
+    Compose navigation pattern, and on the validation app it appears four times. Comparing
+    receiver *names* for equality answers "no" and refused the import — then minted
+    `androidx.navigation.NavHostController.navigateToSearch`, an id no source declares, in
+    place of the true grounded edge. Neither type is declared here, so the repository
+    cannot disprove that the extension applies, and unknown must accept.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Nav.kt": """\
+package app.feature
+
+import androidx.navigation.NavController
+
+fun NavController.navigateToSearch() {}
+""",
+            "State.kt": """\
+package app.ui
+
+import androidx.navigation.NavHostController
+import app.feature.navigateToSearch
+
+class AppState(private val navController: NavHostController) {
+    fun search() {
+        navController.navigateToSearch()
+    }
+}
+""",
+        },
+    )
+    assert ("java:app.ui.AppState.search", "java:app.feature.navigateToSearch") in _calls(batch)
+    assert "java:androidx.navigation.NavHostController.navigateToSearch" not in _ids(batch)
+
+
+def test_an_extension_on_a_declared_supertype_is_walked_not_matched(tmp_path: Path) -> None:
+    """The same rule where the repository *can* see the hierarchy: `Db : Transacter`.
+
+    Name equality refuses this too, and here it does not even fabricate — it drops the
+    edge outright, because the receiver's own type is declared and has no such member.
+    The `IMPLEMENTS` walk is what makes a subtype receiver compatible rather than absent.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Core.kt": "package app.core\n\ninterface Transacter\n\nclass Db : Transacter\n",
+            "Ext.kt": "package app.ext\n\nimport app.core.Transacter\n\nfun Transacter.runIt(): Int = 1\n",
+            "Use.kt": """\
+package app.use
+
+import app.core.Db
+import app.ext.runIt
+
+class Helper {
+    private val db: Db = Db()
+    fun go(): Int = db.runIt()
+}
+""",
+        },
+    )
+    assert ("java:app.use.Helper.go", "java:app.ext.runIt") in _calls(batch)
+
+
+def test_two_extensions_sharing_one_id_do_not_cancel_each_other(tmp_path: Path) -> None:
+    """`fun Int.toDp()` and `fun Float.toDp()` are both `java:app.ui.toDp`.
+
+    A table with one receiver slot per id kept whichever file was parsed last, so the
+    other receiver's calls were refused — and which one survived depended on filesystem
+    order. The receivers accumulate instead.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Ext.kt": "package app.ui\n\nfun Int.toDp(): Int = this\n\nfun Float.toDp(): Int = 1\n",
+            "S.kt": "package app.screen\n\nimport app.ui.toDp\n\nfun show(n: Int): Int = n.toDp()\n",
+        },
+    )
+    assert ("java:app.screen.show", "java:app.ui.toDp") in _calls(batch)
+
+
+def test_a_type_parameter_receiver_applies_to_every_type(tmp_path: Path) -> None:
+    """`fun <T> T.alsoLog()` extends everything, and `T` is not a type to resolve.
+
+    Resolving it would mint `java:app.util.T`, an id nothing declares, and comparing that
+    against a real receiver refuses every call. The type-parameter list is read from the
+    declaration rather than guessed at from the name's shape — `E`, `R` and `T` are all
+    names a repository is allowed to give a real class.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Ext.kt": "package app.util\n\nfun <T> T.alsoLog(): T = this\n",
+            "S.kt": """\
+package app.ui
+
+import app.util.alsoLog
+
+class Topic
+
+fun show(t: Topic): Topic = t.alsoLog()
+""",
+        },
+    )
+    assert ("java:app.ui.show", "java:app.util.alsoLog") in _calls(batch)
+    assert "java:app.util.T" not in _ids(batch)
+
+
+def test_a_same_named_type_in_another_package_is_not_the_same_receiver(tmp_path: Path) -> None:
+    """#390's residue, closed: `app.data.Topic` and `app.legacy.Topic` are different types.
+
+    The extension is declared against the *legacy* `Topic` and the call is on the *data*
+    one. Comparing bare names read both as `Topic` and resolved the call onto an extension
+    that cannot apply to it — a name-only match, which is #390's own definition of the
+    defect. Both types are declared here and no `IMPLEMENTS` path joins them, so this is
+    the one case the repository can genuinely disprove.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Data.kt": "package app.data\n\nclass Topic\n",
+            "Legacy.kt": "package app.legacy\n\nclass Topic\n",
+            "Slug.kt": 'package app.util\n\nimport app.legacy.Topic\n\nfun Topic.slugify(): String = "s"\n',
+            "S.kt": """\
+package app.ui
+
+import app.data.Topic
+import app.util.slugify
+
+class Screen(private val t: Topic) {
+    fun show(): String = t.slugify()
+}
+""",
+        },
+    )
+    assert not _calls(batch)
+
+
+def test_a_guessed_receiver_still_matches_a_certainly_resolved_extension(tmp_path: Path) -> None:
+    """One end of the check is read from an import, the other is a same-package guess.
+
+    `Screen` names `Topic` with no import, because Kotlin needs none inside a package —
+    so the receiver resolves to the *guess* `java:app.ui.Topic`, while the extension's own
+    receiver was read from `import app.ui.Topic` and is certain. They agree, and a guess
+    that lands on a real declared type is not a guess about whether it is the target;
+    `resolve_or_drop` refuses one that lands on nothing.
+
+    Pinned because requiring a *certain* receiver on both ends would read this as
+    unverifiable and silently drop it, and an unimported same-package receiver is the
+    commonest way a Kotlin file names a type at all.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.ui\n\nclass Topic\n",
+            "Slug.kt": 'package app.util\n\nimport app.ui.Topic\n\nfun Topic.slug(): String = "s"\n',
+            "S.kt": """\
+package app.ui
+
+import app.util.slug
+
+class Screen(private val t: Topic) {
+    fun show(): String = t.slug()
+}
+""",
+        },
+    )
+    assert ("java:app.ui.Screen.show", "java:app.util.slug") in _calls(batch)
+
+
+def test_the_extension_table_does_not_leak_between_repositories(tmp_path: Path) -> None:
+    """One `RepoCodeExtractor` over two repositories must not carry the first one's table.
+
+    `load_or_extract_repos` hands a single instance to every declared repository, so a
+    repo-wide accumulator that `finalize` does not clear makes repo A's extensions verify
+    repo B's imports — and reinstates #390 for B. `_nav`, `_ktor`, `_deferred` and
+    `_client` are all cleared there for exactly this reason.
+
+    It is worse than a stale fact: `load_or_extract` returns early on a cache hit and
+    never runs `finalize`, so whether repo A happened to be cached would change repo B's
+    emitted graph for the same commit.
+    """
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    for path, files in (
+        (first, {"Ext.kt": 'package app.util\n\nclass Topic\n\nfun Topic.format(): String = "x"\n'}),
+        (
+            second,
+            {
+                "U.kt": 'package app.util\n\nfun format(): String = "plain"\n',
+                "S.kt": """\
+package app.ui
+
+import app.util.format
+
+class Topic
+
+fun show(t: Topic): String = t.format()
+""",
+            },
+        ),
+    ):
+        for name, src in files.items():
+            path.mkdir(parents=True, exist_ok=True)
+            (path / name).write_text(src, encoding="utf-8")
+
+    shared = RepoCodeExtractor()
+    shared.extract(first)
+    after = _calls(shared.extract(second))
+    assert after == _calls(RepoCodeExtractor().extract(second)), (
+        "repo A's extensions verified repo B's import"
+    )
+    assert ("java:app.ui.show", "java:app.util.format") not in after

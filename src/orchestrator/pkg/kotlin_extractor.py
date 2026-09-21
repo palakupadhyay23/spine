@@ -146,6 +146,34 @@ class _ImportContext:
 
 
 @dataclass(frozen=True)
+class _Extension:
+    """Which receivers one extension-function *id* applies to, as resolved type ids.
+
+    Two shapes the bare receiver name could not express, and both are ordinary Kotlin:
+
+    * **One id, several receivers.** ``fun Int.toDp()`` and ``fun Float.toDp()`` in the
+      same package are both ``java:app.ui.toDp``, so a single-slot table kept whichever
+      file was parsed last and refused the other. ``receivers`` accumulates instead.
+    * **A type-parameter receiver.** ``fun <T> T.alsoLog()`` applies to *everything*, and
+      ``T`` is not a type to resolve — resolving it mints ``java:app.util.T``, an id
+      nothing declares. ``any_receiver`` records the shape and skips resolution.
+
+    Ids rather than bare names because the comparison this feeds has to walk
+    ``IMPLEMENTS``, which is keyed by id — and because ``app.data.Topic`` and
+    ``app.legacy.Topic`` are different types that a bare ``Topic`` cannot tell apart.
+    """
+
+    receivers: frozenset[str]
+    any_receiver: bool
+
+    def merged_with(self, other: _Extension) -> _Extension:
+        return _Extension(
+            receivers=self.receivers | other.receivers,
+            any_receiver=self.any_receiver or other.any_receiver,
+        )
+
+
+@dataclass(frozen=True)
 class _DeferredCall:
     """A ``recv.name()`` held back until every declaration in the repository is known.
 
@@ -196,11 +224,12 @@ class _DeferredCall:
     #: or ``""``. Written in the source, so it outranks the receiver-member guess as the
     #: external placeholder (see ``_settle_calls``).
     imported_extension: str
-    #: The bare receiver type name at *this* call site (e.g. ``"Topic"``), read from the
-    #: source alongside ``imported_extension``. #390: ``imported_extension`` is only the
-    #: right reading when the repo-wide extension table says the import is genuinely an
-    #: extension of *this* type — a name match alone is not evidence of that.
-    extension_receiver: str
+    #: Every id the receiver type at *this* call site could denote, from the same
+    #: ``_type_candidates`` call that produced ``owners``. #390: ``imported_extension``
+    #: is only the right reading when the repo-wide extension table says the import is
+    #: genuinely an extension of *this* type — a name match alone is not evidence of
+    #: that. Ids rather than the bare name, because the check walks ``IMPLEMENTS``.
+    extension_receivers: tuple[str, ...]
     provenance: Provenance
 
 
@@ -278,12 +307,16 @@ class KotlinExtractor:
         self._ktor = KtorState()
         # Calls through a typed receiver, judged in `finalize` — see `_DeferredCall`.
         self._deferred: list[_DeferredCall] = []
-        #: Every extension function declared *anywhere* in the repository, id -> the bare
-        #: receiver type name from its own signature. #390: `ctx.imports.by_simple` maps a
-        #: name to *any* import regardless of whether it is a function, let alone an
-        #: extension of the receiver at the call site — this repo-wide table is what
-        #: `_settle_calls` checks the import against instead of trusting the name alone.
-        self._extensions: dict[str, str] = {}
+        #: Every extension function declared *anywhere* in the repository, id -> the
+        #: receivers it applies to. #390: `ctx.imports.by_simple` maps a name to *any*
+        #: import regardless of whether it is a function, let alone an extension of the
+        #: receiver at the call site — this repo-wide table is what `_settle_calls`
+        #: checks the import against instead of trusting the name alone. Cleared in
+        #: `finalize`, beside `_nav`/`_ktor`/`_deferred`: one `RepoCodeExtractor` is
+        #: reused across repositories by `load_or_extract_repos`, and repo A's table
+        #: verifying repo B's import is #390 all over again — the same leak
+        #: `kotlin_http` fixed for `_client`.
+        self._extensions: dict[str, _Extension] = {}
 
     def module_name(self, path: Path, root: Path) -> str:
         # Kotlin's module is the package declaration, which lives in the file and
@@ -580,8 +613,17 @@ class KotlinExtractor:
                 # `_settle_calls` needs to ask "is *this* imported id genuinely an
                 # extension of the receiver at the call site", which a per-file,
                 # per-name table cannot answer once the call and the declaration are
-                # in different files.
-                self._extensions[func_id] = receiver
+                # in different files. The receiver is resolved *here*, where this
+                # file's imports are still in hand; at the call site they are gone.
+                any_receiver = receiver in _type_parameter_names(node, source)
+                entry = _Extension(
+                    receivers=frozenset()
+                    if any_receiver
+                    else frozenset(self._type_candidates(receiver, ctx)[0]),
+                    any_receiver=any_receiver,
+                )
+                existing = self._extensions.get(func_id)
+                self._extensions[func_id] = entry if existing is None else existing.merged_with(entry)
             else:
                 ctx.top_level_funcs.add(name)
 
@@ -756,7 +798,7 @@ class KotlinExtractor:
                 certain=False,
                 takes_function_argument=passes_function,
                 imported_extension="",
-                extension_receiver="",
+                extension_receivers=(),
                 provenance=Provenance("", 0),
             )
         return None
@@ -877,7 +919,7 @@ class KotlinExtractor:
             certain=certain and bool(owners),
             takes_function_argument=passes_function,
             imported_extension=also[0] if also else "",
-            extension_receiver=_bare_type(type_name) if also else "",
+            extension_receivers=owners if also else (),
             provenance=Provenance(rel, line),
         )
 
@@ -1053,13 +1095,22 @@ class KotlinExtractor:
             # then would ground the call onto that real, unrelated declaration (through
             # `FactBatch.add_node`'s dedup, which keeps a pre-existing grounded node over
             # a later `external=True` one) instead of refusing it, which is #390 exactly.
-            extension_verified = bool(call.imported_extension) and (
-                self._extensions.get(call.imported_extension) == call.extension_receiver
-            )
-            extension_unsafe = (
-                bool(call.imported_extension)
-                and not extension_verified
-                and call.imported_extension in declared
+            #
+            # **Refuse only what the repository contradicts.** The first version of this
+            # check asked "do the two receiver names match?" and read "no" as "refuse",
+            # which is a two-valued question about a three-valued world: a subtype
+            # receiver (`fun NavController.navigateToSearch()` called on a
+            # `NavHostController`), a type-parameter receiver, and two same-named
+            # extensions on different types all answer "no" while being perfectly
+            # applicable. Measured on the validation app, that refusal displaced four
+            # true, grounded edges with four invented `NavHostController.navigateTo*`
+            # ids — a fabrication produced *by* a fabrication check.
+            extension_unsafe = bool(call.imported_extension) and _extension_refused(
+                self._extensions.get(call.imported_extension),
+                call.extension_receivers,
+                call.imported_extension in declared,
+                declared,
+                supertypes,
             )
             imported_extension = "" if extension_unsafe else call.imported_extension
             candidates = call.candidates
@@ -1103,6 +1154,73 @@ class KotlinExtractor:
             batch.add_node(Node(target, NodeKind.FUNCTION, target.rsplit(".", 1)[-1], _LANG, external=True))
             batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
         self._deferred.clear()
+        # Repo-wide, so it leaks exactly the way `_client` did before `kotlin_http`
+        # fixed it: `load_or_extract_repos` hands one `RepoCodeExtractor` to every
+        # repository, and repo A's extensions verifying repo B's imports is #390 back
+        # again. Worse, `load_or_extract` returns early on a cache hit and never runs
+        # this method, so a warm cache and a cold cache would disagree for the same
+        # commit — population and this clear are in one call frame precisely so they
+        # cannot come apart.
+        self._extensions.clear()
+
+
+def _extension_refused(
+    ext: _Extension | None,
+    receivers: tuple[str, ...],
+    id_is_declared: bool,
+    declared: frozenset[str],
+    supertypes: dict[str, list[str]],
+) -> bool:
+    """Can the repository *disprove* that this import applies to this receiver? (#390)
+
+    Three answers, and only one of them refuses:
+
+    * **compatible** — the receiver ids intersect the extension's, the extension takes a
+      type-parameter receiver, or an ``IMPLEMENTS`` path runs from the receiver up to a
+      declared receiver. Kotlin's rule is a subtype-compatible receiver, not an equal one.
+    * **incompatible** — both types are ones this repository declares, and no such path
+      exists. Only here is the import demonstrably not what the call names.
+    * **unknown** — anything else, and unknown *accepts*. An external receiver
+      (``KaMPKitDb``, ``NavHostController``) has no declared supertype list to walk, so a
+      mismatch proves nothing; refusing there is how a correct grounded edge got replaced
+      by an invented member id.
+
+    ``ext is None`` means the id names no extension anywhere. If the repository declares
+    something under it, that something is a plain function or a class — never the target
+    of ``x.name()``, which is #390 in its original form, so refuse. If it declares
+    nothing, the id is a third-party extension this repository cannot introspect, and the
+    import remains the best-evidenced reading.
+    """
+    if ext is None:
+        return id_is_declared
+    if ext.any_receiver or not ext.receivers or not receivers:
+        return False
+    if ext.receivers & set(receivers):
+        return False
+    # A mismatch is only evidence when both ends are types this repository declares;
+    # otherwise there is no supertype list to have walked and nothing is proven.
+    if not any(r in declared for r in receivers) or not any(r in declared for r in ext.receivers):
+        return False
+    return not any(_reaches(r, ext.receivers, supertypes) for r in receivers)
+
+
+def _reaches(start: str, targets: frozenset[str], supertypes: dict[str, list[str]]) -> bool:
+    """Whether ``start`` reaches any of ``targets`` through ``IMPLEMENTS``.
+
+    Breadth-first with a ``seen`` set, so a diamond is walked once and a cycle in a
+    malformed hierarchy terminates rather than hanging the extraction.
+    """
+    seen = {start}
+    queue = list(supertypes.get(start, ()))
+    while queue:
+        current = queue.pop(0)
+        if current in targets:
+            return True
+        if current in seen:
+            continue
+        seen.add(current)
+        queue.extend(supertypes.get(current, ()))
+    return False
 
 
 def _resolve_inherited_member(
@@ -1295,6 +1413,23 @@ def _parameter_types(func: TSNode, source: bytes) -> dict[str, str]:
         if name:
             out[name] = declared
     return out
+
+
+def _type_parameter_names(func: TSNode, source: bytes) -> frozenset[str]:
+    """``fun <T, R> T.map()`` → ``{"T", "R"}``, from the declaration's own signature.
+
+    Read rather than guessed at. A single uppercase letter is a convention, not a rule —
+    ``E``, ``R`` and ``T`` are all plausible class names, and a repository that declares
+    one would have its extensions silently treated as applying to everything.
+    """
+    params = next((c for c in func.named_children if c.type == "type_parameters"), None)
+    if params is None:
+        return frozenset()
+    return frozenset(
+        _declared_name_or_first(child, source)
+        for child in params.named_children
+        if child.type == "type_parameter"
+    ) - {""}
 
 
 def _extension_receiver(func: TSNode, source: bytes) -> str:
