@@ -1248,23 +1248,30 @@ def _resolve_inherited_member(
 
     Breadth-first over the supertype graph already recorded for this repository — a
     diamond or multi-level hierarchy is walked once, not re-declared. More than one
-    supertype declaring the same member name is a real ambiguity Kotlin itself would
-    reject as unresolved without an explicit override, so it is refused here rather
-    than guessed.
+    supertype declaring the same member name **at the same distance** is a real
+    ambiguity Kotlin itself would reject without an explicit override, so it is refused
+    rather than guessed.
+
+    #391: "at the same distance" is the whole correction. Collecting hits across the
+    entire walk made an **override** look like an ambiguity — ``interface Base { fun
+    ping() }``, ``abstract class Mid : Base { override fun ping() }``, ``class Impl :
+    Mid()`` declares ``ping`` twice on the way up, so a single flat set held two ids and
+    the call was refused. That is the commonest inheritance shape in the language, and
+    it is not ambiguous at all: an override always sits strictly nearer than the thing
+    it overrides, which is exactly what Kotlin resolves to. Level by level, and the
+    first level with one answer wins.
     """
     seen = {owner}
-    queue = list(supertypes.get(owner, ()))
-    matches: set[str] = set()
-    while queue:
-        current = queue.pop(0)
-        if current in seen:
-            continue
-        seen.add(current)
-        candidate = f"{current}.{member}"
-        if candidate in declared:
-            matches.add(candidate)
-        queue.extend(supertypes.get(current, ()))
-    return matches.pop() if len(matches) == 1 else None
+    level = [t for t in supertypes.get(owner, ()) if t not in seen]
+    while level:
+        seen.update(level)
+        matches = {f"{t}.{member}" for t in level if f"{t}.{member}" in declared}
+        if matches:
+            # Two declarations of the same member at the same distance really is
+            # unresolved; nearer beats further, but nothing breaks a tie within a level.
+            return matches.pop() if len(matches) == 1 else None
+        level = [nxt for t in level for nxt in supertypes.get(t, ()) if nxt not in seen]
+    return None
 
 
 # ---- scope, for typed receivers ---------------------------------------------
@@ -1320,6 +1327,16 @@ def _collect_bindings(body: TSNode, source: bytes, scope: _Scope) -> None:
             for child in node.named_children:
                 if child.type in ("parameter", "variable_declaration"):
                     scope.bind(_declared_name_or_first(child, source))
+                elif child.type == "multi_variable_declaration":
+                    # `m.forEach { (key, value) -> key() }` — the same destructuring the
+                    # `for` branch below handles, one grammar level deeper: the lambda's
+                    # parameter list holds a `multi_variable_declaration` rather than the
+                    # plain `variable_declaration`s this loop was written for. #392 fixed
+                    # the `for` form and left this one, so `key()` still resolved to a
+                    # sibling member the lambda never calls.
+                    for inner in child.named_children:
+                        if inner.type == "variable_declaration":
+                            scope.bind(_declared_name_or_first(inner, source))
         elif node.type == "for_statement":
             # `for (helper in fns)` binds `helper`, and a bound name silences a bare
             # call to it (D9). The grammar hangs the loop variable straight off the

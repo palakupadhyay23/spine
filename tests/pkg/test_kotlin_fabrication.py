@@ -828,3 +828,105 @@ fun show(t: Topic): String = t.format()
         "repo A's extensions verified repo B's import"
     )
     assert ("java:app.ui.show", "java:app.util.format") not in after
+
+
+def test_an_inherited_member_overridden_in_between_resolves_to_the_override(tmp_path: Path) -> None:
+    """#391, the half the first fix left. An override is not an ambiguity.
+
+    `Impl : Mid : Base` declares `ping` twice on the way up, and collecting hits across
+    the whole walk into one set held two ids — so the "exactly one match" rule refused
+    the commonest inheritance shape in the language. An override always sits strictly
+    nearer than the thing it overrides, which is what Kotlin resolves to; the walk goes
+    level by level and the first level with one answer wins.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "A.kt": """\
+package app
+
+interface Base {
+    fun ping()
+}
+
+abstract class Mid : Base {
+    override fun ping() {}
+}
+
+class Impl : Mid()
+
+class User {
+    fun go(i: Impl) {
+        i.ping()
+    }
+}
+"""
+        },
+    )
+    assert ("java:app.User.go", "java:app.Mid.ping") in _calls(batch)
+    assert ("java:app.User.go", "java:app.Base.ping") not in _calls(batch)
+
+
+def test_two_supertypes_declaring_one_member_at_the_same_distance_are_refused(tmp_path: Path) -> None:
+    """The rule the level walk must not weaken: nearer beats further, ties do not.
+
+    Two interfaces at the same distance both declaring `ping` is a real ambiguity —
+    Kotlin requires an explicit override — so neither is guessed.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "A.kt": """\
+package app
+
+interface Base {
+    fun ping()
+}
+
+interface Other {
+    fun ping()
+}
+
+class Impl : Base, Other {
+    override fun ping() {}
+}
+
+class User {
+    fun go(i: Impl) {
+        i.ping()
+    }
+}
+"""
+        },
+    )
+    assert ("java:app.User.go", "java:app.Impl.ping") in _calls(batch)
+    assert not (
+        {("java:app.User.go", "java:app.Base.ping"), ("java:app.User.go", "java:app.Other.ping")}
+        & _calls(batch)
+    )
+
+
+def test_a_destructured_lambda_parameter_shadows_a_sibling_member(tmp_path: Path) -> None:
+    """#392, the half the first fix left: the same destructuring, one level deeper.
+
+    `m.forEach { (name, key) -> key() }` hangs a `multi_variable_declaration` off the
+    lambda's parameter list rather than off a `for_statement`, so `key` was never bound
+    and `key()` resolved to the sibling member the lambda never calls.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "A.kt": """\
+package app
+
+class L {
+    fun key(): String = "k"
+
+    fun go(m: Map<String, () -> Unit>) {
+        m.forEach { (name, key) -> key() }
+    }
+}
+"""
+        },
+    )
+    assert ("java:app.L.go", "java:app.L.key") not in _calls(batch)
