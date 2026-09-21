@@ -239,3 +239,114 @@ object NetModule {
     )
     assert "java:app.di.Clock" not in {n.id for n in batch.nodes}
     assert ("java:app.di.NetModule.provideClock", "java:Clock") in _provides(batch)
+
+
+def test_a_nested_wrapper_does_not_open_the_door_to_its_element(tmp_path: Path) -> None:
+    """#393, the half the first fix left. `Provider<Set<Clock>>` binds `Set<Clock>`.
+
+    The allowlist was tested on the *outermost* name and the peel that followed ran to
+    the bottom, so an allowlisted wrapper let anything inside it through. This is an
+    ordinary Dagger shape and nothing injecting a plain `OkHttpClient` is satisfied by
+    it. One level at a time, re-asking the question at each.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+import javax.inject.Provider
+import okhttp3.OkHttpClient
+
+@Module
+object NetModule {
+    @Provides
+    fun provideNested(): Provider<Set<OkHttpClient>> = TODO()
+}
+"""
+        },
+    )
+    assert not _provides(batch)
+
+
+def test_kotlins_own_lazy_is_not_daggers(tmp_path: Path) -> None:
+    """`Lazy` with no import at all is `kotlin.Lazy`, a default import and a real type.
+
+    Matching the allowlist on the bare name conflated it with `dagger.Lazy`, which is
+    the cheapest way to hit this defect: `kotlin.Lazy` needs no import line, so nothing
+    in the file says which one is meant except what is *absent*.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+import okhttp3.OkHttpClient
+
+@Module
+object NetModule {
+    @Provides
+    fun provideKotlinLazy(): Lazy<OkHttpClient> = TODO()
+}
+"""
+        },
+    )
+    assert not _provides(batch)
+
+
+def test_a_first_party_provider_is_not_daggers(tmp_path: Path) -> None:
+    """`Provider` is an ordinary domain-model name a repository may declare itself."""
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+import okhttp3.OkHttpClient
+
+class Provider<T>(val v: T)
+
+@Module
+object NetModule {
+    @Provides
+    fun provideOwn(): Provider<OkHttpClient> = TODO()
+}
+"""
+        },
+    )
+    assert not _provides(batch)
+
+
+def test_a_fully_qualified_dagger_lazy_still_binds_its_element(tmp_path: Path) -> None:
+    """The recall half: `dagger.Lazy<T>` written out is still a Dagger unwrap.
+
+    Testing the allowlist against the *written* name dropped this, because `bare_type`
+    keeps the qualification — so the fix that refused `kotlin.Lazy` would have refused
+    the real one too if it compared names rather than resolved ids.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "M.kt": """\
+package app.di
+
+import dagger.Module
+import dagger.Provides
+import okhttp3.OkHttpClient
+
+@Module
+object NetModule {
+    @Provides
+    fun provideLazy(): dagger.Lazy<OkHttpClient> = TODO()
+}
+"""
+        },
+    )
+    assert ("java:app.di.NetModule.provideLazy", "java:okhttp3.OkHttpClient") in _provides(batch)

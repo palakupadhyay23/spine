@@ -8,6 +8,37 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Fixed
 
+- **Three Kotlin defects that the previous round fixed only half of.** Each was reported
+  against a shape that now works and left a second shape that did not, so the issues stayed
+  open with a passing test beside them.
+
+  **An inherited member overridden in between was refused as ambiguous** (#391). `Impl : Mid :
+  Base` declares `ping` twice on the way up, and the walk collected hits across the whole
+  hierarchy into one set — so "exactly one match" refused the commonest inheritance shape in
+  the language. An override always sits strictly nearer than the thing it overrides, which is
+  what Kotlin resolves to. The walk now goes level by level and the first level with a single
+  answer wins; two declarations at the *same* distance are still a real ambiguity and are
+  still refused.
+
+  **A destructured lambda parameter did not shadow a sibling member** (#392). `m.forEach {
+  (name, key) -> key() }` hangs a `multi_variable_declaration` off the lambda's parameter list
+  rather than off a `for_statement`, so `key` was never bound and `key()` resolved to a member
+  the lambda never calls. Fixed in the extractor *and* in the D9 invention oracle, which
+  shared the blind spot and was reporting the fabrication clean.
+
+  **A nested generic wrapper opened the door to its element** (#393). The unwrap allowlist was
+  tested on the outermost name and the peel that followed ran to the bottom, so
+  `Provider<Set<OkHttpClient>>` reduced to `OkHttpClient` — an ordinary Dagger shape whose key
+  is `Set<OkHttpClient>`, and nothing injecting a plain client is satisfied by it. Unwrapping
+  now happens one level at a time, re-asking the question at each.
+
+  Wrappers are also recognised by **resolved id** rather than by name, which the bare name
+  could never do: `kotlin.Lazy` needs no import line at all — it is a Kotlin default import,
+  the `by lazy` delegate — and a repository is free to declare its own `class Provider<T>`.
+  Both were being read as Dagger's. The same change recovers a binding that was being
+  dropped: a fully-qualified `dagger.Lazy<T>` failed the old name check for the opposite
+  reason, since its written name is not the bare one.
+
 - **The accuracy gate failed a build for writing down a known limitation.** `expected` counts
   every labelled edge, and a `known_gaps` entry still counts as a miss — deliberately, so a low
   number stays honest. But the gate compared the recall *ratio*, so labelling a gap lowered it
