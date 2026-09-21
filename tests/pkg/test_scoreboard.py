@@ -22,6 +22,7 @@ from orchestrator.pkg.accuracy import (
     SCOREBOARD_VERSION,
     build_scoreboard,
     compare_scoreboard,
+    scoreboard_explained_drops,
     scoreboard_improvements,
 )
 
@@ -71,8 +72,16 @@ def test_a_corpus_precision_drop_is_a_regression() -> None:
 
 
 def test_a_corpus_recall_drop_is_a_regression() -> None:
+    """Two edges stopped resolving. Still a regression — under both conditions, in fact.
+
+    The *detail* changed with the gate: it no longer says "recall", because the ratio is no
+    longer what is gated. `matched` fell and the misses gained no explanation, so both of
+    the conditions fire and either alone would fail the build.
+    """
     before, after = _board(matched=8, expected=10), _board(matched=6, expected=10)
-    assert any("recall" in r.detail for r in compare_scoreboard(before, after))
+    details = [r.detail for r in compare_scoreboard(before, after)]
+    assert any("matched edges" in d for d in details)
+    assert any("unexplained misses" in d for d in details)
 
 
 def _with_gaps(board: dict[str, Any], gaps: int) -> dict[str, Any]:
@@ -99,7 +108,9 @@ def test_a_real_recall_loss_still_fails_when_gaps_are_labelled() -> None:
     """The half that is easy to lose: an edge that stopped resolving, gaps unchanged."""
     before = _with_gaps(_board(matched=8, expected=10), 2)
     after = _with_gaps(_board(matched=7, expected=10), 2)
-    assert any("recall" in r.detail for r in compare_scoreboard(before, after))
+    details = [r.detail for r in compare_scoreboard(before, after)]
+    assert any("matched edges" in d for d in details)
+    assert any("unexplained misses" in d for d in details)
 
 
 def test_a_lost_edge_cannot_hide_behind_a_newly_labelled_gap() -> None:
@@ -123,6 +134,30 @@ def test_a_new_unexplained_miss_fails_even_though_recall_is_unchanged() -> None:
     before = _with_gaps(_board(matched=8, expected=10), 0)
     after = _with_gaps(_board(matched=12, expected=15), 0)
     assert any(r.metric == "corpus" for r in compare_scoreboard(before, after))
+
+
+def test_an_explained_drop_is_reported_on_the_trend_channel() -> None:
+    """Not gated is not the same as not said. The published number still moved.
+
+    The #429 shape exactly: a new labelled edge that the front-end misses, and a `known_gaps`
+    entry explaining why. Recall falls, the build passes, and a reader comparing two releases
+    gets told which of the two reasons it was.
+    """
+    before = _with_gaps(_board(matched=8, expected=10), 2)
+    after = _with_gaps(_board(matched=8, expected=11), 3)
+    assert compare_scoreboard(before, after) == []
+    (line,) = scoreboard_explained_drops(before, after)
+    assert "recall: 0.8000 -> 0.7273" in line
+    assert "1 newly labelled known_gap(s)" in line
+    assert "0 unexplained" in line
+
+
+def test_a_real_drop_is_not_reported_as_explained() -> None:
+    """The trend channel must not launder a regression into a footnote."""
+    before = _with_gaps(_board(matched=8, expected=10), 2)
+    after = _with_gaps(_board(matched=6, expected=10), 2)
+    assert compare_scoreboard(before, after)
+    assert scoreboard_explained_drops(before, after) == []
 
 
 def test_a_corpus_improvement_is_not_a_regression() -> None:

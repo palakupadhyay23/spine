@@ -2,7 +2,7 @@
   "language": "cpp",
   "case": "instance_calls",
   "root": ".repo",
-  "why": "The documented skip in C++: a call to a sibling method resolves, a call through a reference parameter does not. C++ skips it silently where C invents a target for the equivalent shape \u2014 two front-ends, same question, opposite failure modes.",
+  "why": "The documented skip in C++: a call to a sibling method resolves, a call through a reference parameter does not. C++ skips it silently where C invents a target for the equivalent shape — two front-ends, same question, opposite failure modes.",
   "nodes": [
     {
       "id": "cpp:src/dispatch.cpp",
@@ -57,17 +57,10 @@
       "kind": "CALLS"
     }
   ],
-  "known_gaps": [
-    {
-      "edge": {
-        "src": "cpp:viaParameter",
-        "dst": "cpp:Handler::run",
-        "kind": "CALLS"
-      },
-      "why": "PREDICTED BEFORE SCORING. `h.run()` where `h` is a `Handler&` parameter. Counted as a recall miss, not exempted."
-    }
-  ],
+  "known_gaps": [],
   "false_positives": [],
-  "excluded": [],
+  "excluded": [
+    "The `known_gaps` this case carried are gone, and not because they were waived: the front-end learned to emit every edge they named, so each entry had become an assertion that a limitation still existed when it did not. Found 2026-09-21 by the check added alongside — a gap naming an edge the extractor now emits fails the case to load, the same way a broken `refusal` does. Until then load-time validation only asked whether the gap named an edge in `edges`, which a closed gap still satisfies."
+  ],
   "open_questions": []
 }
