@@ -6,6 +6,8 @@
   "nodes": [
     { "id": "java:app.data", "kind": "Module" },
     { "id": "java:app.data.Topic", "kind": "Type" },
+    { "id": "java:app.data.Topic.format", "kind": "Function" },
+    { "id": "java:app.data.Topic.render", "kind": "Function" },
     { "id": "java:app.ui", "kind": "Module" },
     { "id": "java:app.ui.Screen", "kind": "Type" },
     { "id": "java:app.ui.Screen.show", "kind": "Function" },
@@ -16,6 +18,10 @@
   ],
   "edges": [
     { "src": "java:app.data", "dst": "java:app.data.Topic", "kind": "CONTAINS" },
+    { "src": "java:app.data.Topic", "dst": "java:app.data.Topic.format", "kind": "CONTAINS" },
+    { "src": "java:app.data.Topic", "dst": "java:app.data.Topic.render", "kind": "CONTAINS" },
+    { "src": "java:app.ui.Screen.show", "dst": "java:app.data.Topic.format", "kind": "CALLS" },
+    { "src": "java:app.ui.Screen.show", "dst": "java:app.data.Topic.render", "kind": "CALLS" },
     { "src": "java:app.ui", "dst": "java:app.ui.Screen", "kind": "CONTAINS" },
     { "src": "java:app.ui.Screen", "dst": "java:app.ui.Screen.show", "kind": "CONTAINS" },
     { "src": "java:app.ui.Screen", "dst": "java:app.ui.Screen.t", "kind": "CONTAINS" },
@@ -45,7 +51,7 @@
     }
   ],
   "excluded": [
-    "`t.format()` and `t.render()` are labelled as reaching nothing at all. `Topic` declares neither member, and neither import is a genuine extension of `Topic` — resolving what they might otherwise mean would be a guess, not extraction."
+    "A member outranks an extension in Kotlin, so `t.format()` and `t.render()` resolve to `Topic`'s own declarations and the two same-named imports are not candidates at all. That is what makes the refusals below falsifiable rather than vacuous: there is a correct answer here, and it is not the import."
   ],
   "open_questions": []
 }

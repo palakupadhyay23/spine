@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
+import com.vendor.MysteryThing
 
 @Entity(tableName = "topics")
 data class TopicEntity(

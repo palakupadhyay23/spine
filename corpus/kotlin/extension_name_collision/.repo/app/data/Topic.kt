@@ -1,3 +1,7 @@
 package app.data
 
-class Topic
+class Topic {
+    fun format(): String = "f"
+
+    fun render(): String = "r"
+}

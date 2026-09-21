@@ -45,7 +45,8 @@
     { "src": "java:shop.db", "dst": "java:androidx.room.Insert", "kind": "IMPORTS" },
     { "src": "java:shop.db", "dst": "java:androidx.room.PrimaryKey", "kind": "IMPORTS" },
     { "src": "java:shop.db", "dst": "java:androidx.room.Query", "kind": "IMPORTS" },
-    { "src": "java:shop.db", "dst": "java:androidx.room.Upsert", "kind": "IMPORTS" }
+    { "src": "java:shop.db", "dst": "java:androidx.room.Upsert", "kind": "IMPORTS" },
+    { "src": "java:shop.db", "dst": "java:com.vendor.MysteryThing", "kind": "IMPORTS" }
   ],
   "known_gaps": [],
   "refusals": [
@@ -63,7 +64,7 @@
     }
   ],
   "excluded": [
-    "`insertMystery`'s parameter type resolves to nothing: no `Entity` node and no `WRITES` edge for it, by the refusal above.",
+    "`insertMystery`'s parameter type resolves to nothing: no `Entity` node and no `WRITES` edge for it, by the refusal above. `MysteryThing` is now *imported* from `com.vendor` rather than named bare, which is what makes the fixture compile (#389) and also the realistic shape — a DAO taking a DTO from a dependency, rather than a typo. It stays external either way: the point is that nothing in this repository declares it, not how the name was written.",
     "The seven `java:androidx.room.*` import targets are external, so they stay out of the node ratio per the rule in corpus/README.md; the IMPORTS edges to them still count.",
     "READS/WRITES require the `sql` extra — `@Query` bodies are parsed with sqlglot, never regexed. Without the extra those three edges are absent by design and the case scores lower rather than the extractor guessing."
   ],
