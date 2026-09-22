@@ -1,0 +1,284 @@
+{
+  "language": "javascript",
+  "case": "unread_surfaces",
+  "why": "The fourth review pass. Five export surfaces this pass does not read in full \u2014 `Object.freeze({\u2026})`, `module.exports = make()`, an alias assigned after its declaration, a subscript `exports['find']`, and `Object.assign` onto an alias \u2014 each of which the third pass still treated as readable and so enforced, dropping a true call. \"Readable\" is an allowlist now, and every one of these calls is resolved by name and kept because its target exists. Plus a renamed export, `{ Handler: Impl }`, with no class called `Handler` anywhere to hide behind, so the method call must be routed through the export map before the existence check rather than after it. Plus two bindings that shadow the module's `store` over their own scope only: a `var` inside a callback (hoisted to the callback, not to `go`) and a `catch (store)` clause. A scope that runs past either loses the true `store.find()` on the last line.",
+  "root": ".repo",
+  "nodes": [
+    {
+      "id": "ts:frozen",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:made",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:later",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:keyed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:grown",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:renamed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:store",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:client",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:frozen.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:frozen.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:made.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:made.make",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:later.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:keyed.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:keyed.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:grown.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:grown.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:store.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:store.save",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:client.go",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:renamed.Impl",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:renamed.Impl.run",
+      "kind": "Function"
+    }
+  ],
+  "edges": [
+    {
+      "src": "ts:frozen",
+      "dst": "ts:frozen.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:frozen",
+      "dst": "ts:frozen.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:made",
+      "dst": "ts:made.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:made",
+      "dst": "ts:made.make",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:later",
+      "dst": "ts:later.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:keyed",
+      "dst": "ts:keyed.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:keyed",
+      "dst": "ts:keyed.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:grown",
+      "dst": "ts:grown.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:grown",
+      "dst": "ts:grown.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:store",
+      "dst": "ts:store.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:store",
+      "dst": "ts:store.save",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:client.go",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:renamed",
+      "dst": "ts:renamed.Impl",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:renamed.Impl",
+      "dst": "ts:renamed.Impl.run",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:frozen",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:made",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:later",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:keyed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:grown",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:renamed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:store",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:frozen.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:frozen.create",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:made.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:keyed.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:keyed.create",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:grown.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:grown.create",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:renamed.Impl",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:renamed.Impl.run",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:later.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:store.find",
+      "kind": "CALLS"
+    }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "refusals": [
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:store.save",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. Both `store.save()` calls are on a local: the callback's own `var store` and the `catch (store)` parameter. `save` is really exported, so only the scope rule refuses this edge \u2014 not the export map, not the existence check."
+    },
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:renamed.Handler.run",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `Handler` is the exported *name*; the class is `Impl`. An edge that keeps the name names a node no file declares."
+    }
+  ],
+  "excluded": [
+    "`Object.freeze`, `Object.assign` and `ids.forEach` are calls on builtins or an untyped receiver, not first-party functions.",
+    "`module.exports = make()` calls `make` at module level, where there is no caller to hang a CALLS edge on."
+  ],
+  "open_questions": [],
+  "resolved_by_measurement": []
+}

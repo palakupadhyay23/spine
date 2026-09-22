@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize",
-  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key, and each association kind has an edge of its own. The model reached through an import has a *different name at every level* \u2014 the class `Musician`, the model `musician` (from `modelName`), and the local `Player` \u2014 so reading any of the three as the model's name fails the case. `seed.js` holds three `define` calls in a file that imports `sequelize` and none is a model: an untyped map, and two values rooted at Sequelize (`Op.is`, `Sequelize.NOW`) that are not column types. Columns use the parameterized `STRING(80)` form too.",
+  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key, and each association kind has an edge of its own. The model reached through an import has a *different name at every level* \u2014 the class `Musician`, the model `musician` (from `modelName`), and the local `Player` \u2014 so reading any of the three as the model's name fails the case. `seed.js` holds three `define` calls in a file that imports `sequelize` and none is a model: an untyped map, and two values rooted at Sequelize (`Op.is`, `Sequelize.NOW`) that are not column types. Columns use the parameterized `STRING(80)` form too. `booking.js` is a MySQL-style join model whose every column is a chained modifier (`INTEGER.UNSIGNED`, `BIGINT.UNSIGNED.ZEROFILL`) \u2014 a type is anywhere in the chain, not only at its end \u2014 and it is imported by the name of the *variable* that holds it (`{ Booking }`), which is neither the model name (`gig`) nor any case of it.",
   "root": ".repo",
   "nodes": [
     {
@@ -87,6 +87,22 @@
     {
       "id": "ts:seed",
       "kind": "Module"
+    },
+    {
+      "id": "ts:models/booking",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:entity:gig",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:gig.musicianId",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:gig.venueId",
+      "kind": "Field"
     }
   ],
   "edges": [
@@ -219,6 +235,41 @@
       "src": "ts:seed",
       "dst": "ts:sequelize",
       "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/booking",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/booking",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/booking",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/booking",
+      "dst": "ts:entity:gig",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:gig",
+      "dst": "ts:entity:gig.musicianId",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:gig",
+      "dst": "ts:entity:gig.venueId",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:gig",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
     }
   ],
   "known_gaps": [],

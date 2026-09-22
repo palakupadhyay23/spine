@@ -689,6 +689,21 @@ def _block_of(node: TSNode, body: TSNode) -> TSNode:
     return current if current is not None else body
 
 
+#: Functions `_calls` walks *into* — so a `var` inside one belongs to it, not to the function
+#: whose calls are being read.
+_NESTED_FUNCTIONS = frozenset({"arrow_function", "function_expression", "generator_function"})
+
+
+def _function_of(node: TSNode, body: TSNode) -> TSNode:
+    """The function a `var` is hoisted to: the nearest enclosing nested function, or the body."""
+    current = node.parent
+    while current is not None and _span(current) != _span(body):
+        if current.type in _NESTED_FUNCTIONS:
+            return current
+        current = current.parent
+    return body
+
+
 def _bound_names(body: TSNode, src: bytes) -> dict[str, list[tuple[int, int]]]:
     """Names this function binds, each with the byte ranges over which the binding is in scope.
 
@@ -698,7 +713,7 @@ def _bound_names(body: TSNode, src: bytes) -> dict[str, list[tuple[int, int]]]:
 
     ===============================  =================================================
     the function's own parameters    the whole function
-    `var x`                          the whole function — `var` is hoisted
+    `var x`                          its nearest function — `var` is hoisted to it
     `let x` / `const x`              from the declaration to the end of its block
     a callback's parameters          that callback only
     `for (const x of …)`             that loop only
@@ -711,6 +726,10 @@ def _bound_names(body: TSNode, src: bytes) -> dict[str, list[tuple[int, int]]]:
     true call, and a `const` in one `if` branch shadowed its `else`. The walk mirrors `_calls`
     exactly — same `_CALL_SCOPE_STOP` boundaries — because a binding set covering more or less
     ground than the call walk would either drop real edges or miss shadowed ones.
+
+    "Its nearest function" is the callback a `var` sits in, not the function being read: `_calls`
+    walks into callbacks, so `ids.forEach(function (id) { var user = id; })` is inside `go`, and
+    hoisting that `var` to all of `go` refused the true `user.findAll()` after the loop.
     """
     bound: dict[str, list[tuple[int, int]]] = {}
 
@@ -738,17 +757,17 @@ def _bound_names(body: TSNode, src: bytes) -> dict[str, list[tuple[int, int]]]:
             declaration = n.parent
             names = _pattern_names(n.child_by_field_name("name"), src)
             if declaration is not None and declaration.type == "variable_declaration":  # var
-                bind(names, _span(body))
+                bind(names, _span(_function_of(n, body)))
             else:
                 bind(names, (n.end_byte, _block_of(n, body).end_byte))
         elif n.type == "for_in_statement":
             kind = n.child_by_field_name("kind")
             if kind is not None:  # `for (x of xs)` without a keyword assigns an existing name
-                scope = _span(body) if _text(kind, src) == "var" else _span(n)
+                scope = _span(_function_of(n, body)) if _text(kind, src) == "var" else _span(n)
                 bind(_pattern_names(n.child_by_field_name("left"), src), scope)
         elif n.type == "catch_clause":
             bind(_pattern_names(n.child_by_field_name("parameter"), src), _span(n))
-        elif n.type in ("arrow_function", "function_expression", "generator_function"):
+        elif n.type in _NESTED_FUNCTIONS:
             bind(_params_of(n, src), _span(n))
         stack.extend(n.named_children)
     return bound

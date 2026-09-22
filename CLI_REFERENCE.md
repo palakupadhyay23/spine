@@ -536,7 +536,7 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 | `--tests` | Test target(s) for `--oracle runtime`; defaults to the repo's own. |
 | `--dialect` | SQL dialect (postgres\|mysql\|tsql\|oracle\|…); default: auto-detect. |
 
-**Current corpus results** (85 fixture cases — 79 single-language, 6 multi-repo — across
+**Current corpus results** (87 fixture cases — 81 single-language, 6 multi-repo — across
 all 13 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
 **1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
 kind except `CALLS`:
@@ -545,6 +545,7 @@ kind except `CALLS`:
 |---|---|
 | `kotlin` | 0.92 |
 | `c` `cpp` (with `clang`) `sql` | 1.00 |
+| `javascript` | 0.93 |
 | `perl` | 0.89 |
 | `typescript` | 0.86 |
 | `cpp` `csharp` `go` `php` | 0.75 |

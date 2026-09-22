@@ -363,3 +363,31 @@ def test_javascript_entity_parity_ignores_other_init_calls() -> None:
 
     assert not _ENTITY_SYNTAX["javascript"].findall("Sentry.init({ dsn: 1 });")
     assert _ENTITY_SYNTAX["javascript"].findall("sequelize.define('user', {")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("User.init({ name: DataTypes.STRING }, { sequelize });", id="plain"),
+        pytest.param(
+            "User.init({\n  id: { type: DataTypes.INTEGER.UNSIGNED },\n}, { sequelize });", id="options"
+        ),
+        pytest.param("Post.init({ body: Sequelize.TEXT }, { sequelize });", id="sequelize-namespace"),
+    ],
+)
+def test_javascript_entity_parity_counts_a_class_style_model(source: str) -> None:
+    """Pass 3 stopped counting `Model.init` to avoid `Sentry.init`, and a missed class-style model
+    went silent. A Sequelize type in the attribute map tells the two apart."""
+    from orchestrator.pkg.verify import _ENTITY_SYNTAX
+
+    assert len(_ENTITY_SYNTAX["javascript"].findall(source)) == 1
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["Sentry.init({ dsn: 1 });", "Chart.init({ el: '#c' });", "app.init({ DataTypes: 1 });"],
+)
+def test_javascript_entity_parity_ignores_an_init_without_a_type(source: str) -> None:
+    from orchestrator.pkg.verify import _ENTITY_SYNTAX
+
+    assert not _ENTITY_SYNTAX["javascript"].findall(source)

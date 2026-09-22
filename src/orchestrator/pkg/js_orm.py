@@ -41,7 +41,9 @@ often one Sequelize generates from a ``through`` string at run time), a self-ass
 model name or attribute map that is not a literal, ``class X extends Sequelize.Model``,
 sequelize-cli's generated models (``module.exports = (sequelize, DataTypes) => …`` — no
 ``sequelize`` import, so no marker), its ``static associate(models)`` form, ``@sequelize/core``
-v7, and the column-level ``references: {model: …}`` form.
+v7, the column-level ``references: {model: …}`` form, and a *renamed* CommonJS destructure of
+the package (``const { Model: Base } = require('sequelize')``) — the front-end binds no local for
+a renamed key, so its base is unseen, where the ESM ``import { Model as Base }`` is read.
 """
 
 from __future__ import annotations
@@ -65,6 +67,8 @@ _WHOLE = "*"
 #: Sequelize's column types. A value rooted at a `sequelize` binding is not enough to mark a model:
 #: `Op.is` and `Sequelize.NOW` are both rooted there and neither is a type, and `scopes.define(
 #: 'active', { deletedAt: Op.is })` minted an entity. `NOW`, `UUIDV1` and `UUIDV4` are defaults.
+#: `NUMERIC` is `DECIMAL`'s alias. A modifier (`UNSIGNED`, `ZEROFILL`, `BINARY`) is not listed: it
+#: is never a type on its own, only a suffix on one — see `_sequelize_type`.
 _TYPE_NAMES = frozenset(
     {
         "STRING",
@@ -82,6 +86,7 @@ _TYPE_NAMES = frozenset(
         "REAL",
         "DOUBLE",
         "DECIMAL",
+        "NUMERIC",
         "BOOLEAN",
         "TIME",
         "DATE",
@@ -145,11 +150,16 @@ def scan(
     batch: FactBatch,
     imports: dict[str, str],
     import_names: dict[str, str | None] | None = None,
-) -> None:
-    """Emit this file's Sequelize models and associations into ``batch``.
+) -> dict[str, str]:
+    """Emit this file's Sequelize models and associations into ``batch``; return its bindings.
 
     ``import_names`` maps each local to the name it was imported *as* — None for a whole-module
     or default import — so an association end can name the export it really is.
+
+    The bindings are ``{name: model}`` for every name this file holds a model under: a variable
+    (`const Booking = sequelize.define('gig', …)`), a model class, or `exports.X` for a model
+    assigned straight onto the exports object. :func:`settle` needs them because an import names
+    the *binding* it was exported as, which need not be the model's name in any case.
     """
     names = import_names if import_names is not None else {}
     nodes = _walk(root)
@@ -158,16 +168,24 @@ def scan(
     model_base = {local for local in sequelize if names.get(local, local) == "Model"}
 
     defined: dict[str, str] = {}  # `const User = sequelize.define('User', …)` → {User: User}
+    exported: dict[str, str] = {}  # `exports.Post = sequelize.define('article', …)`
     if sequelize:
         for node in nodes:
             if node.type != "call_expression":
                 continue
             model = _define(node, module_id, source, rel, batch, sequelize)
             parent = node.parent
-            if model is not None and parent is not None and parent.type == "variable_declarator":
+            if model is None or parent is None:
+                continue
+            if parent.type == "variable_declarator":
                 name = parent.child_by_field_name("name")
                 if name is not None and name.type == "identifier":
                     defined[_text(name, source)] = model
+            elif parent.type == "assignment_expression":  # exports.Post = sequelize.define(…)
+                left = _text(parent.child_by_field_name("left"), source)
+                for prefix in ("exports.", "module.exports."):
+                    if left.startswith(prefix) and "." not in left[len(prefix) :]:
+                        exported[f"exports.{left[len(prefix) :]}"] = model
 
     classes: dict[str, str] = {}  # {class name: model name}, for classes with an `init`
     if model_base:
@@ -179,6 +197,7 @@ def scan(
     registry = _registry_names(nodes, source)
     for call in (n for n in nodes if n.type == "call_expression"):
         _association(call, source, rel, batch, registry, classes, defined, imports, names)
+    return {**defined, **classes, **exported}
 
 
 def _model_classes(nodes: list[TSNode], source: bytes, model_base: set[str]) -> list[str]:
@@ -208,17 +227,25 @@ def _model_classes(nodes: list[TSNode], source: bytes, model_base: set[str]) -> 
 
 def _sequelize_type(node: TSNode | None, source: bytes, sequelize: set[str]) -> bool:
     """Whether a value is one of Sequelize's column types: `DataTypes.STRING`,
-    `Sequelize.DataTypes.TEXT`, and the parameterized forms `STRING(120)`, `DECIMAL(10, 2)`,
-    `ENUM('new', 'paid')` — a call is unwrapped to the type it parameterizes."""
-    if node is not None and node.type == "call_expression":
-        node = node.child_by_field_name("function")
-    if node is None or node.type != "member_expression":
-        return False
-    if _text(node.child_by_field_name("property"), source) not in _TYPE_NAMES:
-        return False
-    while node is not None and node.type == "member_expression":
-        node = node.child_by_field_name("object")
-    return node is not None and node.type == "identifier" and _text(node, source) in sequelize
+    `Sequelize.DataTypes.TEXT`, the parameterized forms `STRING(120)`, `DECIMAL(10, 2)`,
+    `ENUM('new', 'paid')`, and the modified ones `INTEGER.UNSIGNED`, `INTEGER(11).UNSIGNED`,
+    `BIGINT.UNSIGNED.ZEROFILL`.
+
+    The type is *somewhere in* the chain, not at its end: reading only the last property missed
+    every modifier, so a MySQL join model whose columns are all `INTEGER.UNSIGNED` keys was no
+    model at all. Each call is unwrapped to what it parameterizes, and the chain must still end
+    at a binding from `sequelize` — `Op.is` does, but names no type anywhere, and is refused.
+    """
+    typed = False
+    while node is not None:
+        if node.type == "call_expression":
+            node = node.child_by_field_name("function")
+        elif node.type == "member_expression":
+            typed = typed or _text(node.child_by_field_name("property"), source) in _TYPE_NAMES
+            node = node.child_by_field_name("object")
+        else:
+            break
+    return typed and node is not None and node.type == "identifier" and _text(node, source) in sequelize
 
 
 def _typed_attributes(attributes: TSNode, source: bytes, sequelize: set[str]) -> bool:
@@ -413,23 +440,62 @@ def _association(
     batch.add_edge(Edge(holder, referenced, EdgeKind.REFERENCES, Provenance(rel, call.start_point[0] + 1)))
 
 
-def settle(batch: FactBatch) -> FactBatch:
-    """Replace each ``ts:entity-of:<module>#<local>`` end with the entity that module defines.
+def settle(
+    batch: FactBatch,
+    cjs: dict[str, tuple[str, dict[str, str | None]]] | None = None,
+    models: dict[str, dict[str, str]] | None = None,
+) -> FactBatch:
+    """Replace each ``ts:entity-of:<module>#<name>`` end with the entity that module defines.
 
     A **whole-module or default** import names the model the module defines, so one entity there
-    is that one and several are ambiguous. A **named** import names an export, so it must match a
-    model *by that name* — case aside, since `const { Post }` is the `post` model — and nothing
-    else: "the one model in the module" had picked `user` for `const { Post } = require('./user')`
-    when `user.js` defined `user` and re-exported `Post`. Unresolved, the edge is dropped. A
-    self-association only resolution reveals is dropped too. Run by the JavaScript front-end's
-    `finalize`, before its existence check.
+    is that one and several are ambiguous. A **named** import names an *export*, and is matched,
+    in order, against:
+
+    1. the module's export map (``cjs``, from the front-end), when it has one — and then only
+       it: `{ Booking }` exports the variable `Booking`, which holds the model `gig`, and
+       `exports.Post = sequelize.define(…)` exports that model as `Post`. A name the map does not
+       list, or lists as something other than a model binding (a re-export), resolves to nothing;
+    2. otherwise, the same two bindings read from the file (``models``, from :func:`scan`) — a
+       model assigned onto the exports object, or a variable or class of that name;
+    3. then a model of exactly that name, then of that name case aside — `const { Post }` is the
+       `post` model — when exactly one matches.
+
+    Nothing else: "the one model in the module" had picked `user` for `const { Post } =
+    require('./user')` when `user.js` defined `user` and re-exported `Post`. Matching the model
+    name alone lost `{ Booking }` for `define('gig')`; the binding is what the import names.
+    Unresolved, the edge is dropped. A self-association only resolution reveals is dropped too.
+    Run by the JavaScript front-end's `finalize`, before its existence check.
     """
     if not any(e.src.startswith(ENTITY_OF) or e.dst.startswith(ENTITY_OF) for e in batch.edges):
         return batch
+    maps = cjs or {}
+    bindings = models or {}
     by_module: dict[str, set[str]] = {}
     for edge in batch.edges:
         if edge.kind is EdgeKind.CONTAINS and edge.dst.startswith("ts:entity:") and "." not in edge.dst:
             by_module.setdefault(edge.src, set()).add(edge.dst)
+
+    def named(module: str, name: str, candidates: set[str]) -> str | None:
+        held = bindings.get(module, {})
+        direct = held.get(f"exports.{name}")
+        entry = maps.get(module)
+        if entry is not None:  # the module's exports are read in full: it decides
+            if name not in entry[1]:
+                return None  # not exported under that name
+            target = entry[1][name]
+            if target is None:  # a value, not a declaration: `exports.Post = sequelize.define(…)`
+                return entity_id(direct) if direct is not None else None
+            local = target[len(module) + 1 :] if target.startswith(f"{module}.") else ""
+            model = held.get(local) if local and "." not in local else None
+            return entity_id(model) if model is not None else None
+        model = direct or held.get(name)
+        if model is not None:
+            return entity_id(model)
+        exact = entity_id(name)
+        if exact in candidates:
+            return exact
+        folded = [c for c in candidates if c.lower() == exact.lower()]
+        return folded[0] if len(folded) == 1 else None
 
     def resolve(end: str) -> str | None:
         if not end.startswith(ENTITY_OF):
@@ -438,8 +504,8 @@ def settle(batch: FactBatch) -> FactBatch:
         candidates = by_module.get(module, set())
         if imported == _WHOLE:
             return next(iter(candidates)) if len(candidates) == 1 else None
-        matching = [c for c in candidates if c.lower() == entity_id(imported).lower()]
-        return matching[0] if len(matching) == 1 else None
+        found = named(module, imported, candidates)
+        return found if found in candidates else None
 
     out = FactBatch()
     for node in batch.nodes:

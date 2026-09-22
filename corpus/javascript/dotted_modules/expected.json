@@ -1,0 +1,136 @@
+{
+  "language": "javascript",
+  "case": "dotted_modules",
+  "requires": [
+    "javascript",
+    "typescript"
+  ],
+  "why": "`models/user.js` beside `models/user.model.ts` \u2014 the `x.model` / `x.service` naming convention. Module ids are dotted paths, so `ts:models/user.model.find` also *reads* as member `model` of `ts:models/user`. The third pass searched for the exported module by trimming at dots until it hit any readable CommonJS module, stopped at `ts:models/user`, found no export called `model`, and dropped every TypeScript edge into `user.model`: the call, the constructor, the method and the `extends`. The search must stop at the longest prefix that is a real module, and apply an export map only when that module has one.",
+  "root": ".repo",
+  "nodes": [
+    {
+      "id": "ts:models/user",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/user.model",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:app",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:cli",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/user.x",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/user.model.User",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:models/user.model.User.save",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/user.model.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:app.Admin",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:app.run",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:cli.main",
+      "kind": "Function"
+    }
+  ],
+  "edges": [
+    {
+      "src": "ts:app",
+      "dst": "ts:models/user.model",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:cli",
+      "dst": "ts:models/user",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/user",
+      "dst": "ts:models/user.x",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/user.model",
+      "dst": "ts:models/user.model.User",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/user.model.User",
+      "dst": "ts:models/user.model.User.save",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/user.model",
+      "dst": "ts:models/user.model.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:app",
+      "dst": "ts:app.Admin",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:app",
+      "dst": "ts:app.run",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:cli",
+      "dst": "ts:cli.main",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:app.Admin",
+      "dst": "ts:models/user.model.User",
+      "kind": "IMPLEMENTS"
+    },
+    {
+      "src": "ts:app.run",
+      "dst": "ts:models/user.model.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:app.run",
+      "dst": "ts:models/user.model.User",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:app.run",
+      "dst": "ts:models/user.model.User.save",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:cli.main",
+      "dst": "ts:models/user.x",
+      "kind": "CALLS"
+    }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "refusals": [],
+  "excluded": [
+    "The `User[]` return type of `find` is a type annotation, not a call or an inheritance, and this front-end draws no edge for it."
+  ],
+  "open_questions": [],
+  "resolved_by_measurement": []
+}

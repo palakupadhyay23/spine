@@ -33,23 +33,30 @@ All notable changes to this project are documented here. Format loosely follows
     — `customElements.define` and `ajv.define` take a string and an object too. `modelName` and
     `tableName` are read, and `link_data_layer` folds an entity onto the `.sql` table of the same
     name: the declared `tableName`, or the model name with a plain `s` (`user` → `users`; an
-    irregular plural such as `people` needs `tableName` to match).
+    irregular plural such as `people` needs `tableName` to match). A column type counts anywhere
+    in its chain — `INTEGER.UNSIGNED`, `STRING(120)` — so a join model keyed only by unsigned
+    integers is a model, while `Op.is` and `Sequelize.NOW` are not. An imported model is the
+    *binding* it was exported as: `module.exports = { Booking }` over `define('gig', …)` makes
+    `const { Booking }` the `gig` model, and a name the module's exports do not list is nothing.
   - **Calls bound to what a module actually exports**, wherever the module states its exports in
-    a form this pass reads in full — an object literal, a declared object or class named as
-    `module.exports`, `exports.f =` assignments. `module.exports = { run: helper }` beside a
+    a form this pass reads in full — an allowlist: an object literal, a declared object, class or
+    function named as `module.exports`, `Object.create(…)`, top-level `exports.f =` assignments. `module.exports = { run: helper }` beside a
     private `function run` makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` —
     reach `helper`. A file that undoes its own exports (assigns `module.exports` twice or inside
     a branch, rebinds bare `exports`, reassigns an alias, sets a member before replacing the
-    object) exports nothing it undid. A module whose exports this pass cannot read in full —
-    `Object.assign`, a spread, `defineProperty`, an ESM `export` beside CommonJS — is left to
-    name-based resolution rather than judged.
+    object) exports nothing it undid. A module whose exports are anything else — `Object.freeze`,
+    a factory call, `Object.assign` or `defineProperty` onto the exports or an alias of them,
+    `exports['f'] =`, a write from inside a function, a spread or computed key, an ESM `export`
+    beside CommonJS — is left to name-based resolution rather than judged. The module a target
+    names is the longest prefix that *is* a module, so `user.model.ts` beside `user.js` keeps its
+    edges, TypeScript's included.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
     `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
     rather than left dangling. Zero dangling edges on all four validation repositories.
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
-  Twelve corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.90 (27 of 30), and the three misses are the three gaps declared
+  Fourteen corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.93 (42 of 45), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
@@ -80,10 +87,12 @@ All notable changes to this project are documented here. Format loosely follows
   (or `const user = require('./user')`) drew `CALLS` to the module's export, which the parameter
   need not have. The rule that already refused a rebound *bare* name now covers the receiver, and
   every binding is tracked over the byte range JavaScript scopes it to — a callback's parameter
-  over the callback, `let`/`const` to the end of their block, `var` and a nested `function` over
-  the whole function. So a one-line `const x = f(); x.g()` is covered, and a call *after* a
-  callback that shadowed the name is no longer refused: the rule used to bind the name to the end
-  of the enclosing function, which dropped true calls in TypeScript as well.
+  over the callback, `catch (e)` over its clause, `let`/`const` to the end of their block, `var`
+  over the function it is hoisted to (a callback's own `var` over that callback, not the function
+  the callback sits in), and a nested `function` over its block. So a one-line
+  `const x = f(); x.g()` is covered, and a call *after* a callback that shadowed the name is no
+  longer refused: the rule used to bind the name to the end of the enclosing function, which
+  dropped true calls in TypeScript as well.
 - **`import … from '..'` or `'../index'` minted a module no file declares** (`ts:.`), and a call
   through it targeted `ts:f` where the root module's members are `ts:<root>.f`. Both now name the
   root module; a specifier that escapes the scanned tree yields no first-party id.

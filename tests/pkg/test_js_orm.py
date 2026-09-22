@@ -307,6 +307,47 @@ def test_parameterized_types_mark_a_model(tmp_path: Path) -> None:
     assert len(_fields(batch)) == 3
 
 
+# ── review pass 4 ──────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "column",
+    [
+        pytest.param("DataTypes.INTEGER.UNSIGNED", id="modifier"),
+        pytest.param("DataTypes.INTEGER(11).UNSIGNED", id="parameterized-modifier"),
+        pytest.param("{ type: DataTypes.STRING.BINARY, allowNull: false }", id="modifier-in-options"),
+        pytest.param("DataTypes.BIGINT.UNSIGNED.ZEROFILL", id="two-modifiers"),
+        pytest.param("DataTypes.NUMERIC", id="numeric"),
+        pytest.param("DataTypes.NUMERIC(10, 2)", id="numeric-parameterized"),
+    ],
+)
+def test_a_type_anywhere_in_the_chain_marks_a_model(tmp_path: Path, column: str) -> None:
+    """Each the *only* column, so each must mark the model on its own — the join-table case."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                f"sequelize.define('gig', {{ a: {column} }});\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:gig"}
+
+
+def test_a_modifier_alone_is_not_a_type(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                "sequelize.define('gig', { a: DataTypes.UNSIGNED });\n"
+            )
+        },
+    )
+    assert not _entities(batch)
+
+
 @pytest.mark.parametrize(
     "call",
     [
@@ -394,15 +435,22 @@ def test_a_whole_module_import_of_a_module_with_several_models_is_ambiguous(tmp_
 
 
 def test_a_named_import_matches_its_model_case_aside(tmp_path: Path) -> None:
-    """`const { Post }` names the `post` model: associations are written with the class's case."""
+    """`const { Post }` names the `post` model: associations are written with the class's case.
+
+    Only where the module's exports cannot be read — here an `Object.assign` onto them. A module
+    whose export map *is* read decides for itself (see the next two tests), and a default-only
+    `module.exports = (s) => {…}` exports no `Post` at all: this fixture was that, once, and
+    asserted an edge whose import is `undefined` at run time.
+    """
     d = "const {{ DataTypes }} = require('sequelize');\nmodule.exports = (s) => {{ {body} }};\n"
     batch = _repo(
         tmp_path,
         {
-            "models/pair.js": d.format(
-                body=(
-                    "s.define('post', { id: DataTypes.INTEGER }); s.define('tag', { id: DataTypes.INTEGER });"
-                )
+            "models/pair.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\nconst m = {};\n"
+                "m.post = s.define('post', { id: DataTypes.INTEGER });\n"
+                "m.tag = s.define('tag', { id: DataTypes.INTEGER });\n"
+                "Object.assign(module.exports, { Post: m.post, Tag: m.tag });\n"
             ),
             "models/comment.js": d.format(body="s.define('comment', { id: DataTypes.INTEGER });"),
             "setup.js": (
@@ -412,6 +460,101 @@ def test_a_named_import_matches_its_model_case_aside(tmp_path: Path) -> None:
         },
     )
     assert _refs(batch) == {("ts:entity:comment", "ts:entity:post")}
+
+
+def test_a_named_import_is_the_binding_it_exports_not_the_model_name(tmp_path: Path) -> None:
+    """`{ Booking }` exports a *variable*; the model it holds is `gig`, in no case `Booking`."""
+    d = "const {{ DataTypes }} = require('sequelize');\nmodule.exports = (s) => {{ {body} }};\n"
+    model = (
+        "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+        "const Booking = s.define('gig', { id: DataTypes.INTEGER });\n"
+    )
+    batch = _repo(
+        tmp_path,
+        {
+            "models/shorthand.js": model + "module.exports = { Booking };\n",
+            "models/renamed.js": model.replace("gig", "show").replace("Booking", "Show")
+            + "module.exports = { Event: Show };\n",
+            "models/direct.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "exports.Post = s.define('article', { id: DataTypes.INTEGER });\n"
+            ),
+            "models/comment.js": d.format(body="s.define('comment', { id: DataTypes.INTEGER });"),
+            "setup.js": (
+                "const { Booking } = require('./models/shorthand');\n"
+                "const { Event } = require('./models/renamed');\n"
+                "const Post = require('./models/direct').Post;\n"
+                "const Comment = require('./models/comment');\n"
+                "Comment.belongsTo(Booking);\nComment.belongsTo(Event);\nComment.belongsTo(Post);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {
+        ("ts:entity:comment", "ts:entity:gig"),
+        ("ts:entity:comment", "ts:entity:show"),
+        ("ts:entity:comment", "ts:entity:article"),
+    }
+
+
+def test_a_read_export_map_refuses_a_name_it_does_not_list(tmp_path: Path) -> None:
+    """The map is read in full, so a name it lacks is not exported — no case-aside guess at `post`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "models/user.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "const post = s.define('post', { id: DataTypes.INTEGER });\n"
+                "const { Post } = require('./post');\nmodule.exports = { post, Post };\n"
+            ),
+            "models/comment.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "const Comment = s.define('comment', { id: DataTypes.INTEGER });\n"
+                "const { Post } = require('./user');\nComment.belongsTo(Post);\n"
+            ),
+        },
+    )
+    # `user.js` exports `Post` as a re-export of `./post`, not as its own `post` model.
+    assert _refs(batch) == set()
+
+
+def test_a_read_export_map_refuses_a_model_it_does_not_export(tmp_path: Path) -> None:
+    """`post` is a model in the file but not an export of it; `{ post }` is `undefined` at run time."""
+    batch = _repo(
+        tmp_path,
+        {
+            "models/pair.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "const post = s.define('post', { id: DataTypes.INTEGER });\n"
+                "const Tag = s.define('tag', { id: DataTypes.INTEGER });\nmodule.exports = { Tag };\n"
+            ),
+            "models/comment.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "const Comment = s.define('comment', { id: DataTypes.INTEGER });\n"
+                "const { post, Tag } = require('./pair');\n"
+                "Comment.belongsTo(post);\nComment.belongsTo(Tag);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {("ts:entity:comment", "ts:entity:tag")}
+
+
+def test_an_exact_model_name_wins_over_a_case_aside_one(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "models/pair.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "s.define('post', { id: DataTypes.INTEGER });\ns.define('Post', { id: DataTypes.INTEGER });\n"
+                "Object.assign(module.exports, s.models);\n"
+            ),
+            "setup.js": (
+                "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+                "const Comment = s.define('comment', { id: DataTypes.INTEGER });\n"
+                "const { Post } = require('./models/pair');\nComment.belongsTo(Post);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {("ts:entity:comment", "ts:entity:Post")}
 
 
 def test_the_model_base_is_the_binding_so_an_alias_is_read(tmp_path: Path) -> None:

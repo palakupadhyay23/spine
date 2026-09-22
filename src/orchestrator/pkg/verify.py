@@ -285,9 +285,15 @@ _ENTITY_SYNTAX = {
     "python": re.compile(r"^\s*__tablename__\s*=\s*[\"']", re.MULTILINE),
     # TypeORM's @Entity / Sequelize's @Table — the class-level marker, not a column.
     "typescript": re.compile(r"@(?:Entity|Table)\s*\("),
-    # Sequelize's `sequelize.define('user', …)`, by the receiver the idiom uses. `X.init({…})` is
-    # not counted: `Sentry.init({…})` has the same shape, and a pattern cannot tell them apart.
-    "javascript": re.compile(r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']"),
+    # Sequelize's `sequelize.define('user', …)`, by the receiver the idiom uses; and a model class's
+    # `User.init({ name: DataTypes.STRING }, …)` — but only with a Sequelize type in the attribute
+    # map before its first `}`, because `Sentry.init({ dsn })` has the same shape otherwise. Dropping
+    # `init` altogether (pass 3) made a missed class-style model silent, which this check exists
+    # to prevent.
+    "javascript": re.compile(
+        r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']"
+        r"|\b[A-Z][\w$]*\s*\.\s*init\s*\(\s*\{[^}]*?\b(?:DataTypes|Sequelize)\s*\."
+    ),
 }
 
 

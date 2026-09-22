@@ -566,6 +566,23 @@ def test_a_typescript_router_bound_through_module_exports_is_read(tmp_path: Path
         pytest.param(
             "if (ids) { const user = make(); user.save(); } else { user.findAll(); }", id="sibling-block"
         ),
+        # Review pass 4: `catch (e)` had no test, and `var` was hoisted to the function being read
+        # rather than to the callback it sits in.
+        pytest.param("try { run(); } catch (user) { user.save(); }\n  return user.findAll();", id="catch"),
+        pytest.param(
+            "ids.forEach(function (id) { var user = id; user.save(); });\n  return user.findAll();",
+            id="var-in-callback",
+        ),
+        pytest.param(
+            "ids.forEach(function () { for (var user of ids) { user.save(); } });\n  return user.findAll();",
+            id="for-var-in-callback",
+        ),
+        pytest.param(
+            "const f = () => { var user = 1; user.save(); };\n  return user.findAll();", id="var-in-arrow"
+        ),
+        pytest.param(
+            "(function () { var user = 1; user.save(); })();\n  return user.findAll();", id="var-in-iife"
+        ),
     ],
 )
 def test_a_binding_ends_with_its_scope(tmp_path: Path, body: str) -> None:
@@ -597,18 +614,41 @@ def test_typescript_bindings_end_with_their_scope_too(tmp_path: Path) -> None:
     assert {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"} == {"ts:user.findAll"}
 
 
-def test_var_is_hoisted_over_the_whole_function(tmp_path: Path) -> None:
-    """`user.save()` *above* `var user = …` reads the local — hoisted, and undefined there."""
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param("user.save();\n  var user = make();", id="declared-below"),
+        pytest.param("if (ids) { var user = make(); }\n  user.save();", id="declared-in-a-block"),
+        pytest.param("for (var user of ids) {}\n  user.save();", id="loop-var"),
+    ],
+)
+def test_var_is_hoisted_over_the_whole_function(tmp_path: Path, body: str) -> None:
+    """A `var` in the function's own body — not in a callback — is its local everywhere in it:
+    above its declaration, and outside the block or loop that declares it. The pass-4 narrowing
+    to "the nearest function" must not narrow these."""
     batch = _repo(
         tmp_path,
         {
             "user.js": "exports.save = function () {};\n",
-            "api.js": (
-                "const user = require('./user');\nfunction go() {\n  user.save();\n  var user = make();\n}\n"
-            ),
+            "api.js": f"const user = require('./user');\nfunction go(ids) {{\n  {body}\n}}\n",
         },
     )
     assert not {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"}
+
+
+def test_typescript_var_in_a_callback_is_the_callbacks(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "user.ts": "export function findAll(): void {}\nexport function save(): void {}\n",
+            "api.ts": (
+                "import * as user from './user';\n"
+                "export function go(ids: number[]): void {\n"
+                "  ids.forEach(function (id) { var user = id; user.save(); });\n  user.findAll();\n}\n"
+            ),
+        },
+    )
+    assert {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"} == {"ts:user.findAll"}
 
 
 def test_a_nested_function_declaration_shadows_an_import_over_its_block(tmp_path: Path) -> None:
@@ -705,14 +745,25 @@ def test_a_module_exports_inside_a_branch_exports_nothing_for_certain(tmp_path: 
     assert ("ts:c.go", "ts:m.g") not in _edges(batch, EdgeKind.CALLS)
 
 
-def test_a_renamed_class_export_is_rewritten_at_every_depth(tmp_path: Path) -> None:
-    """`{ Handler: Impl }`: the constructor edge and the method edge must agree on `Impl`."""
+@pytest.mark.parametrize(
+    "decoy",
+    [
+        pytest.param("", id="no-class-named-Handler"),
+        pytest.param("class Handler { run() {} }\n", id="a-decoy-Handler"),
+    ],
+)
+def test_a_renamed_class_export_is_rewritten_at_every_depth(tmp_path: Path, decoy: str) -> None:
+    """`{ Handler: Impl }`: the constructor edge and the method edge must agree on `Impl`.
+
+    Pass 3's test declared a decoy `class Handler` in the same file, and passed only because of
+    it: the parent's existence check ran before the rename, so without the decoy `ts:m.Handler.run`
+    did not exist and both edges were gone before the export map was asked. The normal shape has
+    no such class.
+    """
     batch = _repo(
         tmp_path,
         {
-            "m.js": (
-                "class Handler { run() {} }\nclass Impl { run() {} }\nmodule.exports = { Handler: Impl };\n"
-            ),
+            "m.js": decoy + "class Impl { run() {} }\nmodule.exports = { Handler: Impl };\n",
             "c.js": "const { Handler } = require('./m');\nfunction go() { return new Handler().run(); }\n",
         },
     )
@@ -756,3 +807,104 @@ def test_any_javascript_sibling_of_a_typescript_module_is_skipped(tmp_path: Path
         {"foo.ts": "export function bar(): void {}\n", f"foo{suffix}": "exports.bar = function () {};\n"},
     )
     assert next(n for n in batch.nodes if n.id == "ts:foo").language == "typescript"
+
+
+# ── review pass 4: the module is a real module, and "readable" is an allowlist ──────────────
+
+
+def test_a_dotted_module_beside_a_commonjs_one_keeps_its_edges(tmp_path: Path) -> None:
+    """`models/user.js` beside `models/user.model.ts`: `ts:models/user.model.find` also *reads* as
+    member `model` of `ts:models/user`. Pass 3 searched only CommonJS modules for the prefix, stopped
+    at `user.js`, found no `model` export, and dropped every TypeScript edge into `user.model`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "models/user.js": "function x() {}\nmodule.exports = { x };\n",
+            "models/user.model.ts": (
+                "export class User { save(): void {} }\nexport function find(): void {}\n"
+            ),
+            "app.ts": (
+                "import { User, find } from './models/user.model';\n"
+                "export class Admin extends User {}\n"
+                "export function run(): void { find(); new User().save(); }\n"
+            ),
+        },
+    )
+    calls = _edges(batch, EdgeKind.CALLS)
+    assert {
+        ("ts:app.run", "ts:models/user.model.find"),
+        ("ts:app.run", "ts:models/user.model.User"),
+        ("ts:app.run", "ts:models/user.model.User.save"),
+    } <= calls
+    assert ("ts:app.Admin", "ts:models/user.model.User") in _edges(batch, EdgeKind.IMPLEMENTS)
+
+
+def test_the_map_still_applies_past_a_dotted_prefix(tmp_path: Path) -> None:
+    """The longest *module* prefix is `ts:models/user`, readable, and not exporting `y`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "models/user.js": "function x() {}\nfunction y() {}\nmodule.exports = { x };\n",
+            "c.js": "const user = require('./models/user');\nfunction go() { user.x(); user.y(); }\n",
+        },
+    )
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:c.go"}
+    assert reached == {"ts:models/user.x"}
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("module.exports = Object.freeze({ f, g });\n", id="freeze"),
+        pytest.param("function make() { return { f, g }; }\nmodule.exports = make();\n", id="factory"),
+        pytest.param("let api;\napi = { f, g };\nmodule.exports = api;\n", id="late-alias"),
+        pytest.param("exports.g = g;\nexports['f'] = f;\n", id="subscript"),
+        pytest.param(
+            "const api = { g };\nObject.assign(api, { f });\nmodule.exports = api;\n", id="assign-alias"
+        ),
+        pytest.param(
+            "const api = module.exports = {};\nObject.assign(api, { f, g });\n", id="assign-chained-alias"
+        ),
+        pytest.param("exports.g = g;\nfunction init() { exports.f = f; }\n", id="written-in-a-function"),
+        pytest.param("module.exports = { g, [key]: f };\n", id="computed-key"),
+        pytest.param("module.exports = class { static f() {} };\n", id="class-expression"),
+    ],
+)
+def test_a_surface_off_the_allowlist_is_not_enforced(tmp_path: Path, module: str) -> None:
+    """Each shape the third pass still called readable, and so dropped `m.f()`. Off the allowlist,
+    a call is resolved by name and kept because `ts:m.f` exists."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function f() {}\nfunction g() {}\n" + module,
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); }\n",
+        },
+    )
+    assert ("ts:c.go", "ts:m.f") in _edges(batch, EdgeKind.CALLS)
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("module.exports = { g };\n", id="object"),
+        pytest.param("const api = { g };\nmodule.exports = api;\n", id="declared-object"),
+        pytest.param("exports.g = g;\n", id="member-writes"),
+        pytest.param("var app = exports = module.exports = {};\napp.g = g;\n", id="chained-alias"),
+        pytest.param(
+            "var res = Object.create(Base.prototype);\nmodule.exports = res;\nres.g = g;\n",
+            id="object-create",
+        ),
+    ],
+)
+def test_a_surface_on_the_allowlist_is_enforced(tmp_path: Path, module: str) -> None:
+    """The other half: a surface read in full lists `g` and not `f`, so `m.f()` reaches nothing —
+    `f` is a module-private function. Without this, "readable" could quietly become "never"."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function f() {}\nfunction g() {}\n" + module,
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); m.g(); }\n",
+        },
+    )
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:c.go"}
+    assert reached == {"ts:m.g"}

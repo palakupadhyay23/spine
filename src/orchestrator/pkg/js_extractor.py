@@ -56,6 +56,7 @@ from orchestrator.pkg.typescript_extractor import (
     TypeScriptExtractor,
     _field_text,
     _import_target,
+    _PendingCall,
     _relative_module,
     _text,
 )
@@ -98,6 +99,10 @@ class JavaScriptExtractor(TypeScriptExtractor):
         #: Every readable CommonJS module read so far: ``module id -> (file, export map)``.
         #: Drained by `finalize`, which routes cross-file edges through it.
         self._cjs: dict[str, tuple[str, dict[str, str | None]]] = {}
+        #: Every module's Sequelize model bindings: ``module id -> {name: model}``, where a name
+        #: is a variable (`const Booking = sequelize.define('gig', …)`) or an `exports.X` it was
+        #: assigned to. Drained by `finalize`, which settles imported association ends with it.
+        self._models: dict[str, dict[str, str]] = {}
 
     def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
         if any(path.with_suffix(s).is_file() for s in (".ts", ".tsx")):
@@ -126,11 +131,25 @@ class JavaScriptExtractor(TypeScriptExtractor):
            JavaScript file whose source or target no one declares is dropped rather than left
            dangling — the parent's skip-rather-than-guess rule, extended to what this front-end
            adds.
+
+        Routing runs **before** the parent's own existence check on deferred member calls, not
+        after it: `new Handler().run()` names `ts:m.Handler.run`, and under
+        `module.exports = { Handler: Impl }` no such node exists — checked first, both the method
+        and the constructor edge were gone before the export map could say `Handler` is `Impl`.
         """
         from orchestrator.pkg.js_orm import settle
 
         cjs, self._cjs = self._cjs, {}
-        return _drop_unlanded(settle(_through_exports(super().finalize(batch), cjs)))
+        models, self._models = self._models, {}
+        route = _export_router(batch, cjs)
+        routed = _through_exports(batch, route)
+        pending: list[_PendingCall] = []
+        for call in self._pending_calls:
+            type_id = route(call.type_id, call.rel)
+            if type_id is not None:
+                pending.append(call if type_id == call.type_id else replace(call, type_id=type_id))
+        self._pending_calls = pending
+        return _drop_unlanded(settle(super().finalize(routed), cjs, models))
 
     def _imports(
         self, decls: list[TSNode | None], module_id: str, source: bytes, rel: str, batch: FactBatch
@@ -173,7 +192,9 @@ class JavaScriptExtractor(TypeScriptExtractor):
         """The data layer (see :mod:`js_orm`), then this file's export map for `finalize`."""
         from orchestrator.pkg.js_orm import scan
 
-        scan(root, module_id, source, rel, batch, imports, self._import_names)
+        bindings = scan(root, module_id, source, rel, batch, imports, self._import_names)
+        if bindings:
+            self._models[module_id] = bindings
         surface = self._surface
         if not surface.cjs:
             return
@@ -378,22 +399,69 @@ def _walk(node: TSNode) -> list[TSNode]:
     return out
 
 
-def _unreadable_merge(expr: TSNode, source: bytes) -> bool:
-    """`Object.assign(exports, …)` / `Object.defineProperty(module.exports, 'f', …)` at top level.
+def _merge_target(expr: TSNode, source: bytes) -> str | None:
+    """What `Object.assign(x, …)` / `Object.defineProperty(x, 'f', …)` writes members onto.
 
     Babel marks every file it emits with `Object.defineProperty(exports, "__esModule", …)`, which
     adds no member anyone calls, so that one is not a merge.
     """
     if expr.type != "call_expression":
-        return False
+        return None
     fn = _text(expr.child_by_field_name("function"), source)
     if fn not in ("Object.assign", "Object.defineProperty", "Object.defineProperties"):
-        return False
+        return None
     args = expr.child_by_field_name("arguments")
     named = [a for a in args.named_children if a.type != "comment"] if args is not None else []
-    if not named or _text(named[0], source) not in ("exports", "module.exports"):
-        return False
-    return not (fn == "Object.defineProperty" and len(named) > 1 and "__esModule" in _text(named[1], source))
+    if not named:
+        return None
+    if fn == "Object.defineProperty" and len(named) > 1 and "__esModule" in _text(named[1], source):
+        return None
+    return _text(named[0], source)
+
+
+#: What lies between a top-level statement and an assignment *it* makes — `a = b = c`, or
+#: `var x = a = b`. Anything else between them (a function, a branch, a loop) makes it nested.
+_STATEMENT_CHAIN = frozenset(
+    {
+        "expression_statement",
+        "assignment_expression",
+        "variable_declarator",
+        "lexical_declaration",
+        "variable_declaration",
+    }
+)
+
+
+def _nested(node: TSNode, top: TSNode) -> bool:
+    """Whether ``node`` sits inside something other than the top-level statement's own chain."""
+    current = node.parent
+    while current is not None and (current.start_byte, current.end_byte) != (top.start_byte, top.end_byte):
+        if current.type not in _STATEMENT_CHAIN:
+            return True
+        current = current.parent
+    return False
+
+
+def _plain_object(obj: TSNode) -> bool:
+    """An object literal whose every member this pass names: no spread, no computed key."""
+    for child in obj.named_children:
+        if child.type in ("shorthand_property_identifier", "comment"):
+            continue
+        if child.type not in ("pair", "method_definition"):
+            return False  # a spread, or anything this pass does not read
+        key = child.child_by_field_name("key" if child.type == "pair" else "name")
+        if key is None or key.type == "computed_property_name":
+            return False
+    return True
+
+
+def _object_create(node: TSNode | None, source: bytes) -> bool:
+    """`Object.create(proto)` — a fresh object, whose own members are the ones the file assigns."""
+    return (
+        node is not None
+        and node.type == "call_expression"
+        and _text(node.child_by_field_name("function"), source) == "Object.create"
+    )
 
 
 def _export_surface(
@@ -424,16 +492,21 @@ def _export_surface(
     - **An alias reassigned** — `app = {}` after `var app = module.exports = {}`.
 
     **Readable** means the file states its exports in forms this pass reads in full, so the export
-    map may be *enforced* on callers — a name it does not list is not exported. Not readable, and
-    the map is not enforced: `module.exports = Object.assign({}, a, { f })`, an object with a
-    spread, a re-export of a `require`, `Object.defineProperty(exports, 'f', …)`. Enforcing a map
-    over any of those dropped true edges; a reader that cannot tell must not decide.
+    map may be *enforced* on callers — a name it does not list is not exported. It is an
+    allowlist, because a blocklist let every shape nobody had thought of through as readable:
+    `module.exports` set to a plain object literal, a declared function or class, a function
+    value, `Object.create(…)`, or a name declared as one of those; every member written as a
+    top-level `<exports object>.f = …`. Anything else — `Object.freeze({…})`, `make()`, an alias
+    assigned after its declaration, `exports['f'] = …`, a member written inside a function, an
+    `Object.assign` or `defineProperty` onto the exports object or an alias of it — and the map
+    is not enforced: calls into the module are resolved by name and kept if their target exists.
+    Enforcing a map this pass only half read dropped true edges; a reader that cannot tell must
+    not decide.
     """
     chains: list[tuple[list[str], TSNode | None, str | None, int]] = []
     bare_rebind = False
     reassigned: set[str] = set()
     member_exports = False
-    readable = True
     declared: dict[str, TSNode] = {}  # top-level `const x = <value>`
     callables: set[str] = set()  # top-level `class X` / `function X`
     for node in decls:
@@ -457,8 +530,6 @@ def _export_surface(
                     bare_rebind = True
         elif node.type == "expression_statement" and node.named_children:
             expr = node.named_children[0]
-            if _unreadable_merge(expr, source):
-                readable = False
             if expr.type != "assignment_expression":
                 continue
             targets, final = _chain(expr, source)
@@ -471,50 +542,60 @@ def _export_surface(
                 member_exports = member_exports or any(
                     t.startswith(("exports.", "module.exports.")) for t in targets
                 )
-    # A `module.exports = …` below the top level — UMD's `if (typeof module …)` — makes the
-    # exported object a matter of which branch ran.
-    assigned = sum(
-        1
-        for node in decls
-        if node is not None
-        for sub in _walk(node)
-        if sub.type == "assignment_expression"
-        and _text(sub.child_by_field_name("left"), source) == "module.exports"
-    )
+    # One walk over the whole file for what the top level alone does not show. A `module.exports
+    # = …` below the top level — UMD's `if (typeof module …)` — makes the exported object a matter
+    # of which branch ran. The rest are objects written in a way the export map cannot list.
+    assigned = 0
+    unlisted: set[str] = set()  # objects written by merge, by subscript, or from inside a function
+    for node in decls:
+        if node is None:
+            continue
+        for sub in _walk(node):
+            merged = _merge_target(sub, source)
+            if merged is not None:
+                unlisted.add(merged)
+            if sub.type != "assignment_expression":
+                continue
+            left = sub.child_by_field_name("left")
+            if left is None:
+                continue
+            if _text(left, source) == "module.exports":
+                assigned += 1
+            elif left.type == "subscript_expression" or (
+                left.type == "member_expression" and _nested(sub, node)
+            ):
+                unlisted.add(_text(left.child_by_field_name("object"), source))
     if len(chains) > 1 or assigned > len(chains):
         return _Surface(exports_ok=False, members_ok=False, cjs=True)
     if not chains:
+        readable = not unlisted & {"exports", "module.exports"}
         return _Surface(exports_ok=not bare_rebind, cjs=member_exports, readable=readable)
     targets, final, alias, offset = chains[0]
     aliases = {alias} if alias else set()
     alias_object_span: tuple[int, int] | None = None
     default: str | None = None
-    if final is not None and final.type == "identifier":
+    readable = False
+    if final is None:
+        pass
+    elif final.type == "identifier":
         named = _text(final, source)
         aliases.add(named)
+        value = declared.get(named)
         if named in imported:
-            readable = False  # `module.exports = require('./x')` in two steps: a re-export
+            pass  # `module.exports = require('./x')` in two steps: a re-export
         elif named in callables:
-            default = named
-        elif named in declared:
-            value = declared[named]
-            if value.type == "object":
-                if any(c.type == "spread_element" for c in value.named_children):
-                    readable = False
-                else:
-                    alias_object_span = (value.start_byte, value.end_byte)
-            elif (
-                value.type == "call_expression"
-                and _text(value.child_by_field_name("function"), source) == "Object.assign"
-            ):
-                readable = False
-    elif final is not None and final.type == "object":
-        if any(c.type == "spread_element" for c in final.named_children):
-            readable = False
-    elif final is not None and final.type == "call_expression":
-        callee = _text(final.child_by_field_name("function"), source)
-        if callee in ("Object.assign", "require"):
-            readable = False  # a merge, or a whole re-export
+            default, readable = named, True
+        elif value is not None and value.type == "object":
+            if _plain_object(value):
+                alias_object_span, readable = (value.start_byte, value.end_byte), True
+        elif value is not None:
+            readable = value.type in _FUNCTION_VALUES or _object_create(value, source)
+    elif final.type == "object":
+        readable = _plain_object(final)
+    else:
+        readable = final.type in _FUNCTION_VALUES or _object_create(final, source)
+    if unlisted & ({"exports", "module.exports"} | aliases):
+        readable = False
     return _Surface(
         aliases=frozenset(aliases - reassigned),
         exports_ok="exports" in targets and not bare_rebind,
@@ -543,37 +624,55 @@ def _value_target(value: TSNode, module_id: str, source: bytes) -> str | None:
     return None
 
 
-def _through_exports(batch: FactBatch, cjs: dict[str, tuple[str, dict[str, str | None]]]) -> FactBatch:
-    """Route cross-file edges into readable CommonJS modules through each module's export map.
+def _export_router(
+    batch: FactBatch, cjs: dict[str, tuple[str, dict[str, str | None]]]
+) -> Callable[[str, str | None], str | None]:
+    """``route(target id, file it is named from)`` → the id it really is, or None for no such export.
 
     At any depth: `ts:m.Handler.run` is the `run` of whatever `m` exports as `Handler`, so the
     exported name is rewritten wherever it heads the id — `module.exports = { Handler: Impl }`
     makes it `ts:m.Impl.run`. Rewriting only the direct member left a method call on the
     renamed class landing on the unexported one while its constructor edge was corrected.
+
+    **The module is the longest prefix that is a module** — any module, not only a CommonJS one.
+    Ids are dotted paths, so `ts:models/user.model.find` also reads as member `model` of
+    `ts:models/user`; searching only the CommonJS modules walked straight past `user.model`
+    (TypeScript) to `user.js`, found no export called `model`, and dropped every edge into it.
+    Only then is the map consulted, and only if that module has one. A target named from the
+    module's own file is left alone: a file reaches its own members whether exported or not.
     """
-    if not cjs:
-        return batch
+    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE and not n.external}
+
+    def route(target: str, file: str | None) -> str | None:
+        if not cjs:
+            return target
+        module = target
+        while module not in modules and "." in module:
+            module = module.rpartition(".")[0]
+        entry = cjs.get(module)
+        if entry is None or module == target or file == entry[0]:
+            return target
+        head, _, tail = target[len(module) + 1 :].partition(".")
+        exported = entry[1].get(head)
+        if exported is None:
+            return None  # not exported under that name: the call reaches nothing we can see
+        return f"{exported}.{tail}" if tail else exported
+
+    return route
+
+
+def _through_exports(batch: FactBatch, route: Callable[[str, str | None], str | None]) -> FactBatch:
+    """Route cross-file edges into readable CommonJS modules through each module's export map."""
     out = FactBatch()
     for node in batch.nodes:
         out.add_node(node)
     for edge in batch.edges:
         if edge.kind in _THROUGH_EXPORTS:
-            module = edge.dst
-            while "." in module and module not in cjs:
-                module = module.rpartition(".")[0]
-            entry = cjs.get(module)
-            if (
-                entry is not None
-                and module != edge.dst
-                and (edge.provenance is None or edge.provenance.file != entry[0])
-            ):
-                head, _, tail = edge.dst[len(module) + 1 :].partition(".")
-                target = entry[1].get(head)
-                if target is None:
-                    continue  # not exported under that name: the call reaches nothing we can see
-                rewritten = f"{target}.{tail}" if tail else target
-                if rewritten != edge.dst:
-                    edge = Edge(edge.src, rewritten, edge.kind, edge.provenance)
+            target = route(edge.dst, edge.provenance.file if edge.provenance is not None else None)
+            if target is None:
+                continue
+            if target != edge.dst:
+                edge = Edge(edge.src, target, edge.kind, edge.provenance)
         out.add_edge(edge)
     return out
 
