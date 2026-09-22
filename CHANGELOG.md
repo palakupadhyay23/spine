@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- **The documented local-gate sync command omitted `--extra clang`, so following the docs
+  made the accuracy gate fail.** CONTRIBUTING.md and SETUP.md both presented an eleven-extra
+  `uv sync` as "the extras set CI syncs"; CI's own `Install project` step installs a twelfth.
+  Because `uv sync` replaces the environment rather than adding to it, running the documented
+  command *uninstalls* `libclang` — and `pkg accuracy --check` then reports
+  `cpp/edges/CALLS matched edges — was 5, now 3` with two unexplained misses, which reads
+  exactly like a C++ regression on `develop` rather than a missing optional dependency. Both
+  documents now carry the twelfth extra and say what its absence costs. Same failure class as
+  the `mypy` phantom `unused-ignore` errors already documented beside it: an absent optional
+  dependency does not error, it silently scores lower.
+
 ## 3.42.0 — 2026-09-21
 
 ### Fixed
