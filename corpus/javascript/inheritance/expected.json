@@ -1,0 +1,122 @@
+{
+  "language": "javascript",
+  "case": "inheritance",
+  "why": "IMPLEMENTS, which the capability matrix claims for JavaScript and no other case scores: a class extending a base bound by `require` in another file, one extending an ESM import, one extending a sibling in the same file \u2014 and one extending a name `require` binds but the module never declares.",
+  "root": ".repo",
+  "nodes": [
+    {
+      "id": "ts:base",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:shape",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:impl",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:square",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:base.Base",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:shape.Shape",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:impl.Impl",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:impl.Local",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:impl.Haunted",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:square.Square",
+      "kind": "Type"
+    }
+  ],
+  "edges": [
+    {
+      "src": "ts:impl",
+      "dst": "ts:base",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:square",
+      "dst": "ts:shape",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:base",
+      "dst": "ts:base.Base",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:shape",
+      "dst": "ts:shape.Shape",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl",
+      "dst": "ts:impl.Impl",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl",
+      "dst": "ts:impl.Local",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl",
+      "dst": "ts:impl.Haunted",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:square",
+      "dst": "ts:square.Square",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl.Impl",
+      "dst": "ts:base.Base",
+      "kind": "IMPLEMENTS"
+    },
+    {
+      "src": "ts:impl.Local",
+      "dst": "ts:impl.Impl",
+      "kind": "IMPLEMENTS"
+    },
+    {
+      "src": "ts:square.Square",
+      "dst": "ts:shape.Shape",
+      "kind": "IMPLEMENTS"
+    }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "refusals": [
+    {
+      "edge": {
+        "src": "ts:impl.Haunted",
+        "dst": "ts:base.Ghost",
+        "kind": "IMPLEMENTS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `Ghost` is destructured from `./base`, which declares no `Ghost` \u2014 the base is `undefined` at run time. Resolution mints `ts:base.Ghost` by name; `finalize` finds no node and drops the edge, the same check that guards CALLS."
+    }
+  ],
+  "excluded": [
+    "`module.exports = { Base }` adds no node: a shorthand member names the class already declared."
+  ],
+  "open_questions": [],
+  "resolved_by_measurement": []
+}

@@ -1,0 +1,142 @@
+{
+  "language": "javascript",
+  "case": "commonjs_exports",
+  "why": "The CommonJS export forms: `exports.f =`, `module.exports.f =`, a `module.exports = {\u2026}` object with a method, a function and an arrow, and the aliased object express spells 43 of its 49 exports with (`var app = exports = module.exports = {}`). Plus two calls a naive reader would resolve and this one must not.",
+  "root": ".repo",
+  "nodes": [
+    {
+      "id": "ts:src/math",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:src/shapes",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:src/app",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:src/math.square",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/math.cube",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/math.half",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/shapes.area",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/shapes.perimeter",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/shapes.diagonal",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/app.run",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/app.whole",
+      "kind": "Function"
+    }
+  ],
+  "edges": [
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/math",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/shapes",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:src/math",
+      "dst": "ts:src/math.square",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/math",
+      "dst": "ts:src/math.cube",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/math",
+      "dst": "ts:src/math.half",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/shapes",
+      "dst": "ts:src/shapes.area",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/shapes",
+      "dst": "ts:src/shapes.perimeter",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/shapes",
+      "dst": "ts:src/shapes.diagonal",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/app.run",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/app.whole",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/math.cube",
+      "dst": "ts:src/math.square",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:src/app.run",
+      "dst": "ts:src/math.cube",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:src/app.run",
+      "dst": "ts:src/shapes.area",
+      "kind": "CALLS"
+    }
+  ],
+  "known_gaps": [],
+  "false_positives": [],
+  "refusals": [
+    {
+      "edge": {
+        "src": "ts:src/app.run",
+        "dst": "ts:src/math.missing",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `math.missing()` names an export `math.js` does not have. Resolution mints the id by name; `finalize` finds no node and drops the edge rather than leave it dangling."
+    },
+    {
+      "edge": {
+        "src": "ts:src/app.whole",
+        "dst": "ts:src/shapes.shapes",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `shapes()` calls the whole module \u2014 whatever `shapes.js` assigned to `module.exports`, here an object. Naming the target by the local would mint `ts:src/shapes.shapes`."
+    }
+  ],
+  "excluded": [],
+  "open_questions": [],
+  "resolved_by_measurement": []
+}

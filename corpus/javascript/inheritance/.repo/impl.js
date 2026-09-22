@@ -1,0 +1,8 @@
+const { Base } = require('./base');
+const { Ghost } = require('./base');
+
+class Impl extends Base {}
+
+class Local extends Impl {}
+
+class Haunted extends Ghost {}
