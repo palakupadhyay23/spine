@@ -259,11 +259,41 @@ _ROUTE_SYNTAX = {
         r"@(?:Get|Post|Put|Patch|Delete|Head|Options|All)\s*\("
         r"|\.\s*(?:get|post|put|patch|delete|all|head|options)\s*\(\s*[\"'`]/"
     ),
+    # Express router calls, keyed separately because the JavaScript front-end tags its modules
+    # `javascript` (javascript-support-roadmap D4) — without a key, parity skipped every `.js`
+    # file and reported "0 declared, 0 in graph" on a repository full of routes.
+    #
+    # Narrower than the TypeScript pattern on purpose: only a registration whose handler is a
+    # *name* — `app.get('/', site.index)`, `app.post('/x', auth, save)` — can produce the EXPOSES
+    # edge parity counts as present, so only those are counted as declared. The broad pattern
+    # counted every inline `function (req, res) {…}` too, and raised 107 warnings on express, 81
+    # of them in its tests, none of them a route the graph had missed. `all` is left out because
+    # the route reader deliberately emits no endpoint for it.
+    "javascript": re.compile(
+        # `app.get('/x', [middleware, …] handler[,])` — middleware may be names or calls
+        # (`limit()`), a trailing comma is legal, and the arguments may span lines.
+        r"\.\s*(?:get|post|put|patch|delete|head|options)\s*\(\s*[\"'`]/[^\"'`]*[\"'`]"
+        r"(?:\s*,\s*[A-Za-z_$][\w$.]*(?:\([^()]*\))?)*"
+        r"\s*,\s*[A-Za-z_$][\w$.]*\s*,?\s*\)"
+        # `app.route('/x').get(h)` — counted so that parity reports it: the route reader does not
+        # read this chain, and an uncounted gap is the silence this check exists to break.
+        r"|\.\s*route\s*\(\s*[\"'`]/[^\"'`]*[\"'`]\s*\)\s*\.\s*(?:get|post|put|patch|delete|head|options)"
+        r"\s*\(\s*[A-Za-z_$]"
+    ),
 }
 _ENTITY_SYNTAX = {
     "python": re.compile(r"^\s*__tablename__\s*=\s*[\"']", re.MULTILINE),
     # TypeORM's @Entity / Sequelize's @Table — the class-level marker, not a column.
     "typescript": re.compile(r"@(?:Entity|Table)\s*\("),
+    # Sequelize's `sequelize.define('user', …)`, by the receiver the idiom uses; and a model class's
+    # `User.init({ name: DataTypes.STRING }, …)` — but only with a Sequelize type in the attribute
+    # map before its first `}`, because `Sentry.init({ dsn })` has the same shape otherwise. Dropping
+    # `init` altogether (pass 3) made a missed class-style model silent, which this check exists
+    # to prevent.
+    "javascript": re.compile(
+        r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']"
+        r"|\b[A-Z][\w$]*\s*\.\s*init\s*\(\s*\{[^}]*?\b(?:DataTypes|Sequelize)\s*\."
+    ),
 }
 
 
@@ -466,7 +496,9 @@ def _check_source_parity(batch: FactBatch, root: Path) -> list[VerifyIssue]:
     not learned yet, and failing a build for that turns the check into something
     people switch off. Silence is the failure mode this exists to prevent, not noise.
     """
-    what = {NodeKind.ENDPOINT: "route declaration", NodeKind.ENTITY: "__tablename__ declaration"}
+    # "table", not `__tablename__`: the entity patterns are per language, and the message named
+    # Python's construct for a JavaScript or TypeScript file.
+    what = {NodeKind.ENDPOINT: "route declaration", NodeKind.ENTITY: "table declaration"}
     issues: list[VerifyIssue] = []
     for count in source_parity_counts(batch, root):
         # Only under-extraction warns. `in_graph > declared` is legitimate and common: a

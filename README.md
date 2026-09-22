@@ -13,8 +13,8 @@ inspect the graph and a build plan before spending model tokens, build locally,
 then choose when to push a pull request for human review.
 
 The product is **Spine**, its package is **`synaptixs-spine`**, and its command is
-**`orchestrator`**. Comprehension supports twelve front-ends: Python, Java, TypeScript,
-C#, C, C++, Go, PHP, Perl, Kotlin and SQL — plus a Gradle reader that turns `.kts`
+**`orchestrator`**. Comprehension supports thirteen front-ends: Python, Java, TypeScript,
+JavaScript, C#, C, C++, Go, PHP, Perl, Kotlin and SQL — plus a Gradle reader that turns `.kts`
 build scripts into the module graph an Android app is assembled from — with the
 matching parser extras installed.
 
@@ -269,7 +269,7 @@ see the [Setup guide](https://github.com/synaptixs/spine/blob/main/SETUP.md).
 
 **Which languages and models?**
 Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and
-Kotlin** — each
+Kotlin**, and comprehension alone covers **JavaScript** — each
 front-end going beyond structure into what that stack actually does (Java and C# REST
 endpoints, EF Core entities, C's `#include` graph, C++ templates and namespaces, Go
 interface satisfaction by method-set matching). **PHP** adds a call graph too (namespaces,

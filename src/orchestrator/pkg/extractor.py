@@ -567,10 +567,10 @@ class PythonExtractor:
 def default_extractors(*, sql_dialect: str | None = None) -> list[LanguageExtractor]:
     """The language front-ends used when none are passed explicitly.
 
-    Always Python (stdlib ``ast``). Java, TypeScript, C#, C, C++, Go, PHP, Perl, and
-    Kotlin are added **only when their tree-sitter grammar is importable** (the ``java`` /
+    Always Python (stdlib ``ast``). Java, TypeScript, JavaScript, C#, C, C++, Go, PHP, Perl,
+    and Kotlin are added **only when their tree-sitter grammar is importable** (the ``java`` /
     ``typescript`` / ``csharp`` / ``c`` / ``cpp`` / ``go`` / ``php`` / ``perl`` /
-    ``kotlin`` extras) so the base install stays stdlib-only —
+    ``kotlin`` extras — JavaScript rides ``typescript``) so the base install stays stdlib-only —
     this is what makes
     ``understand`` / grounding / ``pkg extract`` multi-language without forcing
     the parser dependency on everyone. ``sql_dialect`` pins the SQL front-end to a
@@ -585,9 +585,13 @@ def default_extractors(*, sql_dialect: str | None = None) -> list[LanguageExtrac
 
         extractors.append(JavaExtractor())
     if has_tree_sitter and importlib.util.find_spec("tree_sitter_typescript"):
+        from orchestrator.pkg.js_extractor import JavaScriptExtractor
         from orchestrator.pkg.typescript_extractor import TypeScriptExtractor
 
         extractors.append(TypeScriptExtractor())
+        # JavaScript rides the same grammar and the same extra, as Gradle rides Kotlin's:
+        # `.js`/`.jsx`/`.mjs`/`.cjs`, read with CommonJS on top (javascript-support-roadmap D5).
+        extractors.append(JavaScriptExtractor())
     if has_tree_sitter and importlib.util.find_spec("tree_sitter_c_sharp"):
         from orchestrator.pkg.csharp_extractor import CSharpExtractor
 

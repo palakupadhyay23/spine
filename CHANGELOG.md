@@ -6,6 +6,65 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+### Added
+
+- **JavaScript — the 13th front-end, and the 12th language.** `.js`, `.jsx`, `.mjs` and `.cjs`
+  used to reach the walker with no front-end and produce nothing, with no complaint: this
+  repository's own operator UI is 22 files and 1,460 lines of JavaScript, and none of it was in
+  its graph. `express` and `react-boilerplate` extracted to zero nodes while the profiler counted
+  141 and 222 JavaScript files in them. `JavaScriptExtractor` rides the `typescript` extra — no
+  new install — and subclasses the TypeScript front-end, whose TypeScript-only rules are clean
+  no-ops on JavaScript. Ids share TypeScript's `ts:` namespace, so a `.ts` file importing a
+  `.js` one resolves across the pair; nodes are tagged `javascript`. What it adds:
+
+  - **CommonJS.** `require()` in every shape the front-end can bind precisely — whole module,
+    destructured, `.member` — and the exports a CommonJS module is actually made of:
+    `exports.f =`, `module.exports = {…}`, and the aliased object (`var app = exports =
+    module.exports = {}`) that spells 43 of express's 49 exported functions.
+  - **JSX in `.js`**, parsed with the TSX grammar. The plain TypeScript grammar does not reject
+    JSX, it mis-parses it — 90 of react-boilerplate's 222 files in error, against 0.
+  - **Express routes the CommonJS way**: a router bound through `var app = module.exports =
+    express()` (18 of express's 28 example apps, which had no endpoints at all) and a handler
+    named as another file's export, `app.get('/', site.index)`. On express: 13 endpoints and 0
+    `EXPOSES` became 31 and 7.
+  - **A Sequelize data layer** — `Entity`, `Field` and foreign-key-direction `REFERENCES`, read
+    the way Sequelize's own example app writes it: `define` inside a function, associations in a
+    file that never imports `sequelize`. Only an attribute map that uses a Sequelize type counts
+    — `customElements.define` and `ajv.define` take a string and an object too. `modelName` and
+    `tableName` are read, and `link_data_layer` folds an entity onto the `.sql` table of the same
+    name: the declared `tableName`, or the model name with a plain `s` (`user` → `users`; an
+    irregular plural such as `people` needs `tableName` to match). A column type counts anywhere
+    in its chain — `INTEGER.UNSIGNED`, `STRING(120)` — so a join model keyed only by unsigned
+    integers is a model, while `Op.is` and `Sequelize.NOW` are not. An imported model is the
+    *binding* it was exported as: `module.exports = { Booking }` over `define('gig', …)` makes
+    `const { Booking }` the `gig` model, and a name the module's exports do not list is nothing.
+  - **Calls bound to what a module actually exports**, wherever the module states its exports in
+    a form this pass reads in full — an allowlist: an object literal, a declared object, class or
+    function named as `module.exports`, `Object.create(…)`, top-level `exports.f =` assignments. `module.exports = { run: helper }` beside a
+    private `function run` makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` —
+    reach `helper`. A file that undoes its own exports (assigns `module.exports` twice or inside
+    a branch, rebinds bare `exports`, reassigns an alias, sets a member before replacing the
+    object) exports nothing it undid. A module whose exports are anything else — `Object.freeze`,
+    a factory call, `Object.assign` or `defineProperty` onto the exports or an alias of them,
+    `exports['f'] =`, a write from inside a function, a spread or computed key, an ESM `export`
+    beside CommonJS — is left to name-based resolution rather than judged. The module a target
+    names is the longest prefix that *is* a module, so `user.model.ts` beside `user.js` keeps its
+    edges, TypeScript's included.
+  - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
+    `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
+    rather than left dangling. Zero dangling edges on all four validation repositories.
+  - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
+
+  Fourteen corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.93 (42 of 45), and the three misses are the three gaps declared
+  in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
+  member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
+  route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
+  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss.
+  Codegen is not part of this: `--language javascript` is refused with the list of supported
+  languages, as before. Prisma is not either — its schema is its own `.prisma` language, and it
+  has a track of its own.
+
 ### Fixed
 
 - **`sdlc plan` wrote a different build document for the same commit depending on whether
@@ -19,6 +78,30 @@ All notable changes to this project are documented here. Format loosely follows
   installed version's, as the catalog already claimed, and an offline machine no longer
   waits on a fetch at every import. Set `LITELLM_LOCAL_MODEL_COST_MAP=False` for today's
   prices, at the cost of that determinism.
+- **`import './mod.js'` minted a module no file declares — in TypeScript too.** ESM requires the
+  extension, and specifier resolution stripped only `.ts`/`.tsx`, so it produced `ts:mod.js`
+  with `external=False`, a first-party-looking phantom, plus a `CALLS` target nothing could
+  rescue. It now strips every suffix the TypeScript namespace carries.
+- **A member call on a name the function had rebound resolved through the file's namespace — in
+  TypeScript too.** `function save(user) { user.save() }` beside `import * as user from './user'`
+  (or `const user = require('./user')`) drew `CALLS` to the module's export, which the parameter
+  need not have. The rule that already refused a rebound *bare* name now covers the receiver, and
+  every binding is tracked over the byte range JavaScript scopes it to — a callback's parameter
+  over the callback, `catch (e)` over its clause, `let`/`const` to the end of their block, `var`
+  over the function it is hoisted to (a callback's own `var` over that callback, not the function
+  the callback sits in), and a nested `function` over its block. So a one-line
+  `const x = f(); x.g()` is covered, and a call *after* a callback that shadowed the name is no
+  longer refused: the rule used to bind the name to the end of the enclosing function, which
+  dropped true calls in TypeScript as well.
+- **`import … from '..'` or `'../index'` minted a module no file declares** (`ts:.`), and a call
+  through it targeted `ts:f` where the root module's members are `ts:<root>.f`. Both now name the
+  root module; a specifier that escapes the scanned tree yields no first-party id.
+- **The capability matrix under-reported a front-end that subclasses another**, and its runtime
+  cross-check silently skipped any front-end without a hand-written fixture — which is how
+  **Gradle had never been cross-checked** at all. The matrix now follows direct inheritance
+  (changing no existing row), and a test requires a fixture, or a stated reason, for every
+  front-end in both directions. Gradle's is recorded as a gap, not excused.
+
 - **The documented local-gate sync command omitted `--extra clang`, so following the docs
   made the accuracy gate fail.** CONTRIBUTING.md and SETUP.md both presented an eleven-extra
   `uv sync` as "the extras set CI syncs"; CI's own `Install project` step installs a twelfth.

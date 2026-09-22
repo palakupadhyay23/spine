@@ -8,9 +8,9 @@
       },
       "note": "provenance measured on this repo, offline; the pinned corpus is run explicitly",
       "provenance": {
-        "anchored": 13724,
-        "excluded": 882,
-        "resolved": 13724,
+        "anchored": 14053,
+        "excluded": 909,
+        "resolved": 14053,
         "unreadable": 0
       }
     },
@@ -296,6 +296,84 @@
               "expected": 7,
               "known_gaps": 0,
               "matched": 7
+            }
+          }
+        },
+        "javascript": {
+          "edges": {
+            "CALLS": {
+              "emitted": 42,
+              "expected": 45,
+              "known_gaps": 3,
+              "matched": 42
+            },
+            "CONTAINS": {
+              "emitted": 110,
+              "expected": 110,
+              "known_gaps": 0,
+              "matched": 110
+            },
+            "EXPOSES": {
+              "emitted": 6,
+              "expected": 6,
+              "known_gaps": 0,
+              "matched": 6
+            },
+            "IMPLEMENTS": {
+              "emitted": 6,
+              "expected": 6,
+              "known_gaps": 0,
+              "matched": 6
+            },
+            "IMPORTS": {
+              "emitted": 40,
+              "expected": 40,
+              "known_gaps": 0,
+              "matched": 40
+            },
+            "REFERENCES": {
+              "emitted": 4,
+              "expected": 4,
+              "known_gaps": 0,
+              "matched": 4
+            }
+          },
+          "nodes": {
+            "Endpoint": {
+              "emitted": 7,
+              "expected": 7,
+              "known_gaps": 0,
+              "matched": 7
+            },
+            "Entity": {
+              "emitted": 5,
+              "expected": 5,
+              "known_gaps": 0,
+              "matched": 5
+            },
+            "Field": {
+              "emitted": 11,
+              "expected": 11,
+              "known_gaps": 0,
+              "matched": 11
+            },
+            "Function": {
+              "emitted": 80,
+              "expected": 80,
+              "known_gaps": 0,
+              "matched": 80
+            },
+            "Module": {
+              "emitted": 49,
+              "expected": 49,
+              "known_gaps": 0,
+              "matched": 49
+            },
+            "Type": {
+              "emitted": 14,
+              "expected": 14,
+              "known_gaps": 0,
+              "matched": 14
             }
           }
         },
@@ -837,10 +915,10 @@
       "skipped_languages": []
     },
     "drift": {
-      "count": 1933,
-      "docs": 1937,
+      "count": 1945,
+      "docs": 1938,
       "gated": false,
-      "mentions": 13837,
+      "mentions": 13932,
       "note": "recorded, never gated \u2014 an upper bound: a tenth of the population cannot bind by construction. See GATES"
     },
     "invention": {
@@ -887,6 +965,14 @@
           "total_calls": 2,
           "unexamined": 0
         },
+        "javascript": {
+          "examined": 383,
+          "invented": 0,
+          "shadowable": 356,
+          "status": "measured",
+          "total_calls": 383,
+          "unexamined": 0
+        },
         "kotlin": {
           "examined": 42,
           "invented": 0,
@@ -916,7 +1002,7 @@
           "invented": 0,
           "shadowable": 0,
           "status": "measured",
-          "total_calls": 21686,
+          "total_calls": 22105,
           "unexamined": 0
         },
         "sql": {
@@ -928,16 +1014,16 @@
           "unexamined": 0
         },
         "typescript": {
-          "examined": 12,
+          "examined": 16,
           "invented": 0,
-          "shadowable": 2,
+          "shadowable": 4,
           "status": "measured",
-          "total_calls": 12,
+          "total_calls": 16,
           "unexamined": 0
         }
       },
       "note": "gated at zero per language, not against this baseline \u2014 see GATES",
-      "total_calls": 21773
+      "total_calls": 22579
     },
     "parity": {
       "declared": 75,
