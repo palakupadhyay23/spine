@@ -145,7 +145,7 @@
         "dst": "ts:lib/format.cash",
         "kind": "CALLS"
       },
-      "why": "PREDICTED BEFORE SCORING. What a reader that binds renamed destructurings by the local name would emit. `format.js` declares no `cash`."
+      "why": "PREDICTED BEFORE SCORING. What a reader that binds renamed destructurings by the local name would emit. `format.js` really exports a `cash` \u2014 the decoy \u2014 so the wrong edge would land on a real node and neither the export map nor the existence check could stop it: only the binding rule does."
     }
   ],
   "excluded": [

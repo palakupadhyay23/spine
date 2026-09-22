@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize",
-  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key. Each association kind has an edge of its own \u2014 `hasMany` alone for `venue`, `belongsTo` alone for `Musician` \u2014 so a break in either rule shows, and the redundant `instrument` pair states one edge. `Musician` is reached through an import, which names the model `./models/musician` defines.",
+  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key, and each association kind has an edge of its own. The model reached through an import has a *different name at every level* \u2014 the class `Musician`, the model `musician` (from `modelName`), and the local `Player` \u2014 so reading any of the three as the model's name fails the case. `seed.js` holds three `define` calls in a file that imports `sequelize` and none is a model: an untyped map, and two values rooted at Sequelize (`Op.is`, `Sequelize.NOW`) that are not column types. Columns use the parameterized `STRING(80)` form too.",
   "root": ".repo",
   "nodes": [
     {
@@ -37,7 +37,7 @@
       "kind": "Entity"
     },
     {
-      "id": "ts:entity:Musician",
+      "id": "ts:entity:musician",
       "kind": "Entity"
     },
     {
@@ -57,11 +57,11 @@
       "kind": "Field"
     },
     {
-      "id": "ts:entity:Musician.name",
+      "id": "ts:entity:musician.name",
       "kind": "Field"
     },
     {
-      "id": "ts:entity:Musician.age",
+      "id": "ts:entity:musician.age",
       "kind": "Field"
     },
     {
@@ -79,6 +79,14 @@
     {
       "id": "ts:entity:venue.city",
       "kind": "Field"
+    },
+    {
+      "id": "ts:models/db",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:seed",
+      "kind": "Module"
     }
   ],
   "edges": [
@@ -124,7 +132,7 @@
     },
     {
       "src": "ts:models/musician",
-      "dst": "ts:entity:Musician",
+      "dst": "ts:entity:musician",
       "kind": "CONTAINS"
     },
     {
@@ -148,13 +156,13 @@
       "kind": "CONTAINS"
     },
     {
-      "src": "ts:entity:Musician",
-      "dst": "ts:entity:Musician.name",
+      "src": "ts:entity:musician",
+      "dst": "ts:entity:musician.name",
       "kind": "CONTAINS"
     },
     {
-      "src": "ts:entity:Musician",
-      "dst": "ts:entity:Musician.age",
+      "src": "ts:entity:musician",
+      "dst": "ts:entity:musician.age",
       "kind": "CONTAINS"
     },
     {
@@ -168,7 +176,7 @@
       "kind": "REFERENCES"
     },
     {
-      "src": "ts:entity:Musician",
+      "src": "ts:entity:musician",
       "dst": "ts:entity:orchestra",
       "kind": "REFERENCES"
     },
@@ -196,6 +204,21 @@
       "src": "ts:entity:venue",
       "dst": "ts:entity:orchestra",
       "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/db",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/musician",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:seed",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
     }
   ],
   "known_gaps": [],
@@ -219,7 +242,7 @@
     },
     {
       "edge": {
-        "src": "ts:entity:Musician",
+        "src": "ts:entity:musician",
         "dst": "ts:entity:venue",
         "kind": "REFERENCES"
       },
@@ -228,7 +251,7 @@
     {
       "edge": {
         "src": "ts:entity:venue",
-        "dst": "ts:entity:Musician",
+        "dst": "ts:entity:musician",
         "kind": "REFERENCES"
       },
       "why": "PREDICTED BEFORE SCORING. `belongsToMany` read as `hasMany` \u2014 the other plausible misreading, distinct from every true edge here."
@@ -245,8 +268,8 @@
   "excluded": [
     "`type` and `validate` inside an attribute definition are options *of* a column, not columns.",
     "The anonymous `module.exports = (sequelize) => {\u2026}` adds no Function: an anonymous default export has no name a call site uses.",
-    "`Musician.belongsTo(...)`, `orchestra.hasMany(...)` \u2014 member calls on untyped receivers; they are associations, read as REFERENCES, not CALLS.",
-    "`Musician.belongsToMany(venue, { through: 'booking' })` \u2014 with `through` given as a *string*, Sequelize generates a `booking` model at run time whose rows reference both `Musician` and `venue`. Those two foreign keys hold, but on an entity this front-end cannot see: it reads declared models only, and the corpus has no known-gap form for a node. Stated here as a recall gap rather than labelled or drawn in either direction."
+    "`Player.belongsTo(...)`, `orchestra.hasMany(...)` \u2014 member calls on untyped receivers; they are associations, read as REFERENCES, not CALLS.",
+    "`new Sequelize(...)` in `db.js` is a top-level call with no caller to hang a CALLS edge on."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

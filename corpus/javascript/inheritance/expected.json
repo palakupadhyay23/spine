@@ -51,6 +51,10 @@
     {
       "id": "ts:impl.Impl.run",
       "kind": "Function"
+    },
+    {
+      "id": "ts:base.makeGhost",
+      "kind": "Function"
     }
   ],
   "edges": [
@@ -123,6 +127,11 @@
       "src": "ts:impl.Impl.run",
       "dst": "ts:base.Base.hello",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:base",
+      "dst": "ts:base.makeGhost",
+      "kind": "CONTAINS"
     }
   ],
   "known_gaps": [
@@ -143,7 +152,7 @@
         "dst": "ts:base.Ghost",
         "kind": "IMPLEMENTS"
       },
-      "why": "PREDICTED BEFORE SCORING. `Ghost` is destructured from `./base`, which declares no `Ghost` \u2014 the base is `undefined` at run time. Resolution mints `ts:base.Ghost` by name; `finalize` finds no node and drops the edge, the same check that guards CALLS."
+      "why": "PREDICTED BEFORE SCORING. `Ghost` is exported as a value computed at run time (`makeGhost()`), not a declared class, so there is no node for `extends Ghost` to reach. Resolution mints `ts:base.Ghost` by name; the export map, which knows `Ghost` is exported only as that computed value, drops it \u2014 and the existence check would, failing that. (An earlier version destructured a `Ghost` the module never exported, which throws at load; the static facts held, but a fixture should be code that could run.)"
     }
   ],
   "excluded": [

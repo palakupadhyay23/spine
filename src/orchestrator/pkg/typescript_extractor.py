@@ -514,9 +514,10 @@ def _calls(
         stack.extend(n.named_children)
 
 
-def _rebound(name: TSNode, call: TSNode, bound: dict[str, int], source: bytes) -> bool:
-    """Whether the enclosing function had already rebound ``name`` where ``call`` sits."""
-    return call.start_byte >= bound.get(_text(name, source), 1 << 62)
+def _rebound(name: TSNode, call: TSNode, bound: dict[str, list[tuple[int, int]]], source: bytes) -> bool:
+    """Whether ``name`` is bound by the enclosing function *where ``call`` sits*."""
+    at = call.start_byte
+    return any(start <= at < end for start, end in bound.get(_text(name, source), ()))
 
 
 @dataclass(frozen=True)
@@ -669,49 +670,86 @@ def _params_of(node: TSNode | None, src: bytes) -> list[str]:
     return out
 
 
-def _bound_names(body: TSNode, src: bytes) -> dict[str, int]:
-    """Names this function binds, each with the first byte offset at which it is in scope.
+#: Nodes that end a `let`/`const` scope: the declaration is visible from where it ends to the end
+#: of the nearest one of these.
+_BLOCKS = frozenset(
+    {"statement_block", "program", "for_statement", "for_in_statement", "switch_body", "class_body"}
+)
+
+
+def _span(node: TSNode) -> tuple[int, int]:
+    return node.start_byte, node.end_byte
+
+
+def _block_of(node: TSNode, body: TSNode) -> TSNode:
+    """The block a declaration's scope ends with: the nearest enclosing block, or the body."""
+    current = node.parent
+    while current is not None and current.type not in _BLOCKS and _span(current) != _span(body):
+        current = current.parent
+    return current if current is not None else body
+
+
+def _bound_names(body: TSNode, src: bytes) -> dict[str, list[tuple[int, int]]]:
+    """Names this function binds, each with the byte ranges over which the binding is in scope.
 
     A callee in this map is reached through a parameter, a local or a closure argument, so no
-    file-level id names it. The position matters: TypeScript's temporal dead zone makes a call
-    *above* a `const` an error rather than a call to an outer function, but keeping the position
-    costs nothing and keeps this helper honest about what it is asserting.
+    file-level id names it. **A scope has an end as well as a start**, and each kind of binding
+    gets the one JavaScript gives it:
 
-    The walk mirrors `_calls_in_body` exactly — same `_CALL_SCOPE_STOP` boundaries — because a
-    binding set that covers more or less ground than the call walk would either drop real edges
-    or miss shadowed ones. Anonymous arrows are descended into by both: `hook.forEach(h => h())`
-    is where vue/core's one fabricated edge came from.
+    ===============================  =================================================
+    the function's own parameters    the whole function
+    `var x`                          the whole function — `var` is hoisted
+    `let x` / `const x`              from the declaration to the end of its block
+    a callback's parameters          that callback only
+    `for (const x of …)`             that loop only
+    `catch (e)`                      that clause only
+    a nested `function f() {}`       its whole block — function declarations are hoisted
+    ===============================  =================================================
+
+    Only a start was recorded before, so a callback parameter stayed "bound" to the end of the
+    enclosing function: `ids.forEach(function (user) {…}); return user.findAll();` dropped a
+    true call, and a `const` in one `if` branch shadowed its `else`. The walk mirrors `_calls`
+    exactly — same `_CALL_SCOPE_STOP` boundaries — because a binding set covering more or less
+    ground than the call walk would either drop real edges or miss shadowed ones.
     """
-    bound: dict[str, int] = {}
+    bound: dict[str, list[tuple[int, int]]] = {}
 
-    def bind(name: str, offset: int) -> None:
-        if name and offset < bound.get(name, 1 << 62):
-            bound[name] = offset
+    def bind(names: list[str], scope: tuple[int, int]) -> None:
+        for name in names:
+            if name:
+                bound.setdefault(name, []).append(scope)
 
-    for name in _params_of(body.parent, src):
-        bind(name, body.parent.start_byte if body.parent is not None else 0)
+    function = body.parent if body.parent is not None else body
+    bind(_params_of(function, src), _span(function))
 
     stack = list(body.named_children)
     while stack:
         n = stack.pop()
         if n.type in _CALL_SCOPE_STOP:
+            if n.type in ("function_declaration", "class_declaration"):
+                # A nested declaration is not walked, but its *name* is bound in this body.
+                name = n.child_by_field_name("name")
+                if name is not None:
+                    block = _block_of(n, body)
+                    start = block.start_byte if n.type == "function_declaration" else n.start_byte
+                    bind([_text(name, src)], (start, block.end_byte))
             continue
-        # A declaration is in scope from where it ends — by byte, not by line. The line was a
-        # proxy that missed the one-liner: `const user = makeUser(); user.save();` read `user`
-        # as unbound, and the call resolved through a file-level namespace of the same name.
-        after = n.end_byte
         if n.type == "variable_declarator":
-            for name in _pattern_names(n.child_by_field_name("name"), src):
-                bind(name, after)
-        elif n.type in ("for_in_statement", "for_statement"):
-            for name in _pattern_names(n.child_by_field_name("left"), src):
-                bind(name, n.start_byte)
+            declaration = n.parent
+            names = _pattern_names(n.child_by_field_name("name"), src)
+            if declaration is not None and declaration.type == "variable_declaration":  # var
+                bind(names, _span(body))
+            else:
+                bind(names, (n.end_byte, _block_of(n, body).end_byte))
+        elif n.type == "for_in_statement":
+            kind = n.child_by_field_name("kind")
+            if kind is not None:  # `for (x of xs)` without a keyword assigns an existing name
+                scope = _span(body) if _text(kind, src) == "var" else _span(n)
+                bind(_pattern_names(n.child_by_field_name("left"), src), scope)
         elif n.type == "catch_clause":
-            for name in _pattern_names(n.child_by_field_name("parameter"), src):
-                bind(name, n.start_byte)
+            bind(_pattern_names(n.child_by_field_name("parameter"), src), _span(n))
         elif n.type in ("arrow_function", "function_expression", "generator_function"):
-            for name in _params_of(n, src):
-                bind(name, n.start_byte)
+            bind(_params_of(n, src), _span(n))
         stack.extend(n.named_children)
     return bound
 

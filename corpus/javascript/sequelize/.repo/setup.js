@@ -1,4 +1,4 @@
-const { Musician } = require('./models/musician');
+const Player = require('./models/musician');
 
 function applyExtraSetup(sequelize) {
   const { instrument, orchestra, venue, ghost } = sequelize.models;
@@ -6,8 +6,8 @@ function applyExtraSetup(sequelize) {
   orchestra.hasMany(instrument);
   instrument.belongsTo(orchestra);
   orchestra.hasMany(venue);
-  Musician.belongsTo(orchestra);
-  Musician.belongsToMany(venue, { through: 'booking' });
+  Player.belongsTo(orchestra);
+  Player.belongsToMany(venue, { through: 'booking' });
   ghost.belongsTo(orchestra);
 }
 

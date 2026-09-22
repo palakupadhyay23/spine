@@ -270,16 +270,24 @@ _ROUTE_SYNTAX = {
     # of them in its tests, none of them a route the graph had missed. `all` is left out because
     # the route reader deliberately emits no endpoint for it.
     "javascript": re.compile(
+        # `app.get('/x', [middleware, …] handler[,])` — middleware may be names or calls
+        # (`limit()`), a trailing comma is legal, and the arguments may span lines.
         r"\.\s*(?:get|post|put|patch|delete|head|options)\s*\(\s*[\"'`]/[^\"'`]*[\"'`]"
-        r"(?:\s*,\s*[A-Za-z_$][\w$.]*)+\s*\)"
+        r"(?:\s*,\s*[A-Za-z_$][\w$.]*(?:\([^()]*\))?)*"
+        r"\s*,\s*[A-Za-z_$][\w$.]*\s*,?\s*\)"
+        # `app.route('/x').get(h)` — counted so that parity reports it: the route reader does not
+        # read this chain, and an uncounted gap is the silence this check exists to break.
+        r"|\.\s*route\s*\(\s*[\"'`]/[^\"'`]*[\"'`]\s*\)\s*\.\s*(?:get|post|put|patch|delete|head|options)"
+        r"\s*\(\s*[A-Za-z_$]"
     ),
 }
 _ENTITY_SYNTAX = {
     "python": re.compile(r"^\s*__tablename__\s*=\s*[\"']", re.MULTILINE),
     # TypeORM's @Entity / Sequelize's @Table — the class-level marker, not a column.
     "typescript": re.compile(r"@(?:Entity|Table)\s*\("),
-    # Sequelize's `sequelize.define('user', …)` and `X.init({…})`, by the receiver the idiom uses.
-    "javascript": re.compile(r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']|\b[A-Z]\w*\.init\s*\(\s*\{"),
+    # Sequelize's `sequelize.define('user', …)`, by the receiver the idiom uses. `X.init({…})` is
+    # not counted: `Sentry.init({…})` has the same shape, and a pattern cannot tell them apart.
+    "javascript": re.compile(r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']"),
 }
 
 
@@ -482,7 +490,9 @@ def _check_source_parity(batch: FactBatch, root: Path) -> list[VerifyIssue]:
     not learned yet, and failing a build for that turns the check into something
     people switch off. Silence is the failure mode this exists to prevent, not noise.
     """
-    what = {NodeKind.ENDPOINT: "route declaration", NodeKind.ENTITY: "__tablename__ declaration"}
+    # "table", not `__tablename__`: the entity patterns are per language, and the message named
+    # Python's construct for a JavaScript or TypeScript file.
+    what = {NodeKind.ENDPOINT: "route declaration", NodeKind.ENTITY: "table declaration"}
     issues: list[VerifyIssue] = []
     for count in source_parity_counts(batch, root):
         # Only under-extraction warns. `in_graph > declared` is legitimate and common: a

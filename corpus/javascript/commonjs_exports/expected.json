@@ -166,7 +166,7 @@
         "dst": "ts:src/math.missing",
         "kind": "CALLS"
       },
-      "why": "PREDICTED BEFORE SCORING. `math.missing()` names an export `math.js` does not have. Resolution mints the id by name; `finalize` finds no node and drops the edge rather than leave it dangling."
+      "why": "PREDICTED BEFORE SCORING. `math.missing()` names an export `math.js` does not have. The export map drops it \u2014 `missing` is not a name `math.js` exports \u2014 and the existence check backs that up, since no node carries the id either."
     },
     {
       "edge": {

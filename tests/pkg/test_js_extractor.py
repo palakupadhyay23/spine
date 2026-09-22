@@ -137,9 +137,10 @@ def test_commonjs_exports_are_the_modules_surface(tmp_path: Path) -> None:
 
 
 def test_members_set_before_module_exports_is_replaced_are_not_exported(tmp_path: Path) -> None:
-    """`require` returns the *new* object. An earlier version of this test asserted all five were
-    exported — it encoded the naive reading, not CommonJS: `a` and `b` were set on the object
-    `module.exports = {…}` threw away."""
+    """`require` returns the *new* object, so `a` and `b` — set on the one `module.exports = {…}`
+    threw away — are not exported, and a caller reaches neither. They are still functions in the
+    source, so they keep their nodes: pass 2 of the review deleted them, which also deleted every
+    call inside them and a same-file route to `exports.a`."""
     batch = _repo(
         tmp_path,
         {
@@ -148,12 +149,14 @@ def test_members_set_before_module_exports_is_replaced_are_not_exported(tmp_path
                 "module.exports.b = () => {};\n"
                 "module.exports = { c() {} };\n"
                 "module.exports.d = () => {};\n"
-            )
+            ),
+            "api.js": "const m = require('./m');\nfunction go() { m.a(); m.b(); m.c(); m.d(); }\n",
         },
     )
     functions = {n.id for n in batch.nodes if n.kind is NodeKind.FUNCTION}
-    assert {"ts:m.c", "ts:m.d"} <= functions
-    assert not {"ts:m.a", "ts:m.b"} & functions
+    assert {"ts:m.a", "ts:m.b", "ts:m.c", "ts:m.d"} <= functions
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"}
+    assert reached == {"ts:m.c", "ts:m.d"}
 
 
 def test_a_named_default_export_is_emitted_and_an_anonymous_one_is_not(tmp_path: Path) -> None:
@@ -547,3 +550,209 @@ def test_a_typescript_router_bound_through_module_exports_is_read(tmp_path: Path
         },
     )
     assert ("ts:endpoint:GET /x", "ts:app.h") in _exposes(batch)
+
+
+# ── review pass 3: scopes with an end, and an export map enforced only where it is read ──
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(
+            "ids.forEach(function (user) { user.save(); });\n  return user.findAll();", id="callback"
+        ),
+        pytest.param("ids.map((user) => user);\n  return user.findAll();", id="arrow"),
+        pytest.param("for (const user of ids) { user.save(); }\n  return user.findAll();", id="loop"),
+        pytest.param(
+            "if (ids) { const user = make(); user.save(); } else { user.findAll(); }", id="sibling-block"
+        ),
+    ],
+)
+def test_a_binding_ends_with_its_scope(tmp_path: Path, body: str) -> None:
+    """Pass 2 bound a callback parameter from its start to the end of the function, and dropped the
+    true call after it. Each binding now ends where JavaScript ends it."""
+    batch = _repo(
+        tmp_path,
+        {
+            "user.js": "exports.findAll = function () {};\nexports.save = function () {};\n",
+            "api.js": f"const user = require('./user');\nfunction go(ids) {{\n  {body}\n}}\n",
+        },
+    )
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"}
+    assert reached == {"ts:user.findAll"}
+
+
+def test_typescript_bindings_end_with_their_scope_too(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "user.ts": "export function findAll(): void {}\nexport function save(): void {}\n",
+            "api.ts": (
+                "import * as user from './user';\n"
+                "export function go(ids: number[]): void {\n"
+                "  ids.forEach(function (user) { user.save(); });\n  user.findAll();\n}\n"
+            ),
+        },
+    )
+    assert {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"} == {"ts:user.findAll"}
+
+
+def test_var_is_hoisted_over_the_whole_function(tmp_path: Path) -> None:
+    """`user.save()` *above* `var user = …` reads the local — hoisted, and undefined there."""
+    batch = _repo(
+        tmp_path,
+        {
+            "user.js": "exports.save = function () {};\n",
+            "api.js": (
+                "const user = require('./user');\nfunction go() {\n  user.save();\n  var user = make();\n}\n"
+            ),
+        },
+    )
+    assert not {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"}
+
+
+def test_a_nested_function_declaration_shadows_an_import_over_its_block(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "u.js": "exports.helper = function () {};\n",
+            "api.js": (
+                "const { helper } = require('./u');\n"
+                "function go() {\n"
+                "  helper();\n"
+                "  function helper() {}\n"
+                "}\n"
+            ),
+        },
+    )
+    assert ("ts:api.go", "ts:u.helper") not in _edges(batch, EdgeKind.CALLS)
+
+
+def test_an_aliased_object_is_read_as_the_export_surface(tmp_path: Path) -> None:
+    """`const api = { find, create }; module.exports = api` — pass 2 dropped both calls."""
+    batch = _repo(
+        tmp_path,
+        {
+            "svc.js": (
+                "function find() {}\n"
+                "function create() {}\n"
+                "const api = { find, create };\n"
+                "module.exports = api;\n"
+            ),
+            "c.js": "const svc = require('./svc');\nfunction go() { svc.find(); svc.create(); }\n",
+        },
+    )
+    assert {("ts:c.go", "ts:svc.find"), ("ts:c.go", "ts:svc.create")} <= _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_declared_class_that_is_module_exports_can_be_extended(tmp_path: Path) -> None:
+    """`class Base {}; module.exports = Base;` — the canonical CommonJS inheritance shape."""
+    batch = _repo(
+        tmp_path,
+        {
+            "base.js": "class Base {}\nmodule.exports = Base;\n",
+            "impl.js": "const Base = require('./base');\nclass Impl extends Base {}\n",
+        },
+    )
+    assert ("ts:impl.Impl", "ts:base.Base") in _edges(batch, EdgeKind.IMPLEMENTS)
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("function f() {}\nmodule.exports = Object.assign({}, { f });\n", id="object-assign"),
+        pytest.param("function f() {}\nmodule.exports = { ...other, f };\n", id="spread"),
+        pytest.param(
+            "function f() {}\nObject.defineProperty(exports, 'f', { get: function () { return f; } });\n",
+            id="define-property",
+        ),
+        pytest.param("export function f() {}\nmodule.exports.g = function g() {};\n", id="mixed-esm"),
+    ],
+)
+def test_an_export_surface_this_pass_cannot_read_is_not_enforced(tmp_path: Path, module: str) -> None:
+    """Enforcing a map it only half read dropped true edges; a reader that cannot tell must not decide."""
+    batch = _repo(tmp_path, {"m.js": module, "c.js": "const m = require('./m');\nfunction go() { m.f(); }\n"})
+    assert ("ts:c.go", "ts:m.f") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_babels_es_module_marker_does_not_make_a_surface_unreadable(tmp_path: Path) -> None:
+    """Every Babel output file starts with it, and it adds no member anyone calls."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                'Object.defineProperty(exports, "__esModule", { value: true });\n'
+                "function run() {}\nfunction helper() {}\nmodule.exports = { run: helper };\n"
+            ),
+            "c.js": "const m = require('./m');\nfunction go() { m.run(); }\n",
+        },
+    )
+    assert ("ts:c.go", "ts:m.helper") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_module_exports_inside_a_branch_exports_nothing_for_certain(tmp_path: Path) -> None:
+    """UMD: which object is exported depends on which branch ran."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "if (typeof module === 'object') { module.exports = factory(); }\n"
+                "exports.g = function g() {};\n"
+            ),
+            "c.js": "const m = require('./m');\nfunction go() { m.g(); }\n",
+        },
+    )
+    assert ("ts:c.go", "ts:m.g") not in _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_renamed_class_export_is_rewritten_at_every_depth(tmp_path: Path) -> None:
+    """`{ Handler: Impl }`: the constructor edge and the method edge must agree on `Impl`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "class Handler { run() {} }\nclass Impl { run() {} }\nmodule.exports = { Handler: Impl };\n"
+            ),
+            "c.js": "const { Handler } = require('./m');\nfunction go() { return new Handler().run(); }\n",
+        },
+    )
+    calls = _edges(batch, EdgeKind.CALLS)
+    assert {("ts:c.go", "ts:m.Impl"), ("ts:c.go", "ts:m.Impl.run")} <= calls
+    assert ("ts:c.go", "ts:m.Handler.run") not in calls
+
+
+def test_an_undone_export_keeps_its_function_and_its_same_file_route(tmp_path: Path) -> None:
+    """The export was undone; the function was not. A same-file `exports.show` read is it."""
+    batch = _repo(
+        tmp_path,
+        {
+            "r.js": (
+                "const express = require('express');\nconst router = express.Router();\n"
+                "exports.show = function show(req, res) {};\nrouter.get('/show', exports.show);\n"
+                "module.exports = router;\n"
+            )
+        },
+    )
+    assert "ts:r.show" in _ids(batch)
+    assert ("ts:endpoint:GET /show", "ts:r.show") in _exposes(batch)
+
+
+def test_a_chained_export_exports_every_name(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function f() {}\nexports.a = exports.b = f;\n",
+            "c.js": "const m = require('./m');\nfunction one() { m.a(); }\nfunction two() { m.b(); }\n",
+        },
+    )
+    calls = _edges(batch, EdgeKind.CALLS)
+    assert {("ts:c.one", "ts:m.f"), ("ts:c.two", "ts:m.f")} <= calls
+
+
+@pytest.mark.parametrize("suffix", [".mjs", ".cjs"])
+def test_any_javascript_sibling_of_a_typescript_module_is_skipped(tmp_path: Path, suffix: str) -> None:
+    batch = _repo(
+        tmp_path,
+        {"foo.ts": "export function bar(): void {}\n", f"foo{suffix}": "exports.bar = function () {};\n"},
+    )
+    assert next(n for n in batch.nodes if n.id == "ts:foo").language == "typescript"

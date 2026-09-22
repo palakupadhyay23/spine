@@ -4,4 +4,8 @@ class Base {
   }
 }
 
-module.exports = { Base };
+function makeGhost() {
+  return class {};
+}
+
+module.exports = { Base, Ghost: makeGhost() };

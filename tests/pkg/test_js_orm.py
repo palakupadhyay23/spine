@@ -285,3 +285,159 @@ def test_a_comment_inside_the_arguments_is_not_an_argument(tmp_path: Path) -> No
         },
     )
     assert _entities(batch) == {"ts:entity:gadget"}
+
+
+# ── review pass 3 ──────────────────────────────────────────────────────────────────────
+
+
+def test_parameterized_types_mark_a_model(tmp_path: Path) -> None:
+    """`STRING(120)`, `DECIMAL(10, 2)`, `ENUM(…)` — pass 2's marker missed every one."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                "module.exports = (s) => { s.define('article', {\n"
+                "  title: DataTypes.STRING(120), total: DataTypes.DECIMAL(10, 2),\n"
+                "  status: { type: DataTypes.ENUM('new', 'paid') },\n});\n};\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:article"}
+    assert len(_fields(batch)) == 3
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param("scopes.define('active', { deletedAt: Op.is });", id="operator"),
+        pytest.param("registry.define('audit', { createdAt: Sequelize.NOW });", id="default-value"),
+    ],
+)
+def test_a_sequelize_value_that_is_not_a_type_marks_nothing(tmp_path: Path, call: str) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                f"const {{ Op }} = require('sequelize');\nconst Sequelize = require('sequelize');\n{call}\n"
+            )
+        },
+    )
+    assert not _entities(batch)
+
+
+def test_an_esm_aliased_import_names_the_export_it_was_imported_as(tmp_path: Path) -> None:
+    """`import { admin as user }` is the `admin` model, whatever else is called `user`."""
+    define = "import {{ DataTypes }} from 'sequelize';\nexport default (s) => {{ {body} }};\n"
+    batch = _repo(
+        tmp_path,
+        {
+            "models/two.js": define.format(
+                body=(
+                    "s.define('user', { id: DataTypes.INTEGER }); "
+                    "s.define('admin', { id: DataTypes.INTEGER });"
+                )
+            ),
+            "models/post.js": define.format(body="s.define('post', { id: DataTypes.INTEGER });"),
+            "setup.js": (
+                "import { admin as user } from './models/two';\n"
+                "import Post from './models/post';\n"
+                "Post.belongsTo(user);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {("ts:entity:post", "ts:entity:admin")}
+
+
+def test_a_named_import_matches_by_name_never_by_being_the_only_model(tmp_path: Path) -> None:
+    """`user.js` defines `user` and re-exports `Post`: `{ Post }` from it is not `user`."""
+    d = (
+        "const {{ DataTypes }} = require('sequelize');\n"
+        "module.exports = (s) => {{ s.define('{m}', {{ id: DataTypes.INTEGER }}); }};\n"
+    )
+    batch = _repo(
+        tmp_path,
+        {
+            "models/user.js": d.format(m="user") + "module.exports.Post = require('./post');\n",
+            "models/post.js": d.format(m="post"),
+            "models/comment.js": d.format(m="comment"),
+            "setup.js": (
+                "const { Post } = require('./models/user');\nconst Comment = require('./models/comment');\n"
+                "Comment.belongsTo(Post);\n"
+            ),
+        },
+    )
+    assert ("ts:entity:comment", "ts:entity:user") not in _refs(batch)
+
+
+def test_a_whole_module_import_of_a_module_with_several_models_is_ambiguous(tmp_path: Path) -> None:
+    """`settle`'s disambiguation: two models, a whole-module import — no guess."""
+    d = "const {{ DataTypes }} = require('sequelize');\nmodule.exports = (s) => {{ {body} }};\n"
+    batch = _repo(
+        tmp_path,
+        {
+            "models/two.js": d.format(
+                body=(
+                    "s.define('user', { id: DataTypes.INTEGER }); "
+                    "s.define('admin', { id: DataTypes.INTEGER });"
+                )
+            ),
+            "models/post.js": d.format(body="s.define('post', { id: DataTypes.INTEGER });"),
+            "setup.js": (
+                "const Two = require('./models/two');\n"
+                "const Post = require('./models/post');\n"
+                "Post.belongsTo(Two);\n"
+            ),
+        },
+    )
+    assert not _refs(batch)
+
+
+def test_a_named_import_matches_its_model_case_aside(tmp_path: Path) -> None:
+    """`const { Post }` names the `post` model: associations are written with the class's case."""
+    d = "const {{ DataTypes }} = require('sequelize');\nmodule.exports = (s) => {{ {body} }};\n"
+    batch = _repo(
+        tmp_path,
+        {
+            "models/pair.js": d.format(
+                body=(
+                    "s.define('post', { id: DataTypes.INTEGER }); s.define('tag', { id: DataTypes.INTEGER });"
+                )
+            ),
+            "models/comment.js": d.format(body="s.define('comment', { id: DataTypes.INTEGER });"),
+            "setup.js": (
+                "const { Post } = require('./models/pair');\nconst Comment = require('./models/comment');\n"
+                "Comment.belongsTo(Post);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {("ts:entity:comment", "ts:entity:post")}
+
+
+def test_the_model_base_is_the_binding_so_an_alias_is_read(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "import { Model as SeqModel, DataTypes } from 'sequelize';\n"
+                "class Widget extends SeqModel {}\nWidget.init({ id: DataTypes.INTEGER }, {});\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:Widget"}
+
+
+def test_define_reads_the_table_name_from_its_options(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                "module.exports = (s) => {\n"
+                "  s.define('post', { id: DataTypes.INTEGER }, { tableName: 'blog_entries' });\n"
+                "};\n"
+            )
+        },
+    )
+    post = next(n for n in batch.nodes if n.id == "ts:entity:post")
+    assert post.name == "blog_entries"

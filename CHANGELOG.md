@@ -34,17 +34,22 @@ All notable changes to this project are documented here. Format loosely follows
     `tableName` are read, and `link_data_layer` folds an entity onto the `.sql` table of the same
     name: the declared `tableName`, or the model name with a plain `s` (`user` → `users`; an
     irregular plural such as `people` needs `tableName` to match).
-  - **Calls bound to what a module actually exports.** `module.exports = { run: helper }` beside
-    a private `function run` makes `m.run()` — and `app.get('/', m.run)` — reach `helper`. And a
-    file that undoes its own exports (assigns `module.exports` twice, rebinds bare `exports`,
-    reassigns an alias, sets a member before replacing the object) exports nothing it undid.
+  - **Calls bound to what a module actually exports**, wherever the module states its exports in
+    a form this pass reads in full — an object literal, a declared object or class named as
+    `module.exports`, `exports.f =` assignments. `module.exports = { run: helper }` beside a
+    private `function run` makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` —
+    reach `helper`. A file that undoes its own exports (assigns `module.exports` twice or inside
+    a branch, rebinds bare `exports`, reassigns an alias, sets a member before replacing the
+    object) exports nothing it undid. A module whose exports this pass cannot read in full —
+    `Object.assign`, a spread, `defineProperty`, an ESM `export` beside CommonJS — is left to
+    name-based resolution rather than judged.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
     `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
     rather than left dangling. Zero dangling edges on all four validation repositories.
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
-  Eleven corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.89 (24 of 27), and the three misses are the three gaps declared
+  Twelve corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.90 (27 of 30), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
@@ -74,7 +79,11 @@ All notable changes to this project are documented here. Format loosely follows
   TypeScript too.** `function save(user) { user.save() }` beside `import * as user from './user'`
   (or `const user = require('./user')`) drew `CALLS` to the module's export, which the parameter
   need not have. The rule that already refused a rebound *bare* name now covers the receiver, and
-  scope is tracked by byte rather than by line, so a one-line `const x = f(); x.g()` is covered.
+  every binding is tracked over the byte range JavaScript scopes it to — a callback's parameter
+  over the callback, `let`/`const` to the end of their block, `var` and a nested `function` over
+  the whole function. So a one-line `const x = f(); x.g()` is covered, and a call *after* a
+  callback that shadowed the name is no longer refused: the rule used to bind the name to the end
+  of the enclosing function, which dropped true calls in TypeScript as well.
 - **`import … from '..'` or `'../index'` minted a module no file declares** (`ts:.`), and a call
   through it targeted `ts:f` where the root module's members are `ts:<root>.f`. Both now name the
   root module; a specifier that escapes the scanned tree yields no first-party id.
