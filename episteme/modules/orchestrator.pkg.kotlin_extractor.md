@@ -168,7 +168,7 @@ _27 of the symbols other code depends on here have no test path the graph can se
 
 [`src/orchestrator/pkg/kotlin_extractor.py:1617`](../../src/orchestrator/pkg/kotlin_extractor.py#L1617)
 
-- **Called by** (3 production · 1 test): [`_parser_for`](../../src/orchestrator/pkg/scope.py#L592), [`extract`](../../src/orchestrator/pkg/gradle_extractor.py#L105), [`extract`](../../src/orchestrator/pkg/kotlin_extractor.py#L334), [`_literal`](../../tests/pkg/test_kotlin_literals.py#L24)
+- **Called by** (3 production · 1 test): [`_parser_for`](../../src/orchestrator/pkg/scope.py#L595), [`extract`](../../src/orchestrator/pkg/gradle_extractor.py#L105), [`extract`](../../src/orchestrator/pkg/kotlin_extractor.py#L334), [`_literal`](../../tests/pkg/test_kotlin_literals.py#L24)
 - **Calls** (3): `language`, `tree_sitter.Language`, `tree_sitter.Parser`
 
 ### `_parameter_types`
