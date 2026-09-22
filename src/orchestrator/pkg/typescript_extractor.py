@@ -22,6 +22,7 @@ skipped — they'd need type inference, and a guessed edge poisons grounding.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -151,7 +152,16 @@ class TypeScriptExtractor:
         from orchestrator.pkg.typescript_routes import emit as _emit_routes
         from orchestrator.pkg.typescript_routes import scan_module as _scan_routes
 
-        _emit_routes(_scan_routes(decls, source, rel, local_funcs), batch)
+        _emit_routes(
+            _scan_routes(
+                decls,
+                source,
+                rel,
+                local_funcs,
+                resolve_member=self._route_handler(module_id, imports, namespaces, source, rel),
+            ),
+            batch,
+        )
 
         for fid, type_id, body in funcs:
             _calls(
@@ -253,6 +263,17 @@ class TypeScriptExtractor:
                     fid = f"{type_id}.{fname}"
                     batch.add_node(Node(fid, NodeKind.FIELD, fname, "typescript", Provenance(rel, mline)))
                     batch.add_edge(Edge(type_id, fid, EdgeKind.CONTAINS, Provenance(rel, mline)))
+
+    def _route_handler(
+        self, module_id: str, imports: dict[str, str], namespaces: set[str], source: bytes, rel: str
+    ) -> Callable[[TSNode], str | None] | None:
+        """How to bind a route handler written as a member (`handlers.list`). None for TypeScript.
+
+        Binding one names its target by name, and TypeScript has nothing that later checks the
+        name landed — a module that does not export `list` would leave a dangling ``EXPOSES``.
+        The JavaScript front-end supplies a resolver because its `finalize` does check.
+        """
+        return None
 
     def _emit_statement(
         self,

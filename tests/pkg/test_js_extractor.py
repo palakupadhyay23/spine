@@ -260,3 +260,73 @@ def test_an_object_merely_read_from_exports_is_not_an_alias(tmp_path: Path) -> N
         {"m.js": "const e = module.exports;\nmodule.exports = {};\ne.stale = function () {};\n"},
     )
     assert "ts:m.stale" not in _ids(batch)
+
+
+def _exposes(batch: FactBatch) -> set[tuple[str, str]]:
+    return _edges(batch, EdgeKind.EXPOSES)
+
+
+def test_a_router_bound_through_module_exports_is_read(tmp_path: Path) -> None:
+    """`var app = module.exports = express()` — 18 of express's 28 example apps."""
+    batch = _repo(
+        tmp_path,
+        {
+            "app.js": "var express = require('express');\nvar app = module.exports = express();\n"
+            "function home(req, res) {}\napp.get('/', home);\n"
+        },
+    )
+    assert ("ts:endpoint:GET /", "ts:app.home") in _exposes(batch)
+
+
+def test_a_handler_named_through_a_require_namespace_is_exposed(tmp_path: Path) -> None:
+    """`app.get('/', site.index)` — express's route-separation idiom."""
+    batch = _repo(
+        tmp_path,
+        {
+            "site.js": "exports.index = function (req, res) {};\n",
+            "app.js": "const express = require('express');\nconst site = require('./site');\n"
+            "const app = express();\napp.get('/', site.index);\n",
+        },
+    )
+    assert ("ts:endpoint:GET /", "ts:site.index") in _exposes(batch)
+
+
+def test_a_handler_named_through_this_modules_exports_is_exposed(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "app.js": "const express = require('express');\nconst app = express();\n"
+            "exports.version = function (req, res) {};\napp.get('/v', exports.version);\n"
+        },
+    )
+    assert ("ts:endpoint:GET /v", "ts:app.version") in _exposes(batch)
+
+
+def test_an_exposes_to_a_handler_nothing_declares_is_dropped(tmp_path: Path) -> None:
+    """The route is real, so its Endpoint stays; the handler is not, so its edge goes."""
+    batch = _repo(
+        tmp_path,
+        {
+            "users.js": "exports.list = function () {};\n",
+            "app.js": "const express = require('express');\nconst users = require('./users');\n"
+            "const app = express();\napp.post('/u', users.missing);\n",
+        },
+    )
+    assert "ts:endpoint:POST /u" in _ids(batch)
+    assert not _exposes(batch)
+
+
+def test_typescript_does_not_bind_member_handlers(tmp_path: Path) -> None:
+    """TypeScript has no `finalize` check on what it names, so it must not resolve by name:
+    a module without `list` would leave a dangling EXPOSES. Wiring this in for TypeScript needs
+    that check first — this test is what should stop it arriving without one."""
+    batch = _repo(
+        tmp_path,
+        {
+            "handlers.ts": "export function list(): void {}\n",
+            "app.ts": "import express from 'express';\nimport * as handlers from './handlers';\n"
+            "const app = express();\napp.get('/', handlers.list);\n",
+        },
+    )
+    assert "ts:endpoint:GET /" in _ids(batch)
+    assert not _exposes(batch)

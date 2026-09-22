@@ -25,6 +25,9 @@ What JavaScript adds over the parent:
   object (`var app = exports = module.exports = {}`, or `module.exports = res`) — the form the
   classic CommonJS library uses most (see `_export_aliases`). The parent sees none of these —
   they are assignments, not declarations — so a CommonJS module's public surface was empty.
+* **Express handlers named as members** — `app.get('/', site.index)` — bound to the export, so
+  the ``EXPOSES`` edge exists (see `_route_handler`). The route reader it shares with TypeScript
+  also now reads `var app = module.exports = express()`, a chained router binding.
 * **An existence check on what it resolved.** See :meth:`JavaScriptExtractor.finalize`.
 
 Precision-first, as every front-end. Left out on purpose, and declared in the corpus's
@@ -39,6 +42,7 @@ JavaScript states no types for the parent's typed-receiver rule to read).
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -48,6 +52,7 @@ from orchestrator.pkg.typescript_extractor import (
     _FUNC_CONST_DECLS,
     TypeScriptExtractor,
     _field_text,
+    _import_target,
     _relative_module,
     _text,
 )
@@ -59,7 +64,7 @@ _LANG = "javascript"
 _SUFFIXES = (".js", ".jsx", ".mjs", ".cjs")
 _FUNCTION_VALUES = frozenset({"arrow_function", "function_expression", "function", "generator_function"})
 #: Edge kinds this front-end resolves by name, and so the ones `finalize` checks landed.
-_CHECKED = frozenset({EdgeKind.CALLS, EdgeKind.IMPLEMENTS})
+_CHECKED = frozenset({EdgeKind.CALLS, EdgeKind.IMPLEMENTS, EdgeKind.EXPOSES})
 #: A name a call site can actually spell as `m.name`. A string key like `'a-b'` cannot.
 _IDENTIFIER = re.compile(r"^[A-Za-z_$][\w$]*$")
 
@@ -119,6 +124,32 @@ class JavaScriptExtractor(TypeScriptExtractor):
                 if side_effect is not None:  # `require('./polyfill')` — imported for its side effects
                     _import_edge(side_effect, module_id, rel, node.start_point[0] + 1, batch)
         return by_local, namespaces
+
+    def _route_handler(
+        self, module_id: str, imports: dict[str, str], namespaces: set[str], source: bytes, rel: str
+    ) -> Callable[[TSNode], str | None] | None:
+        """Bind `app.get('/', site.index)` — the CommonJS way to route to another file's export.
+
+        Two spellings: a member of a `require` namespace (`site.index`, where
+        `site = require('./site')`), and a member of this module's own exports object
+        (`exports.index`, or an alias of it). Either names its target by name, which is safe
+        here and nowhere upstream: `finalize` drops an ``EXPOSES`` whose handler does not exist.
+        """
+        aliases = self._export_aliases
+
+        def resolve(member: TSNode) -> str | None:
+            owner = member.child_by_field_name("object")
+            prop = _field_text(member, "property", source)
+            if owner is None or not _IDENTIFIER.match(prop):
+                return None
+            name = _text(owner, source)
+            if name in ("exports", "module.exports") or (owner.type == "identifier" and name in aliases):
+                return f"{module_id}.{prop}"
+            if owner.type == "identifier" and name in namespaces and name in imports:
+                return _import_target(imports[name], prop, rel)
+            return None
+
+        return resolve
 
     def _emit_statement(
         self,
