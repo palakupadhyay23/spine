@@ -582,7 +582,7 @@ is not computable from a trace, and the report says so on every run.
 **Two coverage limits worth knowing before you quote a number:**
 
 - **`--oracle runtime` is Python-only.** It uses `sys.monitoring` (PEP 669), which has no
-  equivalent in the other eleven front-ends. "Runtime-verified" means "runtime-verified for
+  equivalent in the other twelve front-ends. "Runtime-verified" means "runtime-verified for
   Python".
 - **`--oracle invention` only examines Python.** It resolves caller-scope bindings with
   Python's `ast`, so calls in other languages are counted as *unexaminable* rather than
@@ -800,7 +800,7 @@ Regression coverage: what a change should re-test, from the call graph.
 For a symbol you're about to change (`--symbol`) or a fault site (`--trace`),
 computes the blast radius and splits it into tests that already exercise it
 and production code in the radius with no covering test — the regression
-gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/Go/PHP/Perl/Kotlin).
+gaps. Deterministic, no LLM. Needs a call graph (Python/C/C++/C#/Java/TS/JS/Go/PHP/Perl/Kotlin).
 
 ```
 orchestrator regression [PATH] [OPTIONS]

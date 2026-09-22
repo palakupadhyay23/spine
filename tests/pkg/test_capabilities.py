@@ -150,7 +150,33 @@ _FIXTURES: dict[str, tuple[str, str]] = {
         "sample.pm",
         "package Demo::Thing;\nuse parent -norequire, 'Demo::Base';\n\nsub go {\n    return 1;\n}\n",
     ),
+    # CommonJS on purpose: `require` and `exports.` are the paths the JavaScript front-end adds
+    # over the TypeScript one it subclasses, so an ESM fixture would exercise only the parent.
+    "javascript": (
+        "sample.js",
+        "const { readFile } = require('fs');\n\nclass Base {}\n\n"
+        "class Thing extends Base {\n  name = 'x';\n  go() { readFile('p', () => {}); }\n}\n\n"
+        "exports.run = function () { return new Thing(); };\n",
+    ),
 }
+
+#: Front-ends with no fixture above, each with the reason. Absent from both, a new front-end
+#: would register, claim a column, and never have that claim checked against a real run — the
+#: superset test skips what it has no fixture for, silently. That is how JavaScript arrived
+#: uncovered, and how Gradle had been for its whole life.
+_NO_FIXTURE: dict[str, str] = {
+    "gradle": "pre-existing gap, not an exemption on the merits: no fixture was written when the "
+    "Gradle reader landed (kotlin-support-roadmap D11). Recorded here so it is visible, not excused",
+}
+
+
+def test_every_front_end_is_cross_checked_or_says_why_not() -> None:
+    registered = {fe.language for fe in FRONT_ENDS}
+    assert not set(_FIXTURES) & set(_NO_FIXTURE), "a front-end cannot be both fixtured and excused"
+    uncovered = sorted(registered - set(_FIXTURES) - set(_NO_FIXTURE))
+    assert not uncovered, f"no superset fixture and no stated reason for: {uncovered}"
+    stale = sorted((set(_FIXTURES) | set(_NO_FIXTURE)) - registered)
+    assert not stale, f"fixtured or excused, but no longer a registered front-end: {stale}"
 
 
 @pytest.mark.parametrize("language", sorted(_FIXTURES))

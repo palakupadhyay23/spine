@@ -758,7 +758,7 @@ approval — Spine refuses a live write without it. `live=true` needs a reachabl
 
 ## 10. Language support & toolchains
 
-Comprehension covers **twelve front-ends** — eleven languages, plus a Gradle reader
+Comprehension covers **thirteen front-ends** — twelve languages, plus a Gradle reader
 that turns `.kts` build scripts into a module dependency graph (it is not a language
 and has no toolchain row). Kotlin reads structure, calls, Room entities, Retrofit
 calls, Compose routes and Hilt wiring, and is a **codegen target** for both plain

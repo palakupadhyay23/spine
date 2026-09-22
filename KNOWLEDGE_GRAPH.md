@@ -128,6 +128,7 @@ a variable yields no edge, because a wrong edge is worse than an absent one.
 | `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `java` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `typescript` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
+| `javascript` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `csharp` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `c` | ✓ | ✓ | ✓ | ✓ | · | · | · | · |
 | `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · |
@@ -145,6 +146,7 @@ a variable yields no edge, because a wrong edge is worse than an absent one.
 | `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `java` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
 | `typescript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
+| `javascript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
 | `csharp` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
 | `c` | ✓ | ✓ | ✓ | · | · | · | · | · | ✓ | · | · | · |
 | `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | · | · |
@@ -595,10 +597,12 @@ reviews honest.
 
 - **Static, not runtime.** The PKG is built from source structure; it doesn't capture
   runtime behavior, dynamic dispatch it can't see, or values only known at execution.
-- **Parser coverage.** Python/Java/TypeScript/C#/C/C++/**Go**/**PHP**/**Perl**/**Kotlin** and
-  **SQL** today, plus a **Gradle** reader for `.kts` build scripts — twelve front-ends, of
-  which eleven are languages. Kotlin reads `.kt` only and mints ids in **Java's**
-  `java:` namespace, so a mixed Kotlin/Java module is one graph rather than two (D2); a `.kts`
+- **Parser coverage.** Python/Java/TypeScript/**JavaScript**/C#/C/C++/**Go**/**PHP**/**Perl**/**Kotlin**
+  and **SQL** today, plus a **Gradle** reader for `.kts` build scripts — thirteen front-ends,
+  of which twelve are languages. Kotlin reads `.kt` only and mints ids in **Java's**
+  `java:` namespace, so a mixed Kotlin/Java module is one graph rather than two (D2); JavaScript
+  does the same with TypeScript's `ts:` namespace, so a `.ts` file importing a `.js` one resolves
+  across the pair, and it reads CommonJS (`require`, `module.exports`) as well as ESM; a `.kts`
   Gradle script is a build DSL and is read as a marker, not parsed into modules.
   Kotlin's framework readings are **inverted relative to every other front-end**: Room
   `@Entity` classes become `Entity` nodes *named by their table* (so `data_layer_link`

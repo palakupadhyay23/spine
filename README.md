@@ -13,8 +13,8 @@ inspect the graph and a build plan before spending model tokens, build locally,
 then choose when to push a pull request for human review.
 
 The product is **Spine**, its package is **`synaptixs-spine`**, and its command is
-**`orchestrator`**. Comprehension supports twelve front-ends: Python, Java, TypeScript,
-C#, C, C++, Go, PHP, Perl, Kotlin and SQL — plus a Gradle reader that turns `.kts`
+**`orchestrator`**. Comprehension supports thirteen front-ends: Python, Java, TypeScript,
+JavaScript, C#, C, C++, Go, PHP, Perl, Kotlin and SQL — plus a Gradle reader that turns `.kts`
 build scripts into the module graph an Android app is assembled from — with the
 matching parser extras installed.
 

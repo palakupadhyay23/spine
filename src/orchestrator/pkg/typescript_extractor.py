@@ -43,6 +43,21 @@ _TYPE_DECLS = frozenset(
 )
 _FUNC_CONST_DECLS = frozenset({"lexical_declaration", "variable_declaration"})
 
+#: Every suffix a TS-namespace module can carry, stripped when a specifier is turned into a module
+#: id. It must cover JavaScript as well as TypeScript, and not only for the JavaScript front-end:
+#: ESM requires the extension, so `import { go } from './mod.js'` is idiomatic in *TypeScript*
+#: too (it names `mod.ts` under `moduleResolution: node16`). Stripping only `.ts`/`.tsx` minted
+#: `ts:dir/mod.js` with `external=False` — a first-party-looking module no file declares — and a
+#: CALLS target `ts:dir/mod.js.go` that `_ensure_external` could not rescue.
+_MODULE_SUFFIXES = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+
+#: Suffixes parsed with the TSX grammar. JSX is ordinary in `.js`, and the plain TypeScript
+#: grammar does not reject it — it *mis-parses* it: `() => <div/>` becomes a `type_assertion`
+#: with a `MISSING ">"`, tree-sitter error-recovers, and the walk emits facts from the broken
+#: tree. Measured on react-boilerplate: 90 of 222 files in error under `language_typescript()`,
+#: 0 under `language_tsx()`.
+_TSX_SUFFIXES = frozenset({".tsx", ".js", ".jsx"})
+
 
 class TypeScriptExtractor:
     """TypeScript front-end (tree-sitter). Install the ``typescript`` extra to use it."""
@@ -127,6 +142,8 @@ class TypeScriptExtractor:
                 _emit_function(node, module_id, source, rel, batch, funcs, local_funcs)
             elif node.type in _FUNC_CONST_DECLS:
                 self._emit_const_functions(node, module_id, source, rel, batch, funcs, local_funcs)
+            else:
+                self._emit_statement(node, module_id, source, rel, batch, funcs, local_funcs)
         # Express routes: top-level expression statements the declaration walk above skips.
         # Emitted here rather than in `finalize` because a mount (`app.use("/v1", r)`) and the
         # router it mounts are the same variable in the same module; a router imported from
@@ -237,6 +254,24 @@ class TypeScriptExtractor:
                     batch.add_node(Node(fid, NodeKind.FIELD, fname, "typescript", Provenance(rel, mline)))
                     batch.add_edge(Edge(type_id, fid, EdgeKind.CONTAINS, Provenance(rel, mline)))
 
+    def _emit_statement(
+        self,
+        node: TSNode,
+        module_id: str,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+        funcs: list[tuple[str, str | None, TSNode]],
+        local_funcs: dict[str, str],
+    ) -> None:
+        """A top-level statement that is not a declaration. Nothing for TypeScript.
+
+        A hook, not an oversight: CommonJS declares its public surface with assignments
+        (`module.exports = {…}`, `exports.f = …`), which the JavaScript front-end reads here.
+        TypeScript's surface is its `export` declarations, already handled above.
+        """
+        return None
+
     def _emit_const_functions(
         self,
         node: TSNode,
@@ -332,7 +367,7 @@ def _relative_module(spec: str, rel: str) -> str | None:
     import posixpath
 
     joined = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
-    for suffix in (".ts", ".tsx"):
+    for suffix in _MODULE_SUFFIXES:
         if joined.endswith(suffix):
             joined = joined[: -len(suffix)]
             break
@@ -355,7 +390,7 @@ def _import_target(spec: str, name: str, rel: str) -> str:
     import posixpath
 
     joined = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
-    for suffix in (".ts", ".tsx"):
+    for suffix in _MODULE_SUFFIXES:
         if joined.endswith(suffix):
             joined = joined[: -len(suffix)]
             break
@@ -622,7 +657,12 @@ def _resolve_callee(
         name = _text(fn, source)
         if name in local_funcs:  # module-level function / arrow const
             return local_funcs[name]
-        if name in imports:  # imported binding → resolve to its definition module
+        if name in imports and name not in namespaces:  # imported binding → its definition
+            # A namespace is a module object, not a function. Calling `import * as ns` is a
+            # type error in TypeScript, so this changes nothing there — but CommonJS binds the
+            # whole module with `const m = require('./m')`, and `m()` calls whatever the module
+            # assigned to `module.exports`. Resolving it by the *local* name would mint
+            # `ts:m.m`, a function the module need not declare.
             return _import_target(imports[name], name, rel)
         return None
     if fn.type == "member_expression":
@@ -749,7 +789,7 @@ def _ts_parser(suffix: str) -> Any:
         ) from exc
     raw = (
         tree_sitter_typescript.language_tsx()
-        if suffix == ".tsx"
+        if suffix in _TSX_SUFFIXES
         else tree_sitter_typescript.language_typescript()
     )
     language = Language(raw)
