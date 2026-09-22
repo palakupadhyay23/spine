@@ -6,6 +6,40 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## Unreleased
 
+### Added
+
+- **JavaScript — the 13th front-end, and the 12th language.** `.js`, `.jsx`, `.mjs` and `.cjs`
+  used to reach the walker with no front-end and produce nothing, with no complaint: this
+  repository's own operator UI is 22 files and 1,460 lines of JavaScript, and none of it was in
+  its graph. `express` and `react-boilerplate` extracted to zero nodes while the profiler counted
+  141 and 222 JavaScript files in them. `JavaScriptExtractor` rides the `typescript` extra — no
+  new install — and subclasses the TypeScript front-end, whose TypeScript-only rules are clean
+  no-ops on JavaScript. Ids share TypeScript's `ts:` namespace, so a `.ts` file importing a
+  `.js` one resolves across the pair; nodes are tagged `javascript`. What it adds:
+
+  - **CommonJS.** `require()` in every shape the front-end can bind precisely — whole module,
+    destructured, `.member` — and the exports a CommonJS module is actually made of:
+    `exports.f =`, `module.exports = {…}`, and the aliased object (`var app = exports =
+    module.exports = {}`) that spells 43 of express's 49 exported functions.
+  - **JSX in `.js`**, parsed with the TSX grammar. The plain TypeScript grammar does not reject
+    JSX, it mis-parses it — 90 of react-boilerplate's 222 files in error, against 0.
+  - **Express routes the CommonJS way**: a router bound through `var app = module.exports =
+    express()` (18 of express's 28 example apps, which had no endpoints at all) and a handler
+    named as another file's export, `app.get('/', site.index)`. On express: 13 endpoints and 0
+    `EXPOSES` became 31 and 7.
+  - **A Sequelize data layer** — `Entity`, `Field` and foreign-key-direction `REFERENCES`, read
+    the way Sequelize's own example app writes it: `define` inside a function, associations in a
+    file that never imports `sequelize`. `link_data_layer` folds them onto a `.sql` schema.
+  - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
+    `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
+    rather than left dangling. Zero dangling edges on all four validation repositories.
+
+  Eleven corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.91, and the two misses are the two gaps declared in advance.
+  Codegen is not part of this: `--language javascript` is refused with the list of supported
+  languages, as before. Prisma is not either — its schema is its own `.prisma` language, and it
+  has a track of its own.
+
 ### Fixed
 
 - **`sdlc plan` wrote a different build document for the same commit depending on whether
@@ -19,6 +53,16 @@ All notable changes to this project are documented here. Format loosely follows
   installed version's, as the catalog already claimed, and an offline machine no longer
   waits on a fetch at every import. Set `LITELLM_LOCAL_MODEL_COST_MAP=False` for today's
   prices, at the cost of that determinism.
+- **`import './mod.js'` minted a module no file declares — in TypeScript too.** ESM requires the
+  extension, and specifier resolution stripped only `.ts`/`.tsx`, so it produced `ts:mod.js`
+  with `external=False`, a first-party-looking phantom, plus a `CALLS` target nothing could
+  rescue. It now strips every suffix the TypeScript namespace carries.
+- **The capability matrix under-reported a front-end that subclasses another**, and its runtime
+  cross-check silently skipped any front-end without a hand-written fixture — which is how
+  **Gradle had never been cross-checked** at all. The matrix now follows direct inheritance
+  (changing no existing row), and a test requires a fixture, or a stated reason, for every
+  front-end in both directions. Gradle's is recorded as a gap, not excused.
+
 - **The documented local-gate sync command omitted `--extra clang`, so following the docs
   made the accuracy gate fail.** CONTRIBUTING.md and SETUP.md both presented an eleven-extra
   `uv sync` as "the extras set CI syncs"; CI's own `Install project` step installs a twelfth.
