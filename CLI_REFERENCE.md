@@ -79,7 +79,10 @@ What you can point the pipeline at, and what each stage is using now.
 
 Read from the installed LiteLLM's own catalog rather than a list maintained in this
 repo, so it reflects the client actually making the calls — upgrading `litellm`
-brings new models with no change here.
+brings new models with no change here. Prices are the ones that `litellm` release
+ships, not a live fetch, so a build document's cost table is the same for the same
+commit online or off; set `LITELLM_LOCAL_MODEL_COST_MAP=False` to price against
+today's upstream map instead.
 
 ```
 orchestrator models [OPTIONS]

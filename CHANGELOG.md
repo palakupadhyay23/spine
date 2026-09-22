@@ -8,6 +8,17 @@ All notable changes to this project are documented here. Format loosely follows
 
 ### Fixed
 
+- **`sdlc plan` wrote a different build document for the same commit depending on whether
+  GitHub was reachable.** Section 11's cost table is priced from LiteLLM's model map, and by
+  default LiteLLM does not read the map it ships: every import fetches the current one from
+  GitHub, and falls back to the bundled copy only when the fetch fails. CI planned one commit
+  twice, one fetch failed, and `sdlc_shapes.py` caught two documents differing only in §11 —
+  "of 2,289 priced models" against "of 1,716", with different nearest-price rows (4,175
+  models fetched, 2,982 bundled). `orchestrator.core.llm.catalog` now defaults
+  `LITELLM_LOCAL_MODEL_COST_MAP` to `True` before LiteLLM is imported, so prices are the
+  installed version's, as the catalog already claimed, and an offline machine no longer
+  waits on a fetch at every import. Set `LITELLM_LOCAL_MODEL_COST_MAP=False` for today's
+  prices, at the cost of that determinism.
 - **The documented local-gate sync command omitted `--extra clang`, so following the docs
   made the accuracy gate fail.** CONTRIBUTING.md and SETUP.md both presented an eleven-extra
   `uv sync` as "the extras set CI syncs"; CI's own `Install project` step installs a twelfth.
