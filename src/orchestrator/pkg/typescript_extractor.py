@@ -179,7 +179,20 @@ class TypeScriptExtractor:
                 module_id,
                 self._pending_calls,
             )
+        self._emit_module(tree.root_node, module_id, source, rel, batch, imports)
         return batch
+
+    def _emit_module(
+        self, root: TSNode, module_id: str, source: bytes, rel: str, batch: FactBatch, imports: dict[str, str]
+    ) -> None:
+        """A whole-file reading after the declaration walk. Nothing for TypeScript.
+
+        A hook for facts that live *inside* function bodies rather than at top level — a
+        Sequelize model is defined in `module.exports = (sequelize) => { sequelize.define(…) }`,
+        with the connection handed in as a parameter. The JavaScript front-end reads its data
+        layer here.
+        """
+        return None
 
     def _imports(
         self, decls: list[TSNode | None], module_id: str, source: bytes, rel: str, batch: FactBatch

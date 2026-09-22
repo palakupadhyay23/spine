@@ -128,7 +128,7 @@ a variable yields no edge, because a wrong edge is worse than an absent one.
 | `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `java` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `typescript` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
-| `javascript` | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
+| `javascript` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `csharp` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
 | `c` | ✓ | ✓ | ✓ | ✓ | · | · | · | · |
 | `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · |
@@ -146,7 +146,7 @@ a variable yields no edge, because a wrong edge is worse than an absent one.
 | `python` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · |
 | `java` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
 | `typescript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
-| `javascript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · |
+| `javascript` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
 | `csharp` | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · |
 | `c` | ✓ | ✓ | ✓ | · | · | · | · | · | ✓ | · | · | · |
 | `cpp` | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | · | · |
@@ -249,6 +249,7 @@ flowchart LR
   | Python | ✅ built-in | (default) |
   | Java | ✅ + JAX-RS **and Spring MVC** endpoints | `pip install 'synaptixs-spine[java]'` |
   | TypeScript / TSX | ✅ | `pip install 'synaptixs-spine[typescript]'` |
+  | JavaScript / JSX | ✅ + CommonJS (`require`, `module.exports`, aliased exports objects) + Express routes incl. member handlers + Sequelize entities | `pip install 'synaptixs-spine[typescript]'` — rides the same grammar |
   | C# | ✅ + framework edges | `pip install 'synaptixs-spine[csharp]'` |
   | C | ✅ + `#include` graph | `pip install 'synaptixs-spine[c]'` |
   | C++ | ✅ classes/namespaces/inheritance | `pip install 'synaptixs-spine[cpp]'` |

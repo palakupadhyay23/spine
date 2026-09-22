@@ -28,6 +28,8 @@ What JavaScript adds over the parent:
 * **Express handlers named as members** — `app.get('/', site.index)` — bound to the export, so
   the ``EXPOSES`` edge exists (see `_route_handler`). The route reader it shares with TypeScript
   also now reads `var app = module.exports = express()`, a chained router binding.
+* **The data layer** — Sequelize models as ``Entity``/``Field`` nodes and ``REFERENCES`` edges,
+  read by :mod:`orchestrator.pkg.js_orm`.
 * **An existence check on what it resolved.** See :meth:`JavaScriptExtractor.finalize`.
 
 Precision-first, as every front-end. Left out on purpose, and declared in the corpus's
@@ -64,7 +66,7 @@ _LANG = "javascript"
 _SUFFIXES = (".js", ".jsx", ".mjs", ".cjs")
 _FUNCTION_VALUES = frozenset({"arrow_function", "function_expression", "function", "generator_function"})
 #: Edge kinds this front-end resolves by name, and so the ones `finalize` checks landed.
-_CHECKED = frozenset({EdgeKind.CALLS, EdgeKind.IMPLEMENTS, EdgeKind.EXPOSES})
+_CHECKED = frozenset({EdgeKind.CALLS, EdgeKind.IMPLEMENTS, EdgeKind.EXPOSES, EdgeKind.REFERENCES})
 #: A name a call site can actually spell as `m.name`. A string key like `'a-b'` cannot.
 _IDENTIFIER = re.compile(r"^[A-Za-z_$][\w$]*$")
 
@@ -124,6 +126,14 @@ class JavaScriptExtractor(TypeScriptExtractor):
                 if side_effect is not None:  # `require('./polyfill')` — imported for its side effects
                     _import_edge(side_effect, module_id, rel, node.start_point[0] + 1, batch)
         return by_local, namespaces
+
+    def _emit_module(
+        self, root: TSNode, module_id: str, source: bytes, rel: str, batch: FactBatch, imports: dict[str, str]
+    ) -> None:
+        """The data layer: Sequelize models and their associations (see :mod:`js_orm`)."""
+        from orchestrator.pkg.js_orm import scan
+
+        scan(root, module_id, source, rel, batch, imports)
 
     def _route_handler(
         self, module_id: str, imports: dict[str, str], namespaces: set[str], source: bytes, rel: str
@@ -384,9 +394,12 @@ def _drop_unlanded(batch: FactBatch) -> FactBatch:
     known = {n.id for n in batch.nodes}
 
     def unlanded(edge: Edge) -> bool:
+        # Both ends: a CALLS or EXPOSES source is always a node this file emitted, but a
+        # REFERENCES source is a model *named* in an association (`foo.hasMany(bar)`), and a
+        # name is no more a fact at the source end than at the destination.
         return (
             edge.kind in _CHECKED
-            and edge.dst not in known
+            and (edge.dst not in known or edge.src not in known)
             and edge.provenance is not None
             and edge.provenance.file.endswith(_SUFFIXES)
         )

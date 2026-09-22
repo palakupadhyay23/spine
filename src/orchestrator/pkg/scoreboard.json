@@ -8,9 +8,9 @@
       },
       "note": "provenance measured on this repo, offline; the pinned corpus is run explicitly",
       "provenance": {
-        "anchored": 13919,
-        "excluded": 907,
-        "resolved": 13919,
+        "anchored": 13950,
+        "excluded": 909,
+        "resolved": 13950,
         "unreadable": 0
       }
     },
@@ -308,10 +308,10 @@
               "matched": 21
             },
             "CONTAINS": {
-              "emitted": 50,
-              "expected": 50,
+              "emitted": 61,
+              "expected": 61,
               "known_gaps": 0,
-              "matched": 50
+              "matched": 61
             },
             "EXPOSES": {
               "emitted": 5,
@@ -320,16 +320,22 @@
               "matched": 5
             },
             "IMPLEMENTS": {
-              "emitted": 3,
-              "expected": 3,
+              "emitted": 4,
+              "expected": 4,
               "known_gaps": 0,
-              "matched": 3
+              "matched": 4
             },
             "IMPORTS": {
-              "emitted": 16,
-              "expected": 16,
+              "emitted": 20,
+              "expected": 20,
               "known_gaps": 0,
-              "matched": 16
+              "matched": 20
+            },
+            "REFERENCES": {
+              "emitted": 2,
+              "expected": 2,
+              "known_gaps": 0,
+              "matched": 2
             }
           },
           "nodes": {
@@ -339,29 +345,35 @@
               "known_gaps": 0,
               "matched": 7
             },
-            "Field": {
-              "emitted": 1,
-              "expected": 1,
+            "Entity": {
+              "emitted": 3,
+              "expected": 3,
               "known_gaps": 0,
-              "matched": 1
+              "matched": 3
+            },
+            "Field": {
+              "emitted": 7,
+              "expected": 7,
+              "known_gaps": 0,
+              "matched": 7
             },
             "Function": {
-              "emitted": 41,
-              "expected": 41,
+              "emitted": 42,
+              "expected": 42,
               "known_gaps": 0,
-              "matched": 41
+              "matched": 42
             },
             "Module": {
-              "emitted": 24,
-              "expected": 24,
+              "emitted": 28,
+              "expected": 28,
               "known_gaps": 0,
-              "matched": 24
+              "matched": 28
             },
             "Type": {
-              "emitted": 8,
-              "expected": 8,
+              "emitted": 9,
+              "expected": 9,
               "known_gaps": 0,
-              "matched": 8
+              "matched": 9
             }
           }
         },
@@ -990,7 +1002,7 @@
           "invented": 0,
           "shadowable": 0,
           "status": "measured",
-          "total_calls": 21842,
+          "total_calls": 21916,
           "unexamined": 0
         },
         "sql": {
@@ -1011,7 +1023,7 @@
         }
       },
       "note": "gated at zero per language, not against this baseline \u2014 see GATES",
-      "total_calls": 22295
+      "total_calls": 22369
     },
     "parity": {
       "declared": 75,
