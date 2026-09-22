@@ -145,13 +145,15 @@ the interpreter answering. Host plugin update/removal commands stay in
 git clone https://github.com/synaptixs/spine
 cd spine
 uv sync --frozen --extra dev --extra mcp --extra typescript --extra java --extra csharp \
-  --extra c --extra cpp --extra go --extra php --extra perl --extra kotlin
+  --extra c --extra cpp --extra go --extra php --extra perl --extra kotlin --extra clang
 uv run orchestrator --help
 ```
 
 This is the extras set CI syncs. `[dev]` supplies testing/type tools plus SQL and
 document parsers; the explicit language extras and `[mcp]` exercise the remaining
-front-ends and plugin. Fewer extras mean fewer languages, not zero findings.
+front-ends and plugin, and `[clang]` adds the C/C++ semantic post-pass that
+`pkg accuracy --check` scores the `cpp` corpus against. Fewer extras mean fewer
+languages, not zero findings.
 On a checkout, prefix commands in other guides with `uv run --frozen`.
 
 ---
