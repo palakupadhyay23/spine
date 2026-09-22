@@ -561,7 +561,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 4315 symbols; 
 | `_framework_edges` | [`orchestrator.pkg.csharp_extractor`](modules/orchestrator.pkg.csharp_extractor.md#_framework_edges) | [`_framework_edges`](../src/orchestrator/pkg/csharp_extractor.py#L333) |
 | `_from_authorization` | `orchestrator.gateway.tools.web_search` | [`_from_authorization`](../src/orchestrator/gateway/tools/web_search.py#L61) |
 | `_from_labels` | `orchestrator.sdlc.profile_select` | [`_from_labels`](../src/orchestrator/sdlc/profile_select.py#L128) |
-| `_from_litellm` | `orchestrator.core.llm.catalog` | [`_from_litellm`](../src/orchestrator/core/llm/catalog.py#L108) |
+| `_from_litellm` | `orchestrator.core.llm.catalog` | [`_from_litellm`](../src/orchestrator/core/llm/catalog.py#L122) |
 | `_front_matter_prose` | [`orchestrator.pkg.doc_source`](modules/orchestrator.pkg.doc_source.md#_front_matter_prose) | [`_front_matter_prose`](../src/orchestrator/pkg/doc_source.py#L433) |
 | `_FuncRec` | [`orchestrator.pkg.php_extractor`](modules/orchestrator.pkg.php_extractor.md#_funcrec) | [`_FuncRec`](../src/orchestrator/pkg/php_extractor.py#L94) |
 | `_function` | [`orchestrator.pkg.c_extractor`](modules/orchestrator.pkg.c_extractor.md#_function) | [`_function`](../src/orchestrator/pkg/c_extractor.py#L197) |
@@ -1097,7 +1097,7 @@ _Every first-party symbol, A–Z, and the page that describes it. 4315 symbols; 
 | `_rank` | `orchestrator.spine.drift` | [`_rank`](../src/orchestrator/spine/drift.py#L39) |
 | `_rasterise` | [`scripts.render_knowledge_foundation_svg`](modules/scripts.render_knowledge_foundation_svg.md#_rasterise) | [`_rasterise`](../scripts/render_knowledge_foundation_svg.py#L929) |
 | `_rasterise` | `scripts.render_architecture_svg` | [`_rasterise`](../scripts/render_architecture_svg.py#L466) |
-| `_rate` | `orchestrator.core.llm.catalog` | [`_rate`](../src/orchestrator/core/llm/catalog.py#L109) |
+| `_rate` | `orchestrator.core.llm.catalog` | [`_rate`](../src/orchestrator/core/llm/catalog.py#L123) |
 | `_ratio` | [`orchestrator.pkg.accuracy`](modules/orchestrator.pkg.accuracy.md#_ratio) | [`_ratio`](../src/orchestrator/pkg/accuracy.py#L655) |
 | `_rationale` | `orchestrator.catalog.planner` | [`_rationale`](../src/orchestrator/catalog/planner.py#L43) |
 | `_rca` | `scripts.brief-sections` | [`_rca`](../scripts/brief-sections.py#L72) |
