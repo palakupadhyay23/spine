@@ -259,11 +259,27 @@ _ROUTE_SYNTAX = {
         r"@(?:Get|Post|Put|Patch|Delete|Head|Options|All)\s*\("
         r"|\.\s*(?:get|post|put|patch|delete|all|head|options)\s*\(\s*[\"'`]/"
     ),
+    # Express router calls, keyed separately because the JavaScript front-end tags its modules
+    # `javascript` (javascript-support-roadmap D4) — without a key, parity skipped every `.js`
+    # file and reported "0 declared, 0 in graph" on a repository full of routes.
+    #
+    # Narrower than the TypeScript pattern on purpose: only a registration whose handler is a
+    # *name* — `app.get('/', site.index)`, `app.post('/x', auth, save)` — can produce the EXPOSES
+    # edge parity counts as present, so only those are counted as declared. The broad pattern
+    # counted every inline `function (req, res) {…}` too, and raised 107 warnings on express, 81
+    # of them in its tests, none of them a route the graph had missed. `all` is left out because
+    # the route reader deliberately emits no endpoint for it.
+    "javascript": re.compile(
+        r"\.\s*(?:get|post|put|patch|delete|head|options)\s*\(\s*[\"'`]/[^\"'`]*[\"'`]"
+        r"(?:\s*,\s*[A-Za-z_$][\w$.]*)+\s*\)"
+    ),
 }
 _ENTITY_SYNTAX = {
     "python": re.compile(r"^\s*__tablename__\s*=\s*[\"']", re.MULTILINE),
     # TypeORM's @Entity / Sequelize's @Table — the class-level marker, not a column.
     "typescript": re.compile(r"@(?:Entity|Table)\s*\("),
+    # Sequelize's `sequelize.define('user', …)` and `X.init({…})`, by the receiver the idiom uses.
+    "javascript": re.compile(r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']|\b[A-Z]\w*\.init\s*\(\s*\{"),
 }
 
 

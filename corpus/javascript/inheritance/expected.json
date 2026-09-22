@@ -43,6 +43,14 @@
     {
       "id": "ts:square.Square",
       "kind": "Type"
+    },
+    {
+      "id": "ts:base.Base.hello",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:impl.Impl.run",
+      "kind": "Function"
     }
   ],
   "edges": [
@@ -100,9 +108,33 @@
       "src": "ts:square.Square",
       "dst": "ts:shape.Shape",
       "kind": "IMPLEMENTS"
+    },
+    {
+      "src": "ts:base.Base",
+      "dst": "ts:base.Base.hello",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl.Impl",
+      "dst": "ts:impl.Impl.run",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:impl.Impl.run",
+      "dst": "ts:base.Base.hello",
+      "kind": "CALLS"
     }
   ],
-  "known_gaps": [],
+  "known_gaps": [
+    {
+      "edge": {
+        "src": "ts:impl.Impl.run",
+        "dst": "ts:base.Base.hello",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `this.hello()` where `hello` is inherited from `Base`. The `this` rule inherited from TypeScript resolves a sibling method of the *same* class only. A true edge, counted as a recall miss."
+    }
+  ],
   "false_positives": [],
   "refusals": [
     {

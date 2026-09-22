@@ -29,13 +29,26 @@ All notable changes to this project are documented here. Format loosely follows
     `EXPOSES` became 31 and 7.
   - **A Sequelize data layer** — `Entity`, `Field` and foreign-key-direction `REFERENCES`, read
     the way Sequelize's own example app writes it: `define` inside a function, associations in a
-    file that never imports `sequelize`. `link_data_layer` folds them onto a `.sql` schema.
+    file that never imports `sequelize`. Only an attribute map that uses a Sequelize type counts
+    — `customElements.define` and `ajv.define` take a string and an object too. `modelName` and
+    `tableName` are read, and `link_data_layer` folds an entity onto the `.sql` table of the same
+    name: the declared `tableName`, or the model name with a plain `s` (`user` → `users`; an
+    irregular plural such as `people` needs `tableName` to match).
+  - **Calls bound to what a module actually exports.** `module.exports = { run: helper }` beside
+    a private `function run` makes `m.run()` — and `app.get('/', m.run)` — reach `helper`. And a
+    file that undoes its own exports (assigns `module.exports` twice, rebinds bare `exports`,
+    reassigns an alias, sets a member before replacing the object) exports nothing it undid.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
     `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
     rather than left dangling. Zero dangling edges on all four validation repositories.
+  - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
   Eleven corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.91, and the two misses are the two gaps declared in advance.
+  edge kind**, `CALLS` recall 0.89 (24 of 27), and the three misses are the three gaps declared
+  in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
+  member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
+  route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
+  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss.
   Codegen is not part of this: `--language javascript` is refused with the list of supported
   languages, as before. Prisma is not either — its schema is its own `.prisma` language, and it
   has a track of its own.
@@ -57,6 +70,14 @@ All notable changes to this project are documented here. Format loosely follows
   extension, and specifier resolution stripped only `.ts`/`.tsx`, so it produced `ts:mod.js`
   with `external=False`, a first-party-looking phantom, plus a `CALLS` target nothing could
   rescue. It now strips every suffix the TypeScript namespace carries.
+- **A member call on a name the function had rebound resolved through the file's namespace — in
+  TypeScript too.** `function save(user) { user.save() }` beside `import * as user from './user'`
+  (or `const user = require('./user')`) drew `CALLS` to the module's export, which the parameter
+  need not have. The rule that already refused a rebound *bare* name now covers the receiver, and
+  scope is tracked by byte rather than by line, so a one-line `const x = f(); x.g()` is covered.
+- **`import … from '..'` or `'../index'` minted a module no file declares** (`ts:.`), and a call
+  through it targeted `ts:f` where the root module's members are `ts:<root>.f`. Both now name the
+  root module; a specifier that escapes the scanned tree yields no first-party id.
 - **The capability matrix under-reported a front-end that subclasses another**, and its runtime
   cross-check silently skipped any front-end without a hand-written fixture — which is how
   **Gradle had never been cross-checked** at all. The matrix now follows direct inheritance

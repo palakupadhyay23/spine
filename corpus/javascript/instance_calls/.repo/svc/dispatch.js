@@ -12,3 +12,7 @@ function viaInline() {
 function viaParameter(handler) {
   return handler.run();
 }
+
+function viaReturn() {
+  return new Handler();
+}

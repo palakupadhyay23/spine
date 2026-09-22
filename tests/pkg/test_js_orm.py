@@ -124,8 +124,17 @@ def test_belongs_to_many_draws_no_edge(tmp_path: Path) -> None:
 
 
 def test_an_association_naming_an_undefined_model_is_dropped(tmp_path: Path) -> None:
-    """Both ends are names. `finalize` keeps the edge only when both are entities."""
-    batch = _repo(tmp_path, _two_models("ghost.belongsTo(orchestra);\ninstrument.belongsTo(phantom);"))
+    """Both ends are names. `finalize` keeps the edge only when both are entities.
+
+    `ghost` and `phantom` are destructured from the registry, so they *resolve* — and the edge is
+    drawn and then dropped by `finalize`. An earlier version left them undeclared, so resolution
+    returned None first and the test passed with the existence check switched off.
+    """
+    setup = (
+        "const { instrument, orchestra, ghost, phantom } = sequelize.models;\n"
+        "ghost.belongsTo(orchestra);\ninstrument.belongsTo(phantom);"
+    )
+    batch = _repo(tmp_path, _two_models("", setup=setup))
     assert not _refs(batch)
 
 
@@ -158,3 +167,121 @@ def _two_models(associations: str, *, setup: str = "") -> dict[str, str]:
             f"function applyExtraSetup(sequelize) {{\n{body}\n}}\nmodule.exports = {{ applyExtraSetup }};\n"
         ),
     }
+
+
+# ── review pass 2 ──────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param("customElements.define('my-el', { connectedCallback() {} });", id="custom-elements"),
+        pytest.param("ajv.define('userSchema', { type: 'object', properties: {} });", id="ajv"),
+        pytest.param("factory.define('user', { name: 'x' });", id="factory"),
+    ],
+)
+def test_define_with_an_untyped_attribute_map_is_not_a_model(tmp_path: Path, call: str) -> None:
+    """A file importing sequelize — a test's `{ Op }` — may call other libraries' `define`."""
+    batch = _repo(tmp_path, {"t.js": f"const {{ Op }} = require('sequelize');\n{call}\n"})
+    assert not _entities(batch)
+
+
+def test_an_import_names_the_model_its_module_defines_not_its_local(tmp_path: Path) -> None:
+    """`const Author = require('./models/user')` is the `user` model, whatever else is `Author`."""
+    define = (
+        "const {{ DataTypes }} = require('sequelize');\n"
+        "module.exports = (s) => {{ s.define('{m}', {{ id: DataTypes.INTEGER }}); }};\n"
+    )
+    batch = _repo(
+        tmp_path,
+        {
+            "models/user.js": define.format(m="user"),
+            "models/author.js": define.format(m="Author"),
+            "models/post.js": define.format(m="post"),
+            "setup.js": (
+                "const Author = require('./models/user');\n"
+                "const Post = require('./models/post');\n"
+                "Post.belongsTo(Author);\n"
+            ),
+        },
+    )
+    assert _refs(batch) == {("ts:entity:post", "ts:entity:user")}
+
+
+def test_an_abstract_base_is_not_an_entity_and_its_subclass_is(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { Model, DataTypes } = require('sequelize');\n"
+                "class BaseModel extends Model {}\nclass Product extends BaseModel {}\n"
+                "Product.init({ sku: DataTypes.STRING }, {});\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:Product"}
+
+
+def test_model_name_sets_the_id_and_table_name_the_name_the_schema_matches(tmp_path: Path) -> None:
+    pytest.importorskip("sqlglot", reason="install the 'sql' extra")
+    for rel, text in {
+        "u.js": (
+            "const { Model, DataTypes } = require('sequelize');\nclass User extends Model {}\n"
+            "User.init({ id: DataTypes.INTEGER }, { modelName: 'account', tableName: 'legacy_accounts' });\n"
+        ),
+        "schema.sql": (
+            "CREATE TABLE legacy_accounts (id INT PRIMARY KEY);\nCREATE TABLE users (id INT PRIMARY KEY);\n"
+        ),
+    }.items():
+        (tmp_path / rel).write_text(text)
+    batch = RepoCodeExtractor().extract(tmp_path)
+    account = next(n for n in batch.nodes if n.id == "ts:entity:account")
+    assert account.name == "legacy_accounts"
+    assert "ts:entity:account" not in _entities(link_data_layer(batch))  # folded onto sql:legacy_accounts
+
+
+def test_the_getting_started_binding_names_the_model_and_self_associations_are_skipped(
+    tmp_path: Path,
+) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { Sequelize, DataTypes } = require('sequelize');\n"
+                "const sequelize = new Sequelize('sqlite::memory:');\n"
+                "const User = sequelize.define('User', { name: DataTypes.STRING });\n"
+                "const Task = sequelize.define('Task', { title: DataTypes.STRING });\n"
+                "User.hasMany(Task);\nUser.hasMany(User);\n"
+            )
+        },
+    )
+    assert _refs(batch) == {("ts:entity:Task", "ts:entity:User")}
+
+
+def test_a_non_literal_name_or_a_spread_column_is_not_guessed(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                "module.exports = (s, name, base) => {\n"
+                "  s.define(name, { id: DataTypes.INTEGER });\n"
+                "  s.define('item', { ...base, sku: DataTypes.STRING });\n};\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:item"}
+    assert _fields(batch) == {"ts:entity:item.sku"}
+
+
+def test_a_comment_inside_the_arguments_is_not_an_argument(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": (
+                "const { DataTypes } = require('sequelize');\n"
+                "module.exports = (s) => { s.define(/* c */ 'gadget', { id: DataTypes.INTEGER }); };\n"
+            )
+        },
+    )
+    assert _entities(batch) == {"ts:entity:gadget"}

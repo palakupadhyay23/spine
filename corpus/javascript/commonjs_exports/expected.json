@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "commonjs_exports",
-  "why": "The CommonJS export forms: `exports.f =`, `module.exports.f =`, a `module.exports = {\u2026}` object with a method, a function and an arrow, and the aliased object express spells 43 of its 49 exports with (`var app = exports = module.exports = {}`). Plus two calls a naive reader would resolve and this one must not.",
+  "why": "The CommonJS export forms: `exports.f =`, `module.exports.f =`, a `module.exports = {\u2026}` object with a method, a function and an arrow, and the aliased object express spells 43 of its 49 exports with (`var app = exports = module.exports = {}`). Plus two calls a naive reader would resolve and this one must not. And the renamed export: `module.exports = { run: helper }` beside a private `function run`, where a caller's `aliasing.run()` must reach `helper`.",
   "root": ".repo",
   "nodes": [
     {
@@ -46,6 +46,22 @@
     },
     {
       "id": "ts:src/app.whole",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/aliasing",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:src/aliasing.run",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/aliasing.helper",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:src/app.go",
       "kind": "Function"
     }
   ],
@@ -114,6 +130,31 @@
       "src": "ts:src/app.run",
       "dst": "ts:src/shapes.area",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/aliasing",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:src/aliasing",
+      "dst": "ts:src/aliasing.run",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/aliasing",
+      "dst": "ts:src/aliasing.helper",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/app",
+      "dst": "ts:src/app.go",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:src/app.go",
+      "dst": "ts:src/aliasing.helper",
+      "kind": "CALLS"
     }
   ],
   "known_gaps": [],
@@ -134,6 +175,14 @@
         "kind": "CALLS"
       },
       "why": "PREDICTED BEFORE SCORING. `shapes()` calls the whole module \u2014 whatever `shapes.js` assigned to `module.exports`, here an object. Naming the target by the local would mint `ts:src/shapes.shapes`."
+    },
+    {
+      "edge": {
+        "src": "ts:src/app.go",
+        "dst": "ts:src/aliasing.run",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `aliasing.run()` calls what `aliasing.js` exports as `run`, which is `helper`. Resolving by id alone landed it on the module's private `function run`, which exists but is not exported \u2014 `finalize`'s existence check cannot catch that, only the export map can."
     }
   ],
   "excluded": [],

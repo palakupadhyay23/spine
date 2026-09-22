@@ -59,6 +59,14 @@ _MODULE_SUFFIXES = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 #: 0 under `language_tsx()`.
 _TSX_SUFFIXES = frozenset({".tsx", ".js", ".jsx"})
 
+#: `Function.prototype` members. On a `require` binding that *is* a function — `EventEmitter =
+#: require('events')`, then `EventEmitter.call(this)`, the pre-ES6 inheritance idiom — these name
+#: no export, and resolving them minted an external `ts:events:call`.
+_FUNCTION_PROTOTYPE = frozenset({"call", "apply", "bind"})
+
+#: A specifier that resolves to the repository root, whose module id is ``ts:<root>``.
+_ROOT_PATHS = frozenset({".", "", "index"})
+
 
 class TypeScriptExtractor:
     """TypeScript front-end (tree-sitter). Install the ``typescript`` extra to use it."""
@@ -70,6 +78,11 @@ class TypeScriptExtractor:
         #: Member calls whose receiver type is known but whose target is unproven until the
         #: whole repository is in hand. Drained by `finalize`.
         self._pending_calls: list[_PendingCall] = []
+        #: Namespace-bound locals, in the file being read, that are not callable as a namespace:
+        #: calling one, or `.call`/`.apply`/`.bind` on one, names no export. Always empty for
+        #: TypeScript — `import * as moment` then `moment()` is legal for an `export =` module and
+        #: resolves as it always has. The JavaScript front-end fills it with `require` bindings.
+        self._uncallable: frozenset[str] = frozenset()
 
     def finalize(self, batch: FactBatch) -> FactBatch:
         """Emit the deferred member calls whose target actually exists in the merged graph.
@@ -178,6 +191,7 @@ class TypeScriptExtractor:
                 local_types,
                 module_id,
                 self._pending_calls,
+                self._uncallable,
             )
         self._emit_module(tree.root_node, module_id, source, rel, batch, imports)
         return batch
@@ -401,13 +415,17 @@ def _relative_module(spec: str, rel: str) -> str | None:
     import posixpath
 
     joined = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
+    if joined.startswith(".."):
+        return None  # escapes the scanned tree: no first-party module can carry this id
     for suffix in _MODULE_SUFFIXES:
         if joined.endswith(suffix):
             joined = joined[: -len(suffix)]
             break
     if joined.endswith("/index"):
         joined = joined[: -len("/index")]
-    return joined
+    # `require('..')` from `lib/a.js` is the root module, whose id is `ts:<root>`. Returned as
+    # the normalized `.` it minted `ts:.`, a first-party-looking module no file declares.
+    return "<root>" if joined in _ROOT_PATHS else joined
 
 
 def _import_target(spec: str, name: str, rel: str) -> str:
@@ -424,15 +442,16 @@ def _import_target(spec: str, name: str, rel: str) -> str:
     import posixpath
 
     joined = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
+    if joined.startswith(".."):
+        return f"ts:{spec}:{name}"  # outside the tree: as unknowable as a package, and as external
     for suffix in _MODULE_SUFFIXES:
         if joined.endswith(suffix):
             joined = joined[: -len(suffix)]
             break
     if joined.endswith("/index"):
         joined = joined[: -len("/index")]
-    elif joined == "index":
-        joined = ""
-    return f"ts:{joined}.{name}" if joined else f"ts:{name}"
+    # The root module's members are `ts:<root>.f` (see `extract`); `ts:f` named nothing.
+    return f"ts:<root>.{name}" if joined in _ROOT_PATHS else f"ts:{joined}.{name}"
 
 
 def _calls(
@@ -449,6 +468,7 @@ def _calls(
     local_types: set[str],
     module_id: str,
     pending: list[_PendingCall],
+    uncallable: frozenset[str] = frozenset(),
 ) -> None:
     """Emit CALLS for precisely-resolvable ``call_expression`` sites in a body."""
     siblings = type_methods.get(type_id or "", set())
@@ -461,15 +481,29 @@ def _calls(
             continue
         if n.type == "call_expression":
             fn = n.child_by_field_name("function")
-            line = n.start_point[0] + 1
-            if fn is not None and fn.type == "identifier" and line >= bound.get(_text(fn, source), 1 << 30):
+            if fn is not None and fn.type == "identifier" and _rebound(fn, n, bound, source):
                 # A call through a name this function bound itself — a parameter, a local, or a
                 # closure argument. `local_funcs` and `imports` still hold the FILE-level
                 # binding of that name, so resolving it would emit an edge to a definition the
                 # call never reaches. The callee here is decided by whoever supplied the value.
                 stack.extend(n.named_children)
                 continue
-            target = _resolve_callee(fn, type_id, siblings, local_funcs, imports, namespaces, rel, source)
+            owner = (
+                fn.child_by_field_name("object")
+                if fn is not None and fn.type == "member_expression"
+                else None
+            )
+            if owner is not None and owner.type == "identifier" and _rebound(owner, n, bound, source):
+                # `user.save()` where this function rebound `user` — a parameter, a local, a
+                # callback argument. The FILE-level `user` may be a namespace (`const user =
+                # require('./user')`), and resolving through it sends the call to an export the
+                # rebound value need not have. The bare-name rule above, applied to the receiver;
+                # a receiver typed by `new` in this body still reaches `_defer_member_call`.
+                target = None
+            else:
+                target = _resolve_callee(
+                    fn, type_id, siblings, local_funcs, imports, namespaces, rel, source, uncallable
+                )
             if target is not None:
                 _ensure_external(batch, target)
                 batch.add_edge(Edge(caller, target, EdgeKind.CALLS, Provenance(rel, n.start_point[0] + 1)))
@@ -478,6 +512,11 @@ def _calls(
                     caller, fn, typed, constructors, imports, local_types, module_id, rel, source, pending
                 )
         stack.extend(n.named_children)
+
+
+def _rebound(name: TSNode, call: TSNode, bound: dict[str, int], source: bytes) -> bool:
+    """Whether the enclosing function had already rebound ``name`` where ``call`` sits."""
+    return call.start_byte >= bound.get(_text(name, source), 1 << 62)
 
 
 @dataclass(frozen=True)
@@ -631,11 +670,11 @@ def _params_of(node: TSNode | None, src: bytes) -> list[str]:
 
 
 def _bound_names(body: TSNode, src: bytes) -> dict[str, int]:
-    """Names this function binds, each with the first line it is in scope.
+    """Names this function binds, each with the first byte offset at which it is in scope.
 
     A callee in this map is reached through a parameter, a local or a closure argument, so no
-    file-level id names it. The line matters: TypeScript's temporal dead zone makes a call
-    *above* a `const` an error rather than a call to an outer function, but keeping the line
+    file-level id names it. The position matters: TypeScript's temporal dead zone makes a call
+    *above* a `const` an error rather than a call to an outer function, but keeping the position
     costs nothing and keeps this helper honest about what it is asserting.
 
     The walk mirrors `_calls_in_body` exactly — same `_CALL_SCOPE_STOP` boundaries — because a
@@ -645,31 +684,34 @@ def _bound_names(body: TSNode, src: bytes) -> dict[str, int]:
     """
     bound: dict[str, int] = {}
 
-    def bind(name: str, line: int) -> None:
-        if name and line < bound.get(name, 1 << 30):
-            bound[name] = line
+    def bind(name: str, offset: int) -> None:
+        if name and offset < bound.get(name, 1 << 62):
+            bound[name] = offset
 
     for name in _params_of(body.parent, src):
-        bind(name, body.parent.start_point[0] + 1 if body.parent is not None else 1)
+        bind(name, body.parent.start_byte if body.parent is not None else 0)
 
     stack = list(body.named_children)
     while stack:
         n = stack.pop()
         if n.type in _CALL_SCOPE_STOP:
             continue
-        after = n.end_point[0] + 2  # a declaration is in scope from the line after it ends
+        # A declaration is in scope from where it ends — by byte, not by line. The line was a
+        # proxy that missed the one-liner: `const user = makeUser(); user.save();` read `user`
+        # as unbound, and the call resolved through a file-level namespace of the same name.
+        after = n.end_byte
         if n.type == "variable_declarator":
             for name in _pattern_names(n.child_by_field_name("name"), src):
                 bind(name, after)
         elif n.type in ("for_in_statement", "for_statement"):
             for name in _pattern_names(n.child_by_field_name("left"), src):
-                bind(name, n.start_point[0] + 1)
+                bind(name, n.start_byte)
         elif n.type == "catch_clause":
             for name in _pattern_names(n.child_by_field_name("parameter"), src):
-                bind(name, n.start_point[0] + 1)
+                bind(name, n.start_byte)
         elif n.type in ("arrow_function", "function_expression", "generator_function"):
             for name in _params_of(n, src):
-                bind(name, n.start_point[0] + 1)
+                bind(name, n.start_byte)
         stack.extend(n.named_children)
     return bound
 
@@ -683,6 +725,7 @@ def _resolve_callee(
     namespaces: set[str],
     rel: str,
     source: bytes,
+    uncallable: frozenset[str] = frozenset(),
 ) -> str | None:
     """The callee's node id, or ``None`` when it can't be resolved precisely."""
     if fn is None:
@@ -691,12 +734,10 @@ def _resolve_callee(
         name = _text(fn, source)
         if name in local_funcs:  # module-level function / arrow const
             return local_funcs[name]
-        if name in imports and name not in namespaces:  # imported binding → its definition
-            # A namespace is a module object, not a function. Calling `import * as ns` is a
-            # type error in TypeScript, so this changes nothing there — but CommonJS binds the
-            # whole module with `const m = require('./m')`, and `m()` calls whatever the module
-            # assigned to `module.exports`. Resolving it by the *local* name would mint
-            # `ts:m.m`, a function the module need not declare.
+        if name in imports and name not in uncallable:  # imported binding → its definition
+            # `uncallable` holds CommonJS's whole-module bindings: after `const m = require('./m')`,
+            # `m()` calls whatever the module assigned to `module.exports`, and resolving it by
+            # the *local* name would mint `ts:m.m`, a function the module need not declare.
             return _import_target(imports[name], name, rel)
         return None
     if fn.type == "member_expression":
@@ -712,6 +753,8 @@ def _resolve_callee(
             # method, not an export of the module `items` came from. Resolving it produced
             # `ts:<module>.forEach` — a node that does not and should not exist.
             oname = _text(obj, source)
+            if oname in uncallable and pname in _FUNCTION_PROTOTYPE:
+                return None  # `EventEmitter.call(this)` — the module IS a function here
             if oname in namespaces and oname in imports:
                 return _import_target(imports[oname], pname, rel)
     return None

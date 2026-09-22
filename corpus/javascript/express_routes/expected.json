@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "express_routes",
-  "why": "Express the CommonJS way. Every handler shape: a bare local function, `exports.version` in the same module, `users.list` through a `require` namespace (the route-separation idiom), an inline arrow, a router mounted with `app.use`. Two router bindings: the direct `const app = express()` and the chained `var app = module.exports = express()` that 18 of express's 28 example apps use. Plus a computed path, and a handler naming an export that does not exist.",
+  "why": "Express the CommonJS way. Every handler shape: a bare local function, `exports.version` in the same module, `users.list` through a `require` namespace (the route-separation idiom), an inline arrow, a router mounted with `app.use`. Two router bindings: the direct `const app = express()` and the chained `var app = module.exports = express()` that 18 of express's 28 example apps use. Plus a computed path, and a renamed export \u2014 `exports.destroy = helper` beside a private `function destroy` \u2014 whose route must bind to `helper`. (An earlier version routed to `users.missing`, an export that does not exist; Express throws on an undefined handler at start-up, so that Endpoint could never have existed, and the fixture was stating something false. The dropped-EXPOSES rule is pinned by a unit test instead.)",
   "root": ".repo",
   "nodes": [
     {
@@ -45,10 +45,6 @@
       "kind": "Endpoint"
     },
     {
-      "id": "ts:endpoint:POST /users",
-      "kind": "Endpoint"
-    },
-    {
       "id": "ts:endpoint:GET /inline",
       "kind": "Endpoint"
     },
@@ -59,6 +55,18 @@
     {
       "id": "ts:endpoint:GET /admin",
       "kind": "Endpoint"
+    },
+    {
+      "id": "ts:endpoint:DELETE /users",
+      "kind": "Endpoint"
+    },
+    {
+      "id": "ts:users.destroy",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:users.helper",
+      "kind": "Function"
     }
   ],
   "edges": [
@@ -121,6 +129,21 @@
       "src": "ts:endpoint:GET /admin",
       "dst": "ts:admin.dashboard",
       "kind": "EXPOSES"
+    },
+    {
+      "src": "ts:users",
+      "dst": "ts:users.destroy",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:users",
+      "dst": "ts:users.helper",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:endpoint:DELETE /users",
+      "dst": "ts:users.helper",
+      "kind": "EXPOSES"
     }
   ],
   "known_gaps": [],
@@ -128,11 +151,11 @@
   "refusals": [
     {
       "edge": {
-        "src": "ts:endpoint:POST /users",
-        "dst": "ts:users.missing",
+        "src": "ts:endpoint:DELETE /users",
+        "dst": "ts:users.destroy",
         "kind": "EXPOSES"
       },
-      "why": "PREDICTED BEFORE SCORING. `users.missing` names an export `users.js` does not have. The route is real and its Endpoint is emitted; the handler is not, so `finalize` drops the EXPOSES rather than leave it dangling."
+      "why": "PREDICTED BEFORE SCORING. `users.destroy` is what `users.js` exports as `destroy`, which is `helper`. A private `function destroy` exists beside it; resolving the handler by id alone bound the route to it. The export map routes it to `helper`."
     }
   ],
   "excluded": [

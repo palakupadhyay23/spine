@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "commonjs_require",
-  "why": "The four `require` shapes the front-end reads \u2014 whole module (a namespace), destructured, `.member`, and a package \u2014 plus the one it deliberately does not bind: a renamed destructuring, where resolution would name the target by the local.",
+  "why": "The four `require` shapes the front-end reads \u2014 whole module (a namespace), destructured, `.member`, and a package \u2014 each through its own callee, so a break in any one cannot hide behind another. Plus the one it deliberately does not bind: a renamed destructuring, where resolution would name the target by the local. `format.js` exports a real `cash` as a decoy, so a binding by the local name would land on a real node and trip the refusal \u2014 without the decoy, `finalize` dropped the wrong edge anyway and the refusal could never fire.",
   "root": ".repo",
   "nodes": [
     {
@@ -21,7 +21,19 @@
       "kind": "Function"
     },
     {
+      "id": "ts:lib/format.cash",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:lib/format.tax",
+      "kind": "Function"
+    },
+    {
       "id": "ts:lib/report.line",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:lib/report.levy",
       "kind": "Function"
     },
     {
@@ -55,8 +67,23 @@
       "kind": "CONTAINS"
     },
     {
+      "src": "ts:lib/format",
+      "dst": "ts:lib/format.cash",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:lib/format",
+      "dst": "ts:lib/format.tax",
+      "kind": "CONTAINS"
+    },
+    {
       "src": "ts:lib/report",
       "dst": "ts:lib/report.line",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:lib/report",
+      "dst": "ts:lib/report.levy",
       "kind": "CONTAINS"
     },
     {
@@ -82,6 +109,11 @@
     {
       "src": "ts:lib/report.line",
       "dst": "ts:lib/format.money",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:lib/report.levy",
+      "dst": "ts:lib/format.tax",
       "kind": "CALLS"
     },
     {

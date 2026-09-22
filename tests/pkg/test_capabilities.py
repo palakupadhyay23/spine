@@ -154,9 +154,15 @@ _FIXTURES: dict[str, tuple[str, str]] = {
     # over the TypeScript one it subclasses, so an ESM fixture would exercise only the parent.
     "javascript": (
         "sample.js",
-        "const { readFile } = require('fs');\n\nclass Base {}\n\n"
+        "const { readFile } = require('fs');\nconst express = require('express');\n"
+        "const { DataTypes } = require('sequelize');\n\nclass Base {}\n\n"
         "class Thing extends Base {\n  name = 'x';\n  go() { readFile('p', () => {}); }\n}\n\n"
-        "exports.run = function () { return new Thing(); };\n",
+        "exports.run = function () { return new Thing(); };\n"
+        "function health(req, res) {}\nconst app = express();\napp.get('/health', health);\n"
+        "module.exports.model = (s) => {\n"
+        "  s.define('user', { id: DataTypes.INTEGER });\n"
+        "  s.define('post', { id: DataTypes.INTEGER });\n"
+        "  s.models.post.belongsTo(s.models.user);\n};\n",
     ),
 }
 

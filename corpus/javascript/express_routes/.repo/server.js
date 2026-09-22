@@ -14,7 +14,7 @@ exports.version = function (req, res) {
 app.get('/health', health);
 app.get('/version', exports.version);
 app.get('/users', users.list);
-app.post('/users', users.missing);
+app.delete('/users', users.destroy);
 app.get('/inline', (req, res) => res.send('x'));
 app.get(`/computed/${1}`, health);
 

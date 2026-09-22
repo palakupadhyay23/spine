@@ -6,32 +6,42 @@ entity→entity ``REFERENCES``. Ids are ``ts:entity:<model>`` — the ``ts:`` na
 JavaScript front-end shares with TypeScript, in the form ``ts:endpoint:`` already uses — and
 deliberately not ``sql:``-prefixed, so :func:`~orchestrator.pkg.data_layer_link.link_data_layer`
 reads them as ORM entities and collapses each onto a matching table in a ``.sql`` schema. It
-matches by name alone, so nothing here is JavaScript-specific to it.
+matches by the entity's *name*, which is the declared ``tableName`` when there is one and the
+model name otherwise, and it pluralizes naively — a trailing ``s`` — so ``user``/``users`` pair
+and ``person``/``people`` do not, unless ``tableName`` says so.
 
 **No ORM marker, no Entity** — the rule every ORM reader in this package keeps, because a model
 is not recognisable by its shape. The two markers read here, both statically:
 
-- ``<x>.define('<name>', {…})`` in a file that imports the ``sequelize`` package. The official
-  example app defines every model this way, and *inside a function* —
-  ``module.exports = (sequelize) => { sequelize.define('user', …) }`` — with the connection
-  handed in as a parameter. So the whole file is walked, not only its top level, and the
-  receiver's name is not what marks it: the import is.
-- ``class X extends Model`` where ``Model`` is **bound from ``sequelize``** — a base merely
-  *named* ``Model`` is not enough, since Objection.js names its base the same — with the
-  columns read from ``X.init({…}, …)``.
+- ``<x>.define('<name>', {…})`` whose attribute map **uses a Sequelize type** — a value rooted at
+  a binding from the ``sequelize`` package (``DataTypes.STRING``, ``Sequelize.DataTypes.X``, or
+  ``{type: …}`` of one). ``define`` alone marks nothing: ``customElements.define``,
+  ``ajv.define`` and factory-girl's ``factory.define`` all take a string and an object. The
+  official example app defines every model *inside a function* —
+  ``module.exports = (sequelize) => { sequelize.define('user', …) }`` — so the whole file is
+  walked, not only its top level.
+- ``class X extends Model`` where ``Model`` is **bound from ``sequelize``** (Objection.js names
+  its base the same) **and** ``X.init({…})`` is in the file. A class with no ``init`` is an
+  abstract base the real models extend, and has no table. ``modelName`` renames the model;
+  ``tableName`` names its table.
 
 **``REFERENCES`` follows the foreign key**, so it agrees with the schema it is reconciled
 against: ``A.belongsTo(B)`` puts the key on A (A references B); ``A.hasMany(B)`` and
 ``A.hasOne(B)`` put it on B (B references A). The redundant pair a real app writes —
-``orchestra.hasMany(instrument)`` *and* ``instrument.belongsTo(orchestra)`` — therefore states
-one edge twice, not two. Both ends are resolved by name: from a destructuring of the models
-registry (``const { instrument } = sequelize.models``), a ``….models.name`` access, a Sequelize
-model class in this file, or an import binding. A name is a claim, so the front-end's
-``finalize`` drops any ``REFERENCES`` whose ends are not both entities something defined.
+``orchestra.hasMany(instrument)`` *and* ``instrument.belongsTo(orchestra)`` — states one edge
+twice, not two. An end is named by: a destructuring of the models registry
+(``const { instrument } = sequelize.models``), a ``….models.name`` access, a Sequelize model
+class, a ``const User = sequelize.define(…)`` binding, or an **import** — which names whatever
+the imported module *defines*, not the local's spelling (``const Author = require('./user')``
+is the ``user`` model). An import is settled by :func:`settle` once every file is read, and the
+front-end's ``finalize`` then drops any ``REFERENCES`` whose ends are not both entities.
 
-Left out, and declared in the corpus rather than guessed: ``belongsToMany`` (its keys live on a
-join table the source may never declare as a model), a model name or attribute map that is not a
-literal, and a file that reaches Sequelize only through a re-export of its own.
+Left out, and declared rather than guessed: ``belongsToMany`` (its keys live on a join table,
+often one Sequelize generates from a ``through`` string at run time), a self-association, a
+model name or attribute map that is not a literal, ``class X extends Sequelize.Model``,
+sequelize-cli's generated models (``module.exports = (sequelize, DataTypes) => …`` — no
+``sequelize`` import, so no marker), its ``static associate(models)`` form, ``@sequelize/core``
+v7, and the column-level ``references: {model: …}`` form.
 """
 
 from __future__ import annotations
@@ -39,6 +49,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.typescript_extractor import _relative_module, _supertypes
 
 if TYPE_CHECKING:
     from tree_sitter import Node as TSNode
@@ -47,6 +58,9 @@ _LANG = "javascript"
 _PACKAGE = "sequelize"
 #: Association → whether the foreign key sits on the *receiver* (True) or the argument (False).
 _ASSOCIATIONS = {"belongsTo": True, "hasMany": False, "hasOne": False}
+#: Placeholder for "the entity module M defines", settled by :func:`settle` once every file is
+#: read: ``ts:entity-of:<module id>#<local name>``.
+ENTITY_OF = "ts:entity-of:"
 
 
 def _text(node: TSNode | None, source: bytes) -> str:
@@ -72,8 +86,9 @@ def _walk(root: TSNode) -> list[TSNode]:
 
 
 def _args(call: TSNode) -> list[TSNode]:
+    """A call's arguments. Comments are named children too, and `define(/* c */ 'x', …)` is real."""
     args = call.child_by_field_name("arguments")
-    return list(args.named_children) if args is not None else []
+    return [a for a in args.named_children if a.type != "comment"] if args is not None else []
 
 
 def entity_id(name: str) -> str:
@@ -85,95 +100,151 @@ def scan(
 ) -> None:
     """Emit this file's Sequelize models and associations into ``batch``."""
     nodes = _walk(root)
-    uses_sequelize = _PACKAGE in imports.values()
-    model_base = {local for local, spec in imports.items() if spec == _PACKAGE and local == "Model"}
+    sequelize = {local for local, spec in imports.items() if spec == _PACKAGE}
 
-    classes = _model_classes(nodes, source, model_base)
-    if uses_sequelize:
-        for call in (n for n in nodes if n.type == "call_expression"):
-            _define(call, module_id, source, rel, batch)
-    for cls, name in classes.items():
-        _init(nodes, cls, name, module_id, source, rel, batch)
+    defined: dict[str, str] = {}  # `const User = sequelize.define('User', …)` → {User: User}
+    if sequelize:
+        for node in nodes:
+            if node.type != "call_expression":
+                continue
+            model = _define(node, module_id, source, rel, batch, sequelize)
+            parent = node.parent
+            if model is not None and parent is not None and parent.type == "variable_declarator":
+                name = parent.child_by_field_name("name")
+                if name is not None and name.type == "identifier":
+                    defined[_text(name, source)] = model
+
+    classes: dict[str, str] = {}  # {class name: model name}, for classes with an `init`
+    if "Model" in sequelize:
+        for cls in _model_classes(nodes, source):
+            model = _init(nodes, cls, module_id, source, rel, batch)
+            if model is not None:
+                classes[cls] = model
 
     registry = _registry_names(nodes, source)
     for call in (n for n in nodes if n.type == "call_expression"):
-        _association(call, source, rel, batch, registry, classes, imports)
+        _association(call, source, rel, batch, registry, classes, defined, imports)
 
 
-def _model_classes(nodes: list[TSNode], source: bytes, model_base: set[str]) -> dict[str, str]:
-    """``{class name: model name}`` for classes extending Sequelize's ``Model``."""
-    out: dict[str, str] = {}
-    if not model_base:
-        return out
-    from orchestrator.pkg.typescript_extractor import _supertypes
+def _model_classes(nodes: list[TSNode], source: bytes) -> list[str]:
+    """Classes that descend from Sequelize's ``Model`` in this file, directly or through a base.
 
+    `class BaseModel extends Model {}` then `class Product extends BaseModel {}` is the usual way
+    to share hooks between models: the base has no ``init`` and no table, the subclass is the
+    model. Read only directly, the subclass was missed; read by shape, the base was minted. So
+    descent is followed within the file, and ``init`` decides which of them is a table.
+    """
+    bases: dict[str, set[str]] = {}
     for node in nodes:
-        if node.type != "class_declaration" or not model_base & set(_supertypes(node, source)):
+        if node.type == "class_declaration":
+            name = _text(node.child_by_field_name("name"), source)
+            if name:
+                bases[name] = set(_supertypes(node, source))
+    derived = {"Model"}
+    grew = True
+    while grew:
+        grew = False
+        for name, supers in bases.items():
+            if name not in derived and supers & derived:
+                derived.add(name)
+                grew = True
+    return sorted(derived - {"Model"})
+
+
+def _sequelize_root(node: TSNode | None, source: bytes, sequelize: set[str]) -> bool:
+    """Whether a member chain starts at a binding from the `sequelize` package."""
+    while node is not None and node.type == "member_expression":
+        node = node.child_by_field_name("object")
+    return node is not None and node.type == "identifier" and _text(node, source) in sequelize
+
+
+def _typed_attributes(attributes: TSNode, source: bytes, sequelize: set[str]) -> bool:
+    """Whether an attribute map uses a Sequelize type — the marker `define` itself cannot give."""
+    for pair in attributes.named_children:
+        if pair.type != "pair":
             continue
-        name = _text(node.child_by_field_name("name"), source)
-        if name:
-            out[name] = name
-    return out
+        value = pair.child_by_field_name("value")
+        if _sequelize_root(value, source, sequelize):
+            return True
+        if value is not None and value.type == "object":
+            for inner in value.named_children:
+                if (
+                    inner.type == "pair"
+                    and _text(inner.child_by_field_name("key"), source) == "type"
+                    and _sequelize_root(inner.child_by_field_name("value"), source, sequelize)
+                ):
+                    return True
+    return False
 
 
-def _define(call: TSNode, module_id: str, source: bytes, rel: str, batch: FactBatch) -> None:
-    """``sequelize.define('user', {id: …, username: …})``."""
+def _option(options: TSNode | None, key: str, source: bytes) -> str | None:
+    """A literal ``key: '…'`` in an options object — `modelName`, `tableName`."""
+    if options is None or options.type != "object":
+        return None
+    for pair in options.named_children:
+        if pair.type == "pair" and _text(pair.child_by_field_name("key"), source) == key:
+            return _string(pair.child_by_field_name("value"), source)
+    return None
+
+
+def _define(
+    call: TSNode, module_id: str, source: bytes, rel: str, batch: FactBatch, sequelize: set[str]
+) -> str | None:
+    """``sequelize.define('user', {…}, {tableName: 'users'})`` → the model name, when it is one."""
     fn = call.child_by_field_name("function")
-    if (
-        fn is None
-        or fn.type != "member_expression"
-        or _text(fn.child_by_field_name("property"), source) != "define"
-    ):
-        return
+    if fn is None or fn.type != "member_expression":
+        return None
+    if _text(fn.child_by_field_name("property"), source) != "define":
+        return None
     args = _args(call)
     name = _string(args[0], source) if args else None
-    if name is None:
-        return
     attributes = args[1] if len(args) > 1 and args[1].type == "object" else None
-    _entity(name, attributes, module_id, source, rel, call.start_point[0] + 1, batch)
+    if name is None or attributes is None or not _typed_attributes(attributes, source, sequelize):
+        return None
+    table = _option(args[2] if len(args) > 2 else None, "tableName", source)
+    _entity(name, table, attributes, module_id, source, rel, call.start_point[0] + 1, batch)
+    return name
 
 
 def _init(
-    nodes: list[TSNode], cls: str, name: str, module_id: str, source: bytes, rel: str, batch: FactBatch
-) -> None:
-    """``class User extends Model {}`` + ``User.init({…}, {sequelize})``.
-
-    The class is the marker, so the entity exists even without an ``init`` in this file; the
-    columns come from ``init`` when it is here.
-    """
-    attributes: TSNode | None = None
-    line = 0
+    nodes: list[TSNode], cls: str, module_id: str, source: bytes, rel: str, batch: FactBatch
+) -> str | None:
+    """``User.init({…}, {modelName, tableName})`` for a Sequelize class → its model name."""
     for node in nodes:
         if node.type != "call_expression":
             continue
         fn = node.child_by_field_name("function")
         if (
-            fn is not None
-            and fn.type == "member_expression"
-            and _text(fn.child_by_field_name("object"), source) == cls
-            and _text(fn.child_by_field_name("property"), source) == "init"
+            fn is None
+            or fn.type != "member_expression"
+            or _text(fn.child_by_field_name("object"), source) != cls
+            or _text(fn.child_by_field_name("property"), source) != "init"
         ):
-            args = _args(node)
-            if args and args[0].type == "object":
-                attributes, line = args[0], node.start_point[0] + 1
-                break
-    if not line:
-        line = next(
-            (
-                n.start_point[0] + 1
-                for n in nodes
-                if n.type == "class_declaration" and _text(n.child_by_field_name("name"), source) == cls
-            ),
-            1,
-        )
-    _entity(name, attributes, module_id, source, rel, line, batch)
+            continue
+        args = _args(node)
+        if not args or args[0].type != "object":
+            continue
+        options = args[1] if len(args) > 1 else None
+        model = _option(options, "modelName", source) or cls
+        table = _option(options, "tableName", source)
+        _entity(model, table, args[0], module_id, source, rel, node.start_point[0] + 1, batch)
+        return model
+    return None
 
 
 def _entity(
-    name: str, attributes: TSNode | None, module_id: str, source: bytes, rel: str, line: int, batch: FactBatch
+    name: str,
+    table: str | None,
+    attributes: TSNode | None,
+    module_id: str,
+    source: bytes,
+    rel: str,
+    line: int,
+    batch: FactBatch,
 ) -> None:
+    """The id is the *model* name, which associations name; the node's name is the table."""
     eid = entity_id(name)
-    batch.add_node(Node(eid, NodeKind.ENTITY, name, _LANG, Provenance(rel, line)))
+    batch.add_node(Node(eid, NodeKind.ENTITY, table or name, _LANG, Provenance(rel, line)))
     batch.add_edge(Edge(module_id, eid, EdgeKind.CONTAINS, Provenance(rel, line)))
     if attributes is None:
         return
@@ -181,11 +252,9 @@ def _entity(
         if pair.type != "pair":
             continue  # a spread or a shorthand names no column this pass can see
         key = pair.child_by_field_name("key")
-        column = (
-            _text(key, source).strip("\"'")
-            if key is not None and key.type in ("property_identifier", "string")
-            else ""
-        )
+        if key is None or key.type not in ("property_identifier", "string"):
+            continue
+        column = _text(key, source).strip("\"'")
         if not column:
             continue
         fline = pair.start_point[0] + 1
@@ -216,24 +285,38 @@ def _registry_names(nodes: list[TSNode], source: bytes) -> set[str]:
     return out
 
 
-def _model_name(
-    node: TSNode | None, source: bytes, registry: set[str], classes: dict[str, str], imports: dict[str, str]
+def _model_end(
+    node: TSNode | None,
+    source: bytes,
+    rel: str,
+    registry: set[str],
+    classes: dict[str, str],
+    defined: dict[str, str],
+    imports: dict[str, str],
 ) -> str | None:
-    """The model an association end names, or ``None`` when it cannot be read without guessing."""
+    """The entity id an association end names, a placeholder :func:`settle` resolves, or ``None``."""
     if node is None:
         return None
     if node.type == "member_expression":  # sequelize.models.orchestra
         owner = node.child_by_field_name("object")
         if owner is not None and _text(owner.child_by_field_name("property"), source) == "models":
-            return _text(node.child_by_field_name("property"), source) or None
+            name = _text(node.child_by_field_name("property"), source)
+            return entity_id(name) if name else None
         return None
     if node.type != "identifier":
         return None
     name = _text(node, source)
-    if name in registry or name in classes:
-        return classes.get(name, name)
-    if name in imports:  # `const { Post } = require('./post')` — landed or dropped in `finalize`
-        return name
+    if name in classes:
+        return entity_id(classes[name])
+    if name in defined:
+        return entity_id(defined[name])
+    if name in registry:
+        return entity_id(name)
+    if name in imports:
+        # `const Author = require('./models/user')`: the local is not the model's name. It names
+        # whatever that module *defines*, which is known only once that module has been read.
+        module = _relative_module(imports[name], rel)
+        return f"{ENTITY_OF}ts:{module}#{name}" if module is not None else None
     return None
 
 
@@ -244,6 +327,7 @@ def _association(
     batch: FactBatch,
     registry: set[str],
     classes: dict[str, str],
+    defined: dict[str, str],
     imports: dict[str, str],
 ) -> None:
     fn = call.child_by_field_name("function")
@@ -253,19 +337,49 @@ def _association(
     if kind not in _ASSOCIATIONS:
         return
     args = _args(call)
-    receiver = _model_name(fn.child_by_field_name("object"), source, registry, classes, imports)
-    target = _model_name(args[0] if args else None, source, registry, classes, imports)
-    if receiver is None or target is None:
-        return
+    receiver = _model_end(fn.child_by_field_name("object"), source, rel, registry, classes, defined, imports)
+    target = _model_end(args[0] if args else None, source, rel, registry, classes, defined, imports)
+    if receiver is None or target is None or receiver == target:
+        return  # a self-association keys a row to its own table; Python's reader skips it too
     holder, referenced = (receiver, target) if _ASSOCIATIONS[kind] else (target, receiver)
-    batch.add_edge(
-        Edge(
-            entity_id(holder),
-            entity_id(referenced),
-            EdgeKind.REFERENCES,
-            Provenance(rel, call.start_point[0] + 1),
-        )
-    )
+    batch.add_edge(Edge(holder, referenced, EdgeKind.REFERENCES, Provenance(rel, call.start_point[0] + 1)))
 
 
-__all__ = ["entity_id", "scan"]
+def settle(batch: FactBatch) -> FactBatch:
+    """Replace each ``ts:entity-of:<module>#<local>`` end with the entity that module defines.
+
+    One entity in the module: that one. Several: the one named like the import's local, if any.
+    None: the edge is dropped — it names a model this pass never saw defined. A self-association
+    that only resolution reveals is dropped here too. Run by the JavaScript front-end's
+    `finalize`, before its existence check.
+    """
+    if not any(e.src.startswith(ENTITY_OF) or e.dst.startswith(ENTITY_OF) for e in batch.edges):
+        return batch
+    by_module: dict[str, set[str]] = {}
+    for edge in batch.edges:
+        if edge.kind is EdgeKind.CONTAINS and edge.dst.startswith("ts:entity:") and "." not in edge.dst:
+            by_module.setdefault(edge.src, set()).add(edge.dst)
+
+    def resolve(end: str) -> str | None:
+        if not end.startswith(ENTITY_OF):
+            return end
+        module, _, local = end[len(ENTITY_OF) :].rpartition("#")
+        candidates = by_module.get(module, set())
+        if len(candidates) == 1:
+            return next(iter(candidates))
+        return entity_id(local) if entity_id(local) in candidates else None
+
+    out = FactBatch()
+    for node in batch.nodes:
+        out.add_node(node)
+    for edge in batch.edges:
+        if edge.kind is EdgeKind.REFERENCES:
+            src, dst = resolve(edge.src), resolve(edge.dst)
+            if src is None or dst is None or src == dst:
+                continue
+            edge = Edge(src, dst, edge.kind, edge.provenance)
+        out.add_edge(edge)
+    return out
+
+
+__all__ = ["ENTITY_OF", "entity_id", "scan", "settle"]

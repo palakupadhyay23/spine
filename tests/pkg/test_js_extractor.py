@@ -84,7 +84,10 @@ def test_a_renamed_destructuring_records_the_import_and_binds_nothing(tmp_path: 
     batch = _repo(
         tmp_path,
         {
-            "util.js": "exports.double = (x) => x * 2;\n",
+            # `twice` is exported too — a decoy, so a binding by the local name would land on a
+            # real node. Without it `finalize` dropped the wrong edge anyway and this passed
+            # whatever the binding did.
+            "util.js": "exports.double = (x) => x * 2;\nexports.twice = (x) => x * 2;\n",
             "api.js": "const { double: twice } = require('./util');\nfunction run(x) { return twice(x); }\n",
         },
     )
@@ -121,19 +124,36 @@ def test_a_package_require_is_an_external_module(tmp_path: Path) -> None:
 
 
 def test_commonjs_exports_are_the_modules_surface(tmp_path: Path) -> None:
+    """Each export form in a file that never replaces `module.exports`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "exports.a = function () {};\nmodule.exports.b = () => {};\n",
+            "n.js": "module.exports = { c() {}, d: function () {}, e: () => {} };\n",
+        },
+    )
+    functions = {n.id for n in batch.nodes if n.kind is NodeKind.FUNCTION}
+    assert {"ts:m.a", "ts:m.b", "ts:n.c", "ts:n.d", "ts:n.e"} <= functions
+
+
+def test_members_set_before_module_exports_is_replaced_are_not_exported(tmp_path: Path) -> None:
+    """`require` returns the *new* object. An earlier version of this test asserted all five were
+    exported — it encoded the naive reading, not CommonJS: `a` and `b` were set on the object
+    `module.exports = {…}` threw away."""
     batch = _repo(
         tmp_path,
         {
             "m.js": (
                 "exports.a = function () {};\n"
                 "module.exports.b = () => {};\n"
-                "module.exports = { c() {}, d: function () {}, e: () => {} };\n"
+                "module.exports = { c() {} };\n"
+                "module.exports.d = () => {};\n"
             )
         },
     )
     functions = {n.id for n in batch.nodes if n.kind is NodeKind.FUNCTION}
-    assert {"ts:m.a", "ts:m.b", "ts:m.c", "ts:m.d", "ts:m.e"} <= functions
-    assert {("ts:m", f"ts:m.{x}") for x in "abcde"} <= _edges(batch, EdgeKind.CONTAINS)
+    assert {"ts:m.c", "ts:m.d"} <= functions
+    assert not {"ts:m.a", "ts:m.b"} & functions
 
 
 def test_a_named_default_export_is_emitted_and_an_anonymous_one_is_not(tmp_path: Path) -> None:
@@ -330,3 +350,200 @@ def test_typescript_does_not_bind_member_handlers(tmp_path: Path) -> None:
     )
     assert "ts:endpoint:GET /" in _ids(batch)
     assert not _exposes(batch)
+
+
+# ── review pass 2: precision rules added after the maintainer review of #435 ──────────
+
+
+def test_a_member_call_through_a_rebound_namespace_name_does_not_resolve(tmp_path: Path) -> None:
+    """`const user = require('./user')`, then a function that rebinds `user`: its `user.save()`
+    reaches whatever that function was handed, not the module's export. Byte-accurate, so a
+    one-liner is covered too."""
+    batch = _repo(
+        tmp_path,
+        {
+            "user.js": "exports.save = function () {};\n",
+            "api.js": (
+                "const user = require('./user');\n"
+                "function direct() { user.save(); }\n"
+                "function viaParam(user) { user.save(); }\n"
+                "function viaLocal() { const user = makeUser(); user.save(); }\n"
+                "function viaCallback(users) { users.forEach(function (user) { user.save(); }); }\n"
+            ),
+        },
+    )
+    assert {src for src, dst in _edges(batch, EdgeKind.CALLS) if dst == "ts:user.save"} == {"ts:api.direct"}
+
+
+def test_typescript_still_calls_a_namespace_import(tmp_path: Path) -> None:
+    """`import * as moment` then `moment()` is legal for an `export =` module. Refusing it is
+    CommonJS-only; TypeScript resolves it as it always has."""
+    batch = _repo(
+        tmp_path, {"a.ts": "import * as moment from 'moment';\nexport function f(): void { moment(); }\n"}
+    )
+    assert ("ts:a.f", "ts:moment:moment") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_function_prototype_members_on_a_require_binding_name_no_export(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {"a.js": "const EventEmitter = require('events');\nfunction Foo() { EventEmitter.call(this); }\n"},
+    )
+    assert "ts:events:call" not in _ids(batch)
+    assert not _edges(batch, EdgeKind.CALLS)
+
+
+def test_requiring_the_package_root_reaches_the_root_module(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "index.js": "exports.f = function () {};\n",
+            "lib/a.js": "const r = require('..');\nconst i = require('../index');\nfunction g() { r.f(); }\n",
+        },
+    )
+    assert ("ts:lib/a.g", "ts:<root>.f") in _edges(batch, EdgeKind.CALLS)
+    assert not {"ts:.", "ts:index"} & _ids(batch)
+
+
+def test_a_renamed_export_routes_the_call_to_what_is_exported(tmp_path: Path) -> None:
+    """`module.exports = { run: helper }` beside a private `function run`: `m.run()` is `helper`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function run() {}\nfunction helper() {}\nmodule.exports = { run: helper };\n",
+            "api.js": "const m = require('./m');\nfunction go() { m.run(); }\n",
+        },
+    )
+    calls = _edges(batch, EdgeKind.CALLS)
+    assert ("ts:api.go", "ts:m.helper") in calls
+    assert ("ts:api.go", "ts:m.run") not in calls
+
+
+def test_a_renamed_export_routes_the_endpoint_to_what_is_exported(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "site.js": (
+                "function index(req, res) {}\n"
+                "function realIndex(req, res) {}\n"
+                "module.exports = { index: realIndex };\n"
+            ),
+            "app.js": (
+                "const express = require('express');\nconst site = require('./site');\n"
+                "const app = express();\napp.get('/', site.index);\n"
+            ),
+        },
+    )
+    assert _exposes(batch) == {("ts:endpoint:GET /", "ts:site.realIndex")}
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("var o = {};\nexports = o;\no.run = function run() {};\n", id="bare-exports-rebind"),
+        pytest.param(
+            "var a = {}, b = {};\nmodule.exports = a;\na.run = function run() {};\nmodule.exports = b;\n",
+            id="module-exports-twice",
+        ),
+        pytest.param(
+            "let app = module.exports = {};\napp = {};\napp.run = function run() {};\n", id="alias-reassigned"
+        ),
+        pytest.param("module.exports = function run() {};\n", id="function-default-export"),
+    ],
+)
+def test_an_export_the_file_undoes_is_not_an_export(tmp_path: Path, module: str) -> None:
+    batch = _repo(
+        tmp_path, {"m.js": module, "api.js": "const m = require('./m');\nfunction go() { m.run(); }\n"}
+    )
+    assert not {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.go"}
+
+
+def test_the_chained_exports_alias_to_a_declared_object(tmp_path: Path) -> None:
+    """`exports = module.exports = res` — express's `lib/response.js` rebinds both."""
+    batch = _repo(
+        tmp_path,
+        {
+            "r.js": "var res = {};\nexports = module.exports = res;\nres.send = function send() {};\n",
+            "api.js": "const r = require('./r');\nfunction go() { r.send(); }\n",
+        },
+    )
+    assert ("ts:api.go", "ts:r.send") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_route_handler_through_an_exports_alias(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "app.js": (
+                "const express = require('express');\nvar app = module.exports = express();\n"
+                "app.home = function home(req, res) {};\napp.get('/', app.home);\n"
+            )
+        },
+    )
+    assert ("ts:endpoint:GET /", "ts:app.home") in _exposes(batch)
+
+
+def test_compiled_javascript_beside_its_typescript_is_skipped(tmp_path: Path) -> None:
+    """`tsc` output: both map to `ts:foo`, and the `.js` sorts first and would take it over."""
+    batch = _repo(
+        tmp_path,
+        {"foo.ts": "export function bar(): void {}\n", "foo.js": "function bar() {}\nexports.bar = bar;\n"},
+    )
+    foo = next(n for n in batch.nodes if n.id == "ts:foo")
+    assert foo.language == "typescript" and foo.provenance is not None and foo.provenance.file == "foo.ts"
+
+
+def test_a_string_key_no_call_site_can_spell_is_not_an_export(tmp_path: Path) -> None:
+    batch = _repo(tmp_path, {"m.js": "module.exports = { 'a-b': function () {}, ok: function () {} };\n"})
+    functions = {n.id for n in batch.nodes if n.kind is NodeKind.FUNCTION}
+    assert "ts:m.ok" in functions and "ts:m.a-b" not in functions
+
+
+def test_a_destructuring_default_binds_under_the_export_name(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "u.js": "exports.double = (x) => x * 2;\n",
+            "api.js": "const { double = null } = require('./u');\nfunction run(x) { return double(x); }\n",
+        },
+    )
+    assert ("ts:api.run", "ts:u.double") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_member_require_bound_under_another_name_records_the_import_only(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "u.js": "exports.double = (x) => x * 2;\nexports.twice = (x) => x * 2;\n",
+            "api.js": "const twice = require('./u').double;\nfunction run(x) { return twice(x); }\n",
+        },
+    )
+    assert ("ts:api", "ts:u") in _edges(batch, EdgeKind.IMPORTS)
+    assert not {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:api.run"}
+
+
+def test_externals_a_javascript_file_mints_are_tagged_javascript(tmp_path: Path) -> None:
+    batch = _repo(tmp_path, {"a.js": "const fs = require('fs');\n"})
+    assert next(n for n in batch.nodes if n.id == "ts:fs").language == "javascript"
+
+
+def test_the_existence_check_leaves_typescript_edges_alone(tmp_path: Path) -> None:
+    """Only this front-end's name-based edges are checked; TypeScript's are its own business."""
+    batch = _repo(tmp_path, {"a.ts": "import { x } from './nowhere';\nexport function f(): void { x(); }\n"})
+    assert ("ts:a.f", "ts:nowhere.x") in _edges(batch, EdgeKind.CALLS)
+
+
+def test_a_typescript_router_bound_through_module_exports_is_read(tmp_path: Path) -> None:
+    """The chain walk runs for TypeScript too — an additive change, recorded as such."""
+    batch = _repo(
+        tmp_path,
+        {
+            "app.ts": (
+                "import express from 'express';\n"
+                "const app = module.exports = express();\n"
+                "function h(): void {}\n"
+                "app.get('/x', h);\n"
+            )
+        },
+    )
+    assert ("ts:endpoint:GET /x", "ts:app.h") in _exposes(batch)

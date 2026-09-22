@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize",
-  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key, so the redundant `hasMany`/`belongsTo` pair states one edge.",
+  "why": "Sequelize as its own example app writes it: `sequelize.define` inside a function the connection is handed to, a class extending Sequelize's `Model` with columns from `init`, and associations in a separate file on locals destructured from the models registry \u2014 a file that never imports `sequelize` itself. REFERENCES follows the foreign key. Each association kind has an edge of its own \u2014 `hasMany` alone for `venue`, `belongsTo` alone for `Musician` \u2014 so a break in either rule shows, and the redundant `instrument` pair states one edge. `Musician` is reached through an import, which names the model `./models/musician` defines.",
   "root": ".repo",
   "nodes": [
     {
@@ -62,6 +62,22 @@
     },
     {
       "id": "ts:entity:Musician.age",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/venue",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:entity:venue",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:venue.id",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:venue.city",
       "kind": "Field"
     }
   ],
@@ -155,6 +171,31 @@
       "src": "ts:entity:Musician",
       "dst": "ts:entity:orchestra",
       "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/venue",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/venue",
+      "dst": "ts:entity:venue",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:venue",
+      "dst": "ts:entity:venue.id",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:venue",
+      "dst": "ts:entity:venue.city",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:venue",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
     }
   ],
   "known_gaps": [],
@@ -166,7 +207,31 @@
         "dst": "ts:entity:instrument",
         "kind": "REFERENCES"
       },
-      "why": "PREDICTED BEFORE SCORING. The wrong direction. `orchestra.hasMany(instrument)` puts the key on `instrument`; a reader that draws receiver\u2192argument emits this. So does one that reads `belongsToMany` as a plain reference."
+      "why": "PREDICTED BEFORE SCORING. The wrong direction. `orchestra.hasMany(instrument)` puts the key on `instrument`; a reader drawing receiver\u2192argument emits this."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:orchestra",
+        "dst": "ts:entity:venue",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. The wrong direction again, on `orchestra.hasMany(venue)` \u2014 the only statement of that relation, so a direction bug cannot hide behind a redundant `belongsTo`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:Musician",
+        "dst": "ts:entity:venue",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `belongsToMany` read as `belongsTo`. Its keys live on the `booking` join table, not on either model."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:venue",
+        "dst": "ts:entity:Musician",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `belongsToMany` read as `hasMany` \u2014 the other plausible misreading, distinct from every true edge here."
     },
     {
       "edge": {
@@ -178,10 +243,10 @@
     }
   ],
   "excluded": [
-    "`orchestra.belongsToMany(instrument, { through: 'lineup' })` \u2014 the keys live on the `lineup` join table, which no model declares, so there is no entity pair to label. Declared as out of scope rather than drawn in either direction.",
     "`type` and `validate` inside an attribute definition are options *of* a column, not columns.",
     "The anonymous `module.exports = (sequelize) => {\u2026}` adds no Function: an anonymous default export has no name a call site uses.",
-    "`Musician.belongsTo(...)`, `orchestra.hasMany(...)` \u2014 member calls on untyped receivers; they are associations, read as REFERENCES, not CALLS."
+    "`Musician.belongsTo(...)`, `orchestra.hasMany(...)` \u2014 member calls on untyped receivers; they are associations, read as REFERENCES, not CALLS.",
+    "`Musician.belongsToMany(venue, { through: 'booking' })` \u2014 with `through` given as a *string*, Sequelize generates a `booking` model at run time whose rows reference both `Musician` and `venue`. Those two foreign keys hold, but on an entity this front-end cannot see: it reads declared models only, and the corpus has no known-gap form for a node. Stated here as a recall gap rather than labelled or drawn in either direction."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

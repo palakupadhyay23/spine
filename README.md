@@ -269,7 +269,7 @@ see the [Setup guide](https://github.com/synaptixs/spine/blob/main/SETUP.md).
 
 **Which languages and models?**
 Comprehension and codegen cover **Python, Java, TypeScript, C#, C, C++, Go, PHP, Perl and
-Kotlin** — each
+Kotlin**, and comprehension alone covers **JavaScript** — each
 front-end going beyond structure into what that stack actually does (Java and C# REST
 endpoints, EF Core entities, C's `#include` graph, C++ templates and namespaces, Go
 interface satisfaction by method-set matching). **PHP** adds a call graph too (namespaces,

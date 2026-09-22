@@ -147,7 +147,13 @@ def _front_end_bases(source: str, cls: str) -> list[str]:
     """
     for stmt in ast.walk(ast.parse(source)):
         if isinstance(stmt, ast.ClassDef) and stmt.name == cls:
-            return [b.id for b in stmt.bases if isinstance(b, ast.Name)]
+            # `class X(Base)` and `class X(mod.Base)` alike: dropping the attribute form silently
+            # took the parent's column away from a subclass spelled through its module.
+            return [
+                b.id if isinstance(b, ast.Name) else b.attr
+                for b in stmt.bases
+                if isinstance(b, ast.Name | ast.Attribute)
+            ]
     return []
 
 
