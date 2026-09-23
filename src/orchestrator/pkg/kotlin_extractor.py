@@ -513,6 +513,7 @@ class KotlinExtractor:
             rel,
             batch,
             wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
+            by_simple=ctx.imports.by_simple,
         )
         read_module(node, type_id, resolve, source, rel, batch)
         scan_type(

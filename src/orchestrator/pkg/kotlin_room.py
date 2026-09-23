@@ -327,6 +327,7 @@ def read_dao(
     batch: FactBatch,
     *,
     wildcard_prefixes: frozenset[str],
+    by_simple: Mapping[str, str],
 ) -> bool:
     """Emit ``READS``/``WRITES`` for a ``@Dao`` interface's methods."""
     if _find(annotations_of(node, source), "Dao") is None:
@@ -338,7 +339,9 @@ def read_dao(
             name = field_text(member, "name", source)
             if not name:
                 continue
-            _read_dao_method(member, f"{type_id}.{name}", resolve, source, rel, batch, wildcard_prefixes)
+            _read_dao_method(
+                member, f"{type_id}.{name}", resolve, source, rel, batch, wildcard_prefixes, by_simple
+            )
     return True
 
 
@@ -350,10 +353,11 @@ def _read_dao_method(
     rel: str,
     batch: FactBatch,
     wildcard_prefixes: frozenset[str],
+    by_simple: Mapping[str, str],
 ) -> None:
     for annotation in annotations_of(method, source):
         if annotation.name in _WRITE_ANNOTATIONS:
-            for target in _parameter_entity(method, resolve, source, wildcard_prefixes):
+            for target in _parameter_entity(method, resolve, source, wildcard_prefixes, by_simple):
                 batch.add_edge(Edge(func_id, target, EdgeKind.WRITES, Provenance(rel, annotation.line)))
         elif annotation.name == "Query":
             sql = string_value(annotation.arg("value"), source)
@@ -362,7 +366,11 @@ def _read_dao_method(
 
 
 def _parameter_entity(
-    method: TSNode, resolve: Any, source: bytes, wildcard_prefixes: frozenset[str]
+    method: TSNode,
+    resolve: Any,
+    source: bytes,
+    wildcard_prefixes: frozenset[str],
+    by_simple: Mapping[str, str],
 ) -> list[str]:
     """Every entity the write method's first typed parameter could resolve to.
 
@@ -375,9 +383,20 @@ def _parameter_entity(
     ``import app.data.*`` would otherwise be guessed into the caller's own package
     instead and silently refused there. Every wildcard-prefix reading is offered
     here as an additional candidate, provisional exactly like ``resolve``'s own
-    guess already is; ``repoint_table_edges`` is what turns "a candidate" into "the
-    entity", once the whole repository is known, the same two-step deferral this
-    front-end already uses for typed-receiver calls.
+    same-package guess already is; ``repoint_table_edges`` is what turns "a
+    candidate" into "the entity", once the whole repository is known, the same
+    two-step deferral this front-end already uses for typed-receiver calls.
+
+    **A precise import outranks a wildcard outright — it is never diluted into a
+    peer candidate.** ``resolve`` answers the same way whether its guess came from
+    an explicit ``import`` (certain — Kotlin itself would never resolve the name
+    any other way) or from an unverified same-package fallback (a guess, checked
+    the same way a typed-receiver call's same-package guess is). Treating both
+    alike meant an explicit, unambiguous ``import app.data.TopicEntity`` lost to a
+    false ambiguity the moment an unrelated ``import app.other.*`` also happened to
+    declare a same-named ``@Entity`` — a real regression a review of this exact fix
+    found. ``by_simple`` is what lets this tell the two apart, the same map
+    ``_resolve_type`` itself already keys its own certain/guess split on.
     """
     params = next((c for c in method.named_children if c.type == "function_value_parameters"), None)
     if params is None:
@@ -390,10 +409,12 @@ def _parameter_entity(
         if not name:
             continue
         simple = name.rsplit(".", 1)[-1]
-        candidates = []
         resolved = resolve(simple)
-        if resolved:
-            candidates.append(parameter_entity_id(resolved))
+        if resolved and ("." in name or simple in by_simple):
+            # An already-qualified name or an explicit import: certain, and never a
+            # peer of a wildcard guess — Kotlin's own resolution order.
+            return [parameter_entity_id(resolved)]
+        candidates = [parameter_entity_id(resolved)] if resolved else []
         candidates.extend(
             parameter_entity_id(f"java:{prefix}.{simple}") for prefix in sorted(wildcard_prefixes)
         )

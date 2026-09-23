@@ -438,6 +438,56 @@ interface Writer {
     }
 
 
+def test_a_precise_import_outranks_an_unrelated_wildcard_hit(tmp_path: Path) -> None:
+    """A review of the #397 fix above found a regression it introduced: treating
+
+    `resolve`'s precise-import answer as merely one candidate among wildcard
+    guesses meant an unrelated `import app.other.*` that happens to also declare a
+    same-named `@Entity` made an otherwise unambiguous `import app.data.TopicEntity`
+    look ambiguous, and the edge was dropped — worse than the bug being fixed.
+    Kotlin's own resolution order never considers this ambiguous: an explicit
+    import always wins over a wildcard, full stop.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "data/Topic.kt": """\
+package app.data
+
+import androidx.room.Entity
+
+@Entity
+class TopicEntity(val id: String)
+""",
+            "other/Topic.kt": """\
+package app.other
+
+import androidx.room.Entity
+
+@Entity
+class TopicEntity(val id: String)
+""",
+            "db/Dao.kt": """\
+package app.db
+
+import androidx.room.Dao
+import androidx.room.Insert
+import app.data.TopicEntity
+import app.other.*
+
+@Dao
+interface Writer {
+    @Insert
+    fun insert(topic: TopicEntity)
+}
+""",
+        },
+    )
+    assert ("java:app.db.Writer.insert", "java:entity:app.data.TopicEntity") in {
+        (e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.WRITES
+    }
+
+
 def test_a_write_parameter_ambiguous_across_two_wildcard_imports_mints_nothing(
     tmp_path: Path,
 ) -> None:
