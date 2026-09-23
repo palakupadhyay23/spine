@@ -596,16 +596,16 @@ def _export_router(batch: FactBatch, run: ExtractionRun) -> Callable[[str, str |
         if entry is None or file == entry.file:
             return target
         head, _, tail = target[len(module) + 1 :].partition(".")
-        if (file, f"{module}.{head}") in whole:
+        if head in entry.names:  # a member the map names wins: `util.util()` is the member
+            exported = entry.names[head]
+            if exported is None and entry.tier != "readable":
+                exported = f"{module}.{head}"  # written, to a value this pass cannot name
+        elif (file, f"{module}.{head}") in whole:
             exported = entry.default if entry.default is not None or entry.tier != "opaque" else target
         elif head in entry.dead:
             return None  # written onto an object the module no longer exports
         elif entry.tier == "opaque":
             exported = target  # nothing read decides: by name, and the existence check
-        elif head in entry.names:
-            exported = entry.names[head]
-            if exported is None and entry.tier != "readable":
-                exported = f"{module}.{head}"  # written, to a value this pass cannot name
         elif file is not None and file.endswith((".ts", ".tsx")) and entry.default == f"{module}.{head}":
             exported = entry.default
         else:

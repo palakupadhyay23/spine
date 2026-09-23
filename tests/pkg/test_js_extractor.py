@@ -1200,3 +1200,15 @@ def test_each_surface_is_read_into_the_tier_its_forms_allow(tmp_path: Path, modu
     path.write_text("function f() {}\n" + module)
     js.extract(path=path, module="m", rel="m.js")
     assert run.exports["ts:m"].tier == tier
+
+
+def test_a_member_named_like_the_whole_module_local_is_the_member(tmp_path: Path) -> None:
+    """`const util = require('./util'); util.util()` names the member `util`, not the module."""
+    batch = _repo(
+        tmp_path,
+        {
+            "util.js": "function util() {}\nmodule.exports = { util };\n",
+            "c.js": "const util = require('./util');\nfunction go() { util.util(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == {"ts:util.util"}

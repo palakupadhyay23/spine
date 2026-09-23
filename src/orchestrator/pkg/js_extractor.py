@@ -196,7 +196,8 @@ class JavaScriptExtractor(TypeScriptExtractor):
         """The data layer (see :mod:`js_orm`), then this file's export map for `finalize`."""
         from orchestrator.pkg.js_orm import scan
 
-        bindings = scan(root, module_id, source, rel, batch, imports, self._import_names)
+        objects = frozenset({"exports", "module.exports"} | self._surface.aliases)
+        bindings = scan(root, module_id, source, rel, batch, imports, self._import_names, objects)
         if bindings:
             self._models[module_id] = bindings
         surface = self._surface
@@ -943,6 +944,10 @@ def _export_surface(
                 value.type in _FUNCTION_VALUES or _object_create(value, source, local)
             ):
                 tier = _READABLE
+            elif value is not None:
+                # `const Post = sequelize.define(…); module.exports = Post`: its names are hidden,
+                # but `require` returns that binding — the default slot, not a member of it.
+                default = named
         elif final.type == "object":
             tier = _READABLE if _plain_object(final) else _OPAQUE
         elif final.type in _FUNCTION_VALUES:
