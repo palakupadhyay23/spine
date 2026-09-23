@@ -20,6 +20,31 @@ All notable changes to this project are documented here. Format loosely follows
   `--live`, after the PR is already open. The module docstring and
   `docs/specs/autonomous-run-agent.md`'s status line, which the help points to, were stale the
   same way.
+- **An approved plan is the plan that builds.** Four ways `sdlc plan` → `sdlc approve` →
+  `sdlc autorun` refused, or could not be run for, a plan nobody had changed:
+  - **Planning no longer invalidates its own approval.** `sdlc plan` writes `.spine/plans/` into
+    the repository. Unless `.spine/` was ignored, the tree then read as dirty, the plan gate
+    re-derived a `<sha>-dirty` document and refused the approval it had just been given. That is
+    the exact sequence `.github/workflows/spine-sdlc.yml`'s build job runs. Every later command
+    also stopped trusting the knowledge-graph cache. `.spine/plans/` is no longer counted as an
+    uncommitted change anywhere, whether you commit it or not; `.spine/repos.yaml` and
+    `.spine/workflows/` still are.
+  - **`sdlc plan --spec X.json --source <uri>` no longer crashes** (`UnboundLocalError`). The
+    spec stays the requirements and the ticket is only read, with no model call, for §8 to check
+    the hand-written criteria against. A spec file and a `jira://` key that name different
+    tickets are warned about by `sdlc plan` and `sdlc autorun` alike.
+  - **A Bug that lands nowhere keeps its approval.** The gate re-derived the plan without the
+    issue type, so §12's validity row read `PROCEED` where the approved one read `UNLOCALIZED`.
+    The approval now records the issue type, and the document's header names it (or says
+    `untyped`).
+  - **A Jira ticket read through an MCP server says it is the description only.** The REST path
+    also carries links, comments and attachments; the MCP path silently did not.
+
+### Deprecated
+
+- **`sdlc plan --out` and `sdlc approve --out`** now warn and will be removed in 3.45. A plan or
+  approval written outside `<repo>/.spine/plans` is one `sdlc autorun` never reads, so it could
+  never be built. `sdlc autorun --out` (run artifacts) is a different option and is unaffected.
 
 ## 3.43.1 — 2026-09-23
 
