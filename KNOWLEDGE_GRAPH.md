@@ -669,7 +669,7 @@ reviews honest.
 against a committed corpus of **94 hand-labelled fixture cases across all 13
 front-ends**, and the baseline lives in `src/orchestrator/pkg/scoreboard.json`.
 
-**Precision is 1.00 on every node kind and every edge kind, in all 13 languages.** Recall is
+**Precision is 1.00 on every node kind and every edge kind, in all 12 languages.** Recall is
 1.00 on every kind except `CALLS`, JavaScript `IMPORTS` (189 of 190: an immediately-called
 `require`) and multi-repo `CONSUMES` (5 of 6) — each a declared known gap:
 
