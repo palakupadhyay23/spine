@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "unread_surfaces",
-  "why": "The fourth review pass. Five export surfaces this pass does not read in full \u2014 `Object.freeze({\u2026})`, `module.exports = make()`, an alias assigned after its declaration, a subscript `exports['find']`, and `Object.assign` onto an alias \u2014 each of which the third pass still treated as readable and so enforced, dropping a true call. \"Readable\" is an allowlist now, and every one of these calls is resolved by name and kept because its target exists. Plus a renamed export, `{ Handler: Impl }`, with no class called `Handler` anywhere to hide behind, so the method call must be routed through the export map before the existence check rather than after it. Plus two bindings that shadow the module's `store` over their own scope only: a `var` inside a callback (hoisted to the callback, not to `go`) and a `catch (store)` clause. A scope that runs past either loses the true `store.find()` on the last line.",
+  "why": "The fourth review pass. Five export surfaces this pass does not read in full \u2014 `Object.freeze({\u2026})`, `module.exports = make()`, an alias assigned after its declaration, a subscript `exports['find']`, and `Object.assign` onto an alias \u2014 each of which the third pass still treated as readable and so enforced, dropping a true call. \"Readable\" is an allowlist now, and every one of these calls is resolved by name and kept because its target exists. Plus a renamed export, `{ Handler: Impl }`, with no class called `Handler` anywhere to hide behind, so the method call must be routed through the export map before the existence check rather than after it. Plus two bindings that shadow the module's `store` over their own scope only: a `var` inside a callback (hoisted to the callback, not to `go`) and a `catch (store)` clause. A scope that runs past either loses the true `store.find()` on the last line. The fifth review pass adds five more. Two write the exports object through a channel pass 4 did not recognise, and so lost a true call: a brace-less `if (c) exports.find = find` and `Reflect.defineProperty(exports, 'find', \u2026)`. Two hand the exports object to something the reader cannot follow, an alias `const api = exports` and an argument `mixin(exports, \u2026)`, so their calls go by name. And two refusals: `frozen.secret()` and `shadow.secret()` name functions their module declares but never exports, which a name lookup would reach.",
   "root": ".repo",
   "nodes": [
     {
@@ -90,6 +90,78 @@
     },
     {
       "id": "ts:renamed.Impl.run",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:branchy",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:aliased",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:mixed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:reflected",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:shadow",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:frozen.secret",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:branchy.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:branchy.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:aliased.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:aliased.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:mixed.mixin",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:mixed.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:mixed.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:reflected.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:reflected.create",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:shadow.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:shadow.secret",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:shadow.tag",
       "kind": "Function"
     }
   ],
@@ -253,6 +325,126 @@
       "src": "ts:client.go",
       "dst": "ts:store.find",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:frozen",
+      "dst": "ts:frozen.secret",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:branchy",
+      "dst": "ts:branchy.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:branchy",
+      "dst": "ts:branchy.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:aliased",
+      "dst": "ts:aliased.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:aliased",
+      "dst": "ts:aliased.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:mixed",
+      "dst": "ts:mixed.mixin",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:mixed",
+      "dst": "ts:mixed.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:mixed",
+      "dst": "ts:mixed.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:reflected",
+      "dst": "ts:reflected.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:reflected",
+      "dst": "ts:reflected.create",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:shadow",
+      "dst": "ts:shadow.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:shadow",
+      "dst": "ts:shadow.secret",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:shadow",
+      "dst": "ts:shadow.tag",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:branchy",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:aliased",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:mixed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:reflected",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:shadow",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:branchy.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:branchy.create",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:aliased.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:mixed.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:reflected.find",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:shadow.find",
+      "kind": "CALLS"
     }
   ],
   "known_gaps": [],
@@ -273,11 +465,28 @@
         "kind": "CALLS"
       },
       "why": "PREDICTED BEFORE SCORING. `Handler` is the exported *name*; the class is `Impl`. An edge that keeps the name names a node no file declares."
+    },
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:frozen.secret",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `secret` is declared in `frozen.js` but never written to its exports: the frozen literal names `find` and `create` only. A name lookup that finds the function by name alone emits this."
+    },
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:shadow.secret",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `secret` is never exported. `tag(api)` takes a *parameter* named like the exports alias; it is a different binding, so it must not make the surface unreadable and hand `secret` to a name lookup."
     }
   ],
   "excluded": [
     "`Object.freeze`, `Object.assign` and `ids.forEach` are calls on builtins or an untyped receiver, not first-party functions.",
-    "`module.exports = make()` calls `make` at module level, where there is no caller to hang a CALLS edge on."
+    "`module.exports = make()` calls `make` at module level, where there is no caller to hang a CALLS edge on.",
+    "`mixin(exports, \u2026)` and `Reflect.defineProperty(exports, \u2026)` are top-level calls with no caller to hang a CALLS edge on; `Reflect.defineProperty` is a builtin."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

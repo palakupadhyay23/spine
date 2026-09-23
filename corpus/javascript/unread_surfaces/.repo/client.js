@@ -4,16 +4,29 @@ const later = require('./later');
 const keyed = require('./keyed');
 const grown = require('./grown');
 const store = require('./store');
+const branchy = require('./branchy');
+const aliased = require('./aliased');
+const mixed = require('./mixed');
+const reflected = require('./reflected');
+const shadow = require('./shadow');
 const { Handler } = require('./renamed');
 
 function go(ids) {
   frozen.find();
   frozen.create();
+  frozen.secret();
   made.find();
   keyed.find();
   keyed.create();
   grown.find();
   grown.create();
+  branchy.find();
+  branchy.create();
+  aliased.find();
+  mixed.find();
+  reflected.find();
+  shadow.find();
+  shadow.secret();
   new Handler().run();
   ids.forEach(function (id) {
     var store = id;
