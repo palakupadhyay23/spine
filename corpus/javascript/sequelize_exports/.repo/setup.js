@@ -21,6 +21,8 @@ const { Gavotte } = require('./models/param');
 const { Bolero } = require('./models/wrapped');
 const { Hornpipe } = require('./models/twice');
 const { Sarabande } = require('./models/courtly');
+const { Jive } = require('./models/local');
+const { Pavane } = require('./models/stately');
 
 function draft(sequelize) {
   const Performer = sequelize.define('sketch', { lines: DataTypes.INTEGER });
@@ -56,6 +58,8 @@ function wire(sequelize) {
   Bolero.belongsTo(orchestra);
   Hornpipe.belongsTo(orchestra);
   Sarabande.belongsTo(orchestra);
+  Jive.belongsTo(orchestra);
+  Pavane.belongsTo(orchestra);
 }
 
 module.exports = { wire };

@@ -539,7 +539,8 @@ orchestrator pkg accuracy [PATH] [OPTIONS]
 **Current corpus results** (94 fixture cases — 88 single-language, 6 multi-repo — across
 all 13 front-ends, Perl's own corpus grown across P2–P5 of its track: 9 cases). Precision is
 **1.00 on every node kind and every edge kind in every language**; recall is 1.00 on every
-kind except `CALLS`:
+kind except `CALLS`, JavaScript `IMPORTS` (188 of 189: an immediately-called `require`) and
+multi-repo `CONSUMES` (5 of 6) — each a declared known gap:
 
 | language | `CALLS` recall |
 |---|---|

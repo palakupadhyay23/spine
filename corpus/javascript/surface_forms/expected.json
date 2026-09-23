@@ -411,6 +411,10 @@
     {
       "id": "ts:namedfn.secret",
       "kind": "Function"
+    },
+    {
+      "id": "ts:blocky.secret",
+      "kind": "Function"
     }
   ],
   "edges": [
@@ -1073,6 +1077,11 @@
       "src": "ts:client.third",
       "dst": "ts:orfallback.f",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:blocky",
+      "dst": "ts:blocky.secret",
+      "kind": "CONTAINS"
     }
   ],
   "known_gaps": [
@@ -1254,6 +1263,14 @@
         "kind": "CALLS"
       },
       "why": "PREDICTED BEFORE SCORING. `secret` is never exported. The shadowing binding in `namedfn.js` is recognised as the loop's or the function's own, so the surface stays readable and `secret` is not handed to a name lookup."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:blocky.secret",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `secret` is never exported. The block's `const api` is its own, so the module's `api` is declared once and the surface stays readable; read as a second declaration of the alias, it would go opaque and hand `secret` to a name lookup."
     }
   ],
   "excluded": [

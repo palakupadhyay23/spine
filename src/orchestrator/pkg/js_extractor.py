@@ -55,7 +55,8 @@ Declared, measured, and left as they are:
 - **Inside a function, a `let` in an inner block counts for the whole function** when the
   reference scan decides what is the module's own (`_declares`), so a reference to the real
   alias elsewhere in that function is skipped as shadowed. It needs a local spelled like the
-  alias. (At the top level, blocks and `for` headers are scoped exactly.)
+  alias. (At the top level, a block's `let`/`const`/`class` and a `for` header's `let`/`const`
+  are scoped exactly; a `var` belongs to the module wherever it is written.)
 - **A write in a function is taken to run after `module.exports` is replaced**, so it stays
   live: `(function () { exports.g = g; })(); module.exports = exports = { f };` exports `g`
   here, though the function ran first. The scan does not follow calls.
@@ -73,7 +74,15 @@ Declared, measured, and left as they are:
   surface opaque. The exports object reached some other way — returned from a helper, pulled
   out of another object — is not seen.
 - **An alias declared twice is opaque, and its later writes can still invent**: after
-  `var app = module.exports = {…}; var app = {}; app.g = g`, `m.g()` is resolved by name.
+  `var app = module.exports = {…}; var app = {}; app.g = g`, `m.g()` is resolved by name. The
+  same holds for the second `var app` inside a top-level `if` block, and for an alias reassigned
+  inside a callback — `var` is the module's there too, and the scan does not order the writes.
+- **An opaque map keeps only the names certain statements wrote** — plain top-level
+  `<exports>.f = …` in order. A write under an `if`, in a loop or in a function may be onto a
+  binding this pass misread, and kept, it became a rename; so a true export written there is
+  lost too, and a call to it is resolved by name like any other on an opaque module.
+- **A file that declares its own `module`** (`var module = { exports: {} }`) exports nothing
+  through it, and its `module.exports` writes are read as a local's.
 - **A whole-module binding is matched by its local name.** `class X extends log` after
   `const log = require('./log')` over `module.exports = Log; Log.log = log` names the member
   `log` — a function — because a member the export map names wins over the whole module.
@@ -687,8 +696,9 @@ def _shadowed(
     """Whether ``name`` at ``ref`` is a binding of an enclosing function or block, not the module's.
 
     A block counts even at the top level: `{ const api = {}; api.run = helper }` writes onto its
-    own `api`. ``cache`` holds each (scope, name) answer for one file — without it, every
-    reference in a function re-walked the whole function: 14 s on a 47 KB express-style file.
+    own `api`. So does the file itself for `module`, which only the wrapper otherwise binds.
+    ``cache`` holds each (scope, name) answer for one file — without it, every reference in a
+    function re-walked the whole function: 14 s on a 47 KB express-style file.
     """
     memo = cache if cache is not None else {}
     current = ref.parent
@@ -722,6 +732,12 @@ def _shadowed(
             current.parent is None or current.parent.type not in _FUNCTION_NODES
         ):
             memo[key] = _block_declares(current, name, source)
+            if memo[key]:
+                return True
+        elif current.type == "program" and name == "module":
+            # `var module = { exports: {} }` at the top level: every `module` in the file is that
+            # one, and the real module's exports stay `{}`
+            memo[key] = _declares(current, name, source)
             if memo[key]:
                 return True
         current = current.parent
@@ -1048,6 +1064,9 @@ def _export_surface(
     member_exports = False
     declared: dict[str, TSNode] = {}  # top-level `const x = <value>`
     callables: set[str] = set()  # top-level `class X` / `function X`
+    # a file that declares its own `module` never writes the real one: its exports stay `{}`
+    own = next((_shadowed(node, "module", source) for node in decls if node is not None), False)
+    cjs_owner = "exports." if own else ("exports.", "module.exports.")
     for node in decls:
         if node is None:
             continue
@@ -1061,11 +1080,9 @@ def _export_surface(
                 value = declarator.child_by_field_name("value")
                 if name is None or value is None or name.type != "identifier":
                     continue
-                declared[_text(name, source)] = value
-                if _text(name, source) == "exports":
-                    rebound(declarator.start_byte)  # `var exports = {}` redeclares the wrapper's own
+                declared[_text(name, source)] = value  # `var exports = …`: rebound in the walk below
                 targets, final = _chain(value, source)
-                if "module.exports" in targets and not _itself(final, source):
+                if "module.exports" in targets and not own and not _itself(final, source):
                     chains.append((targets, final, _text(name, source), declarator.end_byte))
                 elif "exports" in targets:
                     rebound(declarator.start_byte)
@@ -1074,15 +1091,13 @@ def _export_surface(
             if expr.type != "assignment_expression":
                 continue
             targets, final = _chain(expr, source)
-            if "module.exports" in targets and not _itself(final, source):
+            if "module.exports" in targets and not own and not _itself(final, source):
                 chains.append((targets, final, None, expr.end_byte))
             elif "exports" in targets:
                 rebound(expr.start_byte)
             else:
                 reassigned.update(t for t in targets if _IDENTIFIER.match(t))
-                member_exports = member_exports or any(
-                    t.startswith(("exports.", "module.exports.")) for t in targets
-                )
+                member_exports = member_exports or any(t.startswith(cjs_owner) for t in targets)
     # Every `module.exports = …` in the file, at any depth: one below the top level (UMD's
     # `if (typeof module …)`) makes the exported object a matter of which branch ran.
     values: list[TSNode | None] = []
@@ -1095,7 +1110,7 @@ def _export_surface(
                 and _text(sub.child_by_field_name("name"), source) == "exports"
                 and not _in_function(sub, node)
             ):
-                rebound(sub.start_byte)  # `{ var exports = {}; }` at the top level rebinds it too
+                rebound(sub.start_byte)  # `var exports = {}`, in a top-level block too, rebinds it
             left = sub.child_by_field_name("left") if sub.type == "assignment_expression" else None
             if (
                 left is not None
@@ -1159,7 +1174,8 @@ def _export_surface(
 
     tier = _READABLE
     if not chains:
-        surface = _Surface(rebound_at=rebound_at, cjs=member_exports or seen)
+        # `var module = …` is CommonJS whatever it writes: its exports are `exports` alone
+        surface = _Surface(rebound_at=rebound_at, cjs=member_exports or seen or (own and not esm))
     else:
         targets, final, alias, offset = chains[0]
         alias_object_span: tuple[int, int] | None = None

@@ -771,3 +771,25 @@ def test_an_opaque_module_does_not_export_an_unexported_binding(tmp_path: Path) 
     hidden is not therefore an export called `Post`."""
     module = _HEAD + "const Post = s.define('entry', { t: DataTypes.STRING });\nmodule.exports = make();\n"
     assert _joined(tmp_path, module, "{ Post }") == set()
+
+
+def test_a_function_between_two_var_declarations_reads_the_last(tmp_path: Path) -> None:
+    """Review round 3, B1: `wire()` runs after the module has loaded, whatever its position —
+    `Post` is the second `var` by then, not the one written above the function."""
+    module = (
+        _HEAD + "var Post = s.define('draft', { t: DataTypes.STRING });\n"
+        "function wire(x) { Post.belongsTo(x.models.orchestra); }\n"
+        "var Post = s.define('post', { t: DataTypes.STRING });\nmodule.exports = { wire };\n"
+    )
+    batch = _repo(tmp_path, {"models/m.js": module, "models/o.js": _ORCH})
+    assert {pair for pair in _refs(batch) if pair[1] == "ts:entity:orchestra"} == _TO
+
+
+def test_a_file_that_declares_its_own_module_exports_no_model(tmp_path: Path) -> None:
+    """Review round 3, S2: `var module = …` is the file's own; the real module exports `{}`."""
+    module = (
+        _HEAD
+        + "var module = { exports: {} };\n"
+        + "module.exports = { Post: s.define('post', { t: DataTypes.STRING }) };\n"
+    )
+    assert _joined(tmp_path, module, "{ Post }") == set()

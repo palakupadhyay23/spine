@@ -51,6 +51,7 @@ function more() {
   deferred.g();
   blocky.real();
   blocky.run();
+  blocky.secret();
   boxed.g();
   modref.g();
   bracket.g();

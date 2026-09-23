@@ -6,6 +6,10 @@ function helper() {
   return 2;
 }
 
+function secret() {
+  return 3;
+}
+
 const api = module.exports = { real };
 
 {

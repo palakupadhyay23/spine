@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize_exports",
-  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type. The second review round added a shape per fix, each able to fail: a define written onto a *function's* `db` that shadows the exported one; members written onto an object `module.exports` later replaced, by `module.exports.X` and by an earlier literal; a model default that is also written as a member of itself (`module.exports.Opera = Opera`); a class model declared inside a function; a literal at the end of a *declared* chain; a frozen literal and a top-level `this.X`; an import naming no export of a readable module whose unexported model shares its name; a whole-module import of a module with two models and no default; and, in the importing file, a function-local define spelled like an import. The third round's shapes: a literal assigned onto a *parameter* named `module` or `exports`; `var` declared twice, where the later declaration wins; a `var` inside a top-level `if` and a top-level `try`, which belongs to the module, not the block; an ESM `export class` model; a names-known name with no nameable value beside a model default; and an ES module's top-level `this`.",
+  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type. The second review round added a shape per fix, each able to fail: a define written onto a *function's* `db` that shadows the exported one; members written onto an object `module.exports` later replaced, by `module.exports.X` and by an earlier literal; a model default that is also written as a member of itself (`module.exports.Opera = Opera`); a class model declared inside a function; a literal at the end of a *declared* chain; a frozen literal and a top-level `this.X`; an import naming no export of a readable module whose unexported model shares its name; a whole-module import of a module with two models and no default; and, in the importing file, a function-local define spelled like an import. The third round's shapes: a literal assigned onto a *parameter* named `module` or `exports`; `var` declared twice, where the later declaration wins; a `var` inside a top-level `if` and a top-level `try`, which belongs to the module, not the block; an ESM `export class` model; a names-known name with no nameable value beside a model default; and an ES module's top-level `this`. Two more, from the third: a function written *between* two `var` declarations, whose body reads the last one; a file that declares its own `var module`; and a class model default beside a names-known name with no nameable value.",
   "root": ".repo",
   "nodes": [
     {
@@ -486,6 +486,58 @@
     },
     {
       "id": "ts:entity:volta.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/local",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/twice.early",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:entity:galop",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:quadrille",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:shimmy",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:galop.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:quadrille.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:shimmy.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/stately",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/stately.makeOther",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/stately.Pavane",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:entity:pavane",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:pavane.bars",
       "kind": "Field"
     }
   ],
@@ -1424,6 +1476,101 @@
       "src": "ts:entity:plainsong",
       "dst": "ts:entity:orchestra",
       "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/local",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/local",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/local",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/local",
+      "dst": "ts:entity:shimmy",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:shimmy",
+      "dst": "ts:entity:shimmy.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:galop",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:quadrille",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:galop",
+      "dst": "ts:entity:galop.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:quadrille",
+      "dst": "ts:entity:quadrille.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:models/twice.early",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:quadrille",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/stately",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/stately",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/stately",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/stately",
+      "dst": "ts:models/stately.makeOther",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/stately",
+      "dst": "ts:models/stately.Pavane",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/stately",
+      "dst": "ts:entity:pavane",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:pavane",
+      "dst": "ts:entity:pavane.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/stately.Pavane",
+      "dst": "ts:sequelize:Model",
+      "kind": "IMPLEMENTS"
     }
   ],
   "known_gaps": [],
@@ -1596,6 +1743,30 @@
         "kind": "REFERENCES"
       },
       "why": "PREDICTED BEFORE SCORING. An ES module's top-level `this` is `undefined`: `this.Galliard = \u2026` throws, and exports nothing."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:galop",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `early()` is written between the two `var Galop` declarations, but its body runs when it is called, after the module has loaded: `Galop` is `quadrille` by then."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:shimmy",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `local.js` declares its own `var module`, so `module.exports = { Jive: \u2026 }` writes onto a local; the real module exports `{}`, and `{ Jive }` is `undefined`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:pavane",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `require` returns the class model `Pavane`, and its property `Pavane` is `makeOther()`. Unlike `courtly.js`, the class default keeps the map names-known, so the name is in it with no nameable value: only the model-default rule refuses the fallback by name."
     }
   ],
   "excluded": [

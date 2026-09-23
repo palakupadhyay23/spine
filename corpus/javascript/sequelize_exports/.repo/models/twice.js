@@ -12,6 +12,15 @@ try {
   var Hornpipe = sequelize.define('hornpipe', { bars: DataTypes.INTEGER });
 } catch (error) {}
 
+var Galop = sequelize.define('galop', { bars: DataTypes.INTEGER });
+
+function early(s) {
+  const { orchestra } = s.models;
+  Galop.belongsTo(orchestra);
+}
+
+var Galop = sequelize.define('quadrille', { bars: DataTypes.INTEGER });
+
 function wire(s) {
   const { orchestra } = s.models;
   Polka.belongsTo(orchestra);

@@ -1180,6 +1180,7 @@ def test_a_var_in_a_class_static_block_is_the_blocks_own(tmp_path: Path) -> None
         pytest.param("exports['f'] = f;\n", "readable", id="string-subscript"),
         pytest.param("module.exports = { f };\n", "readable", id="object-literal"),
         pytest.param("module.exports = f;\n", "readable", id="declared-default"),
+        pytest.param("var module = { exports: {} };\nmodule.exports = { f };\n", "readable", id="own-module"),
         pytest.param("if (c) exports.f = f;\n", "names-known", id="brace-less-branch"),
         pytest.param("if (c) { exports.f = f; }\n", "names-known", id="braced-branch"),
         pytest.param("Object.assign(exports, { f });\n", "names-known", id="merge"),
@@ -1234,3 +1235,16 @@ def test_the_reference_scan_is_not_quadratic_in_references_per_function(tmp_path
         assert (
             time.perf_counter() - started < 10.0
         )  # measured 0.06 s and 0.10 s; the old scan took 14 s and 36 s
+
+
+def test_a_file_that_declares_its_own_module_exports_nothing_through_it(tmp_path: Path) -> None:
+    """Review round 3, S2: `var module = { exports: {} }` makes every `module` in the file a local;
+    `require` returns `{}`, so `m.f()` names nothing — and is not left to a name lookup."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "var module = { exports: {} };\nfunction f() {}\nmodule.exports = { f };\n",
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == set()

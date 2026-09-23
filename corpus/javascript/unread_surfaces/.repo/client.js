@@ -9,6 +9,7 @@ const aliased = require('./aliased');
 const mixed = require('./mixed');
 const reflected = require('./reflected');
 const shadow = require('./shadow');
+const boxed = require('./boxed');
 const { Handler } = require('./renamed');
 
 function go(ids) {
@@ -27,6 +28,7 @@ function go(ids) {
   reflected.find();
   shadow.find();
   shadow.secret();
+  boxed.find();
   new Handler().run();
   ids.forEach(function (id) {
     var store = id;

@@ -337,7 +337,12 @@ def _scope_of(declarator: TSNode) -> tuple[int, int]:
 def _in_scope(bindings: list[tuple[int, int, int, str]] | None, at: TSNode) -> str | None:
     """The model a name at ``at`` is bound to: the innermost scope that contains it, and within
     that scope the last declaration before ``at`` — `var Post = a; var Post = b; Post.x()` is
-    `b` — or, used above every one of them, the last."""
+    `b` — or, used above every one of them, the last.
+
+    A use inside a function nested in that scope runs when the function is called, after the
+    module has loaded: it reads the *last* declaration, wherever the function is written.
+    `var Post = a; function wire() { Post.x() } var Post = b` is `b`.
+    """
     innermost: list[tuple[int, int, int, str]] = []
     for binding in bindings or ():
         start, end = binding[0], binding[1]
@@ -350,8 +355,23 @@ def _in_scope(bindings: list[tuple[int, int, int, str]] | None, at: TSNode) -> s
         innermost.append(binding)
     if not innermost:
         return None
-    before = [b for b in innermost if b[2] < at.start_byte]
+    start, end = innermost[0][0], innermost[0][1]
+    before = [] if _deferred(at, start, end) else [b for b in innermost if b[2] < at.start_byte]
     return max(before or innermost, key=lambda b: b[2])[3]
+
+
+def _deferred(at: TSNode, start: int, end: int) -> bool:
+    """Whether ``at`` sits in a function that is itself inside the scope ``start``–``end``."""
+    current = at.parent
+    while current is not None and start <= current.start_byte:
+        if (
+            current.type in _VAR_SCOPES
+            and current.type != "program"
+            and ((current.start_byte, current.end_byte) != (start, end) and current.end_byte <= end)
+        ):
+            return True
+        current = current.parent
+    return False
 
 
 def _exported_literal(obj: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> bool:
