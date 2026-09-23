@@ -237,6 +237,7 @@ def test_an_approval_written_before_it_carried_a_type_still_loads_and_holds(
     _plan_and_approve(CliRunner(), spec_file, checkout)
     approval = checkout / ".spine" / "plans" / "PROJ-42-approval.json"
     payload = json.loads(approval.read_text(encoding="utf-8"))
-    assert payload.pop("issue_type") == ""
+    recorded = payload.pop("issue_type")
+    assert recorded == ""
     approval.write_text(json.dumps(payload), encoding="utf-8")
     assert _gate(spec_file, checkout) == "PASSED: reviewer"
