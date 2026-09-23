@@ -144,9 +144,6 @@ def test_a_spec_with_its_ticket_plans_from_the_spec_and_keeps_the_ticket_text(
     assert "Cart.total raises KeyError for an unknown sku" in document  # the spec's title, not the ticket's
 
 
-@pytest.mark.xfail(
-    strict=True, reason="B17: `--out` writes an approval the gate never reads, and says nothing"
-)
 @pytest.mark.parametrize("command", ["plan", "approve"])
 def test_out_says_the_plan_it_writes_cannot_be_built(command: str, checkout: Path, tmp_path: Path) -> None:
     runner = CliRunner()

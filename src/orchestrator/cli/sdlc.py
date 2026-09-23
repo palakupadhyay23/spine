@@ -476,6 +476,21 @@ def _terminal_gate() -> Any:
     return gate
 
 
+def _warn_out_deprecated() -> None:
+    """`plan`/`approve --out` wrote where the plan gate never reads (ledger B17).
+
+    `require_approved_plan` looks only in `<repo>/.spine/plans`, so an approval written anywhere
+    else is refused as missing at build time, silently until then. Warned for one release rather
+    than removed, so a script using it gets notice; removal is ledger row N11. `autorun --out` is a
+    different option (the run's artifacts) and is not affected.
+    """
+    typer.echo(
+        "WARNING: --out is deprecated and will be removed in 3.45: a plan outside "
+        "<repo>/.spine/plans cannot be built — `sdlc autorun` only reads approvals there.",
+        err=True,
+    )
+
+
 @sdlc_app.command("approve")
 def sdlc_approve(
     intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. PROJ-123.")],
@@ -488,7 +503,12 @@ def sdlc_approve(
         bool, typer.Option("--reject", help="Record a rejection instead of an approval.")
     ] = False,
     out: Annotated[
-        Path | None, typer.Option("--out", help="Where the plan lives (default: <repo>/.spine/plans).")
+        Path | None,
+        typer.Option(
+            "--out",
+            help="Deprecated, removed in 3.45: an approval outside <repo>/.spine/plans is one "
+            "`sdlc autorun` never reads.",
+        ),
     ] = None,
 ) -> None:
     """Record that a human read this build document and decided.
@@ -508,6 +528,8 @@ def sdlc_approve(
         save_approval,
     )
 
+    if out is not None:
+        _warn_out_deprecated()
     plan_file = (Path(out) if out else plan_dir(path)) / f"{intent}-build.md"
     if not plan_file.is_file():
         typer.echo(
@@ -694,7 +716,11 @@ def sdlc_plan(
     path: Annotated[str, typer.Option("--path", help="Repo to reason about (the graph).")] = ".",
     out: Annotated[
         Path | None,
-        typer.Option("--out", help="Where the document goes (default: <repo>/.spine/plans)."),
+        typer.Option(
+            "--out",
+            help="Deprecated, removed in 3.45: a plan outside <repo>/.spine/plans cannot be built — "
+            "`sdlc autorun` reads approvals only there.",
+        ),
     ] = None,
     language: Annotated[
         str, typer.Option("--language", help="Target language for the prompt (auto detects).")
@@ -737,6 +763,8 @@ def sdlc_plan(
         typer.echo(f"ERROR: {lang_error}", err=True)
         raise typer.Exit(code=2)
 
+    if out is not None:
+        _warn_out_deprecated()
     if not spec and not source:
         typer.echo("Give --spec <file.json> or --source <uri>.", err=True)
         raise typer.Exit(code=2)
