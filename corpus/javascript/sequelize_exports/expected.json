@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize_exports",
-  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type. The second review round added a shape per fix, each able to fail: a define written onto a *function's* `db` that shadows the exported one; members written onto an object `module.exports` later replaced, by `module.exports.X` and by an earlier literal; a model default that is also written as a member of itself (`module.exports.Opera = Opera`); a class model declared inside a function; a literal at the end of a *declared* chain; a frozen literal and a top-level `this.X`; an import naming no export of a readable module whose unexported model shares its name; a whole-module import of a module with two models and no default; and, in the importing file, a function-local define spelled like an import.",
+  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type. The second review round added a shape per fix, each able to fail: a define written onto a *function's* `db` that shadows the exported one; members written onto an object `module.exports` later replaced, by `module.exports.X` and by an earlier literal; a model default that is also written as a member of itself (`module.exports.Opera = Opera`); a class model declared inside a function; a literal at the end of a *declared* chain; a frozen literal and a top-level `this.X`; an import naming no export of a readable module whose unexported model shares its name; a whole-module import of a module with two models and no default; and, in the importing file, a function-local define spelled like an import. The third round's shapes: a literal assigned onto a *parameter* named `module` or `exports`; `var` declared twice, where the later declaration wins; a `var` inside a top-level `if` and a top-level `try`, which belongs to the module, not the block; an ESM `export class` model; a names-known name with no nameable value beside a model default; and an ES module's top-level `this`.",
   "root": ".repo",
   "nodes": [
     {
@@ -378,6 +378,114 @@
     },
     {
       "id": "ts:entity:psalm.verses",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/param",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/wrapped",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/twice",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/courtly",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/esmthis",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/esm.Chant",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:models/param.install",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/twice.wire",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/courtly.makeOther",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:entity:jig",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:tango",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:mazurka",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:polka",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:reel",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:hornpipe",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:sarabande",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:plainsong",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:volta",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:jig.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:tango.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:mazurka.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:polka.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:reel.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:hornpipe.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:sarabande.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:plainsong.verses",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:volta.bars",
       "kind": "Field"
     }
   ],
@@ -1106,6 +1214,216 @@
       "src": "ts:entity:psalm",
       "dst": "ts:entity:psalm.verses",
       "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/param",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/wrapped",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/courtly",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/esmthis",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/param",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/wrapped",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/courtly",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/esmthis",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/param",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/wrapped",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/twice",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/courtly",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:tunes",
+      "dst": "ts:models/esmthis",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/param",
+      "dst": "ts:entity:jig",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/wrapped",
+      "dst": "ts:entity:tango",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:mazurka",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:polka",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:reel",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:entity:hornpipe",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/courtly",
+      "dst": "ts:entity:sarabande",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/esm",
+      "dst": "ts:entity:plainsong",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/esmthis",
+      "dst": "ts:entity:volta",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:jig",
+      "dst": "ts:entity:jig.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:tango",
+      "dst": "ts:entity:tango.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:mazurka",
+      "dst": "ts:entity:mazurka.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:polka",
+      "dst": "ts:entity:polka.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:reel",
+      "dst": "ts:entity:reel.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:hornpipe",
+      "dst": "ts:entity:hornpipe.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:sarabande",
+      "dst": "ts:entity:sarabande.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:plainsong",
+      "dst": "ts:entity:plainsong.verses",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:volta",
+      "dst": "ts:entity:volta.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/esm",
+      "dst": "ts:models/esm.Chant",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/param",
+      "dst": "ts:models/param.install",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/twice",
+      "dst": "ts:models/twice.wire",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/courtly",
+      "dst": "ts:models/courtly.makeOther",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/esm.Chant",
+      "dst": "ts:sequelize:Model",
+      "kind": "IMPLEMENTS"
+    },
+    {
+      "src": "ts:entity:polka",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:reel",
+      "dst": "ts:entity:polka",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:hornpipe",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:plainsong",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
     }
   ],
   "known_gaps": [],
@@ -1238,12 +1556,53 @@
         "kind": "REFERENCES"
       },
       "why": "PREDICTED BEFORE SCORING. `{ Hymnal: define('psalm') }` is the literal of `build()`'s own `const db`, not the exported one; the module is opaque (`mixin(db)`), so nothing but a recorded export key could resolve `{ Hymnal }`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:jig",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `module` in `install(module)` is a parameter: `module.exports = { Gavotte: \u2026 }` assigns the parameter's member, not the module's."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:tango",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `exports` inside the IIFE is its parameter, and assigning it rebinds the parameter; `{ Bolero }` is never exported."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:mazurka",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `var Polka` is declared twice; the second declaration, `polka`, is the binding `wire()` reads."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:sarabande",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `require` returns the model `Sarabande`, and its property `Sarabande` is `makeOther()` \u2014 not a model, though the name matches one."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:volta",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. An ES module's top-level `this` is `undefined`: `this.Galliard = \u2026` throws, and exports nothing."
     }
   ],
   "excluded": [
     "`seed.js` defines no model: `{ kind: { type: 'string' } }` has a `type` key whose value is no Sequelize type, and `registry` is not a connection.",
     "`new Sequelize(\u2026)`, `make()` and `mixin(\u2026)` are top-level calls with no caller to hang a CALLS edge on; `make` and `mixin` are declared, so each fixture loads.",
-    "The class `Session` inside `studio.js`'s `build()` is not a top-level type, so it has no `Type` node here; its model `take` is labelled."
+    "The class `Session` inside `studio.js`'s `build()` is not a top-level type, so it has no `Type` node here; its model `take` is labelled.",
+    "The IIFE in `wrapped.js` and `catch (error) {}` in `twice.js` add no node; `makeOther()` inside `Object.assign` is a top-level call with no caller."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

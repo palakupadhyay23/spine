@@ -17,6 +17,10 @@ const { Ballad } = require('./models/ballad');
 const { Minuet, Scherzo } = require('./models/listed');
 const Quartet = require('./models/quartet');
 const { Hymnal } = require('./models/shade');
+const { Gavotte } = require('./models/param');
+const { Bolero } = require('./models/wrapped');
+const { Hornpipe } = require('./models/twice');
+const { Sarabande } = require('./models/courtly');
 
 function draft(sequelize) {
   const Performer = sequelize.define('sketch', { lines: DataTypes.INTEGER });
@@ -48,6 +52,10 @@ function wire(sequelize) {
   Scherzo.belongsTo(orchestra);
   Quartet.belongsTo(orchestra);
   Hymnal.belongsTo(orchestra);
+  Gavotte.belongsTo(orchestra);
+  Bolero.belongsTo(orchestra);
+  Hornpipe.belongsTo(orchestra);
+  Sarabande.belongsTo(orchestra);
 }
 
 module.exports = { wire };

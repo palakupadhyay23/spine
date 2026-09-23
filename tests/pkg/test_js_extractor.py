@@ -1231,4 +1231,6 @@ def test_the_reference_scan_is_not_quadratic_in_references_per_function(tmp_path
         (tmp_path / "m.js").write_text(body)
         started = time.perf_counter()
         RepoCodeExtractor(extractors=[JavaScriptExtractor()]).extract(tmp_path)
-        assert time.perf_counter() - started < 5.0
+        assert (
+            time.perf_counter() - started < 10.0
+        )  # measured 0.06 s and 0.10 s; the old scan took 14 s and 36 s

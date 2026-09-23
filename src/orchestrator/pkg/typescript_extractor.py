@@ -638,7 +638,20 @@ def _off_modules(batch: FactBatch) -> FactBatch:
     modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE}
     kinds = (EdgeKind.CALLS, EdgeKind.EXPOSES, EdgeKind.IMPLEMENTS)
     edges = list(batch.edges)
-    kept = [e for e in edges if not (e.kind in kinds and e.dst in modules)]
+    ours = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+
+    def off(e: Edge) -> bool:
+        # Only this namespace's own edges: a PHP class extending `Illuminate…Model` lands on a
+        # module node too, and dropping it because the repo also held one `.js` file lost it.
+        return (
+            e.kind in kinds
+            and e.dst in modules
+            and e.dst.startswith("ts:")
+            and e.provenance is not None
+            and e.provenance.file.endswith(ours)
+        )
+
+    kept = [e for e in edges if not off(e)]
     if len(kept) == len(edges):
         return batch
     out = FactBatch()

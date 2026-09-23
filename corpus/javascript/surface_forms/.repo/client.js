@@ -19,6 +19,15 @@ const caught = require('./caught');
 const arrowthis = require('./arrowthis');
 const selfref = require('./selfref');
 const varonly = require('./varonly');
+const forshadow = require('./forshadow');
+const namedfn = require('./namedfn');
+const logged = require('./logged');
+const blockvar = require('./blockvar');
+const spread = require('./spread');
+const orfallback = require('./orfallback');
+const itself = require('./itself');
+const rebound = require('./rebound');
+const paramod = require('./paramod');
 
 function go() {
   rflx.find();
@@ -56,6 +65,28 @@ function more() {
   selfref.secret();
   varonly.g();
   return arrowthis.g();
+}
+
+function third() {
+  forshadow.real();
+  forshadow.run();
+  forshadow.secret();
+  namedfn.real();
+  namedfn.run();
+  namedfn.secret();
+  logged.f();
+  logged.secret();
+  blockvar.f();
+  blockvar.g();
+  spread.f();
+  spread.secret();
+  orfallback.f();
+  orfallback.g();
+  itself.g();
+  rebound.f();
+  rebound.g();
+  paramod.f();
+  return paramod.g();
 }
 
 function later() {

@@ -52,9 +52,21 @@ Declared, measured, and left as they are:
   cannot tell `import Base from './base'` from a named import, so the default slot is matched by
   name there: `import B from './base'` over `module.exports = Base` loses `extends B`. The same
   import in a JavaScript file is read (see `ExtractionRun.whole`).
-- **A `let` in an inner block shadows the exports alias over the whole function** when the
-  reference scan decides what is the module's own (`_declares`) — the direction that can only
-  hide a reference, and needs a local spelled like the alias.
+- **Inside a function, a `let` in an inner block counts for the whole function** when the
+  reference scan decides what is the module's own (`_declares`), so a reference to the real
+  alias elsewhere in that function is skipped as shadowed. It needs a local spelled like the
+  alias. (At the top level, blocks and `for` headers are scoped exactly.)
+- **A write in a function is taken to run after `module.exports` is replaced**, so it stays
+  live: `(function () { exports.g = g; })(); module.exports = exports = { f };` exports `g`
+  here, though the function ran first. The scan does not follow calls.
+- **Handing `module` to a function is a use** (`require('./logger')(module)` reads `module.id`);
+  a callee that writes `module.exports` through its parameter is not seen.
+- **The exports object copied to a name makes the surface opaque**, even where the copy can no
+  longer reach the exported object: `var api = exports; api.g = g; module.exports = { f }` is
+  resolved by name.
+- **Reference scanning is quadratic in nesting depth**: each reference walks its ancestors.
+  Five hundred nested functions take about 10 s; ordinary files, including a 446 KB one, are
+  linear (a per-file cache answers each scope once).
 - **The reference finder reads spellings, not aliasing.** It follows `exports`, `module.exports`,
   the aliases a chain or `module.exports = x` names, top-level `this`, and any bare `module`; a
   spelling it cannot follow (`{ exports }`, `const mod = module`, `module['exports']`) makes the
@@ -214,7 +226,14 @@ class JavaScriptExtractor(TypeScriptExtractor):
         for local in defaults:
             if local in by_local:
                 self._run.whole.add((rel, _import_target(by_local[local], local, rel)))
-        self._surface = _export_surface(decls, source, module_id, frozenset(by_local))
+        esm = rel.endswith(".mjs") or any(
+            d is not None
+            and (
+                d.type == "import_statement" or (d.parent is not None and d.parent.type == "export_statement")
+            )
+            for d in decls
+        )
+        self._surface = _export_surface(decls, source, module_id, frozenset(by_local), esm)
         return by_local, namespaces
 
     def _emit_module(
@@ -236,13 +255,16 @@ class JavaScriptExtractor(TypeScriptExtractor):
             if obj is not None and obj.type == "object":
                 for member in obj.named_children:
                     _emit_object_member(member, module_id, source, rel, batch, [], exported)
+        certain = dict(exported)  # plain top-level `<ref>.f = …` statements, read in order
         for name, target in surface.extra:
             exported.setdefault(name, target)
         # An ESM `export` beside CommonJS exports is a surface this pass does not merge.
         mixed = any(child.type == "export_statement" for child in root.named_children)
         if not mixed:
             default = f"{module_id}.{surface.default}" if surface.default else None
-            names = dict(exported)
+            # An opaque map keeps only what certain statements wrote: a write under a loop or in a
+            # function may be onto a binding this pass misread, and kept, it became a rename.
+            names = dict(exported) if surface.tier != _OPAQUE else certain
             dead = surface.dead - set(names)
             self._run.exports[module_id] = ExportMap(rel, names, surface.tier, default, dead)
 
@@ -395,6 +417,9 @@ class _Surface:
     aliases: frozenset[str] = frozenset()
     #: Whether `exports.f = …` still reaches `module.exports`.
     exports_ok: bool = True
+    #: Where `exports` is first rebound on its own (`exports = o`, `var exports = …`), or -1: a
+    #: write through `exports` before it lands on the exported object, one after it does not.
+    rebound_at: int = -1
     #: Whether `module.exports.f = …` / `alias.f = …` names the object that is exported.
     members_ok: bool = True
     #: The byte span of the object literal `module.exports` was set to, when it was. A span and
@@ -439,7 +464,7 @@ class _Surface:
         exported object itself, whenever it is augmented.
         """
         if owner == "exports":
-            return self.exports_ok and at > self.offset
+            return self.exports_ok and at > self.offset and (self.rebound_at < 0 or at < self.rebound_at)
         if owner == "module.exports":
             return self.members_ok and at > self.offset
         return owner_type == "identifier" and owner in self.aliases and self.members_ok
@@ -627,6 +652,22 @@ def _declares(scope: TSNode, name: str, source: bytes) -> bool:
     return False
 
 
+def _loop_declares(loop: TSNode, name: str, source: bytes) -> bool:
+    """Whether a `for` header binds ``name`` with `let`/`const` for the loop: `for (const api of
+    xs)`, `for (let api = …;;)`. A header `var` belongs to the function or the module."""
+    if loop.type == "for_in_statement":
+        kind = loop.child_by_field_name("kind")
+        return (
+            kind is not None
+            and _text(kind, source) in ("let", "const")
+            and name in _pattern_names(loop.child_by_field_name("left"), source)
+        )
+    init = loop.child_by_field_name("initializer")
+    if init is None or init.type != "lexical_declaration":
+        return False
+    return any(name in _pattern_names(d.child_by_field_name("name"), source) for d in init.named_children)
+
+
 def _block_declares(block: TSNode, name: str, source: bytes) -> bool:
     """Whether a block binds ``name`` itself with `let`, `const` or `class` — not `var`, which
     belongs to the enclosing function (or module) wherever it is written."""
@@ -658,9 +699,19 @@ def _shadowed(
                 return True
         elif current.type in _FUNCTION_NODES:
             body = current.child_by_field_name("body")
-            memo[key] = name in _param_names(current, source) or (
-                body is not None and _declares(body, name, source)
+            # a named function *expression* binds its own name inside itself
+            own = current.type in ("function_expression", "function", "generator_function") and (
+                _field_text(current, "name", source) == name
             )
+            memo[key] = (
+                own
+                or name in _param_names(current, source)
+                or (body is not None and _declares(body, name, source))
+            )
+            if memo[key]:
+                return True
+        elif current.type in ("for_statement", "for_in_statement"):
+            memo[key] = _loop_declares(current, name, source)
             if memo[key]:
                 return True
         elif current.type == "catch_clause":
@@ -687,6 +738,11 @@ def _top_level_this(node: TSNode) -> bool:
             return False
         current = current.parent
     return True
+
+
+def _itself(value: TSNode | None, source: bytes) -> bool:
+    """`module.exports = exports`: the object it already is — no replacement."""
+    return value is not None and value.type == "identifier" and _text(value, source) == "exports"
 
 
 def _in_function(node: TSNode, top: TSNode) -> bool:
@@ -787,6 +843,8 @@ def _reference(ref: TSNode, owner: str, source: bytes) -> list[_Write] | None:
         return [] if _same(parent.child_by_field_name("name"), ref) else None
     if kind == "unary_expression" and _text(parent, source).startswith("typeof"):
         return []
+    if kind == "spread_element":
+        return []  # `{ ...exports }` copies the members out: a read, not a write
     if kind in ("call_expression", "new_expression") and _same(
         parent.child_by_field_name("function" if kind == "call_expression" else "constructor"), ref
     ):
@@ -834,7 +892,7 @@ def _merge(fn: str, args: list[TSNode], owner: str, source: bytes) -> list[_Writ
 
 
 def _references(
-    decls: list[TSNode | None], source: bytes, aliases: frozenset[str]
+    decls: list[TSNode | None], source: bytes, aliases: frozenset[str], esm: bool = False
 ) -> tuple[list[tuple[_Write, TSNode]], bool, bool]:
     """Every reference to the exports object: ``(the writes among them, each with its top-level
     statement; whether every one was recognised; whether there was any)``.
@@ -882,8 +940,8 @@ def _references(
                     continue
                 owner = "module.exports"
             elif node.type == "this":
-                if not _top_level_this(node):
-                    continue
+                if esm or not _top_level_this(node):
+                    continue  # an ES module's top-level `this` is `undefined`
                 owner = "this"  # top-level `this` is the object `exports` starts as
             else:
                 continue
@@ -901,7 +959,10 @@ def _references(
 def _module_use(node: TSNode, source: bytes) -> bool:
     """Whether a bare `module` is a use that cannot reach its exports under another name:
     `module.exports` (read by the finder itself), a read of another member (`module.hot`),
-    `typeof module`, or a comparison (`require.main === module`)."""
+    `typeof module`, a comparison (`require.main === module`), or an argument to a call —
+    `require('./logger')(module)` reads `module.id`, and treating it as opaque handed every
+    unexported function of an ordinary module to a name lookup. (A callee that *writes*
+    `module.exports` through its parameter is not seen: declared in the module docstring.)"""
     parent = node.parent
     if parent is None:
         return False
@@ -909,7 +970,11 @@ def _module_use(node: TSNode, source: bytes) -> bool:
         return True
     if parent.type == "unary_expression" and _text(parent, source).startswith("typeof"):
         return True
-    return parent.type == "binary_expression"
+    if parent.type == "arguments":
+        return True
+    operator = parent.child_by_field_name("operator") if parent.type == "binary_expression" else None
+    # `module || {}` yields the module itself: only a comparison is harmless
+    return operator is not None and _text(operator, source) in ("===", "!==", "==", "!=", "instanceof")
 
 
 def _write_target(write: _Write, module_id: str, source: bytes) -> str | None:
@@ -926,7 +991,11 @@ def _write_target(write: _Write, module_id: str, source: bytes) -> str | None:
 
 
 def _export_surface(
-    decls: list[TSNode | None], source: bytes, module_id: str, imported: frozenset[str] = frozenset()
+    decls: list[TSNode | None],
+    source: bytes,
+    module_id: str,
+    imported: frozenset[str] = frozenset(),
+    esm: bool = False,
 ) -> _Surface:
     """Which object `module.exports` is, which top-level names are it — and how much of it is read.
 
@@ -969,7 +1038,12 @@ def _export_surface(
     what it cannot see); a reader that cannot tell must not decide.
     """
     chains: list[tuple[list[str], TSNode | None, str | None, int]] = []
-    bare_rebind = False
+    rebound_at = -1  # where `exports` is first rebound on its own; writes after it go elsewhere
+
+    def rebound(at: int) -> None:
+        nonlocal rebound_at
+        rebound_at = at if rebound_at < 0 else min(rebound_at, at)
+
     reassigned: set[str] = set()
     member_exports = False
     declared: dict[str, TSNode] = {}  # top-level `const x = <value>`
@@ -989,21 +1063,21 @@ def _export_surface(
                     continue
                 declared[_text(name, source)] = value
                 if _text(name, source) == "exports":
-                    bare_rebind = True  # `var exports = {}` redeclares the wrapper's own `exports`
+                    rebound(declarator.start_byte)  # `var exports = {}` redeclares the wrapper's own
                 targets, final = _chain(value, source)
-                if "module.exports" in targets:
+                if "module.exports" in targets and not _itself(final, source):
                     chains.append((targets, final, _text(name, source), declarator.end_byte))
                 elif "exports" in targets:
-                    bare_rebind = True
+                    rebound(declarator.start_byte)
         elif node.type == "expression_statement" and node.named_children:
             expr = node.named_children[0]
             if expr.type != "assignment_expression":
                 continue
             targets, final = _chain(expr, source)
-            if "module.exports" in targets:
+            if "module.exports" in targets and not _itself(final, source):
                 chains.append((targets, final, None, expr.end_byte))
             elif "exports" in targets:
-                bare_rebind = True
+                rebound(expr.start_byte)
             else:
                 reassigned.update(t for t in targets if _IDENTIFIER.match(t))
                 member_exports = member_exports or any(
@@ -1017,8 +1091,17 @@ def _export_surface(
             continue
         for sub in _walk(node):
             if (
-                sub.type == "assignment_expression"
-                and _text(sub.child_by_field_name("left"), source) == "module.exports"
+                sub.type == "variable_declarator"
+                and _text(sub.child_by_field_name("name"), source) == "exports"
+                and not _in_function(sub, node)
+            ):
+                rebound(sub.start_byte)  # `{ var exports = {}; }` at the top level rebinds it too
+            left = sub.child_by_field_name("left") if sub.type == "assignment_expression" else None
+            if (
+                left is not None
+                and _text(left, source) == "module.exports"
+                and not _shadowed(left, "module", source)  # a `module` parameter's is not the module's
+                and not _itself(_chain(sub, source)[1], source)
             ):
                 values.append(_chain(sub, source)[1])
     local = frozenset(callables | set(declared))
@@ -1031,7 +1114,7 @@ def _export_surface(
         return out
 
     aliases = {name for chain in chains for name in named_by(chain)}
-    writes, recognised, seen = _references(decls, source, frozenset(aliases))
+    writes, recognised, seen = _references(decls, source, frozenset(aliases), esm)
     # Reassigned at the top level only, `module.exports` is straight-line code: the last
     # assignment wins, and whatever the earlier ones named is an object nobody exports.
     replaced: set[str] = set()
@@ -1076,7 +1159,7 @@ def _export_surface(
 
     tier = _READABLE
     if not chains:
-        surface = _Surface(exports_ok=not bare_rebind, cjs=member_exports or seen)
+        surface = _Surface(rebound_at=rebound_at, cjs=member_exports or seen)
     else:
         targets, final, alias, offset = chains[0]
         alias_object_span: tuple[int, int] | None = None
@@ -1123,7 +1206,8 @@ def _export_surface(
         is_object = final is not None and final.type == "object"
         surface = _Surface(
             aliases=frozenset(aliases - reassigned),
-            exports_ok="exports" in targets and not bare_rebind,
+            exports_ok="exports" in targets,
+            rebound_at=rebound_at,
             members_ok=not sealed,
             object_span=(final.start_byte, final.end_byte) if final is not None and is_object else None,
             alias_object_span=alias_object_span,
@@ -1152,9 +1236,15 @@ def _export_surface(
             and write.value.start_byte < surface.offset
             and not _in_function(write.value, top)
         )
+        # a write through `exports` after it was rebound — or in a function, which runs after
+        after_rebind = surface.rebound_at >= 0 and (
+            write.value is None
+            or _in_function(write.value, top)
+            or write.value.start_byte > surface.rebound_at
+        )
         stale = (
-            (write.owner == "exports" and (not surface.exports_ok or early))
-            or (write.owner == "this" and (not surface.exports_ok or surface.offset >= 0))
+            (write.owner == "exports" and (not surface.exports_ok or early or after_rebind))
+            or (write.owner == "this" and surface.offset >= 0)  # `this` is `module.exports`'s first object
             or (write.owner == "module.exports" and (early or not surface.members_ok))
             or write.owner in replaced
         )
@@ -1361,20 +1451,15 @@ def _retag(batch: FactBatch) -> FactBatch:
 
 def _drop_unlanded(batch: FactBatch) -> FactBatch:
     known = {n.id for n in batch.nodes}
-    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE}
 
     def unlanded(edge: Edge) -> bool:
         # Both ends: a CALLS or EXPOSES source is always a node this file emitted, but a
         # REFERENCES source is a model *named* in an association (`foo.hasMany(bar)`), and a
-        # name is no more a fact at the source end than at the destination. And no call, route
-        # or `extends` lands on a module — the backstop behind `_export_router`'s retry.
+        # name is no more a fact at the source end than at the destination. (That no call lands
+        # on a *module* is the last finalizer's rule — see `typescript_extractor._off_modules`.)
         return (
             edge.kind in _CHECKED
-            and (
-                edge.dst not in known
-                or edge.src not in known
-                or (edge.kind in _THROUGH_EXPORTS and edge.dst in modules)
-            )
+            and (edge.dst not in known or edge.src not in known)
             and edge.provenance is not None
             and edge.provenance.file.endswith(_SUFFIXES)
         )

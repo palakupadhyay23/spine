@@ -69,7 +69,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
-from orchestrator.pkg.js_extractor import _shadowed, _top_level_this
 from orchestrator.pkg.typescript_extractor import _relative_module, _supertypes
 
 if TYPE_CHECKING:
@@ -201,7 +200,12 @@ def scan(
     #: `const User = sequelize.define('User', …)` → {User: [(scope start, scope end, model)]}. A
     #: binding reaches only the block that declares it: a function-local `const Post = define(…)`
     #: in the importing file is that function's, not the imported `Post` everywhere else.
-    defined: dict[str, list[tuple[int, int, str]]] = {}
+    defined: dict[str, list[tuple[int, int, int, str]]] = {}
+    #: An ES module's top-level `this` is `undefined`, not `exports`.
+    esm = rel.endswith(".mjs") or any(
+        c.type in ("import_statement", "export_statement") for c in root.named_children
+    )
+    whole_file = (root.start_byte, root.end_byte)
     top: dict[str, str] = {}  # the same, top-level declarations only: what a module can export
     exported: dict[str, str] = {}  # `exports.Post = sequelize.define('article', …)` → {exports.Post: …}
     if sequelize:
@@ -215,7 +219,7 @@ def scan(
             while parent is not None and parent.type == "assignment_expression":
                 # `exports.a = exports.b = define(…)` exports it under every key in the chain
                 left = parent.child_by_field_name("left")
-                key = _exports_key(left, source, exports_objects)
+                key = _exports_key(left, source, exports_objects, esm)
                 if key is not None:
                     exported[key] = model
                 parent = parent.parent
@@ -225,12 +229,13 @@ def scan(
                 name = parent.child_by_field_name("name")
                 if name is not None and name.type == "identifier":
                     local = _text(name, source)
-                    defined.setdefault(local, []).append((*_scope_of(parent), model))
+                    scope = _scope_of(parent)
+                    defined.setdefault(local, []).append((*scope, parent.start_byte, model))
                     declaration = parent.parent
                     above = declaration.parent if declaration is not None else None
-                    if above is not None and above.type in ("program", "export_statement"):
-                        top[local] = model
-                        if above.type == "export_statement":
+                    if scope == whole_file or (above is not None and above.type == "export_statement"):
+                        top[local] = model  # a top-level `var` in a block or `try` is the module's too
+                        if above is not None and above.type == "export_statement":
                             exported[f"exports.{local}"] = model
             elif parent.type == "pair" and _exported_literal(parent.parent, source, exports_objects):
                 key = _text(parent.child_by_field_name("key"), source).strip("\"'")
@@ -253,6 +258,12 @@ def scan(
         if decl is not None and decl.type == "class_declaration"
     }
     held = {**top, **{name: model for name, model in classes.items() if name in top_classes}}
+    for child in root.named_children:  # `export class Post extends Model {}`
+        decl = child.child_by_field_name("declaration") if child.type == "export_statement" else None
+        if decl is not None and decl.type == "class_declaration":
+            exported_class = _text(decl.child_by_field_name("name"), source)
+            if exported_class in classes:
+                exported[f"exports.{exported_class}"] = classes[exported_class]
     for node in root.named_children:  # `export { Post, Draft as Article }`
         if node.type != "export_statement" or node.child_by_field_name("source") is not None:
             continue
@@ -269,7 +280,9 @@ def scan(
     return {**held, **exported}
 
 
-def _exports_key(left: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> str | None:
+def _exports_key(
+    left: TSNode | None, source: bytes, exports_objects: frozenset[str], esm: bool = False
+) -> str | None:
     """``exports.X`` for `<exports object>.X` — `exports.api.X` is a member of a member, not it.
 
     The owner must be the *module's* binding: a function whose own `const db = {}` shadows the
@@ -282,8 +295,10 @@ def _exports_key(left: TSNode | None, source: bytes, exports_objects: frozenset[
     if owner is None:
         return None
     key = f"exports.{_text(left.child_by_field_name('property'), source)}"
+    from orchestrator.pkg.js_extractor import _shadowed, _top_level_this
+
     if owner.type == "this":
-        return key if _top_level_this(owner) else None
+        return key if not esm and _top_level_this(owner) else None
     text = _text(owner, source)
     if text not in exports_objects:
         return None
@@ -291,22 +306,52 @@ def _exports_key(left: TSNode | None, source: bytes, exports_objects: frozenset[
     return None if _shadowed(owner, binding, source) else key
 
 
+#: Where a `var` is hoisted to — and so a `let`/`const` block never contains it.
+_VAR_SCOPES = frozenset(
+    {
+        "function_declaration",
+        "generator_function_declaration",
+        "function_expression",
+        "function",
+        "generator_function",
+        "arrow_function",
+        "method_definition",
+        "class_static_block",
+        "program",
+    }
+)
+
+
 def _scope_of(declarator: TSNode) -> tuple[int, int]:
-    """The byte range a declared binding covers: its nearest enclosing block, or the file."""
+    """The byte range a declared binding covers: a `let`/`const` its nearest enclosing block, a
+    `var` its whole function (or the file) — `var` in an `if` or a `try` is not the block's."""
+    hoisted = declarator.parent is not None and declarator.parent.type == "variable_declaration"
+    stops = _VAR_SCOPES if hoisted else _VAR_SCOPES | {"statement_block"}
     current = declarator.parent
-    while current is not None and current.type not in ("statement_block", "program", "class_static_block"):
+    while current is not None and current.type not in stops:
         current = current.parent
     target = current if current is not None else declarator
     return target.start_byte, target.end_byte
 
 
-def _in_scope(bindings: list[tuple[int, int, str]] | None, at: TSNode) -> str | None:
-    """The model of the innermost binding whose scope contains ``at``, or None."""
-    best: tuple[int, str] | None = None
-    for start, end, model in bindings or ():
-        if start <= at.start_byte < end and (best is None or end - start < best[0]):
-            best = (end - start, model)
-    return best[1] if best is not None else None
+def _in_scope(bindings: list[tuple[int, int, int, str]] | None, at: TSNode) -> str | None:
+    """The model a name at ``at`` is bound to: the innermost scope that contains it, and within
+    that scope the last declaration before ``at`` — `var Post = a; var Post = b; Post.x()` is
+    `b` — or, used above every one of them, the last."""
+    innermost: list[tuple[int, int, int, str]] = []
+    for binding in bindings or ():
+        start, end = binding[0], binding[1]
+        if not start <= at.start_byte < end:
+            continue
+        if innermost and end - start > innermost[0][1] - innermost[0][0]:
+            continue
+        if innermost and end - start < innermost[0][1] - innermost[0][0]:
+            innermost = []
+        innermost.append(binding)
+    if not innermost:
+        return None
+    before = [b for b in innermost if b[2] < at.start_byte]
+    return max(before or innermost, key=lambda b: b[2])[3]
 
 
 def _exported_literal(obj: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> bool:
@@ -322,7 +367,14 @@ def _exported_literal(obj: TSNode | None, source: bytes, exports_objects: frozen
             return False
         holder = call.parent
     if holder.type == "assignment_expression":
-        return _text(holder.child_by_field_name("left"), source) in exports_objects
+        from orchestrator.pkg.js_extractor import _shadowed
+
+        left = holder.child_by_field_name("left")
+        text = _text(left, source)
+        if text not in exports_objects or left is None:
+            return False
+        # `function f(module) { module.exports = {…} }` assigns a parameter's member, not the module's
+        return not _shadowed(left, text.split(".", 1)[0], source)
     if holder.type == "variable_declarator":
         declaration = holder.parent
         top = (
@@ -515,7 +567,7 @@ def _model_end(
     rel: str,
     registry: set[str],
     classes: dict[str, str],
-    defined: dict[str, list[tuple[int, int, str]]],
+    defined: dict[str, list[tuple[int, int, int, str]]],
     imports: dict[str, str],
     names: dict[str, str | None],
 ) -> str | None:
@@ -555,7 +607,7 @@ def _association(
     batch: FactBatch,
     registry: set[str],
     classes: dict[str, str],
-    defined: dict[str, list[tuple[int, int, str]]],
+    defined: dict[str, list[tuple[int, int, int, str]]],
     imports: dict[str, str],
     names: dict[str, str | None],
 ) -> None:
@@ -639,7 +691,10 @@ def settle(
             if target is not None or entry.tier == "readable":
                 model = held_by(module, target)
                 return entity_id(model) if model is not None else None
-            # names-known or opaque, written to a value this pass cannot name: by the model's name
+            # names-known or opaque, written to a value this pass cannot name: by the model's name —
+            # unless `require` returns a model, whose property this cannot be
+            if held_by(module, entry.default) is not None:
+                return None
         elif entry is not None and entry.tier != "opaque":
             return None  # not exported under that name
         elif written is not None:
