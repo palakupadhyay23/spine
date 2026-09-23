@@ -84,9 +84,6 @@ def _plan_and_approve(runner: CliRunner, spec_file: Path, root: Path, *extra: st
     assert approved.exit_code == 0, approved.output
 
 
-@pytest.mark.xfail(
-    strict=True, reason="B16: the plan dirties the tree, so the gate re-derives a `-dirty` body"
-)
 def test_a_plan_approved_in_a_fresh_checkout_is_the_plan_the_gate_accepts(
     checkout: Path, tmp_path: Path
 ) -> None:
@@ -96,7 +93,6 @@ def test_a_plan_approved_in_a_fresh_checkout_is_the_plan_the_gate_accepts(
     assert _gate(spec_file, checkout) == "PASSED: reviewer"
 
 
-@pytest.mark.xfail(strict=True, reason="B16: a written plan makes every later command distrust the PKG cache")
 def test_writing_a_plan_leaves_the_tree_trusted(checkout: Path, tmp_path: Path) -> None:
     from orchestrator.pkg.persistence import repo_state
 

@@ -97,15 +97,11 @@ def derived_at(root: Path | str = ".") -> str:
         if rev.returncode != 0:
             return "unknown"
         commit = rev.stdout.strip() or "unknown"
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=10,
-        )
-        return f"{commit}-dirty" if dirty.returncode == 0 and dirty.stdout.strip() else commit
+        # The fact cache's rule, not a copy of it: this stamp sits inside the approved body, so a
+        # plan counting itself as dirt re-derived as `<sha>-dirty` and refused its own approval.
+        from orchestrator.pkg.persistence import worktree_dirty
+
+        return f"{commit}-dirty" if worktree_dirty(root) else commit
     except (OSError, subprocess.SubprocessError):
         return "unknown"
 

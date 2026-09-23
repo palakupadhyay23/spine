@@ -457,6 +457,11 @@ same spec produce the same document every time. It lands at
 `.spine/plans/<INTENT>-build.md`; re-running overwrites it and keeps what it replaced under
 `history/`, keyed by the commit it was derived at.
 
+Committing `.spine/plans/` is up to you — Spine never counts it as an uncommitted change, so
+an approval holds either way and the knowledge-graph cache stays warm. The rest of `.spine/`
+(`repos.yaml`, `workflows/`) is configuration: commit it, because an uncommitted edit there
+*does* change what Spine derives.
+
 Twelve sections, always the same, in the same order. What they are for:
 
 | | |
