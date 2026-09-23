@@ -55,6 +55,19 @@ Declared, measured, and left as they are:
 - **A `let` in an inner block shadows the exports alias over the whole function** when the
   reference scan decides what is the module's own (`_declares`) — the direction that can only
   hide a reference, and needs a local spelled like the alias.
+- **The reference finder reads spellings, not aliasing.** It follows `exports`, `module.exports`,
+  the aliases a chain or `module.exports = x` names, top-level `this`, and any bare `module`; a
+  spelling it cannot follow (`{ exports }`, `const mod = module`, `module['exports']`) makes the
+  surface opaque. The exports object reached some other way — returned from a helper, pulled
+  out of another object — is not seen.
+- **An alias declared twice is opaque, and its later writes can still invent**: after
+  `var app = module.exports = {…}; var app = {}; app.g = g`, `m.g()` is resolved by name.
+- **A whole-module binding is matched by its local name.** `class X extends log` after
+  `const log = require('./log')` over `module.exports = Log; Log.log = log` names the member
+  `log` — a function — because a member the export map names wins over the whole module.
+- **A TypeScript named import of a CommonJS default is resolved as a member**:
+  `import { Base } from './base'` over `module.exports = Base` reaches `Base`, though `Base` is
+  not a member of itself.
 """
 
 from __future__ import annotations
@@ -229,7 +242,7 @@ class JavaScriptExtractor(TypeScriptExtractor):
         mixed = any(child.type == "export_statement" for child in root.named_children)
         if not mixed:
             default = f"{module_id}.{surface.default}" if surface.default else None
-            names = dict(exported) if surface.tier != _OPAQUE else {}
+            names = dict(exported)
             dead = surface.dead - set(names)
             self._run.exports[module_id] = ExportMap(rel, names, surface.tier, default, dead)
 
@@ -259,6 +272,32 @@ class JavaScriptExtractor(TypeScriptExtractor):
             return None
 
         return resolve
+
+    def _emit_const_functions(
+        self,
+        node: TSNode,
+        module_id: str,
+        source: bytes,
+        rel: str,
+        batch: FactBatch,
+        funcs: list[tuple[str, str | None, TSNode]],
+        local_funcs: dict[str, str],
+    ) -> None:
+        """The parent's function-valued consts, then a literal at the end of a *declared* chain.
+
+        `var api = module.exports = { run }` makes the literal the exports object, as the
+        statement form does; read only as a statement, that map was left empty and enforced.
+        """
+        super()._emit_const_functions(node, module_id, source, rel, batch, funcs, local_funcs)
+        for declarator in node.named_children:
+            value = declarator.child_by_field_name("value")
+            if value is None:
+                continue
+            lefts, right = _chain_nodes(value)
+            chained = any(_text(left, source) == "module.exports" for left in lefts)
+            if chained and right is not None and self._surface.is_object(right):
+                for member in right.named_children:
+                    _emit_object_member(member, module_id, source, rel, batch, funcs, self._file_exports)
 
     def _emit_statement(
         self,
@@ -588,18 +627,51 @@ def _declares(scope: TSNode, name: str, source: bytes) -> bool:
     return False
 
 
-def _shadowed(ref: TSNode, name: str, source: bytes) -> bool:
-    """Whether ``name`` at ``ref`` is a binding of an enclosing function, not the module's own."""
+def _block_declares(block: TSNode, name: str, source: bytes) -> bool:
+    """Whether a block binds ``name`` itself with `let`, `const` or `class` — not `var`, which
+    belongs to the enclosing function (or module) wherever it is written."""
+    for child in block.named_children:
+        if child.type == "class_declaration" and _field_text(child, "name", source) == name:
+            return True
+        if child.type == "lexical_declaration":
+            for declarator in child.named_children:
+                if name in _pattern_names(declarator.child_by_field_name("name"), source):
+                    return True
+    return False
+
+
+def _shadowed(
+    ref: TSNode, name: str, source: bytes, cache: dict[tuple[int, int, str], bool] | None = None
+) -> bool:
+    """Whether ``name`` at ``ref`` is a binding of an enclosing function or block, not the module's.
+
+    A block counts even at the top level: `{ const api = {}; api.run = helper }` writes onto its
+    own `api`. ``cache`` holds each (scope, name) answer for one file — without it, every
+    reference in a function re-walked the whole function: 14 s on a 47 KB express-style file.
+    """
+    memo = cache if cache is not None else {}
     current = ref.parent
     while current is not None:
-        if current.type in _FUNCTION_NODES:
-            if name in _param_names(current, source):
+        key = (current.start_byte, current.end_byte, name)
+        if key in memo:
+            if memo[key]:
                 return True
+        elif current.type in _FUNCTION_NODES:
             body = current.child_by_field_name("body")
-            if body is not None and _declares(body, name, source):
+            memo[key] = name in _param_names(current, source) or (
+                body is not None and _declares(body, name, source)
+            )
+            if memo[key]:
                 return True
         elif current.type == "catch_clause":
-            if name in _pattern_names(current.child_by_field_name("parameter"), source):
+            memo[key] = name in _pattern_names(current.child_by_field_name("parameter"), source)
+            if memo[key]:
+                return True
+        elif current.type == "statement_block" and (
+            current.parent is None or current.parent.type not in _FUNCTION_NODES
+        ):
+            memo[key] = _block_declares(current, name, source)
+            if memo[key]:
                 return True
         current = current.parent
     return False
@@ -615,6 +687,16 @@ def _top_level_this(node: TSNode) -> bool:
             return False
         current = current.parent
     return True
+
+
+def _in_function(node: TSNode, top: TSNode) -> bool:
+    """Whether ``node`` sits inside a function below the top-level statement ``top``."""
+    current = node.parent
+    while current is not None and (current.start_byte, current.end_byte) != (top.start_byte, top.end_byte):
+        if current.type in _FUNCTION_NODES:
+            return True
+        current = current.parent
+    return top.type in _FUNCTION_NODES
 
 
 def _same(a: TSNode | None, b: TSNode) -> bool:
@@ -666,6 +748,8 @@ def _reference(ref: TSNode, owner: str, source: bytes) -> list[_Write] | None:
             return []  # a read: `exports.f`, `exports.f()`, `delete exports.f` (a declared gap)
         if kind == "member_expression":
             name = _field_text(parent, "property", source)
+            if name == "__proto__":
+                return None  # sets the prototype: every member of it is callable, none written
         else:
             index = parent.child_by_field_name("index")
             if index is None or index.type != "string":
@@ -679,8 +763,21 @@ def _reference(ref: TSNode, owner: str, source: bytes) -> list[_Write] | None:
         if _same(parent.child_by_field_name("left"), ref):
             targets, _ = _chain(parent, source)
             return [] if owner in ("exports", "module.exports") or "module.exports" in targets else None
-        # `module.exports = api`: the value that becomes the exports object.
-        return [] if _text(parent.child_by_field_name("left"), source) == "module.exports" else None
+        # `module.exports = api`: the value that becomes the exports object; and
+        # `module.exports.Post = Post`, the default stored on itself — a value, not a write.
+        left = parent.child_by_field_name("left")
+        if _text(left, source) == "module.exports":
+            return []
+        holder = (
+            left.child_by_field_name("object")
+            if left is not None and left.type == "member_expression"
+            else None
+        )
+        return (
+            []
+            if holder is not None and _text(holder, source) in ("exports", "module.exports", owner)
+            else None
+        )
     if kind in (
         "variable_declarator",
         "function_declaration",
@@ -747,20 +844,41 @@ def _references(
     """
     writes: list[tuple[_Write, TSNode]] = []
     seen, recognised = False, True
+    cache: dict[tuple[int, int, str], bool] = {}
+    declared: dict[str, int] = {}  # how many top-level declarations name each alias
     for top in decls:
         if top is None:
             continue
         for node in _walk(top):
+            if node.type == "shorthand_property_identifier":
+                # `{ exports }` stores the exports object in another one; a write through it is
+                # a spelling the finder cannot follow
+                text = _text(node, source)
+                if (text == "exports" or text in aliases) and not _shadowed(node, text, source, cache):
+                    seen, recognised = True, False
+                continue
+            if node.type == "identifier" and _text(node, source) == "module":
+                if _shadowed(node, "module", source, cache) or _module_use(node, source):
+                    continue
+                seen, recognised = True, False  # `const mod = module`, `module['exports']`
+                continue
             if node.type == "identifier":
                 owner = _text(node, source)
                 if owner != "exports" and owner not in aliases:
                     continue
-                if _shadowed(node, owner, source):
+                if _shadowed(node, owner, source, cache):
                     continue
+                parent = node.parent
+                if (
+                    parent is not None
+                    and parent.type == "variable_declarator"
+                    and _same(parent.child_by_field_name("name"), node)
+                ):
+                    declared[owner] = declared.get(owner, 0) + 1
             elif node.type == "member_expression":
                 if _text(node, source) != "module.exports":
                     continue
-                if _shadowed(node, "module", source):
+                if _shadowed(node, "module", source, cache):
                     continue
                 owner = "module.exports"
             elif node.type == "this":
@@ -775,7 +893,23 @@ def _references(
                 recognised = False
                 continue
             writes.extend((w, top) for w in found)
+    if any(count > 1 for count in declared.values() if count):
+        recognised = False  # an alias declared twice names two objects, and this pass cannot order them
     return writes, recognised, seen
+
+
+def _module_use(node: TSNode, source: bytes) -> bool:
+    """Whether a bare `module` is a use that cannot reach its exports under another name:
+    `module.exports` (read by the finder itself), a read of another member (`module.hot`),
+    `typeof module`, or a comparison (`require.main === module`)."""
+    parent = node.parent
+    if parent is None:
+        return False
+    if parent.type == "member_expression" and _same(parent.child_by_field_name("object"), node):
+        return True
+    if parent.type == "unary_expression" and _text(parent, source).startswith("typeof"):
+        return True
+    return parent.type == "binary_expression"
 
 
 def _write_target(write: _Write, module_id: str, source: bytes) -> str | None:
@@ -831,7 +965,8 @@ def _export_surface(
     A readable or names-known map is enforced alike — a call to a name the file never writes
     reaches nothing — which is the point of the middle tier: `Object.freeze({ f })` beside a
     private `secret` no longer hands `m.secret()` to a name lookup. An unrecognised reference is
-    never read as readable; a reader that cannot tell must not decide.
+    never read as readable — among the spellings the finder follows (see the module docstring for
+    what it cannot see); a reader that cannot tell must not decide.
     """
     chains: list[tuple[list[str], TSNode | None, str | None, int]] = []
     bare_rebind = False
@@ -853,6 +988,8 @@ def _export_surface(
                 if name is None or value is None or name.type != "identifier":
                     continue
                 declared[_text(name, source)] = value
+                if _text(name, source) == "exports":
+                    bare_rebind = True  # `var exports = {}` redeclares the wrapper's own `exports`
                 targets, final = _chain(value, source)
                 if "module.exports" in targets:
                     chains.append((targets, final, _text(name, source), declarator.end_byte))
@@ -898,10 +1035,14 @@ def _export_surface(
     # Reassigned at the top level only, `module.exports` is straight-line code: the last
     # assignment wins, and whatever the earlier ones named is an object nobody exports.
     replaced: set[str] = set()
+    replaced_keys: set[str] = set()  # the members of an object literal a later assignment replaced
     ambiguous = len(values) > len(chains)  # a `module.exports = …` below the top level
     if len(chains) > 1 and not ambiguous:
         replaced = aliases - named_by(chains[-1])
         aliases -= replaced
+        for _, final, _, _ in chains[:-1]:
+            if final is not None and final.type == "object":
+                replaced_keys.update(_literal_names(final, module_id, source))
         chains = chains[-1:]
 
     if ambiguous:
@@ -941,6 +1082,7 @@ def _export_surface(
         alias_object_span: tuple[int, int] | None = None
         default: str | None = None
         frozen: dict[str, str | None] = {}
+        sealed = False
         tier = _OPAQUE
         if final is None:
             pass
@@ -977,11 +1119,12 @@ def _export_surface(
             named_args = [a for a in args.named_children if a.type != "comment"] if args is not None else []
             if len(named_args) == 1 and named_args[0].type == "object" and _plain_object(named_args[0]):
                 frozen, tier = _literal_names(named_args[0], module_id, source), _NAMES
+                sealed = True  # a member written onto it afterwards is silently dropped
         is_object = final is not None and final.type == "object"
         surface = _Surface(
             aliases=frozenset(aliases - reassigned),
             exports_ok="exports" in targets and not bare_rebind,
-            members_ok=True,
+            members_ok=not sealed,
             object_span=(final.start_byte, final.end_byte) if final is not None and is_object else None,
             alias_object_span=alias_object_span,
             default=default,
@@ -997,12 +1140,26 @@ def _export_surface(
     # `<ref>.f = …` there, in order; the rest land here, and any that is not certain to run
     # makes the map a set of names the file *may* export.
     extra = dict(surface.extra)
-    dead = set()
+    dead = set(replaced_keys)
     for write, top in writes:
         if not _IDENTIFIER.match(write.name):
             continue
-        if (write.owner in ("exports", "this") and not surface.exports_ok) or write.owner in replaced:
-            dead.add(write.name)
+        # A write that runs before `module.exports` is replaced — at the top level, under a branch
+        # or not, but never inside a function, which may run after — lands on the object that
+        # gets replaced. Top-level `this` is always that first object.
+        early = (
+            write.value is not None
+            and write.value.start_byte < surface.offset
+            and not _in_function(write.value, top)
+        )
+        stale = (
+            (write.owner == "exports" and (not surface.exports_ok or early))
+            or (write.owner == "this" and (not surface.exports_ok or surface.offset >= 0))
+            or (write.owner == "module.exports" and (early or not surface.members_ok))
+            or write.owner in replaced
+        )
+        if stale:
+            dead.add(write.name)  # written onto an object nobody exports
             continue
         live = write.owner in ("exports", "this", "module.exports") or write.owner in surface.aliases
         if not live:

@@ -1212,3 +1212,23 @@ def test_a_member_named_like_the_whole_module_local_is_the_member(tmp_path: Path
         },
     )
     assert _calls_from(batch, "ts:c.go") == {"ts:util.util"}
+
+
+def test_the_reference_scan_is_not_quadratic_in_references_per_function(tmp_path: Path) -> None:
+    """Every reference re-walked its enclosing function to ask whether it shadowed the alias:
+    14 s on this 40 KB express-style file, and 36 s on 4,000 writes in one IIFE."""
+    import time
+
+    routes = (
+        "const app = module.exports = express();\nfunction routes() {\n"
+        + "  app.get('/x', h);\n" * 2000
+        + "}\n"
+    )
+    iife = (
+        "(function () {\n" + "".join(f"  exports.f{i} = function () {{}};\n" for i in range(4000)) + "})();\n"
+    )
+    for body in (routes, iife):
+        (tmp_path / "m.js").write_text(body)
+        started = time.perf_counter()
+        RepoCodeExtractor(extractors=[JavaScriptExtractor()]).extract(tmp_path)
+        assert time.perf_counter() - started < 5.0

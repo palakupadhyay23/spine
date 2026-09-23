@@ -8,9 +8,9 @@
       },
       "note": "provenance measured on this repo, offline; the pinned corpus is run explicitly",
       "provenance": {
-        "anchored": 14152,
+        "anchored": 14162,
         "excluded": 910,
-        "resolved": 14152,
+        "resolved": 14162,
         "unreadable": 0
       }
     },
@@ -302,16 +302,16 @@
         "javascript": {
           "edges": {
             "CALLS": {
-              "emitted": 73,
-              "expected": 76,
+              "emitted": 86,
+              "expected": 89,
               "known_gaps": 3,
-              "matched": 73
+              "matched": 86
             },
             "CONTAINS": {
-              "emitted": 222,
-              "expected": 222,
+              "emitted": 292,
+              "expected": 292,
               "known_gaps": 0,
-              "matched": 222
+              "matched": 292
             },
             "EXPOSES": {
               "emitted": 6,
@@ -326,16 +326,16 @@
               "matched": 10
             },
             "IMPORTS": {
-              "emitted": 112,
-              "expected": 112,
+              "emitted": 157,
+              "expected": 157,
               "known_gaps": 0,
-              "matched": 112
+              "matched": 157
             },
             "REFERENCES": {
-              "emitted": 14,
-              "expected": 14,
+              "emitted": 20,
+              "expected": 20,
               "known_gaps": 0,
-              "matched": 14
+              "matched": 20
             }
           },
           "nodes": {
@@ -346,28 +346,28 @@
               "matched": 7
             },
             "Entity": {
-              "emitted": 26,
-              "expected": 26,
+              "emitted": 41,
+              "expected": 41,
               "known_gaps": 0,
-              "matched": 26
+              "matched": 41
             },
             "Field": {
-              "emitted": 32,
-              "expected": 32,
+              "emitted": 47,
+              "expected": 47,
               "known_gaps": 0,
-              "matched": 32
+              "matched": 47
             },
             "Function": {
-              "emitted": 138,
-              "expected": 138,
+              "emitted": 178,
+              "expected": 178,
               "known_gaps": 0,
-              "matched": 138
+              "matched": 178
             },
             "Module": {
-              "emitted": 105,
-              "expected": 105,
+              "emitted": 129,
+              "expected": 129,
               "known_gaps": 0,
-              "matched": 105
+              "matched": 129
             },
             "Type": {
               "emitted": 26,
@@ -915,7 +915,7 @@
       "skipped_languages": []
     },
     "drift": {
-      "count": 1948,
+      "count": 1947,
       "docs": 1938,
       "gated": false,
       "mentions": 13947,
@@ -966,11 +966,11 @@
           "unexamined": 0
         },
         "javascript": {
-          "examined": 408,
+          "examined": 420,
           "invented": 0,
           "shadowable": 356,
           "status": "measured",
-          "total_calls": 408,
+          "total_calls": 420,
           "unexamined": 0
         },
         "kotlin": {
@@ -1002,7 +1002,7 @@
           "invented": 0,
           "shadowable": 0,
           "status": "measured",
-          "total_calls": 22255,
+          "total_calls": 20035,
           "unexamined": 0
         },
         "sql": {
@@ -1014,16 +1014,16 @@
           "unexamined": 0
         },
         "typescript": {
-          "examined": 22,
+          "examined": 23,
           "invented": 0,
           "shadowable": 4,
           "status": "measured",
-          "total_calls": 22,
+          "total_calls": 23,
           "unexamined": 0
         }
       },
       "note": "gated at zero per language, not against this baseline \u2014 see GATES",
-      "total_calls": 22760
+      "total_calls": 20553
     },
     "parity": {
       "declared": 75,

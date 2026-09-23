@@ -658,9 +658,10 @@ class ExportMap(NamedTuple):
       a merge, in a frozen literal, or by more than one `module.exports`. A name it lists with no
       known node (a getter, a computed value) is resolved by name; one it does not list is not
       exported.
-    - ``opaque``: some reference to the exports object was not a recognised form, so ``names`` is
-      empty and calls resolve by name — except to ``dead`` names, written only onto an object the
-      file has certainly stopped exporting.
+    - ``opaque``: some reference to the exports object was not a recognised form, or the value
+      hides its names. ``names`` holds only what the file visibly writes; any other name resolves
+      by name — except ``dead`` names, written only onto an object the file has certainly stopped
+      exporting.
     """
 
     #: The module's file — a file reaches its own members, exported or not.
@@ -698,6 +699,9 @@ class ExtractionRun:
     #: name, and only the file knows that `B` is the module itself — its default, whatever the
     #: class is called. A destructured `{ Base }` resolves to the same kind of id and is a member.
     whole: set[tuple[str, str]] = field(default_factory=set)
+    #: Front-ends of this namespace bound to the run and not yet finalized. The last to finalize
+    #: applies what must see every other one's edges first — whichever order they run in.
+    sharers: int = 0
     #: Edges already routed through ``exports``. Routing is not idempotent — `ts:m.Impl.run`,
     #: routed again, looks for an export called `Impl` — so an edge is routed exactly once,
     #: whichever finalizer runs first.

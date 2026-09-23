@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "surface_forms",
-  "why": "One shape per rule of the CommonJS export tiers (js-review-followup D5: every rule moves a gated corpus metric, not only a unit test). A `Reflect.defineProperty` write and a write inside a declaration (`var all = exports.list = list`) are exports; top-level `this.find =` writes `exports`; `__proto__` in the exported literal and `Object.create` of a local prototype make members callable that the file never writes, so those modules are resolved by name; a getter is an export whose value this pass cannot name, resolved by name; `exports.stale` after `module.exports = make()` is written onto an object nobody exports. `util.util()` through `const util = require('./util')` is the member `util`, not the whole module. And a `var` in a class expression's `static {}` block is the block's own. Each `secret` is declared and never exported.",
+  "why": "One shape per rule of the CommonJS export tiers (js-review-followup D5: every rule moves a gated corpus metric, not only a unit test). A `Reflect.defineProperty` write and a write inside a declaration (`var all = exports.list = list`) are exports; top-level `this.find =` writes `exports`; `__proto__` in the exported literal and `Object.create` of a local prototype make members callable that the file never writes, so those modules are resolved by name; a getter is an export whose value this pass cannot name, resolved by name; `exports.stale` after `module.exports = make()` is written onto an object nobody exports. `util.util()` through `const util = require('./util')` is the member `util`, not the whole module. And a `var` in a class expression's `static {}` block is the block's own. Each `secret` is declared and never exported. The second review round added: a write under a top-level branch *before* `module.exports` is replaced, and one inside a function, which runs later and is live; a top-level block's own `const api`; four spellings the reference finder once missed \u2014 `{ exports }`, `const mod = module`, `module['exports']`, `exports.__proto__ =` \u2014 each of which must make the surface opaque rather than read a map that lacks `g`; `var exports = {}`, a rebinding; a write after `Object.freeze`; a `catch` parameter spelled like the alias; and `this` inside a top-level arrow, which is still `exports`.",
   "root": ".repo",
   "nodes": [
     {
@@ -98,6 +98,178 @@
     },
     {
       "id": "ts:client.later",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:dead.make",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:before",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:deferred",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:boxed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:modref",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:bracket",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:protod",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:varexp",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:sealed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:arrowthis",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:blocky",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:caught",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:before.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:before.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:deferred.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:deferred.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:deferred.init",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:boxed.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:boxed.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:modref.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:modref.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:bracket.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:bracket.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:protod.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:protod.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:varexp.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:varexp.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:sealed.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:sealed.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:arrowthis.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:arrowthis.g",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:arrowthis.init",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:blocky.real",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:blocky.helper",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:caught.f",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:caught.secret",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:caught.report",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:client.more",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:selfref",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:selfref.Tool",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:selfref.secret",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:varonly",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:varonly.g",
       "kind": "Function"
     }
   ],
@@ -261,6 +433,281 @@
       "src": "ts:client.later",
       "dst": "ts:rflx.find",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:dead",
+      "dst": "ts:dead.make",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:before",
+      "dst": "ts:before.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:before",
+      "dst": "ts:before.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:deferred",
+      "dst": "ts:deferred.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:deferred",
+      "dst": "ts:deferred.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:deferred",
+      "dst": "ts:deferred.init",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:boxed",
+      "dst": "ts:boxed.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:boxed",
+      "dst": "ts:boxed.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:modref",
+      "dst": "ts:modref.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:modref",
+      "dst": "ts:modref.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:bracket",
+      "dst": "ts:bracket.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:bracket",
+      "dst": "ts:bracket.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:protod",
+      "dst": "ts:protod.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:protod",
+      "dst": "ts:protod.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:varexp",
+      "dst": "ts:varexp.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:varexp",
+      "dst": "ts:varexp.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:sealed",
+      "dst": "ts:sealed.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:sealed",
+      "dst": "ts:sealed.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:arrowthis",
+      "dst": "ts:arrowthis.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:arrowthis",
+      "dst": "ts:arrowthis.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:arrowthis",
+      "dst": "ts:arrowthis.init",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:blocky",
+      "dst": "ts:blocky.real",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:blocky",
+      "dst": "ts:blocky.helper",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:caught",
+      "dst": "ts:caught.f",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:caught",
+      "dst": "ts:caught.secret",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:caught",
+      "dst": "ts:caught.report",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:client.more",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:before",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:deferred",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:boxed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:modref",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:bracket",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:protod",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:varexp",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:sealed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:arrowthis",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:blocky",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:caught",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:before.f",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:deferred.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:blocky.real",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:boxed.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:modref.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:bracket.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:protod.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:varexp.f",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:sealed.f",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:caught.f",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:arrowthis.g",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:selfref",
+      "dst": "ts:selfref.Tool",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:selfref",
+      "dst": "ts:selfref.secret",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:selfref",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client.more",
+      "dst": "ts:selfref.Tool",
+      "kind": "CALLS"
+    },
+    {
+      "src": "ts:varonly",
+      "dst": "ts:varonly.g",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:varonly",
+      "kind": "IMPORTS"
     }
   ],
   "known_gaps": [],
@@ -305,12 +752,69 @@
         "kind": "CALLS"
       },
       "why": "PREDICTED BEFORE SCORING. `exports.stale` is written after `module.exports = make()` replaced the object `exports` names, so `stale` is on an object nobody exports."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:before.g",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `module.exports.g = g` runs under a top-level branch *before* `module.exports = { f }` replaces the object it wrote onto."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:blocky.helper",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `api.run = helper` writes onto the block's own `const api`, not the exported one; the module exports no `run`."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:varexp.g",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `var exports = {}` rebinds the module's `exports`, so `exports.g` writes onto an object nobody exports."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:sealed.g",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `module.exports.g = g` after `Object.freeze` is silently dropped: the frozen object has no `g`."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:caught.secret",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `secret` is never exported; the `catch (api)` parameter is its own binding, so handing it to `report` says nothing about the exported `api`."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:selfref.secret",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `secret` is never exported. `module.exports.Tool = Tool` stores the default on itself \u2014 a value, not an unrecognised reference \u2014 so the surface stays readable and `secret` is not handed to a name lookup."
+    },
+    {
+      "edge": {
+        "src": "ts:client.more",
+        "dst": "ts:varonly.g",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `var exports = {}` redeclares the wrapper's own `exports` and rebinds it, with no `module.exports` assignment to replace anything: `exports.g` writes onto an object `require` never returns."
     }
   ],
   "excluded": [
-    "`Reflect.defineProperty`, `Object.defineProperty`, `Object.create` and `make()` are top-level calls with no caller to hang a CALLS edge on; `make` is declared nowhere.",
+    "`Reflect.defineProperty`, `Object.defineProperty`, `Object.create` and `make()` are top-level calls with no caller to hang a CALLS edge on; `make` is declared, so the fixture loads.",
     "The getter's anonymous function, the class expression `Holder`, and the locals `base`, `proto` and `all` add no node: an anonymous function and a class expression are not emitted, and a module-level constant is not a `Field`.",
-    "`proto.find()` and `created.find()` are true at run time \u2014 `find` is on the prototype \u2014 and are kept by name, which is what an opaque surface does."
+    "`proto.find()` and `created.find()` are true at run time \u2014 `find` is on the prototype \u2014 and are kept by name, which is what an opaque surface does.",
+    "`f()` and `report(api)` in `caught.js`, and `init()` in `arrowthis.js`, are top-level calls with no caller; `boxed`, `modref`, `bracket` and `protod` are opaque, so a call to one of their other functions would be resolved by name \u2014 `client.more` calls only the `g` each exports."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

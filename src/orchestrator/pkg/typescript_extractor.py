@@ -91,6 +91,7 @@ class TypeScriptExtractor:
     def bind_run(self, run: ExtractionRun) -> None:
         """Join an extraction run — its export maps are what deferred calls are routed through."""
         self._run = run
+        run.sharers += 1
 
     def finalize(self, batch: FactBatch) -> FactBatch:
         """Emit the deferred member calls whose target actually exists in the merged graph.
@@ -115,8 +116,14 @@ class TypeScriptExtractor:
         """
         pending = self._pending_calls
         run, self._pending_calls, self._run = self._run, [], ExtractionRun()
+        run.sharers -= 1
+        last = run.sharers <= 0  # every edge of the namespace is in, and routed
+
+        def done(out: FactBatch) -> FactBatch:
+            return _off_modules(out) if last else out
+
         if not pending:
-            return batch
+            return done(batch)
         route = _export_router(batch, run)
         known = {n.id for n in batch.nodes}
 
@@ -134,7 +141,7 @@ class TypeScriptExtractor:
             # The receiver's own type is a call only when it was *constructed* here.
             if call.constructed and type_id in known:
                 emit(call.caller, type_id, call)
-        return batch
+        return done(batch)
 
     def module_name(self, path: Path, root: Path) -> str:
         # TS modules are path-addressed (no package decl): repo-relative path
@@ -616,6 +623,30 @@ def _export_router(batch: FactBatch, run: ExtractionRun) -> Callable[[str, str |
         return None if routed in modules else routed
 
     return route
+
+
+def _off_modules(batch: FactBatch) -> FactBatch:
+    """Drop any ``CALLS``/``EXPOSES``/``IMPLEMENTS`` that lands on a module node.
+
+    A module is never a callee, a handler or a base type. Such an edge comes from reading a dotted
+    module id as a member — `db.config()` beside a sibling `db.config.ts` — and routing retries it
+    through an export map when there is one; this is the backstop when there is none, for
+    TypeScript and JavaScript callers alike. Applied by the *last* finalizer of the namespace
+    (see ``ExtractionRun.sharers``): run first, it dropped a JavaScript edge before the
+    JavaScript router could retry it.
+    """
+    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE}
+    kinds = (EdgeKind.CALLS, EdgeKind.EXPOSES, EdgeKind.IMPLEMENTS)
+    edges = list(batch.edges)
+    kept = [e for e in edges if not (e.kind in kinds and e.dst in modules)]
+    if len(kept) == len(edges):
+        return batch
+    out = FactBatch()
+    for node in batch.nodes:
+        out.add_node(node)
+    for edge in kept:
+        out.add_edge(edge)
+    return out
 
 
 @dataclass(frozen=True)

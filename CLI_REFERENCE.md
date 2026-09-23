@@ -545,7 +545,7 @@ kind except `CALLS`:
 |---|---|
 | `kotlin` | 0.92 |
 | `c` `cpp` (with `clang`) `sql` | 1.00 |
-| `javascript` | 0.96 |
+| `javascript` | 0.97 |
 | `perl` | 0.89 |
 | `typescript` | 0.86 |
 | `cpp` `csharp` `go` `php` | 0.75 |

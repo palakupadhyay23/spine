@@ -39,13 +39,17 @@ All notable changes to this project are documented here. Format loosely follows
     *binding* it was exported as, read through the same three tiers as calls:
     `module.exports = { Booking }` over `define('gig', …)` makes `const { Booking }` the `gig`
     model, as do `db.Booking = define(…)` on the exported object, `{ Booking: define(…) }`,
-    `exports.a = exports.b = define(…)` and `export const Booking = define(…)`. A name the
-    module's exports do not list is nothing, and so is a binding declared inside a function.
+    `exports.a = exports.b = define(…)` and `export const Booking = define(…)`. A name a readable
+    or names-known module does not export is nothing, and so is a binding declared inside a
+    function or a name written onto an object `module.exports` later replaced; an opaque module
+    is still matched by the model's name.
   - **Calls bound to what a module actually exports**, as far as its own file says. Each
     CommonJS module is read into one of three tiers, by what was *read* of it. **Readable**:
     every reference to its exports object is a recognised form (an allowlist — a member write, a
     string-key write, a read, the `exports = module.exports = …` chain, `Object.assign` or
-    `defineProperty` with literal names) and `module.exports` is set to something read in full,
+    `defineProperty` with literal names; the finder follows `exports`, `module.exports`, their
+    aliases, top-level `this` and bare `module`, and any spelling it cannot follow makes the
+    module opaque) and `module.exports` is set to something read in full,
     so the export map is exact. **Names-known**: every reference is recognised, but a write sits
     under a branch or in a function, a merge adds members, the value is `Object.freeze({…})`, or
     a UMD branch assigns `module.exports` — so the map is every name the file may export.
@@ -58,8 +62,8 @@ All notable changes to this project are documented here. Format loosely follows
     class C extends B` reaches `Base` under any local name, and a destructured `{ Base }` —
     `undefined` at run time — reaches nothing. Reassigned at the top level, the last
     `module.exports` wins; members written onto the object it replaced are never exported. A
-    call never lands on a module node: `db.config()` beside a sibling `db.config.ts` is the
-    `config` export of `db`. TypeScript files calling into CommonJS get the same routing,
+    call never lands on a module node, from JavaScript or TypeScript: `db.config()` beside a
+    sibling `db.config.ts` is the `config` export of `db`, or nothing. TypeScript files calling into CommonJS get the same routing,
     whichever file the walk reaches first. The module a target names is the longest prefix that
     *is* a module, so `user.model.ts` beside `user.js` keeps its edges, TypeScript's included.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
@@ -68,7 +72,7 @@ All notable changes to this project are documented here. Format loosely follows
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
   Twenty corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.96 (73 of 76), and the three misses are the three gaps declared
+  edge kind**, `CALLS` recall 0.97 (86 of 89), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`

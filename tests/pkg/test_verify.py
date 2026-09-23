@@ -422,12 +422,13 @@ def test_javascript_entity_parity_reads_the_whole_attribute_object(source: str) 
 
 
 def test_javascript_entity_parity_is_linear_on_adversarial_input() -> None:
-    """ORM N3: the regex it replaced took 68 s on this 400 KB input (5 s at 100 KB)."""
+    """ORM N3: the regex it replaced took 68 s on the first 400 KB input (5 s at 100 KB); an
+    identifier prefix that restarted after every `$` took 122 s on the second at 200 KB."""
     import time
 
     from orchestrator.pkg.verify import _ENTITY_SYNTAX
 
-    source = ("A.init({ " * 45_000)[:400_000]
-    started = time.perf_counter()
-    assert not _ENTITY_SYNTAX["javascript"].findall(source)
-    assert time.perf_counter() - started < 2.0
+    for source in (("A.init({ " * 45_000)[:400_000], "A$" * 100_000):
+        started = time.perf_counter()
+        assert not _ENTITY_SYNTAX["javascript"].findall(source)
+        assert time.perf_counter() - started < 2.0

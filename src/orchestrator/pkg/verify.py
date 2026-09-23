@@ -303,7 +303,10 @@ class _ModelInits:
     """
 
     _DEFINE = re.compile(r"\b(?:sequelize|db)\s*\.\s*define\s*\(\s*[\"']")
-    _INIT = re.compile(r"(?:\b[A-Z][\w$]*|\bsuper)\s*\.\s*init\s*\(\s*\{")
+    #: The lookbehind anchors an identifier at its start. `\b` also matches after a `$` — not a
+    #: word character — so on `A$A$A$…` every `A` began a new attempt that scanned the rest of the
+    #: identifier: 122 s at 200 KB, with no `init` anywhere.
+    _INIT = re.compile(r"(?:(?<![\w$])[A-Z][\w$]*|(?<![\w$])super)\s*\.\s*init\s*\(\s*\{")
     _TYPE = re.compile(r"\b(?:DataTypes|Sequelize)\s*\.")
 
     def _starts(self, source: str) -> list[int]:

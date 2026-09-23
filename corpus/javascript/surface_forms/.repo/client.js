@@ -6,6 +6,19 @@ const created = require('./created');
 const getter = require('./getter');
 const dead = require('./dead');
 const util = require('./util');
+const before = require('./before');
+const deferred = require('./deferred');
+const blocky = require('./blocky');
+const boxed = require('./boxed');
+const modref = require('./modref');
+const bracket = require('./bracket');
+const protod = require('./protod');
+const varexp = require('./varexp');
+const sealed = require('./sealed');
+const caught = require('./caught');
+const arrowthis = require('./arrowthis');
+const selfref = require('./selfref');
+const varonly = require('./varonly');
 
 function go() {
   rflx.find();
@@ -21,6 +34,28 @@ function go() {
   getter.secret();
   dead.stale();
   return util.util();
+}
+
+function more() {
+  before.f();
+  before.g();
+  deferred.g();
+  blocky.real();
+  blocky.run();
+  boxed.g();
+  modref.g();
+  bracket.g();
+  protod.g();
+  varexp.f();
+  varexp.g();
+  sealed.f();
+  sealed.g();
+  caught.f();
+  caught.secret();
+  selfref.Tool();
+  selfref.secret();
+  varonly.g();
+  return arrowthis.g();
 }
 
 function later() {

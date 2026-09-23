@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "sequelize_exports",
-  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type.",
+  "why": "One shape per rule `settle` reads an imported model by (js-review-followup D5, D8), each model named differently from the binding that exports it, so no rule can hide behind a match on the model's name. A class exported under another name (`{ Performer: Soloist }`); every link of `exports.Stanza = exports.Couplet = define(\u2026)`; an ESM `export const` and `export { Noel as Carol }`; a whole-module import of a module whose default is one of its two models; a names-known map whose value this pass cannot name (`Object.assign(module.exports, { Rondo: m.rondo })`), which falls back to the model's name. Refused: a member of a member (`exports.api.Lyric`), a destructured `{ Aria }` of a module whose default *is* the model, a define written after `module.exports` was replaced, a top-level binding a hidden surface does not export, a case-aside match with two candidates, and a self-association only resolution reveals. `seed.js` holds a `define` whose `{ type: 'string' }` is an option, not a Sequelize type. The second review round added a shape per fix, each able to fail: a define written onto a *function's* `db` that shadows the exported one; members written onto an object `module.exports` later replaced, by `module.exports.X` and by an earlier literal; a model default that is also written as a member of itself (`module.exports.Opera = Opera`); a class model declared inside a function; a literal at the end of a *declared* chain; a frozen literal and a top-level `this.X`; an import naming no export of a readable module whose unexported model shares its name; a whole-module import of a module with two models and no default; and, in the importing file, a function-local define spelled like an import.",
   "root": ".repo",
   "nodes": [
     {
@@ -182,6 +182,202 @@
     },
     {
       "id": "ts:entity:noel.verses",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/ballad",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/frozen",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/listed",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/opera",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/quartet",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/shadow",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/studio",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/suite",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/swap",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/shadow.build",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/swap.make",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/studio.build",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/stale.make",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/nested.mixin",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/pair.mixin",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:setup.draft",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:entity:refrain",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:catch",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:canon",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:libretto",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:take",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:overture",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:finale",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:night",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:song",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:scherzo",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:minuet",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:viola",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:cello",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:sketch",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:refrain.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:catch.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:canon.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:libretto.acts",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:take.length",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:overture.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:finale.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:night.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:song.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:scherzo.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:minuet.bars",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:viola.strings",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:cello.strings",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:entity:sketch.lines",
+      "kind": "Field"
+    },
+    {
+      "id": "ts:models/shade",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:models/shade.mixin",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:models/shade.build",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:entity:psalm",
+      "kind": "Entity"
+    },
+    {
+      "id": "ts:entity:psalm.verses",
       "kind": "Field"
     }
   ],
@@ -530,6 +726,386 @@
       "src": "ts:entity:noel",
       "dst": "ts:entity:orchestra",
       "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/ballad",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/frozen",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/listed",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/opera",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/quartet",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/shadow",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/studio",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/suite",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/swap",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/ballad",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/frozen",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/listed",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/opera",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/quartet",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/shadow",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/studio",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/suite",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/swap",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/ballad",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/frozen",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/listed",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/opera",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/quartet",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/shadow",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/studio",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/suite",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/swap",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/shadow",
+      "dst": "ts:entity:refrain",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/swap",
+      "dst": "ts:entity:catch",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/swap",
+      "dst": "ts:entity:canon",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/opera",
+      "dst": "ts:entity:libretto",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/studio",
+      "dst": "ts:entity:take",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/suite",
+      "dst": "ts:entity:overture",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/suite",
+      "dst": "ts:entity:finale",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/frozen",
+      "dst": "ts:entity:night",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/ballad",
+      "dst": "ts:entity:song",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/listed",
+      "dst": "ts:entity:scherzo",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/listed",
+      "dst": "ts:entity:minuet",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/quartet",
+      "dst": "ts:entity:viola",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/quartet",
+      "dst": "ts:entity:cello",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:refrain",
+      "dst": "ts:entity:refrain.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:catch",
+      "dst": "ts:entity:catch.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:canon",
+      "dst": "ts:entity:canon.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:libretto",
+      "dst": "ts:entity:libretto.acts",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:take",
+      "dst": "ts:entity:take.length",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:overture",
+      "dst": "ts:entity:overture.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:finale",
+      "dst": "ts:entity:finale.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:night",
+      "dst": "ts:entity:night.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:song",
+      "dst": "ts:entity:song.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:scherzo",
+      "dst": "ts:entity:scherzo.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:minuet",
+      "dst": "ts:entity:minuet.bars",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:viola",
+      "dst": "ts:entity:viola.strings",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:cello",
+      "dst": "ts:entity:cello.strings",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:entity:sketch",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:sketch",
+      "dst": "ts:entity:sketch.lines",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/shadow",
+      "dst": "ts:models/shadow.build",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/swap",
+      "dst": "ts:models/swap.make",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/studio",
+      "dst": "ts:models/studio.build",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/stale",
+      "dst": "ts:models/stale.make",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/nested",
+      "dst": "ts:models/nested.mixin",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/pair",
+      "dst": "ts:models/pair.mixin",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:setup.draft",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:libretto",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:overture",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:finale",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:night",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:song",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:entity:minuet",
+      "dst": "ts:entity:orchestra",
+      "kind": "REFERENCES"
+    },
+    {
+      "src": "ts:models/shade",
+      "dst": "ts:sequelize",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/shade",
+      "dst": "ts:models/db",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:setup",
+      "dst": "ts:models/shade",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:models/shade",
+      "dst": "ts:models/shade.mixin",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/shade",
+      "dst": "ts:models/shade.build",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:models/shade",
+      "dst": "ts:entity:psalm",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:entity:psalm",
+      "dst": "ts:entity:psalm.verses",
+      "kind": "CONTAINS"
     }
   ],
   "known_gaps": [],
@@ -590,11 +1166,84 @@
         "kind": "REFERENCES"
       },
       "why": "PREDICTED BEFORE SCORING. `Couplet` and `Stanza` are two exports of one model, `stanza` \u2014 a table keyed to itself, which only resolution reveals. (Two whole-module imports of one file would not test this: their placeholders are the same string, dropped before resolution.)"
+    },
+    {
+      "edge": {
+        "src": "ts:entity:refrain",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `db.Chorus = define('refrain')` writes onto `build()`'s own `const db`, which shadows the module's; the exported `db.Chorus` is `null`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:catch",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `module.exports.Round` is written onto the object a later `module.exports = \u2026` replaced."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:canon",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `{ Fugue: define('canon') }` is the literal a later `module.exports = make()` replaced."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:take",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. The class model `Session` is declared inside `build()`; the exported `Session` is the top-level `null`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:scherzo",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `listed.js` exports `{ Minuet }` only; its model `scherzo` is bound to `Hidden`, and no export is called `Scherzo`."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:viola",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `quartet.js` defines two models and exports neither as its default: a whole-module import names neither."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:cello",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. The other half of the same ambiguity."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:sketch",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `draft()`'s own `const Performer = define('sketch')` is that function's; `Performer` in `wire()` is the import, the `soloist` model."
+    },
+    {
+      "edge": {
+        "src": "ts:entity:psalm",
+        "dst": "ts:entity:orchestra",
+        "kind": "REFERENCES"
+      },
+      "why": "PREDICTED BEFORE SCORING. `{ Hymnal: define('psalm') }` is the literal of `build()`'s own `const db`, not the exported one; the module is opaque (`mixin(db)`), so nothing but a recorded export key could resolve `{ Hymnal }`."
     }
   ],
   "excluded": [
-    "`new Sequelize(\u2026)`, `make()` and `mixin(\u2026)` are top-level calls with no caller; `make` and `mixin` are declared nowhere.",
-    "`seed.js` defines no model: `{ kind: { type: 'string' } }` has a `type` key whose value is no Sequelize type, and `registry` is not a connection."
+    "`seed.js` defines no model: `{ kind: { type: 'string' } }` has a `type` key whose value is no Sequelize type, and `registry` is not a connection.",
+    "`new Sequelize(\u2026)`, `make()` and `mixin(\u2026)` are top-level calls with no caller to hang a CALLS edge on; `make` and `mixin` are declared, so each fixture loads.",
+    "The class `Session` inside `studio.js`'s `build()` is not a top-level type, so it has no `Type` node here; its model `take` is labelled."
   ],
   "open_questions": [],
   "resolved_by_measurement": []

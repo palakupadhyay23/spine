@@ -58,7 +58,10 @@ Also declared, each measured and left as it is:
 - **An import that does not match what the module exports can still invent**, in consumer
   code that is itself broken: a whole-module ``const Booking = require('./b')`` of a module
   exporting ``{ Booking }`` takes the module's one model, and an ESM ``import { Post }`` from
-  a file exporting only ``{ Post as Article }`` falls back to the model named ``post``.
+  a file exporting only ``{ Post as Article }`` falls back to the model named ``post``. So do
+  an ESM ``import { Post }`` of a file whose model is its ``export default`` — the ESM form of a
+  destructured default — and a whole-module import of a module whose default is a function
+  that is not a model, which still takes the module's one model.
 """
 
 from __future__ import annotations
@@ -66,6 +69,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
+from orchestrator.pkg.js_extractor import _shadowed, _top_level_this
 from orchestrator.pkg.typescript_extractor import _relative_module, _supertypes
 
 if TYPE_CHECKING:
@@ -194,7 +198,10 @@ def scan(
     #: The locals that are Sequelize's `Model` — `import { Model as SeqModel }` included.
     model_base = {local for local in sequelize if names.get(local, local) == "Model"}
 
-    defined: dict[str, str] = {}  # `const User = sequelize.define('User', …)` → {User: User}, any scope
+    #: `const User = sequelize.define('User', …)` → {User: [(scope start, scope end, model)]}. A
+    #: binding reaches only the block that declares it: a function-local `const Post = define(…)`
+    #: in the importing file is that function's, not the imported `Post` everywhere else.
+    defined: dict[str, list[tuple[int, int, str]]] = {}
     top: dict[str, str] = {}  # the same, top-level declarations only: what a module can export
     exported: dict[str, str] = {}  # `exports.Post = sequelize.define('article', …)` → {exports.Post: …}
     if sequelize:
@@ -218,7 +225,7 @@ def scan(
                 name = parent.child_by_field_name("name")
                 if name is not None and name.type == "identifier":
                     local = _text(name, source)
-                    defined[local] = model
+                    defined.setdefault(local, []).append((*_scope_of(parent), model))
                     declaration = parent.parent
                     above = declaration.parent if declaration is not None else None
                     if above is not None and above.type in ("program", "export_statement"):
@@ -236,7 +243,16 @@ def scan(
             if model is not None:
                 classes[cls] = model
 
-    held = {**top, **classes}
+    # A class is a binding the module can export only when it is declared at the top level.
+    top_classes = {
+        _text(decl.child_by_field_name("name"), source)
+        for child in root.named_children
+        for decl in (
+            [child.child_by_field_name("declaration")] if child.type == "export_statement" else [child]
+        )
+        if decl is not None and decl.type == "class_declaration"
+    }
+    held = {**top, **{name: model for name, model in classes.items() if name in top_classes}}
     for node in root.named_children:  # `export { Post, Draft as Article }`
         if node.type != "export_statement" or node.child_by_field_name("source") is not None:
             continue
@@ -254,24 +270,67 @@ def scan(
 
 
 def _exports_key(left: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> str | None:
-    """``exports.X`` for `<exports object>.X` — `exports.api.X` is a member of a member, not it."""
+    """``exports.X`` for `<exports object>.X` — `exports.api.X` is a member of a member, not it.
+
+    The owner must be the *module's* binding: a function whose own `const db = {}` shadows the
+    exported `db` writes onto its local, and `db.Post = define(…)` there exports nothing. A
+    top-level `this` is `exports`.
+    """
     if left is None or left.type != "member_expression":
         return None
     owner = left.child_by_field_name("object")
-    if owner is None or _text(owner, source) not in exports_objects:
+    if owner is None:
         return None
-    return f"exports.{_text(left.child_by_field_name('property'), source)}"
+    key = f"exports.{_text(left.child_by_field_name('property'), source)}"
+    if owner.type == "this":
+        return key if _top_level_this(owner) else None
+    text = _text(owner, source)
+    if text not in exports_objects:
+        return None
+    binding = text.split(".", 1)[0]  # `module` of `module.exports`
+    return None if _shadowed(owner, binding, source) else key
+
+
+def _scope_of(declarator: TSNode) -> tuple[int, int]:
+    """The byte range a declared binding covers: its nearest enclosing block, or the file."""
+    current = declarator.parent
+    while current is not None and current.type not in ("statement_block", "program", "class_static_block"):
+        current = current.parent
+    target = current if current is not None else declarator
+    return target.start_byte, target.end_byte
+
+
+def _in_scope(bindings: list[tuple[int, int, str]] | None, at: TSNode) -> str | None:
+    """The model of the innermost binding whose scope contains ``at``, or None."""
+    best: tuple[int, str] | None = None
+    for start, end, model in bindings or ():
+        if start <= at.start_byte < end and (best is None or end - start < best[0]):
+            best = (end - start, model)
+    return best[1] if best is not None else None
 
 
 def _exported_literal(obj: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> bool:
-    """Whether ``obj`` is the object literal `module.exports` (or an alias of it) is set to."""
+    """Whether ``obj`` is the object literal `module.exports` (or an alias of it) is set to —
+    directly, or frozen: `module.exports = Object.freeze({ Post: define(…) })`."""
     if obj is None or obj.type != "object" or obj.parent is None:
         return False
     holder = obj.parent
+    if holder.type == "arguments" and holder.parent is not None:
+        call = holder.parent
+        frozen = _text(call.child_by_field_name("function"), source) in ("Object.freeze", "Object.seal")
+        if not frozen or call.parent is None:
+            return False
+        holder = call.parent
     if holder.type == "assignment_expression":
         return _text(holder.child_by_field_name("left"), source) in exports_objects
     if holder.type == "variable_declarator":
-        return _text(holder.child_by_field_name("name"), source) in exports_objects
+        declaration = holder.parent
+        top = (
+            declaration is not None
+            and declaration.parent is not None
+            and declaration.parent.type == "program"
+        )
+        return top and _text(holder.child_by_field_name("name"), source) in exports_objects
     return False
 
 
@@ -456,7 +515,7 @@ def _model_end(
     rel: str,
     registry: set[str],
     classes: dict[str, str],
-    defined: dict[str, str],
+    defined: dict[str, list[tuple[int, int, str]]],
     imports: dict[str, str],
     names: dict[str, str | None],
 ) -> str | None:
@@ -474,8 +533,9 @@ def _model_end(
     name = _text(node, source)
     if name in classes:
         return entity_id(classes[name])
-    if name in defined:
-        return entity_id(defined[name])
+    local = _in_scope(defined.get(name), node)  # a define binding, in the block that declares it
+    if local is not None:
+        return entity_id(local)
     if name in registry:
         return entity_id(name)
     if name in imports:
@@ -495,7 +555,7 @@ def _association(
     batch: FactBatch,
     registry: set[str],
     classes: dict[str, str],
-    defined: dict[str, str],
+    defined: dict[str, list[tuple[int, int, str]]],
     imports: dict[str, str],
     names: dict[str, str | None],
 ) -> None:
@@ -572,19 +632,20 @@ def settle(
         written = bindings.get(module, {}).get(f"exports.{name}")
         if entry is not None and name in entry.dead:
             return None  # written onto an object the module no longer exports
-        if written is None and entry is not None and held_by(module, entry.default) is not None:
-            return None  # `require` returns a model, and `{ Post }` reads a property of it
-        if entry is not None and entry.tier != "opaque":
-            if name not in entry.names:
-                return None  # not exported under that name
+        if entry is not None and name in entry.names:  # a name the file visibly writes: it decides
             if written is not None:
                 return entity_id(written)
             target = entry.names[name]
             if target is not None or entry.tier == "readable":
                 model = held_by(module, target)
                 return entity_id(model) if model is not None else None
+            # names-known or opaque, written to a value this pass cannot name: by the model's name
+        elif entry is not None and entry.tier != "opaque":
+            return None  # not exported under that name
         elif written is not None:
             return entity_id(written)
+        elif entry is not None and held_by(module, entry.default) is not None:
+            return None  # `require` returns a model, and `{ Post }` reads a property of it
         exact = entity_id(name)
         if exact in candidates:
             return exact
