@@ -588,6 +588,13 @@ async def _stage_intake(
     if spec is not None:
         ctx.spec = dict(spec)
         ctx.spec.setdefault("intent_id", intent_id or "injected")
+        from orchestrator.sdlc.spec_file import spec_source_mismatch
+
+        # The spec keys the plan gate and the run is filed against the source: say so when the
+        # two name different tickets, the same line `sdlc plan` prints for the same pair.
+        mismatch = spec_source_mismatch(ctx.spec, ctx.source)
+        if mismatch:
+            emit(f"[intake] WARNING: {mismatch}")
         # An injected spec has no source document behind it, so `--issue-type` is the only
         # way this path can reach the bug profile at all. Silence here is what made a
         # spec-file run untyped and unexplained.

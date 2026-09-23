@@ -104,11 +104,20 @@ def test_writing_a_plan_leaves_the_tree_trusted(checkout: Path, tmp_path: Path) 
     assert repo_state(checkout)[1] is False
 
 
-@pytest.mark.xfail(strict=True, reason="B15: `--spec` with `--source` reads an unbound `plan_result`")
 def test_a_spec_with_its_ticket_plans_from_the_spec_and_keeps_the_ticket_text(
-    checkout: Path, tmp_path: Path
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """D1: the spec is the requirements; the source only supplies the text §8 checks them against."""
+    """D1: the spec is the requirements; the source only supplies the text §8 checks them against.
+
+    Fetched, never analysed — the spec already says what to build, so the path stays free of the
+    model call intake's analysis makes. (It crashed on an unbound `plan_result`: ledger B15.)
+    """
+    import orchestrator.intake.cache as intake_cache
+
+    def _no_analysis(*_a: object, **_k: object) -> object:
+        raise AssertionError("intake analysed the source although --spec supplied the requirements")
+
+    monkeypatch.setattr(intake_cache, "analyze_cached", _no_analysis)
     ticket = tmp_path / "PROJ-42.md"
     criterion = "Cart.total skips skus without a price instead of raising KeyError"
     ticket.write_text(f"# PROJ-42\n\n## Acceptance criteria\n- {criterion}\n", encoding="utf-8")
@@ -185,3 +194,42 @@ def test_a_bug_that_lands_nowhere_keeps_its_approval(checkout: Path, tmp_path: P
     document = (checkout / ".spine" / "plans" / "PROJ-42-build.md").read_text(encoding="utf-8")
     assert "**Validity:** UNLOCALIZED" in document  # the fixture reaches the diverging verdict
     assert _gate(spec_file, checkout) == "PASSED: reviewer"
+
+
+def test_a_spec_and_a_ticket_that_disagree_are_planned_as_the_spec_and_said_so(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D13: `PROJ-42.json` with `jira://PROJ-43` plans and keys the approval as PROJ-42 — and warns.
+
+    The tracker is stubbed: this must never reach a real Jira through a developer's `.env`.
+    """
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.source import FetchTreeResult, SourceDocument
+
+    fetched: list[str] = []
+
+    class _Service:
+        async def fetch_source_documents(self, root_id: str) -> FetchTreeResult:
+            fetched.append(root_id)
+            return FetchTreeResult(documents=[SourceDocument(id=root_id, title=root_id, body="PROJ-43 text")])
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    spec_file = _spec_file(tmp_path)
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(spec_file),
+            "--source",
+            "jira://PROJ-43",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert fetched == ["PROJ-43"]
+    assert "WARNING" in result.output and "PROJ-42" in result.output and "PROJ-43" in result.output
+    assert (checkout / ".spine" / "plans" / "PROJ-42-build.md").is_file()

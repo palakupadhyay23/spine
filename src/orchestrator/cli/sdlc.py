@@ -682,7 +682,11 @@ def sdlc_plan(
     ] = None,
     source: Annotated[
         str | None,
-        typer.Option("--source", help="Derive the spec instead, e.g. jira://<issue-key>."),
+        typer.Option(
+            "--source",
+            help="Derive the spec from a ticket, e.g. jira://<issue-key>. With --spec, only read the "
+            "ticket's text for the criteria check — the spec stays the requirements.",
+        ),
     ] = None,
     intent: Annotated[
         str | None, typer.Option("--intent", help="Intent id to plan (default: the first).")
@@ -746,8 +750,33 @@ def sdlc_plan(
     async def _go() -> None:
         resolved = injected
         # The flag wins; otherwise the ticket answers. An injected spec has no ticket behind
-        # it, so with `--spec` and no flag the document is honestly untyped.
+        # it, so with `--spec` and no flag the document is honestly untyped — even beside a
+        # `--source`, because `autorun --spec` and the plan gate read no ticket for a type either,
+        # and a plan typed differently from its gate is refused as changed (ledger B18).
         resolved_type = issue_type
+        # The ticket as intake read it — description, comments, attachments — is what row 08
+        # checks each filed criterion against. A hand-written `--spec` alone has none.
+        documents: list[Any] = []
+        if resolved is not None and source:
+            # `--spec` is the requirements; `--source` supplies only the ticket's own words, for
+            # §8 to check the hand-written criteria against. So fetch, never analyse: the spec
+            # already says what to build, and the path stays free of any model call.
+            from orchestrator.core.env import load_local_env
+            from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+            from orchestrator.intake.service import SourceUriError, parse_source_uri
+            from orchestrator.sdlc.spec_file import spec_source_mismatch
+
+            load_local_env()
+            mismatch = spec_source_mismatch(resolved, source)
+            if mismatch:
+                typer.echo(f"WARNING: {mismatch}", err=True)
+            try:
+                service = build_service_for(str(source), dry_run=True)
+                fetched = await service.fetch_source_documents(parse_source_uri(str(source))[1])
+            except (SourceUriError, IntakeNotConfiguredError) as exc:
+                typer.echo(f"ERROR: {exc}", err=True)
+                raise typer.Exit(code=2) from exc
+            documents = list(fetched.documents)
         if resolved is None:
             from orchestrator.core.env import load_local_env
             from orchestrator.core.llm.client import LLMError
@@ -779,17 +808,14 @@ def sdlc_plan(
                 typer.echo(f"Intent {intent!r} not found. Available: {ids}", err=True)
                 raise typer.Exit(code=3)
             resolved = chosen.model_dump()
+            documents = list(getattr(plan_result, "documents", []) or [])
             if not resolved_type:
                 from orchestrator.intake.ticket_meta import resolve_ticket_meta
 
                 resolved_type = resolve_ticket_meta(plan_result, chosen).issue_type
 
         intent_key = str(resolved.get("intent_id") or "spec")
-        # The ticket as intake read it — description, comments, attachments — is what row 08
-        # checks each filed criterion against. A hand-written `--spec` has none.
-        source_text = (
-            "\n\n".join(d.body for d in getattr(plan_result, "documents", []) or []) if source else ""
-        )
+        source_text = "\n\n".join(d.body for d in documents)
         # Resolved against the repo being planned, not left as the literal "auto" — the
         # codegen prompt, the layout and the test environment all read this, and the old
         # `python` default handed a C# repository Python scaffolding without saying so.

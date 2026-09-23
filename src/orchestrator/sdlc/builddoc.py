@@ -50,6 +50,7 @@ _MAX_MODULES = 6
 
 _ID_UNSAFE = re.compile(r"[^0-9A-Za-z_]")
 _DERIVED_AT = re.compile(r"\*\*Derived at:\*\* `([^`]+)`")
+_ISSUE_TYPE = re.compile(r"^\*\*Issue type:\*\* `([^`]+)`", re.MULTILINE)
 
 # Substituted after the body exists, because the status depends on a digest of the body.
 _STATUS_PLACEHOLDER = "\x00status\x00"  # noqa: S105 — a render placeholder, not a secret
@@ -71,6 +72,25 @@ def _label(label: str, source: str) -> str:
     the content is the opposite of what it is for.
     """
     return f"*{label} — {source}*\n"
+
+
+def _issue_type_line(issue_type: str) -> str:
+    """The header line naming the issue type the plan was derived with — or saying there was none.
+
+    Untyped is said rather than omitted: the type changes the validity verdict (a Bug that lands
+    nowhere is UNLOCALIZED, a Story is not), and a reader has to be able to tell "not a bug"
+    from "nobody said".
+    """
+    if issue_type.strip():
+        return f"**Issue type:** `{issue_type.strip()}`\n"
+    return "**Issue type:** untyped — set it with `--issue-type`\n"
+
+
+def planned_issue_type(document: str) -> str:
+    """The issue type a build document was derived with, read back from its header; ``""`` if none."""
+    header = document.partition(_BODY_SEP)[0]
+    found = _ISSUE_TYPE.search(header)
+    return found.group(1) if found else ""
 
 
 def _pending(what: str) -> str:
@@ -1138,6 +1158,7 @@ def render_build_md(
     approval: PlanApproval | None = None,
     journey: list[JourneyEntry] | None = None,
     source_text: str = "",
+    issue_type: str = "",
 ) -> str:
     """Assemble the twelve sections.
 
@@ -1166,6 +1187,9 @@ def render_build_md(
 
     add(f"# {intent} — build document\n")
     add(f"**Spec:** `{intent}` · **Derived at:** `{commit}` · **Status:** {_STATUS_PLACEHOLDER}\n")
+    # In the header, outside the digest: it is an *input* the gate must reproduce, not content a
+    # reviewer approves — `approve` reads it back from here (:func:`planned_issue_type`).
+    add(_issue_type_line(issue_type))
     # .value first: str-Enum stringifies as "Verdict.PROCEED", which is a Python repr
     # leaking onto a page a human is meant to read.
     raw_verdict = getattr(validity, "verdict", "")
@@ -1449,6 +1473,7 @@ async def build_plan(
         approval=approval,
         journey=journey,
         source_text=source_text,
+        issue_type=issue_type,
     )
 
 
