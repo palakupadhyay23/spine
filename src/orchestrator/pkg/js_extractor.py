@@ -737,10 +737,41 @@ def _shadowed(
         elif current.type == "program" and name == "module":
             # `var module = { exports: {} }` at the top level: every `module` in the file is that
             # one, and the real module's exports stay `{}`
-            memo[key] = _declares(current, name, source)
+            memo[key] = _file_declares(current, name, source)
             if memo[key]:
                 return True
         current = current.parent
+    return False
+
+
+def _file_declares(program: TSNode, name: str, source: bytes) -> bool:
+    """Whether the file itself binds ``name``: a `var` anywhere outside a function (a top-level
+    `for (var …)` too), or a `let`/`const`/`class`/`function` written directly at the top level.
+    A `{ let module = … }` block binds it for the block alone, not the file."""
+    for child in program.named_children:
+        if child.type in ("function_declaration", "generator_function_declaration", "class_declaration"):
+            if _field_text(child, "name", source) == name:
+                return True
+        elif child.type == "lexical_declaration" and any(
+            name in _pattern_names(d.child_by_field_name("name"), source) for d in child.named_children
+        ):
+            return True
+    stack = list(program.named_children)
+    while stack:
+        node = stack.pop()
+        if node.type in _FUNCTION_NODES or node.type == "class_body":
+            continue
+        if node.type == "variable_declaration" and any(
+            name in _pattern_names(d.child_by_field_name("name"), source) for d in node.named_children
+        ):
+            return True
+        if (
+            node.type == "for_in_statement"
+            and _field_text(node, "kind", source) == "var"
+            and name in _pattern_names(node.child_by_field_name("left"), source)
+        ):
+            return True
+        stack.extend(node.named_children)
     return False
 
 
@@ -1175,7 +1206,9 @@ def _export_surface(
     tier = _READABLE
     if not chains:
         # `var module = …` is CommonJS whatever it writes: its exports are `exports` alone
-        surface = _Surface(rebound_at=rebound_at, cjs=member_exports or seen or (own and not esm))
+        surface = _Surface(
+            rebound_at=rebound_at, cjs=member_exports or seen or (own and not esm), members_ok=not own
+        )
     else:
         targets, final, alias, offset = chains[0]
         alias_object_span: tuple[int, int] | None = None

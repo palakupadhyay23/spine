@@ -1,7 +1,7 @@
 {
   "language": "javascript",
   "case": "unread_surfaces",
-  "why": "The fourth review pass. Five export surfaces this pass does not read in full \u2014 `Object.freeze({\u2026})`, `module.exports = make()`, an alias assigned after its declaration, a subscript `exports['find']`, and `Object.assign` onto an alias \u2014 each of which the third pass still treated as readable and so enforced, dropping a true call. \"Readable\" is an allowlist now, and every one of these calls is resolved by name and kept because its target exists. Plus a renamed export, `{ Handler: Impl }`, with no class called `Handler` anywhere to hide behind, so the method call must be routed through the export map before the existence check rather than after it. Plus two bindings that shadow the module's `store` over their own scope only: a `var` inside a callback (hoisted to the callback, not to `go`) and a `catch (store)` clause. A scope that runs past either loses the true `store.find()` on the last line. The fifth review pass adds five more. Two write the exports object through a channel pass 4 did not recognise, and so lost a true call: a brace-less `if (c) exports.find = find` and `Reflect.defineProperty(exports, 'find', \u2026)`. Two hand the exports object to something the reader cannot follow, an alias `const api = exports` and an argument `mixin(exports, \u2026)`, so their calls go by name. And two refusals: `frozen.secret()` and `shadow.secret()` name functions their module declares but never exports, which a name lookup would reach. The fifth review pass (N5): the `{ Handler: Impl }` refusal could not fire \u2014 its target names no node \u2014 so `decoyed.js` repeats the shape with a decoy `class Handler`, called from JavaScript, where a reader that ignores the rename lands on the decoy. A file that declares its own `var module` exports nothing through it.",
+  "why": "The fourth review pass. Five export surfaces this pass does not read in full \u2014 `Object.freeze({\u2026})`, `module.exports = make()`, an alias assigned after its declaration, a subscript `exports['find']`, and `Object.assign` onto an alias \u2014 each of which the third pass still treated as readable and so enforced, dropping a true call. \"Readable\" is an allowlist now, and every one of these calls is resolved by name and kept because its target exists. Plus a renamed export, `{ Handler: Impl }`, with no class called `Handler` anywhere to hide behind, so the method call must be routed through the export map before the existence check rather than after it. Plus two bindings that shadow the module's `store` over their own scope only: a `var` inside a callback (hoisted to the callback, not to `go`) and a `catch (store)` clause. A scope that runs past either loses the true `store.find()` on the last line. The fifth review pass adds five more. Two write the exports object through a channel pass 4 did not recognise, and so lost a true call: a brace-less `if (c) exports.find = find` and `Reflect.defineProperty(exports, 'find', \u2026)`. Two hand the exports object to something the reader cannot follow, an alias `const api = exports` and an argument `mixin(exports, \u2026)`, so their calls go by name. And two refusals: `frozen.secret()` and `shadow.secret()` name functions their module declares but never exports, which a name lookup would reach. The fifth review pass (N5): the `{ Handler: Impl }` refusal could not fire \u2014 its target names no node \u2014 so `decoyed.js` repeats the shape with a decoy `class Handler`, called from JavaScript, where a reader that ignores the rename lands on the decoy. A file that declares its own `var module` exports nothing through it. A `let module` inside a top-level block binds the block, not the file; an own-module file's `module.exports.X` is a local's too.",
   "root": ".repo",
   "nodes": [
     {
@@ -198,6 +198,22 @@
     },
     {
       "id": "ts:boxed.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:boxed.list",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:blockmod",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:blockmod.find",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:blockmod.list",
       "kind": "Function"
     }
   ],
@@ -531,6 +547,31 @@
       "src": "ts:client",
       "dst": "ts:boxed",
       "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:boxed",
+      "dst": "ts:boxed.list",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:blockmod",
+      "dst": "ts:blockmod.find",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:blockmod",
+      "dst": "ts:blockmod.list",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:client",
+      "dst": "ts:blockmod",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:client.go",
+      "dst": "ts:blockmod.list",
+      "kind": "CALLS"
     }
   ],
   "known_gaps": [],
@@ -582,7 +623,23 @@
         "dst": "ts:boxed.find",
         "kind": "CALLS"
       },
-      "why": "PREDICTED BEFORE SCORING. `boxed.js` declares its own `var module`, so `module.exports = { find }` (bare, and in `var api = …`) writes onto a local and the real module exports `{}`: `boxed.find` is `undefined`."
+      "why": "PREDICTED BEFORE SCORING. `boxed.js` declares its own `var module`, so `module.exports = { find }` (bare, and in `var api = \u2026`) writes onto a local and the real module exports `{}`: `boxed.find` is `undefined`."
+    },
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:boxed.list",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. `module.exports.list = list` in `boxed.js` writes onto its own `var module`'s object, not the real exports."
+    },
+    {
+      "edge": {
+        "src": "ts:client.go",
+        "dst": "ts:blockmod.find",
+        "kind": "CALLS"
+      },
+      "why": "PREDICTED BEFORE SCORING. The `let module` in `blockmod.js` is the block's own; the real `module.exports = { list }` replaces the object `exports.find` was written onto."
     }
   ],
   "excluded": [

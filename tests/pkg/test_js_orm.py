@@ -793,3 +793,26 @@ def test_a_file_that_declares_its_own_module_exports_no_model(tmp_path: Path) ->
         + "module.exports = { Post: s.define('post', { t: DataTypes.STRING }) };\n"
     )
     assert _joined(tmp_path, module, "{ Post }") == set()
+
+
+@pytest.mark.parametrize(
+    "between",
+    [
+        pytest.param("(function () { Post.belongsTo(s.models.orchestra); })();\n", id="iife"),
+        pytest.param("(() => { Post.belongsTo(s.models.orchestra); })();\n", id="arrow-iife"),
+        pytest.param(
+            "class W {\n  static {\n    Post.belongsTo(s.models.orchestra);\n  }\n}\n", id="static-block"
+        ),
+    ],
+)
+def test_code_that_runs_where_it_stands_reads_the_declaration_above(tmp_path: Path, between: str) -> None:
+    """Review round 4, S2: a function invoked on the spot and a `static {}` block run between the
+    two declarations, while `Post` is still the first."""
+    module = (
+        _HEAD
+        + "var Post = s.define('post', { t: DataTypes.STRING });\n"
+        + between
+        + "var Post = s.define('final', { t: DataTypes.STRING });\n"
+    )
+    batch = _repo(tmp_path, {"models/m.js": module, "models/o.js": _ORCH})
+    assert {pair for pair in _refs(batch) if pair[1] == "ts:entity:orchestra"} == _TO

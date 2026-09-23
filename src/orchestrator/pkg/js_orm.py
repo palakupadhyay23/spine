@@ -62,6 +62,11 @@ Also declared, each measured and left as it is:
   an ESM ``import { Post }`` of a file whose model is its ``export default`` — the ESM form of a
   destructured default — and a whole-module import of a module whose default is a function
   that is not a model, which still takes the module's one model.
+- **A callback is taken to run after the module has loaded**, so it reads a name's last
+  declaration: `var Post = a; [1].forEach(() => Post.x()); var Post = b` binds `b`, though a
+  synchronous callback runs while `Post` is still `a`. Telling a synchronous callee from an
+  asynchronous one needs the callee; a function invoked on the spot and a `static {}` block are
+  read where they stand.
 """
 
 from __future__ import annotations
@@ -361,17 +366,35 @@ def _in_scope(bindings: list[tuple[int, int, int, str]] | None, at: TSNode) -> s
 
 
 def _deferred(at: TSNode, start: int, end: int) -> bool:
-    """Whether ``at`` sits in a function that is itself inside the scope ``start``–``end``."""
+    """Whether ``at`` sits in a function that is itself inside the scope ``start``–``end``.
+
+    Code that runs where it is written is not deferred: a `static {}` block, and a function
+    called on the spot — `(function () { … })()`, `(() => { … })()`. A callback handed to
+    another call is taken to run later; a synchronous one (`[1].forEach(() => …)`) is declared.
+    """
     current = at.parent
     while current is not None and start <= current.start_byte:
         if (
             current.type in _VAR_SCOPES
-            and current.type != "program"
+            and current.type not in ("program", "class_static_block")
+            and not _called_here(current)
             and ((current.start_byte, current.end_byte) != (start, end) and current.end_byte <= end)
         ):
             return True
         current = current.parent
     return False
+
+
+def _called_here(function: TSNode) -> bool:
+    """`(function () {})()` / `(() => {})()`: a function expression invoked where it is written."""
+    callee = function
+    while callee.parent is not None and callee.parent.type == "parenthesized_expression":
+        callee = callee.parent
+    call = callee.parent
+    invoked = (
+        call.child_by_field_name("function") if call is not None and call.type == "call_expression" else None
+    )
+    return invoked is not None and invoked.id == callee.id
 
 
 def _exported_literal(obj: TSNode | None, source: bytes, exports_objects: frozenset[str]) -> bool:

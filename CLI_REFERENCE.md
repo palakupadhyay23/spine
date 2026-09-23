@@ -551,9 +551,7 @@ multi-repo `CONSUMES` (5 of 6) — each a declared known gap:
 | `typescript` | 0.86 |
 | `cpp` `csharp` `go` `php` | 0.75 |
 | `python` | 0.73 |
-| `csharp` `go` `php` | 0.75 |
 | `java` | 0.67 |
-| `typescript` | 0.86 |
 
 Perl's 0.89 is 8 of 9 labelled `CALLS` edges in its own corpus — the one miss is a
 permanent, documented one (`instance_calls`, an untyped parameter with no declared type to

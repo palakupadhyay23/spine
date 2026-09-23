@@ -1248,3 +1248,35 @@ def test_a_file_that_declares_its_own_module_exports_nothing_through_it(tmp_path
         },
     )
     assert _calls_from(batch, "ts:c.go") == set()
+
+
+@pytest.mark.parametrize(
+    ("module", "called"),
+    [
+        pytest.param(
+            "{ let module = {};\n}\nexports.f = f;\nmodule.exports = { g };\n",
+            {"ts:m.g"},
+            id="let-in-a-block",
+        ),
+        pytest.param(
+            "if (c) { class module {} }\nexports.f = f;\nmodule.exports = { g };\n",
+            {"ts:m.g"},
+            id="class-in-a-block",
+        ),
+        pytest.param("var module = { exports: {} };\nmodule.exports.f = f;\n", set(), id="own-module-member"),
+    ],
+)
+def test_only_a_binding_of_the_file_makes_module_its_own(
+    tmp_path: Path, module: str, called: set[str]
+) -> None:
+    """Review round 4, B1 and S1: a `module` declared inside a top-level block is the block's, so
+    the real `module.exports` still decides; in a file that does declare its own, a member written
+    onto `module.exports` is a local's."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function f() {}\nfunction g() {}\n" + module,
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); m.g(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == called

@@ -666,16 +666,17 @@ reviews honest.
 ## 10. How right is it? — measured, not asserted
 
 "Grounded" is an adjective; this is a number. `orchestrator pkg accuracy` scores the graph
-against a committed corpus of **68 hand-labelled fixture cases across all 12
+against a committed corpus of **94 hand-labelled fixture cases across all 13
 front-ends**, and the baseline lives in `src/orchestrator/pkg/scoreboard.json`.
 
-**Precision is 1.00 on every node kind and every edge kind, in all 12 languages.** Recall is
+**Precision is 1.00 on every node kind and every edge kind, in all 13 languages.** Recall is
 1.00 on every kind except `CALLS`, JavaScript `IMPORTS` (188 of 189: an immediately-called
 `require`) and multi-repo `CONSUMES` (5 of 6) — each a declared known gap:
 
 | language | `CALLS` recall |
 |---|---|
 | `c` `sql` | 1.00 |
+| `javascript` | 0.97 |
 | `kotlin` | 0.92 |
 | `perl` | 0.89 |
 | `typescript` | 0.86 |

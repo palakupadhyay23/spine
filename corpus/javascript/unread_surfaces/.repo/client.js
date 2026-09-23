@@ -10,6 +10,7 @@ const mixed = require('./mixed');
 const reflected = require('./reflected');
 const shadow = require('./shadow');
 const boxed = require('./boxed');
+const blockmod = require('./blockmod');
 const { Handler } = require('./renamed');
 
 function go(ids) {
@@ -29,6 +30,9 @@ function go(ids) {
   shadow.find();
   shadow.secret();
   boxed.find();
+  boxed.list();
+  blockmod.find();
+  blockmod.list();
   new Handler().run();
   ids.forEach(function (id) {
     var store = id;
