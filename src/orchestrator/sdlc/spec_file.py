@@ -89,6 +89,7 @@ def validate_spec(payload: dict[str, Any], *, where: str = "spec") -> dict[str, 
 
 # A tracker issue key — `PROJ-42`, not a project key or a `jql/…` query, which name no one ticket.
 _ISSUE_KEY = re.compile(r"[A-Z][A-Z0-9_]+-\d+")
+_TRACKER_KINDS = frozenset({"jira", "mcp-jira"})
 
 
 def spec_source_mismatch(spec: dict[str, Any], source: str | None) -> str:
@@ -100,14 +101,15 @@ def spec_source_mismatch(spec: dict[str, Any], source: str | None) -> str:
     would say so: the plan approves one ticket against another's words. Warned, not refused —
     `autorun` has always let the spec win, and a deliberate pairing still works.
 
-    Only a tracker key is compared. A `file://` or `confluence://` root is a path or a page id,
-    which no spec's intent id is expected to match.
+    Only a tracker key is compared — `jira://` or `mcp-jira://`, the same ticket over either
+    transport. A `file://` or `confluence://` root is a path or a page id, which no spec's intent
+    id is expected to match.
     """
     if not source or "://" not in source:
         return ""
     kind, _, root = source.partition("://")
     key = root.strip("/")
-    if kind != "jira" or not _ISSUE_KEY.fullmatch(key):
+    if kind not in _TRACKER_KINDS or not _ISSUE_KEY.fullmatch(key):
         return ""
     intent = str(spec.get("intent_id") or "")
     if intent == key:

@@ -87,6 +87,8 @@ def test_a_missing_file_names_itself(tmp_path: Path) -> None:
     [
         ("jira://PROJ-43", True),
         ("jira://PROJ-42", False),
+        ("mcp-jira://PROJ-43", True),  # the same ticket over the other transport
+        ("mcp-jira://PROJ-42", False),
         ("jira://PROJ", False),  # a project names no one ticket
         ("jira://jql/project = PROJ", False),
         ("file://./PROJ-43.md", False),  # a path, not a key

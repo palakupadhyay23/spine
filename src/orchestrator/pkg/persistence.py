@@ -160,7 +160,10 @@ def worktree_dirty(root: Path | str) -> bool:
     the build document's commit stamp (`sdlc.builddoc.derived_at`) both ask here, because two
     copies of the rule is how they came to disagree about Spine's own files.
     """
-    return bool(_git(Path(root), "status", "--porcelain", "--", _SPINE_GENERATED))
+    status = _git(Path(root), "status", "--porcelain", "--", _SPINE_GENERATED)
+    # A status git could not produce is not a clean tree: fail closed. It used to read as clean
+    # (`bool(None)`), and the exclude pathspec is one more way for an old git to refuse the call.
+    return status is None or bool(status)
 
 
 def repo_state(root: Path | str) -> tuple[str | None, bool]:
