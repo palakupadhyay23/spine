@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("tree_sitter_typescript", reason="install the 'typescript' extra")
 
-from orchestrator.pkg.extractor import RepoCodeExtractor  # noqa: E402
+from orchestrator.pkg.extractor import LanguageExtractor, RepoCodeExtractor  # noqa: E402
 from orchestrator.pkg.facts import EdgeKind, FactBatch, NodeKind  # noqa: E402
 from orchestrator.pkg.js_extractor import JavaScriptExtractor  # noqa: E402
 from orchestrator.pkg.typescript_extractor import TypeScriptExtractor  # noqa: E402
@@ -908,3 +908,375 @@ def test_a_surface_on_the_allowlist_is_enforced(tmp_path: Path, module: str) -> 
     )
     reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:c.go"}
     assert reached == {"ts:m.g"}
+
+
+_RENAMED = "class Impl {\n  run() {\n    return true;\n  }\n}\nmodule.exports = { Handler: Impl };\n"
+_DECOY = "class Handler {\n  run() {\n    return false;\n  }\n}\n"
+_CALLER = (
+    "import {{ Handler }} from '{spec}';\n"
+    "export function go(): boolean {{\n  return new Handler().run();\n}}\n"
+)
+
+
+@pytest.mark.parametrize("decoy", [False, True], ids=["plain", "decoy"])
+@pytest.mark.parametrize("caller", ["a.ts", "app/z.ts"], ids=["ts-walked-first", "js-walked-first"])
+@pytest.mark.parametrize("typescript_first", [True, False], ids=["ts-registered", "js-registered"])
+def test_a_typescript_caller_reaches_a_renamed_commonjs_export_in_any_order(
+    tmp_path: Path, decoy: bool, caller: str, typescript_first: bool
+) -> None:
+    """F4: TypeScript's deferred calls are routed through the JavaScript export map.
+
+    Without the decoy the call was lost whichever order ran (TypeScript's existence check drops
+    `Handler`, which no file declares, before anything routes it). With the decoy it landed on the
+    decoy whenever the JavaScript finalizer ran first. An edge the TypeScript finalizer routed is
+    not routed again by the JavaScript one — `Impl`, looked up as an export, is not there.
+    """
+    spec = "../m" if "/" in caller else "./m"
+    files = {"m.js": (_DECOY if decoy else "") + _RENAMED, caller: _CALLER.format(spec=spec)}
+    for rel, text in files.items():
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    front_ends: list[LanguageExtractor] = [TypeScriptExtractor(), JavaScriptExtractor()]
+    ordered = front_ends if typescript_first else front_ends[::-1]
+    batch = RepoCodeExtractor(extractors=ordered).extract(tmp_path)
+    source = f"ts:{caller.removesuffix('.ts')}.go"
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == source}
+    assert reached == {"ts:m.Impl", "ts:m.Impl.run"}
+
+
+def test_typescript_and_javascript_let_go_of_the_run_when_they_finalize(tmp_path: Path) -> None:
+    ts, js = TypeScriptExtractor(), JavaScriptExtractor()
+    (tmp_path / "m.js").write_text(_RENAMED)
+    (tmp_path / "a.ts").write_text(_CALLER.format(spec="./m"))
+    RepoCodeExtractor(extractors=[ts, js]).extract(tmp_path)
+    assert ts._run.exports == {} and js._run.exports == {} and ts._run is not js._run
+
+
+# ---- js-review-followup P3: three tiers, the reference allowlist, the default slot, no call on a module
+
+
+def _calls_from(batch: FactBatch, source: str) -> set[str]:
+    return {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == source}
+
+
+_CALLER_OF = "const m = require('./m');\nfunction go() {{ {calls} }}\n"
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("exports.g = g;\nif (process.env.X) exports.f = f;\n", id="brace-less-if"),
+        pytest.param("exports.g = g;\nwhile (false) exports.f = f;\n", id="brace-less-while"),
+        pytest.param("exports.g = g;\nReflect.defineProperty(exports, 'f', { value: f });\n", id="reflect"),
+        pytest.param(
+            "exports.g = g;\nObject.defineProperties(exports, { f: { value: f } });\n", id="properties"
+        ),
+        pytest.param("exports.g = g;\nObject.assign(exports, { f });\n", id="assign"),
+        pytest.param("exports.g = g;\nexports['f'] = f;\n", id="string-subscript"),
+        pytest.param("exports.g = g;\nthis.f = f;\n", id="top-level-this"),
+        pytest.param("module.exports = Object.freeze({ f, g });\n", id="frozen-literal"),
+        pytest.param(
+            "var api = module.exports = {};\napi.g = g;\nfunction init() { api.f = f; }\n", id="in-a-function"
+        ),
+    ],
+)
+def test_a_write_the_allowlist_reads_is_an_export_and_nothing_else_is(tmp_path: Path, module: str) -> None:
+    """F2, F3, F5: every recognised write names an export; a function the file never writes to
+    its exports is not reachable through the module, however it is declared."""
+    source = "function f() {}\nfunction g() {}\nfunction secret() {}\n" + module
+    batch = _repo(tmp_path, {"m.js": source, "c.js": _CALLER_OF.format(calls="m.f(); m.secret();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f"}
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("const e = exports;\ne.f = f;\n", id="copied-to-a-name"),
+        pytest.param("const api = module.exports;\napi.f = f;\n", id="module-exports-copied"),
+        pytest.param(
+            "function mixin(t, s) { return t; }\nmixin(exports, { f });\n", id="handed-to-a-function"
+        ),
+        pytest.param("const k = 'f';\nexports[k] = f;\n", id="computed-subscript"),
+        pytest.param("({ f: exports.f } = { f });\n", id="destructuring-write"),
+        pytest.param("module.exports = { __proto__: proto, g };\nconst proto = { f };\n", id="proto-key"),
+        pytest.param(
+            "const proto = { f };\nmodule.exports = Object.create(proto);\n", id="create-of-a-local"
+        ),
+        pytest.param("module.exports = Object.create(null, { f: { value: f } });\n", id="create-with-props"),
+        pytest.param("let api = { g };\napi = { f };\nmodule.exports = api;\n", id="alias-reassigned"),
+    ],
+)
+def test_an_unrecognised_reference_makes_the_surface_opaque(tmp_path: Path, module: str) -> None:
+    """D6: a reference that is not on the allowlist means this pass has not read the surface, so
+    the call is resolved by name and kept — never dropped by a map it only half read."""
+    source = "function f() {}\nfunction g() {}\n" + module
+    batch = _repo(tmp_path, {"m.js": source, "c.js": _CALLER_OF.format(calls="m.f();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f"}
+
+
+def test_a_parameter_named_like_the_alias_is_its_own_binding(tmp_path: Path) -> None:
+    """F5: `tag(api)` shadows the alias; its `return api` must not make the surface opaque."""
+    module = (
+        "function f() {}\nfunction secret() {}\nvar api = module.exports = {};\napi.f = f;\n"
+        "function tag(api) { api.x = 1; return api; }\n"
+    )
+    batch = _repo(tmp_path, {"m.js": module, "c.js": _CALLER_OF.format(calls="m.f(); m.secret();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f"}
+
+
+def test_constructing_the_default_in_its_own_file_is_not_a_write(tmp_path: Path) -> None:
+    module = (
+        "module.exports = User;\nfunction User() {}\nfunction secret() {}\n"
+        "User.all = function all() {};\nnew User();\n"
+    )
+    batch = _repo(tmp_path, {"m.js": module, "c.js": _CALLER_OF.format(calls="m.all(); m.secret();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.all"}
+
+
+def test_a_write_inside_a_declaration_is_read(tmp_path: Path) -> None:
+    """`var pets = exports.pets = …` writes the export too; `_emit_statement` sees statements only."""
+    module = "function list() {}\nvar pets = exports.list = list;\nfunction secret() {}\n"
+    batch = _repo(tmp_path, {"m.js": module, "c.js": _CALLER_OF.format(calls="m.list(); m.secret();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.list"}
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("if (typeof module !== 'undefined') { module.exports = { f, g }; }\n", id="umd-branch"),
+        pytest.param(
+            "if (a) { module.exports = { f }; } else { module.exports = { g }; }\n", id="either-branch"
+        ),
+    ],
+)
+def test_an_ambiguous_surface_exports_the_union_of_its_names(tmp_path: Path, module: str) -> None:
+    """D7, S3: never an empty map enforced — every name any branch writes may be exported."""
+    source = "function f() {}\nfunction g() {}\nfunction hidden() {}\n" + module
+    batch = _repo(tmp_path, {"m.js": source, "c.js": _CALLER_OF.format(calls="m.f(); m.g(); m.hidden();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f", "ts:m.g"}
+
+
+def test_module_exports_reassigned_at_the_top_level_is_the_last_object(tmp_path: Path) -> None:
+    """Straight-line code is not ambiguous: the last assignment wins, and the first object's
+    members were written onto something nobody exports."""
+    module = "function f() {}\nfunction g() {}\nmodule.exports = { g };\nmodule.exports = { f };\n"
+    batch = _repo(tmp_path, {"m.js": module, "c.js": _CALLER_OF.format(calls="m.f(); m.g();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f"}
+
+
+def test_an_opaque_surface_still_refuses_a_name_written_onto_a_replaced_object(tmp_path: Path) -> None:
+    """`module.exports = make()` hides its names, but `exports.g` after it was written onto the
+    object `module.exports` replaced: that one is known not to be exported."""
+    module = "function f() {}\nfunction g() {}\nmodule.exports = make();\nexports.g = g;\n"
+    batch = _repo(tmp_path, {"m.js": module, "c.js": _CALLER_OF.format(calls="m.f(); m.g();")})
+    assert _calls_from(batch, "ts:c.go") == {"ts:m.f"}
+
+
+_BASE = "class Base {\n  hello() {}\n}\nmodule.exports = Base;\n"
+
+
+@pytest.mark.parametrize(
+    ("caller", "kept"),
+    [
+        pytest.param("const B = require('./base');\nclass K extends B {}\n", True, id="renamed-require"),
+        pytest.param(
+            "const Base = require('./base');\nclass K extends Base {}\n", True, id="same-name-require"
+        ),
+        pytest.param("import B from './base';\nclass K extends B {}\n", True, id="esm-default-import"),
+        pytest.param(
+            "const { Base } = require('./base');\nclass K extends Base {}\n", False, id="destructured"
+        ),
+    ],
+)
+def test_the_default_is_reached_as_the_module_never_as_a_member(
+    tmp_path: Path, caller: str, kept: bool
+) -> None:
+    """D7: `module.exports = Base` fills the default slot. A whole-module binding reaches it under
+    any name; `{ Base }` reads a property `Base` off the class, which is `undefined`."""
+    batch = _repo(tmp_path, {"base.js": _BASE, "k.js": caller})
+    assert (("ts:k.K", "ts:base.Base") in _edges(batch, EdgeKind.IMPLEMENTS)) is kept
+
+
+def test_a_renamed_default_reaches_its_methods(tmp_path: Path) -> None:
+    caller = "const B = require('./base');\nfunction go() { return new B().hello(); }\n"
+    batch = _repo(tmp_path, {"base.js": _BASE, "k.js": caller})
+    assert _calls_from(batch, "ts:k.go") == {"ts:base.Base", "ts:base.Base.hello"}
+
+
+def test_a_typescript_default_import_of_a_commonjs_default_keeps_resolving_by_name(tmp_path: Path) -> None:
+    """The declared gap: TypeScript's default import is resolved by the local name, as before."""
+    batch = _repo(
+        tmp_path, {"base.js": _BASE, "k.ts": "import Base from './base';\nexport class K extends Base {}\n"}
+    )
+    assert ("ts:k.K", "ts:base.Base") in _edges(batch, EdgeKind.IMPLEMENTS)
+
+
+@pytest.mark.parametrize(
+    ("files", "calls", "expected"),
+    [
+        pytest.param(
+            {
+                "lib/db.js": "function loadConfig() {}\nmodule.exports = { config: loadConfig };\n",
+                "lib/db.config.ts": "export function port(): number { return 1; }\n",
+            },
+            "const db = require('./lib/db');\nfunction go() { db.config(); }\n",
+            {"ts:lib/db.loadConfig"},
+            id="dotted-sibling-module",
+        ),
+        pytest.param(
+            {"cfg.js": "exports.x = function x() {};\n", "cfg.json": "{}\n"},
+            "const cfg = require('./cfg');\nconst j = require('./cfg.json');\n"
+            "function go() { cfg.json(); }\n",
+            set(),
+            id="a-required-json-file",
+        ),
+        pytest.param(
+            {
+                "lib/db.js": "exports.x = function x() {};\n",
+                "lib/db.model.ts": "export function f(): void {}\n",
+            },
+            "const db = require('./lib/db');\nfunction go() { db.model(); }\n",
+            set(),
+            id="a-member-the-map-lacks",
+        ),
+        pytest.param(
+            {
+                "lib/db.js": "export function x() {}\n",
+                "lib/db.config.ts": "export function port(): number { return 1; }\n",
+            },
+            "import * as db from './lib/db';\nfunction go() { db.config(); }\n",
+            set(),
+            id="no-commonjs-module-at-all",
+        ),
+    ],
+)
+def test_a_call_never_lands_on_a_module(
+    tmp_path: Path, files: dict[str, str], calls: str, expected: set[str]
+) -> None:
+    """F1: a target that is itself a module id is retried as a member of the next shorter
+    module, through its map — and dropped when the map does not name it."""
+    batch = _repo(tmp_path, {**files, "c.js": calls})
+    assert _calls_from(batch, "ts:c.go") == expected
+    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE}
+    assert not {dst for _, dst in _edges(batch, EdgeKind.CALLS)} & modules
+
+
+def test_a_var_in_a_class_static_block_is_the_blocks_own(tmp_path: Path) -> None:
+    """Extractor N4: hoisted past `static {}`, `var m` there shadowed the import in the whole
+    enclosing function, and the true `m.go()` after it was dropped."""
+    caller = (
+        "const m = require('./m');\nfunction top() {\n  const D = class {\n    static {\n      var m = 2;\n"
+        "    }\n  };\n  return m.go();\n}\n"
+    )
+    batch = _repo(tmp_path, {"m.js": "exports.go = function go() {};\n", "c.js": caller})
+    assert _calls_from(batch, "ts:c.top") == {"ts:m.go"}
+
+
+@pytest.mark.parametrize(
+    ("module", "tier"),
+    [
+        pytest.param("exports.f = f;\n", "readable", id="plain-write"),
+        pytest.param("exports['f'] = f;\n", "readable", id="string-subscript"),
+        pytest.param("module.exports = { f };\n", "readable", id="object-literal"),
+        pytest.param("module.exports = f;\n", "readable", id="declared-default"),
+        pytest.param("var module = { exports: {} };\nmodule.exports = { f };\n", "readable", id="own-module"),
+        pytest.param("if (c) exports.f = f;\n", "names-known", id="brace-less-branch"),
+        pytest.param("if (c) { exports.f = f; }\n", "names-known", id="braced-branch"),
+        pytest.param("Object.assign(exports, { f });\n", "names-known", id="merge"),
+        pytest.param("module.exports = Object.freeze({ f });\n", "names-known", id="frozen"),
+        pytest.param("if (c) { module.exports = { f }; }\n", "names-known", id="umd"),
+        pytest.param("const e = exports;\ne.f = f;\n", "opaque", id="copied"),
+        pytest.param("module.exports = make();\n", "opaque", id="made"),
+        pytest.param("if (c) { module.exports = make(); }\n", "opaque", id="umd-made"),
+    ],
+)
+def test_each_surface_is_read_into_the_tier_its_forms_allow(tmp_path: Path, module: str, tier: str) -> None:
+    """js-review-followup §3.1: the tier is what `settle` trusts, not only what calls route by."""
+    from orchestrator.pkg.extractor import ExtractionRun
+
+    js, run = JavaScriptExtractor(), ExtractionRun()
+    js.bind_run(run)
+    path = tmp_path / "m.js"
+    path.write_text("function f() {}\n" + module)
+    js.extract(path=path, module="m", rel="m.js")
+    assert run.exports["ts:m"].tier == tier
+
+
+def test_a_member_named_like_the_whole_module_local_is_the_member(tmp_path: Path) -> None:
+    """`const util = require('./util'); util.util()` names the member `util`, not the module."""
+    batch = _repo(
+        tmp_path,
+        {
+            "util.js": "function util() {}\nmodule.exports = { util };\n",
+            "c.js": "const util = require('./util');\nfunction go() { util.util(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == {"ts:util.util"}
+
+
+def test_the_reference_scan_is_not_quadratic_in_references_per_function(tmp_path: Path) -> None:
+    """Every reference re-walked its enclosing function to ask whether it shadowed the alias:
+    14 s on this 40 KB express-style file, and 36 s on 4,000 writes in one IIFE."""
+    import time
+
+    routes = (
+        "const app = module.exports = express();\nfunction routes() {\n"
+        + "  app.get('/x', h);\n" * 2000
+        + "}\n"
+    )
+    iife = (
+        "(function () {\n" + "".join(f"  exports.f{i} = function () {{}};\n" for i in range(4000)) + "})();\n"
+    )
+    for body in (routes, iife):
+        (tmp_path / "m.js").write_text(body)
+        started = time.perf_counter()
+        RepoCodeExtractor(extractors=[JavaScriptExtractor()]).extract(tmp_path)
+        assert (
+            time.perf_counter() - started < 10.0
+        )  # measured 0.06 s and 0.10 s; the old scan took 14 s and 36 s
+
+
+def test_a_file_that_declares_its_own_module_exports_nothing_through_it(tmp_path: Path) -> None:
+    """Review round 3, S2: `var module = { exports: {} }` makes every `module` in the file a local;
+    `require` returns `{}`, so `m.f()` names nothing — and is not left to a name lookup."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "var module = { exports: {} };\nfunction f() {}\nmodule.exports = { f };\n",
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == set()
+
+
+@pytest.mark.parametrize(
+    ("module", "called"),
+    [
+        pytest.param(
+            "{ let module = {};\n}\nexports.f = f;\nmodule.exports = { g };\n",
+            {"ts:m.g"},
+            id="let-in-a-block",
+        ),
+        pytest.param(
+            "if (c) { class module {} }\nexports.f = f;\nmodule.exports = { g };\n",
+            {"ts:m.g"},
+            id="class-in-a-block",
+        ),
+        pytest.param("var module = { exports: {} };\nmodule.exports.f = f;\n", set(), id="own-module-member"),
+    ],
+)
+def test_only_a_binding_of_the_file_makes_module_its_own(
+    tmp_path: Path, module: str, called: set[str]
+) -> None:
+    """Review round 4, B1 and S1: a `module` declared inside a top-level block is the block's, so
+    the real `module.exports` still decides; in a file that does declare its own, a member written
+    onto `module.exports` is a local's."""
+    batch = _repo(
+        tmp_path,
+        {
+            "m.js": "function f() {}\nfunction g() {}\n" + module,
+            "c.js": "const m = require('./m');\nfunction go() { m.f(); m.g(); }\n",
+        },
+    )
+    assert _calls_from(batch, "ts:c.go") == called

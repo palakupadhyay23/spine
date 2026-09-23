@@ -584,3 +584,235 @@ def test_define_reads_the_table_name_from_its_options(tmp_path: Path) -> None:
     )
     post = next(n for n in batch.nodes if n.id == "ts:entity:post")
     assert post.name == "blog_entries"
+
+
+# ---- js-review-followup P4: `settle` on the three tiers
+
+
+_HEAD = "const { DataTypes } = require('sequelize');\nconst s = require('./db');\n"
+_ORCH = _HEAD + "module.exports = { Orchestra: s.define('orchestra', { id: DataTypes.INTEGER }) };\n"
+
+
+def _setup(imported: str, spec: str = "./models/m") -> str:
+    return (
+        f"const {imported} = require('{spec}');\nconst {{ Orchestra }} = require('./models/o');\n"
+        f"function wire() {{ {imported.strip('{} ').split(':')[-1].strip()}.belongsTo(Orchestra); }}\n"
+    )
+
+
+def _joined(tmp_path: Path, model_file: str, imported: str) -> set[tuple[str, str]]:
+    batch = _repo(tmp_path, {"models/m.js": model_file, "models/o.js": _ORCH, "setup.js": _setup(imported)})
+    return {pair for pair in _refs(batch) if pair[1] == "ts:entity:orchestra"}
+
+
+_TO = {("ts:entity:post", "ts:entity:orchestra")}
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param(
+            "const db = {};\ndb.Post = s.define('post', { t: DataTypes.STRING });\nmodule.exports = db;\n",
+            id="index-object",
+        ),
+        pytest.param(
+            "var api = exports = module.exports = {};\n"
+            "api.Post = s.define('post', { t: DataTypes.STRING });\n",
+            id="express-alias",
+        ),
+        pytest.param(
+            "module.exports = { Post: s.define('post', { t: DataTypes.STRING }) };\n", id="in-the-literal"
+        ),
+        pytest.param(
+            "module.exports.Post = s.define('post', { t: DataTypes.STRING });\n", id="module-exports-member"
+        ),
+        pytest.param(
+            "exports.Article = exports.Post = s.define('post', { t: DataTypes.STRING });\n", id="chained"
+        ),
+        pytest.param(
+            "export const Post = s.define('post', { t: DataTypes.STRING });\n", id="esm-export-const"
+        ),
+        pytest.param(
+            "const Draft = s.define('post', { t: DataTypes.STRING });\nexport { Draft as Post };\n",
+            id="esm-export-as",
+        ),
+    ],
+)
+def test_a_model_written_onto_the_exports_is_that_export(tmp_path: Path, module: str) -> None:
+    """S1, ORM N4: a define under its export key however the key is spelled — an alias, the
+    exported literal, every link of a chain, an ESM export."""
+    assert _joined(tmp_path, _HEAD + module, "{ Post }") == _TO
+
+
+def test_a_chained_export_is_every_name_in_the_chain(tmp_path: Path) -> None:
+    module = _HEAD + "exports.Article = exports.Post = s.define('post', { t: DataTypes.STRING });\n"
+    assert _joined(tmp_path, module, "{ Article }") == _TO
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param(
+            "exports.Post = s.define('post', { t: DataTypes.STRING });\n"
+            "module.exports = Object.freeze({ other: 1 });\n",
+            id="frozen-replacement",
+        ),
+        pytest.param(
+            "module.exports = make();\nexports.Post = s.define('post', { t: DataTypes.STRING });\n",
+            id="made-replacement",
+        ),
+        pytest.param(
+            "const Post = s.define('post', { t: DataTypes.STRING });\nmodule.exports = Post;\n",
+            id="a-default-not-a-member",
+        ),
+        pytest.param(
+            "function build() { const Post = s.define('post', { t: DataTypes.STRING }); return Post; }\n"
+            "const Post = null;\n"
+            "module.exports = { Post, build };\n",
+            id="function-local-binding",
+        ),
+        pytest.param(
+            "exports.api.Post = s.define('entry', { t: DataTypes.STRING });\nmixin(exports);\n",
+            id="member-of-a-member",
+        ),
+    ],
+)
+def test_a_named_import_the_module_does_not_export_as_a_model_resolves_to_nothing(
+    tmp_path: Path, module: str
+) -> None:
+    """S2, S4, S5, ORM N6: each of these once invented `post → orchestra`."""
+    assert _joined(tmp_path, _HEAD + module, "{ Post }") == set()
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param(
+            "const Post = s.define('post', { t: DataTypes.STRING });\n"
+            "if (typeof module !== 'undefined') { module.exports = { Post }; }\n",
+            id="umd-branch",
+        ),
+        pytest.param(
+            "const Post = s.define('post', { t: DataTypes.STRING });\n"
+            "if (a) { module.exports = {}; } else { module.exports = { Post }; }\n",
+            id="either-branch",
+        ),
+    ],
+)
+def test_an_ambiguous_surface_keeps_every_model_any_branch_exports(tmp_path: Path, module: str) -> None:
+    """S3: an ambiguous `module.exports` is the union of its names, never an empty map enforced."""
+    assert _joined(tmp_path, _HEAD + module, "{ Post }") == _TO
+
+
+def test_a_whole_module_import_reaches_the_default_even_beside_other_models(tmp_path: Path) -> None:
+    module = (
+        _HEAD
+        + "const { Model } = require('sequelize');\nconst other = s.define('tag', { t: DataTypes.STRING });\n"
+        "class Post extends Model {}\n"
+        "Post.init({ t: DataTypes.STRING }, { sequelize: s, modelName: 'post' });\n"
+        "module.exports = Post;\n"
+    )
+    assert _joined(tmp_path, module, "Player") == _TO
+
+
+def test_a_renamed_export_of_a_model_class_resolves_through_the_class(tmp_path: Path) -> None:
+    """ORM N6: `classes` must be part of what `scan` returns, or `{ Player: Musician }` is lost."""
+    module = (
+        _HEAD + "const { Model } = require('sequelize');\nclass Musician extends Model {}\n"
+        "Musician.init({ t: DataTypes.STRING }, { sequelize: s, modelName: 'post' });\n"
+        "module.exports = { Player: Musician };\n"
+    )
+    assert _joined(tmp_path, module, "{ Player }") == _TO
+
+
+def test_a_case_aside_match_must_be_unique(tmp_path: Path) -> None:
+    """ORM N6: two models equal case aside are ambiguous; neither is picked."""
+    module = (
+        _HEAD + "s.define('post', { t: DataTypes.STRING });\ns.define('Post', { t: DataTypes.STRING });\n"
+        "mixin(module.exports);\n"
+    )
+    assert _joined(tmp_path, module, "{ POST }") == set()
+
+
+def test_a_bare_type_key_in_an_option_object_is_not_a_column_type(tmp_path: Path) -> None:
+    """ORM N6: `{ type: 'string' }` is an option whose value is no Sequelize type."""
+    batch = _repo(tmp_path, {"m.js": _HEAD + "s.define('x', { kind: { type: 'string' } });\n"})
+    assert _entities(batch) == set()
+
+
+def test_a_self_association_revealed_only_by_resolution_is_dropped(tmp_path: Path) -> None:
+    """ORM N6: two locals that settle to the same model are one table keyed to itself."""
+    model = _HEAD + "module.exports = { Post: s.define('post', { t: DataTypes.STRING }) };\n"
+    setup = (
+        "const { Post } = require('./models/m');\nconst Same = require('./models/m');\n"
+        "function wire() { Post.belongsTo(Same); }\n"
+    )
+    batch = _repo(tmp_path, {"models/m.js": model, "setup.js": setup})
+    assert _refs(batch) == set()
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("export const Post = s.define('entry', { t: DataTypes.STRING });\n", id="export-const"),
+        pytest.param(
+            "const Draft = s.define('entry', { t: DataTypes.STRING });\nexport { Draft as Post };\n",
+            id="export-as",
+        ),
+    ],
+)
+def test_an_esm_export_names_the_model_its_declaration_holds(tmp_path: Path, module: str) -> None:
+    """D8: an ESM export is a readable declaration — the binding, not the model's name, decides."""
+    assert _joined(tmp_path, _HEAD + module, "{ Post }") == {("ts:entity:entry", "ts:entity:orchestra")}
+
+
+def test_an_opaque_module_does_not_export_an_unexported_binding(tmp_path: Path) -> None:
+    """S2: the deleted step (2). `const Post` at the top level of a module whose exports are
+    hidden is not therefore an export called `Post`."""
+    module = _HEAD + "const Post = s.define('entry', { t: DataTypes.STRING });\nmodule.exports = make();\n"
+    assert _joined(tmp_path, module, "{ Post }") == set()
+
+
+def test_a_function_between_two_var_declarations_reads_the_last(tmp_path: Path) -> None:
+    """Review round 3, B1: `wire()` runs after the module has loaded, whatever its position —
+    `Post` is the second `var` by then, not the one written above the function."""
+    module = (
+        _HEAD + "var Post = s.define('draft', { t: DataTypes.STRING });\n"
+        "function wire(x) { Post.belongsTo(x.models.orchestra); }\n"
+        "var Post = s.define('post', { t: DataTypes.STRING });\nmodule.exports = { wire };\n"
+    )
+    batch = _repo(tmp_path, {"models/m.js": module, "models/o.js": _ORCH})
+    assert {pair for pair in _refs(batch) if pair[1] == "ts:entity:orchestra"} == _TO
+
+
+def test_a_file_that_declares_its_own_module_exports_no_model(tmp_path: Path) -> None:
+    """Review round 3, S2: `var module = …` is the file's own; the real module exports `{}`."""
+    module = (
+        _HEAD
+        + "var module = { exports: {} };\n"
+        + "module.exports = { Post: s.define('post', { t: DataTypes.STRING }) };\n"
+    )
+    assert _joined(tmp_path, module, "{ Post }") == set()
+
+
+@pytest.mark.parametrize(
+    "between",
+    [
+        pytest.param("(function () { Post.belongsTo(s.models.orchestra); })();\n", id="iife"),
+        pytest.param("(() => { Post.belongsTo(s.models.orchestra); })();\n", id="arrow-iife"),
+        pytest.param(
+            "class W {\n  static {\n    Post.belongsTo(s.models.orchestra);\n  }\n}\n", id="static-block"
+        ),
+    ],
+)
+def test_code_that_runs_where_it_stands_reads_the_declaration_above(tmp_path: Path, between: str) -> None:
+    """Review round 4, S2: a function invoked on the spot and a `static {}` block run between the
+    two declarations, while `Post` is still the first."""
+    module = (
+        _HEAD
+        + "var Post = s.define('post', { t: DataTypes.STRING });\n"
+        + between
+        + "var Post = s.define('final', { t: DataTypes.STRING });\n"
+    )
+    batch = _repo(tmp_path, {"models/m.js": module, "models/o.js": _ORCH})
+    assert {pair for pair in _refs(batch) if pair[1] == "ts:entity:orchestra"} == _TO

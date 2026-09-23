@@ -36,37 +36,61 @@ All notable changes to this project are documented here. Format loosely follows
     irregular plural such as `people` needs `tableName` to match). A column type counts anywhere
     in its chain — `INTEGER.UNSIGNED`, `STRING(120)` — so a join model keyed only by unsigned
     integers is a model, while `Op.is` and `Sequelize.NOW` are not. An imported model is the
-    *binding* it was exported as: `module.exports = { Booking }` over `define('gig', …)` makes
-    `const { Booking }` the `gig` model, and a name the module's exports do not list is nothing.
-  - **Calls bound to what a module actually exports**, wherever the module states its exports in
-    a form this pass reads in full — an allowlist: an object literal, a declared object, class or
-    function named as `module.exports`, `Object.create(…)`, top-level `exports.f =` assignments. `module.exports = { run: helper }` beside a
-    private `function run` makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` —
-    reach `helper`. A file that undoes its own exports (assigns `module.exports` twice or inside
-    a branch, rebinds bare `exports`, reassigns an alias, sets a member before replacing the
-    object) exports nothing it undid. A module whose exports are anything else — `Object.freeze`,
-    a factory call, `Object.assign` or `defineProperty` onto the exports or an alias of them,
-    `exports['f'] =`, a write from inside a function, a spread or computed key, an ESM `export`
-    beside CommonJS — is left to name-based resolution rather than judged. The module a target
-    names is the longest prefix that *is* a module, so `user.model.ts` beside `user.js` keeps its
-    edges, TypeScript's included.
+    *binding* it was exported as, read through the same three tiers as calls:
+    `module.exports = { Booking }` over `define('gig', …)` makes `const { Booking }` the `gig`
+    model, as do `db.Booking = define(…)` on the exported object, `{ Booking: define(…) }`,
+    `exports.a = exports.b = define(…)` and `export const Booking = define(…)`. A name a readable
+    or names-known module does not export is nothing, and so is a binding declared inside a
+    function or a name written onto an object `module.exports` later replaced; an opaque module
+    is still matched by the model's name.
+  - **Calls bound to what a module actually exports**, as far as its own file says. Each
+    CommonJS module is read into one of three tiers, by what was *read* of it. **Readable**:
+    every reference to its exports object is a recognised form (an allowlist — a member write, a
+    string-key write, a read, the `exports = module.exports = …` chain, `Object.assign` or
+    `defineProperty` with literal names; the finder follows `exports`, `module.exports`, their
+    aliases, top-level `this` and bare `module`, and any spelling it cannot follow makes the
+    module opaque) and `module.exports` is set to something read in full,
+    so the export map is exact. **Names-known**: every reference is recognised, but a write sits
+    under a branch or in a function, a merge adds members, the value is `Object.freeze({…})`, or
+    a UMD branch assigns `module.exports` — so the map is every name the file may export.
+    **Opaque**: some reference is not recognised (`const e = exports`, `mixin(exports, …)`,
+    `exports[k] =`), and calls into it are resolved by name. A call reaches only a name a
+    readable or names-known module writes to its exports: `module.exports = { run: helper }`
+    makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` — reach `helper`, and
+    `Object.freeze({ f })` beside a private `secret` does not hand `m.secret()` to a name lookup.
+    `module.exports = Base` fills a *default* slot, not a member: `const B = require('./base');
+    class C extends B` reaches `Base` under any local name, and a destructured `{ Base }` —
+    `undefined` at run time — reaches nothing. Reassigned at the top level, the last
+    `module.exports` wins; members written onto the object it replaced are never exported. A
+    call never lands on a module node, from JavaScript or TypeScript: `db.config()` beside a
+    sibling `db.config.ts` is the `config` export of `db`, or nothing. TypeScript files calling into CommonJS get the same routing,
+    whichever file the walk reaches first. The module a target names is the longest prefix that
+    *is* a module, so `user.model.ts` beside `user.js` keeps its edges, TypeScript's included.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
     `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
     rather than left dangling. Zero dangling edges on all four validation repositories.
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
-  Fourteen corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.93 (42 of 45), and the three misses are the three gaps declared
+  Twenty corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.97 (97 of 100), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
-  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss.
+  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss. The entity
+  count reads a model class's whole `init({…})` object, `super.init` included, in linear time.
   Codegen is not part of this: `--language javascript` is refused with the list of supported
   languages, as before. Prisma is not either — its schema is its own `.prisma` language, and it
   has a track of its own.
 
 ### Fixed
 
+- **Whole-repository passes ran in the order the walk first met each language**, so which
+  front-end's `finalize` saw the other's edges depended on which file sorted first. They now run
+  in the order the front-ends are registered. Measured: no language's corpus result and none of
+  the four validation repositories changed; the order was simply not guaranteed.
+- **A `var` inside a class `static {}` block shadowed an import across the whole enclosing
+  function — in TypeScript too.** The block is its own `var` scope; hoisted past it, a true call
+  after a class expression carrying one was dropped.
 - **`sdlc plan` wrote a different build document for the same commit depending on whether
   GitHub was reachable.** Section 11's cost table is priced from LiteLLM's model map, and by
   default LiteLLM does not read the map it ships: every import fetches the current one from
