@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("tree_sitter_typescript", reason="install the 'typescript' extra")
 
-from orchestrator.pkg.extractor import RepoCodeExtractor  # noqa: E402
+from orchestrator.pkg.extractor import LanguageExtractor, RepoCodeExtractor  # noqa: E402
 from orchestrator.pkg.facts import EdgeKind, FactBatch, NodeKind  # noqa: E402
 from orchestrator.pkg.js_extractor import JavaScriptExtractor  # noqa: E402
 from orchestrator.pkg.typescript_extractor import TypeScriptExtractor  # noqa: E402
@@ -908,3 +908,46 @@ def test_a_surface_on_the_allowlist_is_enforced(tmp_path: Path, module: str) -> 
     )
     reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == "ts:c.go"}
     assert reached == {"ts:m.g"}
+
+
+_RENAMED = "class Impl {\n  run() {\n    return true;\n  }\n}\nmodule.exports = { Handler: Impl };\n"
+_DECOY = "class Handler {\n  run() {\n    return false;\n  }\n}\n"
+_CALLER = (
+    "import {{ Handler }} from '{spec}';\n"
+    "export function go(): boolean {{\n  return new Handler().run();\n}}\n"
+)
+
+
+@pytest.mark.parametrize("decoy", [False, True], ids=["plain", "decoy"])
+@pytest.mark.parametrize("caller", ["a.ts", "app/z.ts"], ids=["ts-walked-first", "js-walked-first"])
+@pytest.mark.parametrize("typescript_first", [True, False], ids=["ts-registered", "js-registered"])
+def test_a_typescript_caller_reaches_a_renamed_commonjs_export_in_any_order(
+    tmp_path: Path, decoy: bool, caller: str, typescript_first: bool
+) -> None:
+    """F4: TypeScript's deferred calls are routed through the JavaScript export map.
+
+    Without the decoy the call was lost whichever order ran (TypeScript's existence check drops
+    `Handler`, which no file declares, before anything routes it). With the decoy it landed on the
+    decoy whenever the JavaScript finalizer ran first. An edge the TypeScript finalizer routed is
+    not routed again by the JavaScript one — `Impl`, looked up as an export, is not there.
+    """
+    spec = "../m" if "/" in caller else "./m"
+    files = {"m.js": (_DECOY if decoy else "") + _RENAMED, caller: _CALLER.format(spec=spec)}
+    for rel, text in files.items():
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    front_ends: list[LanguageExtractor] = [TypeScriptExtractor(), JavaScriptExtractor()]
+    ordered = front_ends if typescript_first else front_ends[::-1]
+    batch = RepoCodeExtractor(extractors=ordered).extract(tmp_path)
+    source = f"ts:{caller.removesuffix('.ts')}.go"
+    reached = {dst for src, dst in _edges(batch, EdgeKind.CALLS) if src == source}
+    assert reached == {"ts:m.Impl", "ts:m.Impl.run"}
+
+
+def test_typescript_and_javascript_let_go_of_the_run_when_they_finalize(tmp_path: Path) -> None:
+    ts, js = TypeScriptExtractor(), JavaScriptExtractor()
+    (tmp_path / "m.js").write_text(_RENAMED)
+    (tmp_path / "a.ts").write_text(_CALLER.format(spec="./m"))
+    RepoCodeExtractor(extractors=[ts, js]).extract(tmp_path)
+    assert ts._run.exports == {} and js._run.exports == {} and ts._run is not js._run

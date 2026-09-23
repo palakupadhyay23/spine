@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from orchestrator.pkg.extractor import rel_module_name
+from orchestrator.pkg.extractor import ExtractionRun, rel_module_name
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
 
 if TYPE_CHECKING:
@@ -78,11 +78,19 @@ class TypeScriptExtractor:
         #: Member calls whose receiver type is known but whose target is unproven until the
         #: whole repository is in hand. Drained by `finalize`.
         self._pending_calls: list[_PendingCall] = []
+        #: The extraction run this front-end is part of (see `ExtractionRun`): the export maps a
+        #: deferred call is routed through before it is checked. A private one until
+        #: `RepoCodeExtractor` binds the shared one; dropped by `finalize`.
+        self._run = ExtractionRun()
         #: Namespace-bound locals, in the file being read, that are not callable as a namespace:
         #: calling one, or `.call`/`.apply`/`.bind` on one, names no export. Always empty for
         #: TypeScript — `import * as moment` then `moment()` is legal for an `export =` module and
         #: resolves as it always has. The JavaScript front-end fills it with `require` bindings.
         self._uncallable: frozenset[str] = frozenset()
+
+    def bind_run(self, run: ExtractionRun) -> None:
+        """Join an extraction run — its export maps are what deferred calls are routed through."""
+        self._run = run
 
     def finalize(self, batch: FactBatch) -> FactBatch:
         """Emit the deferred member calls whose target actually exists in the merged graph.
@@ -94,22 +102,38 @@ class TypeScriptExtractor:
         same skip-rather-than-guess rule, moved to the only place with enough information to
         apply it.
 
-        Clears the queue so a later extraction starts clean, as Go's finalize does.
+        **Routed first, then checked.** A receiver typed from an import names the export, not the
+        declaration: `import { Handler } from './m'` over `module.exports = { Handler: Impl }`
+        gives `ts:m.Handler`, which no file declares. So each call goes through the run's export
+        maps (:func:`_export_router`) before the existence check — checked first, the call was
+        gone before anything could say `Handler` is `Impl`, and with a decoy `class Handler` in
+        the file it landed on the decoy. An edge routed here is recorded on the run so no later
+        finalizer routes it again.
+
+        Clears the queue and leaves the run, so a later extraction starts clean, as Go's
+        finalize does.
         """
         pending = self._pending_calls
-        self._pending_calls = []
+        run, self._pending_calls, self._run = self._run, [], ExtractionRun()
         if not pending:
             return batch
+        route = _export_router(batch, run.exports)
         known = {n.id for n in batch.nodes}
+
+        def emit(caller: str, target: str, call: _PendingCall) -> None:
+            batch.add_edge(Edge(caller, target, EdgeKind.CALLS, Provenance(call.rel, call.line)))
+            run.routed.add((caller, target, EdgeKind.CALLS))
+
         for call in pending:
-            target = f"{call.type_id}.{call.method}"
+            type_id = route(call.type_id, call.rel)
+            if type_id is None:
+                continue  # the module exports no such name
+            target = f"{type_id}.{call.method}"
             if target in known:
-                batch.add_edge(Edge(call.caller, target, EdgeKind.CALLS, Provenance(call.rel, call.line)))
+                emit(call.caller, target, call)
             # The receiver's own type is a call only when it was *constructed* here.
-            if call.constructed and call.type_id in known:
-                batch.add_edge(
-                    Edge(call.caller, call.type_id, EdgeKind.CALLS, Provenance(call.rel, call.line))
-                )
+            if call.constructed and type_id in known:
+                emit(call.caller, type_id, call)
         return batch
 
     def module_name(self, path: Path, root: Path) -> str:
@@ -518,6 +542,43 @@ def _rebound(name: TSNode, call: TSNode, bound: dict[str, list[tuple[int, int]]]
     """Whether ``name`` is bound by the enclosing function *where ``call`` sits*."""
     at = call.start_byte
     return any(start <= at < end for start, end in bound.get(_text(name, source), ()))
+
+
+def _export_router(
+    batch: FactBatch, cjs: dict[str, tuple[str, dict[str, str | None]]]
+) -> Callable[[str, str | None], str | None]:
+    """``route(target id, file it is named from)`` → the id it really is, or None for no such export.
+
+    At any depth: `ts:m.Handler.run` is the `run` of whatever `m` exports as `Handler`, so the
+    exported name is rewritten wherever it heads the id — `module.exports = { Handler: Impl }`
+    makes it `ts:m.Impl.run`. Rewriting only the direct member left a method call on the
+    renamed class landing on the unexported one while its constructor edge was corrected.
+
+    **The module is the longest prefix that is a module** — any module, not only a CommonJS one.
+    Ids are dotted paths, so `ts:models/user.model.find` also reads as member `model` of
+    `ts:models/user`; searching only the CommonJS modules walked straight past `user.model`
+    (TypeScript) to `user.js`, found no export called `model`, and dropped every edge into it.
+    Only then is the map consulted, and only if that module has one. A target named from the
+    module's own file is left alone: a file reaches its own members whether exported or not.
+    """
+    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE and not n.external}
+
+    def route(target: str, file: str | None) -> str | None:
+        if not cjs:
+            return target
+        module = target
+        while module not in modules and "." in module:
+            module = module.rpartition(".")[0]
+        entry = cjs.get(module)
+        if entry is None or module == target or file == entry[0]:
+            return target
+        head, _, tail = target[len(module) + 1 :].partition(".")
+        exported = entry[1].get(head)
+        if exported is None:
+            return None  # not exported under that name: the call reaches nothing we can see
+        return f"{exported}.{tail}" if tail else exported
+
+    return route
 
 
 @dataclass(frozen=True)

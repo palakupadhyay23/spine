@@ -19,6 +19,7 @@ import ast
 import os
 import warnings
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -648,6 +649,30 @@ def is_nested_repo(parent: Path, name: str) -> bool:
     return (parent / name / ".git").exists()
 
 
+@dataclass
+class ExtractionRun:
+    """What front-ends sharing one module namespace tell each other during one :meth:`extract`.
+
+    TypeScript and JavaScript mint ids in one namespace (``ts:``), so a `.ts` file calls into a
+    CommonJS module whose exports only the JavaScript front-end can read. Each front-end used to
+    keep that knowledge to itself: TypeScript checked its deferred calls into `{ Handler: Impl }`
+    against a `Handler` that does not exist and dropped them, and whether JavaScript could repair
+    the ones that survived depended on which language's file the walk reached first.
+
+    Built fresh by every :meth:`RepoCodeExtractor.extract` and handed to a front-end with a
+    ``bind_run`` method before it reads its first file — duck-typed, as ``finalize`` is. A front-end drops its
+    reference when it finalizes, so nothing outlives the run.
+    """
+
+    #: ``module id -> (file, {exported name: the node it is, or None})`` for every module whose
+    #: exports a front-end read in full — filled during the walk, read by every ``finalize``.
+    exports: dict[str, tuple[str, dict[str, str | None]]] = field(default_factory=dict)
+    #: Edges already routed through ``exports``. Routing is not idempotent — `ts:m.Impl.run`,
+    #: routed again, looks for an export called `Impl` — so an edge is routed exactly once,
+    #: whichever finalizer runs first.
+    routed: set[tuple[str, str, EdgeKind]] = field(default_factory=set)
+
+
 class RepoCodeExtractor:
     """Walk a repository → one merged ``FactBatch`` of grounded facts."""
 
@@ -701,6 +726,8 @@ class RepoCodeExtractor:
             if state is not None:
                 state.clear()
         batch = FactBatch()
+        run = ExtractionRun()
+        registered = list(dict.fromkeys(self._by_suffix.values()))
         used: list[LanguageExtractor] = []
         paths = list(self._iter_files(root_path))
         cpp = self._by_suffix.get(".cpp")
@@ -721,6 +748,10 @@ class RepoCodeExtractor:
                 continue
             if extractor not in used:
                 used.append(extractor)
+                # Bound on first use, so a front-end with no file here never holds the run.
+                bind = getattr(extractor, "bind_run", None)
+                if callable(bind):
+                    bind(run)
             try:
                 module = extractor.module_name(path, root_path)
                 batch.merge(extractor.extract(path=path, module=module, rel=rel))
@@ -734,7 +765,11 @@ class RepoCodeExtractor:
         # returns the same batch, so it worked either way — but a pass that needs to *replace*
         # an edge (C# repointing a mis-qualified base type) has to build a new batch, and
         # ignoring the result silently dropped that work.
-        for extractor in used:
+        # In registration order, never walk order: which language's file sorts first is not a
+        # reason for one finalizer to see the other's edges, and the graph must not depend on it.
+        for extractor in registered:
+            if extractor not in used:
+                continue
             finalize = getattr(extractor, "finalize", None)
             if callable(finalize):
                 batch = finalize(batch) or batch

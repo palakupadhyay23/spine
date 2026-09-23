@@ -54,9 +54,9 @@ from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Pr
 from orchestrator.pkg.typescript_extractor import (
     _FUNC_CONST_DECLS,
     TypeScriptExtractor,
+    _export_router,
     _field_text,
     _import_target,
-    _PendingCall,
     _relative_module,
     _text,
 )
@@ -96,9 +96,6 @@ class JavaScriptExtractor(TypeScriptExtractor):
         #: The file being read: ``{local: imported name}``, None for a whole-module or default
         #: import. Handed to the data-layer reader, which must know *which* export a local is.
         self._import_names: dict[str, str | None] = {}
-        #: Every readable CommonJS module read so far: ``module id -> (file, export map)``.
-        #: Drained by `finalize`, which routes cross-file edges through it.
-        self._cjs: dict[str, tuple[str, dict[str, str | None]]] = {}
         #: Every module's Sequelize model bindings: ``module id -> {name: model}``, where a name
         #: is a variable (`const Booking = sequelize.define('gig', …)`) or an `exports.X` it was
         #: assigned to. Drained by `finalize`, which settles imported association ends with it.
@@ -132,24 +129,18 @@ class JavaScriptExtractor(TypeScriptExtractor):
            dangling — the parent's skip-rather-than-guess rule, extended to what this front-end
            adds.
 
-        Routing runs **before** the parent's own existence check on deferred member calls, not
-        after it: `new Handler().run()` names `ts:m.Handler.run`, and under
-        `module.exports = { Handler: Impl }` no such node exists — checked first, both the method
-        and the constructor edge were gone before the export map could say `Handler` is `Impl`.
+        The export maps live on the run (:class:`~orchestrator.pkg.extractor.ExtractionRun`), not on
+        this front-end, because TypeScript files call into them too. Deferred member calls —
+        `new Handler().run()`, from a `.js` or a `.ts` file — are routed by the parent's
+        `finalize` before its existence check; the edges it routed are recorded on the run and
+        skipped here, so the result does not depend on which finalizer runs first.
         """
         from orchestrator.pkg.js_orm import settle
 
-        cjs, self._cjs = self._cjs, {}
+        run = self._run
         models, self._models = self._models, {}
-        route = _export_router(batch, cjs)
-        routed = _through_exports(batch, route)
-        pending: list[_PendingCall] = []
-        for call in self._pending_calls:
-            type_id = route(call.type_id, call.rel)
-            if type_id is not None:
-                pending.append(call if type_id == call.type_id else replace(call, type_id=type_id))
-        self._pending_calls = pending
-        return _drop_unlanded(settle(super().finalize(routed), cjs, models))
+        routed = _through_exports(batch, _export_router(batch, run.exports), run.routed)
+        return _drop_unlanded(settle(super().finalize(routed), run.exports, models))
 
     def _imports(
         self, decls: list[TSNode | None], module_id: str, source: bytes, rel: str, batch: FactBatch
@@ -209,7 +200,7 @@ class JavaScriptExtractor(TypeScriptExtractor):
         # An ESM `export` beside CommonJS exports is a surface this pass does not merge.
         mixed = any(child.type == "export_statement" for child in root.named_children)
         if surface.readable and not mixed:
-            self._cjs[module_id] = (rel, dict(exported))
+            self._run.exports[module_id] = (rel, dict(exported))
 
     def _route_handler(
         self, module_id: str, imports: dict[str, str], namespaces: set[str], source: bytes, rel: str
@@ -624,50 +615,21 @@ def _value_target(value: TSNode, module_id: str, source: bytes) -> str | None:
     return None
 
 
-def _export_router(
-    batch: FactBatch, cjs: dict[str, tuple[str, dict[str, str | None]]]
-) -> Callable[[str, str | None], str | None]:
-    """``route(target id, file it is named from)`` → the id it really is, or None for no such export.
+def _through_exports(
+    batch: FactBatch,
+    route: Callable[[str, str | None], str | None],
+    done: set[tuple[str, str, EdgeKind]],
+) -> FactBatch:
+    """Route cross-file edges into readable CommonJS modules through each module's export map.
 
-    At any depth: `ts:m.Handler.run` is the `run` of whatever `m` exports as `Handler`, so the
-    exported name is rewritten wherever it heads the id — `module.exports = { Handler: Impl }`
-    makes it `ts:m.Impl.run`. Rewriting only the direct member left a method call on the
-    renamed class landing on the unexported one while its constructor edge was corrected.
-
-    **The module is the longest prefix that is a module** — any module, not only a CommonJS one.
-    Ids are dotted paths, so `ts:models/user.model.find` also reads as member `model` of
-    `ts:models/user`; searching only the CommonJS modules walked straight past `user.model`
-    (TypeScript) to `user.js`, found no export called `model`, and dropped every edge into it.
-    Only then is the map consulted, and only if that module has one. A target named from the
-    module's own file is left alone: a file reaches its own members whether exported or not.
+    ``done`` holds the edges another finalizer already routed (TypeScript's deferred calls, when
+    its finalizer ran first); they are final, and routing one twice would drop it.
     """
-    modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE and not n.external}
-
-    def route(target: str, file: str | None) -> str | None:
-        if not cjs:
-            return target
-        module = target
-        while module not in modules and "." in module:
-            module = module.rpartition(".")[0]
-        entry = cjs.get(module)
-        if entry is None or module == target or file == entry[0]:
-            return target
-        head, _, tail = target[len(module) + 1 :].partition(".")
-        exported = entry[1].get(head)
-        if exported is None:
-            return None  # not exported under that name: the call reaches nothing we can see
-        return f"{exported}.{tail}" if tail else exported
-
-    return route
-
-
-def _through_exports(batch: FactBatch, route: Callable[[str, str | None], str | None]) -> FactBatch:
-    """Route cross-file edges into readable CommonJS modules through each module's export map."""
     out = FactBatch()
     for node in batch.nodes:
         out.add_node(node)
     for edge in batch.edges:
-        if edge.kind in _THROUGH_EXPORTS:
+        if edge.kind in _THROUGH_EXPORTS and (edge.src, edge.dst, edge.kind) not in done:
             target = route(edge.dst, edge.provenance.file if edge.provenance is not None else None)
             if target is None:
                 continue
