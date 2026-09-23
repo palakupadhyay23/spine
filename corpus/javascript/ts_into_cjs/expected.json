@@ -5,7 +5,7 @@
     "javascript",
     "typescript"
   ],
-  "why": "TypeScript callers into CommonJS modules that export a renamed class, `{ Handler: Impl }`. The TypeScript front-end defers these calls to its own `finalize`, which never routed them through the JavaScript export map, and which finalizer ran first depended on the first file walked. `decoy.js` also declares a `class Handler` nothing exports; `plain.js` does not. The two modules sit at the root and the callers under `app/`, so a JavaScript file is walked first. Pass 4 lost every call into `plain` (no `Handler` node to land on), and sent both callers of `decoy` to the decoy.",
+  "why": "TypeScript callers into CommonJS modules that export a renamed class, `{ Handler: Impl }`. The TypeScript front-end defers these calls to its own `finalize`, which never routed them through the JavaScript export map, and which finalizer ran first depended on the first file walked. `decoy.js` also declares a `class Handler` nothing exports; `plain.js` does not. The two modules sit at the root and the callers under `app/`, so a JavaScript file is walked first. Pass 4 lost every call into `plain` (no `Handler` node to land on), and sent both callers of `decoy` to the decoy. `app/k.ts` default-imports `base.js`, whose `module.exports = Base` is a default slot and not a member: TypeScript resolves the import under the local name, and the default is matched by that name.",
   "root": ".repo",
   "nodes": [
     {
@@ -62,6 +62,26 @@
     },
     {
       "id": "ts:app/p.other",
+      "kind": "Function"
+    },
+    {
+      "id": "ts:base",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:app/k",
+      "kind": "Module"
+    },
+    {
+      "id": "ts:base.Base",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:app/k.K",
+      "kind": "Type"
+    },
+    {
+      "id": "ts:base.Base.hello",
       "kind": "Function"
     }
   ],
@@ -155,6 +175,31 @@
       "src": "ts:app/p.other",
       "dst": "ts:plain.Impl.run",
       "kind": "CALLS"
+    },
+    {
+      "src": "ts:base",
+      "dst": "ts:base.Base",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:base.Base",
+      "dst": "ts:base.Base.hello",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:app/k",
+      "dst": "ts:app/k.K",
+      "kind": "CONTAINS"
+    },
+    {
+      "src": "ts:app/k",
+      "dst": "ts:base",
+      "kind": "IMPORTS"
+    },
+    {
+      "src": "ts:app/k.K",
+      "dst": "ts:base.Base",
+      "kind": "IMPLEMENTS"
     }
   ],
   "known_gaps": [],

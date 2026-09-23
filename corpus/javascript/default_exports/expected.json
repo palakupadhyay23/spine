@@ -141,7 +141,9 @@
       "why": "PREDICTED BEFORE SCORING. The same `undefined` binding, constructed."
     }
   ],
-  "excluded": [],
+  "excluded": [
+    "`const shared = new Base()` in `base.js` is a top-level call with no caller. It is there because constructing the default is a *use* of the exports object, not a write: read as an unrecognised reference, it made the surface opaque and handed `{ Base }` to a name lookup."
+  ],
   "open_questions": [],
   "resolved_by_measurement": []
 }

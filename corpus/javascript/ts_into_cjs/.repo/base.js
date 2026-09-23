@@ -1,9 +1,7 @@
 class Base {
   hello() {
-    return 'hi';
+    return 1;
   }
 }
-
-const shared = new Base();
 
 module.exports = Base;
