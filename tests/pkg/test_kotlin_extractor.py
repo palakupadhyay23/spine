@@ -145,8 +145,11 @@ def test_ids_use_the_java_prefix_but_nodes_say_kotlin(tmp_path: Path) -> None:
 
 
 def test_file_without_a_package_falls_back_to_its_path(tmp_path: Path) -> None:
+    """The module id is not a file id — `.kt` is stripped, same as Python's own
+    no-package fallback strips `.py` (#397)."""
     batch = _facts(tmp_path, "class Loose { fun go() {} }\n", "loose.kt")
-    assert "java:loose.kt" in _ids(batch, NodeKind.MODULE)
+    assert "java:loose" in _ids(batch, NodeKind.MODULE)
+    assert "java:loose.kt" not in _ids(batch, NodeKind.MODULE)
 
 
 # ---- imports ----------------------------------------------------------------

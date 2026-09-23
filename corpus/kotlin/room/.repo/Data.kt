@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
 import com.vendor.MysteryThing
+import shop.wild.*
 
 @Entity(tableName = "topics")
 data class TopicEntity(
@@ -47,4 +48,7 @@ interface TopicDao {
 
     @Insert
     fun insertMystery(dto: MysteryThing)
+
+    @Insert
+    fun insertWild(dto: WildEntity)
 }

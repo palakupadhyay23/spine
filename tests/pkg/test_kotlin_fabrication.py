@@ -930,3 +930,78 @@ class L {
         },
     )
     assert ("java:app.L.go", "java:app.L.key") not in _calls(batch)
+
+
+# ---- #397: a same-package extension needs no import at all, but never resolved ---
+
+
+def test_a_same_package_extension_with_no_import_resolves(tmp_path: Path) -> None:
+    """A cross-file, same-package extension has never resolved on any branch — only
+
+    the same-file half of D4 was ever checked. Kotlin needs no import for a
+    same-package symbol, so `imported_extension` (which only fires on an explicit
+    import) never had a candidate to offer the repo-wide extension table, and the
+    call fell through to the inherited-member walk (also a miss) and was dropped.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.data\n\nclass Topic\n",
+            "Slug.kt": 'package app.data\n\nfun Topic.slug(): String = ""\n',
+            "Use.kt": "package app.data\n\nclass Use {\n    fun go(t: Topic) = t.slug()\n}\n",
+        },
+    )
+    assert ("java:app.data.Use.go", "java:app.data.slug") in _calls(batch)
+
+
+def test_a_same_package_id_that_is_not_an_extension_is_not_offered(tmp_path: Path) -> None:
+    """The same-package candidate must still be receiver-compatible — a plain
+
+    top-level function sharing the called name is not an extension of anything,
+    and must not resolve just because it shares an id with what the call could
+    have named.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Topic.kt": "package app.data\n\nclass Topic\n",
+            "Slug.kt": 'package app.data\n\nfun slug(): String = ""\n',
+            "Use.kt": "package app.data\n\nclass Use {\n    fun go(t: Topic) = t.slug()\n}\n",
+        },
+    )
+    assert not _calls(batch)
+
+
+def test_a_same_package_extension_of_an_incompatible_receiver_is_not_offered(tmp_path: Path) -> None:
+    """A same-package extension of a *different*, unrelated declared type must not
+
+    satisfy a call on this receiver — receiver compatibility applies here exactly
+    as it does for an imported candidate (#390).
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "Types.kt": "package app.data\n\nclass Topic\nclass Other\n",
+            "Slug.kt": 'package app.data\n\nfun Other.slug(): String = ""\n',
+            "Use.kt": "package app.data\n\nclass Use {\n    fun go(t: Topic) = t.slug()\n}\n",
+        },
+    )
+    assert not _calls(batch)
+
+
+def test_a_same_package_extension_never_crosses_a_package_boundary(tmp_path: Path) -> None:
+    """Guard against reopening #395: the same-name candidate declared in a
+
+    *different* package, with no import, must not resolve. The candidate id is
+    built from the calling file's own package, never the receiver's, so this
+    should hold structurally — pinned explicitly rather than assumed.
+    """
+    batch = _facts(
+        tmp_path,
+        {
+            "a/Topic.kt": "package app.a\n\nclass Topic\n",
+            "b/Slug.kt": 'package app.b\n\nfun Topic.slug(): String = ""\n',
+            "a/Use.kt": "package app.a\n\nclass Use {\n    fun go(t: Topic) = t.slug()\n}\n",
+        },
+    )
+    assert not _calls(batch)

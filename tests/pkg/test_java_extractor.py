@@ -98,8 +98,10 @@ def test_repo_extractor_dispatches_java_by_suffix(tmp_path: Path) -> None:
 
 
 def test_unpackaged_file_falls_back_to_path(tmp_path: Path) -> None:
+    """The module id is not a file id — `.java` is stripped, same as Python's own
+    no-package fallback strips `.py` (#397)."""
     _, module = _facts(tmp_path, "class Bare {}\n", name="Bare.java")
-    assert module == "Bare.java"
+    assert module == "Bare"
 
 
 _CALLS_SRC = """\

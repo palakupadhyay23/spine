@@ -10,6 +10,7 @@ class Formatter {
     fun run(slug: Slug) {
         slug.tidy()
         slug.trim()
+        slug.condense()
         shorten(slug)
     }
 

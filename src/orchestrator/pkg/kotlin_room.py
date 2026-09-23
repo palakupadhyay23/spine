@@ -325,6 +325,8 @@ def read_dao(
     source: bytes,
     rel: str,
     batch: FactBatch,
+    *,
+    wildcard_prefixes: frozenset[str],
 ) -> bool:
     """Emit ``READS``/``WRITES`` for a ``@Dao`` interface's methods."""
     if _find(annotations_of(node, source), "Dao") is None:
@@ -336,7 +338,7 @@ def read_dao(
             name = field_text(member, "name", source)
             if not name:
                 continue
-            _read_dao_method(member, f"{type_id}.{name}", resolve, source, rel, batch)
+            _read_dao_method(member, f"{type_id}.{name}", resolve, source, rel, batch, wildcard_prefixes)
     return True
 
 
@@ -347,11 +349,11 @@ def _read_dao_method(
     source: bytes,
     rel: str,
     batch: FactBatch,
+    wildcard_prefixes: frozenset[str],
 ) -> None:
     for annotation in annotations_of(method, source):
         if annotation.name in _WRITE_ANNOTATIONS:
-            target = _parameter_entity(method, resolve, source)
-            if target:
+            for target in _parameter_entity(method, resolve, source, wildcard_prefixes):
                 batch.add_edge(Edge(func_id, target, EdgeKind.WRITES, Provenance(rel, annotation.line)))
         elif annotation.name == "Query":
             sql = string_value(annotation.arg("value"), source)
@@ -359,16 +361,27 @@ def _read_dao_method(
                 _emit_sql_edges(sql, func_id, rel, annotation.line, batch)
 
 
-def _parameter_entity(method: TSNode, resolve: Any, source: bytes) -> str:
-    """The entity a write method writes, taken from its first typed parameter.
+def _parameter_entity(
+    method: TSNode, resolve: Any, source: bytes, wildcard_prefixes: frozenset[str]
+) -> list[str]:
+    """Every entity the write method's first typed parameter could resolve to.
 
     ``suspend fun upsertTopics(entities: List<TopicEntity>)`` → ``TopicEntity``.
     The declared type is peeled to its innermost argument, so the collection and
     coroutine wrappers Room methods are written against do not hide the entity.
+
+    ``resolve`` only ever tries a precise import or a same-package guess, never a
+    wildcard prefix (#397) — a genuine ``@Entity`` reachable *only* through
+    ``import app.data.*`` would otherwise be guessed into the caller's own package
+    instead and silently refused there. Every wildcard-prefix reading is offered
+    here as an additional candidate, provisional exactly like ``resolve``'s own
+    guess already is; ``repoint_table_edges`` is what turns "a candidate" into "the
+    entity", once the whole repository is known, the same two-step deferral this
+    front-end already uses for typed-receiver calls.
     """
     params = next((c for c in method.named_children if c.type == "function_value_parameters"), None)
     if params is None:
-        return ""
+        return []
     for param in params.named_children:
         if param.type != "parameter":
             continue
@@ -376,10 +389,16 @@ def _parameter_entity(method: TSNode, resolve: Any, source: bytes) -> str:
         name = element_type(declared)
         if not name:
             continue
-        resolved = resolve(name.rsplit(".", 1)[-1])
+        simple = name.rsplit(".", 1)[-1]
+        candidates = []
+        resolved = resolve(simple)
         if resolved:
-            return parameter_entity_id(resolved)
-    return ""
+            candidates.append(parameter_entity_id(resolved))
+        candidates.extend(
+            parameter_entity_id(f"java:{prefix}.{simple}") for prefix in sorted(wildcard_prefixes)
+        )
+        return candidates
+    return []
 
 
 def _emit_sql_edges(sql: str, func_id: str, rel: str, line: int, batch: FactBatch) -> None:
@@ -462,20 +481,19 @@ def repoint_table_edges(batch: FactBatch) -> FactBatch:
     out = FactBatch()
     for node in batch.nodes:
         out.add_node(node)
+    param_edges: dict[tuple[str, EdgeKind], list[Edge]] = {}
     for edge in batch.edges:
         if edge.kind not in (EdgeKind.READS, EdgeKind.WRITES) or not edge.dst.startswith("java:entity:"):
             out.add_edge(edge)
             continue
         if edge.dst.startswith("java:entity:param:"):
-            # #394: a write method's *parameter* type, never a table name — provenance
-            # settles it outright rather than asking whether the repo happens to declare
-            # the class. Only a genuine `@Entity` grounds it; declared-elsewhere-as-a-
-            # plain-class and not-declared-anywhere alike drop, because neither is a
-            # table this tree could honestly stand behind with an external placeholder.
-            type_id = f"java:{edge.dst[len('java:entity:param:') :]}"
-            grounded = entity_id(type_id)
-            if grounded in entities:
-                out.add_edge(Edge(edge.src, grounded, edge.kind, edge.provenance))
+            # #394/#397: a write method's *parameter* type, never a table name —
+            # provenance settles it outright rather than asking whether the repo
+            # happens to declare the class. Grouped by write method below, because a
+            # wildcard-imported parameter type (#397) offers one candidate per
+            # wildcard prefix alongside `resolve`'s own guess, all sharing this edge's
+            # `(src, kind)`.
+            param_edges.setdefault((edge.src, edge.kind), []).append(edge)
             continue
         table = edge.dst[len("java:entity:") :]
         target = by_table.get(table.lower())
@@ -489,6 +507,22 @@ def repoint_table_edges(batch: FactBatch) -> FactBatch:
         # read it — and `data_layer_link` can still pair it with a real `.sql` schema.
         out.add_node(Node(edge.dst, NodeKind.ENTITY, table, _LANG, external=True))
         out.add_edge(edge)
+    for (src, kind), edges in param_edges.items():
+        # Only a genuine `@Entity` grounds a candidate; declared-elsewhere-as-a-plain-
+        # class and not-declared-anywhere both drop, because neither is a table this
+        # tree could honestly stand behind with an external placeholder — and more
+        # than one genuinely-grounded candidate (e.g. two wildcard-imported packages
+        # each declaring an `@Entity` of the same simple name) is a real ambiguity,
+        # refused the same way an ambiguous call resolution is refused elsewhere in
+        # this front-end, rather than guessed.
+        grounded = {
+            entity_id(f"java:{edge.dst[len('java:entity:param:') :]}")
+            for edge in edges
+            if entity_id(f"java:{edge.dst[len('java:entity:param:') :]}") in entities
+        }
+        if len(grounded) == 1:
+            (target,) = grounded
+            out.add_edge(Edge(src, target, kind, edges[0].provenance))
     return out
 
 
@@ -508,6 +542,7 @@ def _walk(node: TSNode) -> list[TSNode]:
 
 __all__ = [
     "entity_id",
+    "parameter_entity_id",
     "read_dao",
     "read_entity",
     "read_relation_view",

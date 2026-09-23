@@ -230,6 +230,14 @@ class _DeferredCall:
     #: genuinely an extension of *this* type — a name match alone is not evidence of
     #: that. Ids rather than the bare name, because the check walks ``IMPLEMENTS``.
     extension_receivers: tuple[str, ...]
+    #: The id a same-package extension of this name would have, or ``""``. #397: an
+    #: extension declared in a different file of the *same* package needs no import at
+    #: all (Kotlin's own rule), so ``imported_extension`` — which only fires on an
+    #: explicit import — never had anything to offer the repo-wide extension table for
+    #: this shape, and the call was silently dropped instead. Built from *this* call
+    #: site's own package, never the receiver's, so it can only ever name a candidate
+    #: this file could actually compile against — never a cross-package one (#395).
+    same_package_extension: str
     provenance: Provenance
 
 
@@ -325,11 +333,13 @@ class KotlinExtractor:
         # Kotlin's module is the package declaration, which lives in the file and
         # is free of the directory layout Java enforces; fall back to the
         # repo-relative path when there is none (14 of 263 in the validation app).
+        # `.kt` is stripped the way Python's own no-package fallback strips `.py` —
+        # a module id is not a file id, and keeping the extension leaked that.
         try:
             m = _PACKAGE_RE.search(path.read_text(encoding="utf-8"))
         except OSError:
             m = None
-        return m.group(1) if m else rel_module_name(path, root)
+        return m.group(1) if m else rel_module_name(path, root).removesuffix(".kt")
 
     def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
         parser = _kotlin_parser()
@@ -383,6 +393,7 @@ class KotlinExtractor:
 
         # Pass 2 — calls, once every id in the file is known (D8, §3.2).
         deferred_before = len(self._deferred)
+        wildcard_prefixes = frozenset(ctx.imports.wildcard_prefixes)
         for pend in ctx.pending:
             self._calls(pend, ctx, source, rel, batch)
             scan_nav_calls(
@@ -393,7 +404,7 @@ class KotlinExtractor:
                 self._nav,
                 package=declared_package,
                 imports=ctx.imports.by_simple,
-                wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
+                wildcard_prefixes=wildcard_prefixes,
             )
             scan_ktor_calls(
                 pend.body,
@@ -404,7 +415,7 @@ class KotlinExtractor:
                 package=module,
                 default_package=ctx.default_package,
                 imports=ctx.imports.by_simple,
-                wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
+                wildcard_prefixes=wildcard_prefixes,
             )
         if line_remap is not None:
             batch = _remap_batch_lines(batch, rel, line_remap)
@@ -494,7 +505,15 @@ class KotlinExtractor:
             # Only a class that is not itself an entity can be a Room *view* — a
             # query result shape holding `@Embedded` + `@Relation`.
             read_relation_view(node, resolve, source, rel, batch)
-        read_dao(node, type_id, resolve, source, rel, batch)
+        read_dao(
+            node,
+            type_id,
+            resolve,
+            source,
+            rel,
+            batch,
+            wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
+        )
         read_module(node, type_id, resolve, source, rel, batch)
         scan_type(
             node,
@@ -831,6 +850,7 @@ class KotlinExtractor:
                 takes_function_argument=passes_function,
                 imported_extension="",
                 extension_receivers=(),
+                same_package_extension="",
                 provenance=Provenance("", 0),
             )
         return None
@@ -898,6 +918,12 @@ class KotlinExtractor:
             # only the same-file half of D4. Member first, extension second, which is
             # Kotlin's own resolution order: a member always wins over an extension.
             imported = ctx.imports.by_simple.get(name)
+            # #397: a same-package extension needs no import at all — Kotlin's own
+            # rule — so `imported` above is `None` for exactly this shape, and the
+            # repo-wide extension table never got a candidate to check. This one is
+            # built from *this file's own* package, never the receiver's, so it can
+            # only ever name something this file could actually compile against.
+            same_pkg_candidate = f"java:{ctx.package}.{name}" if ctx.package else ""
             return self._deferred_call(
                 recv_type,
                 name,
@@ -906,6 +932,7 @@ class KotlinExtractor:
                 line=line,
                 rel=rel,
                 also=(f"java:{imported}",) if imported else (),
+                same_package_member=same_pkg_candidate,
                 passes_function=passes_function,
             )
         if recv[:1].isupper():
@@ -926,6 +953,7 @@ class KotlinExtractor:
         line: int,
         rel: str,
         also: tuple[str, ...] = (),
+        same_package_member: str = "",
         passes_function: bool,
     ) -> _DeferredCall | None:
         """Hold back ``<type_name>.<member>()`` for the whole-repository check.
@@ -951,7 +979,8 @@ class KotlinExtractor:
             certain=certain and bool(owners),
             takes_function_argument=passes_function,
             imported_extension=also[0] if also else "",
-            extension_receivers=owners if also else (),
+            extension_receivers=owners,
+            same_package_extension=same_package_member,
             provenance=Provenance(rel, line),
         )
 
@@ -1059,18 +1088,35 @@ class KotlinExtractor:
     def _settle_calls(self, batch: FactBatch) -> None:
         """Decide every held-back typed-receiver call against the finished repository.
 
-        Four outcomes, and the middle two are the whole point:
+        Six outcomes now, not the four this docstring once described — #397 found the
+        count itself had drifted, both by omission (the inherited-member walk, #391,
+        was never distinguished from a plain drop) and by addition (the same-package
+        extension tier, #397). In the order they are tried:
 
         * A candidate the repository **declares** wins, first one in priority order.
           A wildcard-imported sibling lands here — ``import app.data.*`` then
           ``dao.getTopics()`` resolves to ``java:app.data.TopicDao.getTopics``, the real
           declaration, which the per-file guess used to replace with one under the
           *caller's* package.
-        * Nothing grounded, and the receiver's type was **guessed** or is a type this
-          repository declares: **drop**. A guessed id has no backstop, and a declared
-          type that has no such member means the call is not to that type at all —
-          ``topic.let { }`` on a repo-declared ``Topic`` being the common shape. This is
-          the case that used to mint a placeholder and so hide itself from ``pkg verify``.
+        * Nothing grounded, the receiver's own type is declared, and the member is not
+          one of its own — but it **is** declared on a supertype reachable through
+          ``IMPLEMENTS``: resolves there (#391). ``Impl`` declaring no ``ping``, ``Base``
+          declaring it, is exactly this shape, and inheritance plus an instance call is
+          the most ordinary shape in the language.
+        * Nothing grounded, no inherited member either, but the repository **does**
+          declare a receiver-compatible extension of this exact name in the *calling
+          file's own package* (#397): resolves there. Kotlin needs no import for a
+          same-package symbol, so this tier exists for exactly the calls the two above
+          it could never see — never minted as an external placeholder, because an
+          unqualified same-package name resolving to nothing declared is not a legal
+          Kotlin call at all.
+        * Nothing grounded, no inherited member, no same-package extension either, and
+          the receiver's type was **guessed** or is a type this repository declares:
+          **drop**. A guessed id has no backstop, and a declared type that has no such
+          member (own, inherited, or same-package-extension) means the call is not to
+          that type at all — ``topic.let { }`` on a repo-declared ``Topic`` being the
+          common shape. This is the case that used to mint a placeholder and so hide
+          itself from ``pkg verify``.
         * Nothing grounded, the type was read from an import, the repository does not
           declare it, and the call is a **scope function by name and by shape**: **drop**.
           An imported type has no declared-member list to refuse against, so
@@ -1099,7 +1145,7 @@ class KotlinExtractor:
           fully-qualified name the source actually wrote, where the member reading is a
           guess about a type nothing here can introspect.
 
-        What survives all four is stated rather than hidden: a wildcard-imported
+        What survives all six is stated rather than hidden: a wildcard-imported
         extension binds no simple name, so ``m.padding(8)`` under ``import
         androidx.compose.foundation.layout.*`` still lands on the receiver-member id and
         may still be a fabrication. Narrowed, not closed.
@@ -1174,6 +1220,27 @@ class KotlinExtractor:
                 target = _resolve_inherited_member(call.owners[0], member, declared, supertypes)
                 if target is not None:
                     batch.add_edge(Edge(call.src, target, EdgeKind.CALLS, call.provenance))
+                    continue
+                # #397: a same-package extension needs no import at all (Kotlin's own
+                # rule), so `imported_extension` — which only fires on an explicit
+                # import — never had a candidate to offer the repo-wide extension
+                # table for this shape, and the call was silently dropped instead.
+                # Resolved only when the repo genuinely declares an extension under
+                # this exact id *and* it is receiver-compatible; declared-but-
+                # incompatible or not-declared-at-all falls through to the same drop
+                # as before. Never an external placeholder here: an unqualified
+                # same-package name resolving to nothing declared is not a legal
+                # Kotlin call, the same posture the bare-call same-package tier
+                # already takes.
+                same_pkg = call.same_package_extension
+                if same_pkg:
+                    ext = self._extensions.get(same_pkg)
+                    if ext is not None and (
+                        ext.any_receiver
+                        or set(call.extension_receivers) & ext.receivers
+                        or any(_reaches(r, ext.receivers, supertypes) for r in call.extension_receivers)
+                    ):
+                        batch.add_edge(Edge(call.src, same_pkg, EdgeKind.CALLS, call.provenance))
                 continue
             if not call.certain:
                 continue

@@ -398,3 +398,87 @@ interface Writer {
     assert ("java:app.data.Writer.insert", "java:entity:app.data.TopicEntity") in {
         (e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.WRITES
     }
+
+
+def test_a_write_parameter_reachable_only_through_a_wildcard_import_resolves(tmp_path: Path) -> None:
+    """#397. A genuine `@Entity` reachable only via `import app.data.*` used to be
+
+    guessed into the *caller's* own package instead — `resolve` never tried a
+    wildcard prefix — and then silently refused there, a recall miss rather than a
+    fabrication. The entity itself is real and unambiguous, so it must resolve.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "data/Topic.kt": """\
+package app.data
+
+import androidx.room.Entity
+
+@Entity
+class TopicEntity(val id: String)
+""",
+            "db/Dao.kt": """\
+package app.db
+
+import androidx.room.Dao
+import androidx.room.Insert
+import app.data.*
+
+@Dao
+interface Writer {
+    @Insert
+    fun insert(topic: TopicEntity)
+}
+""",
+        },
+    )
+    assert ("java:app.db.Writer.insert", "java:entity:app.data.TopicEntity") in {
+        (e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.WRITES
+    }
+
+
+def test_a_write_parameter_ambiguous_across_two_wildcard_imports_mints_nothing(
+    tmp_path: Path,
+) -> None:
+    """Two wildcard-imported packages each declaring a genuine `@Entity` of the same
+
+    simple name is a real ambiguity — resolved the same way an ambiguous call
+    resolution is refused elsewhere in this front-end, rather than guessed.
+    """
+    batch = _repo(
+        tmp_path,
+        {
+            "a/Topic.kt": """\
+package app.a
+
+import androidx.room.Entity
+
+@Entity
+class TopicEntity(val id: String)
+""",
+            "b/Topic.kt": """\
+package app.b
+
+import androidx.room.Entity
+
+@Entity
+class TopicEntity(val id: String)
+""",
+            "db/Dao.kt": """\
+package app.db
+
+import androidx.room.Dao
+import androidx.room.Insert
+import app.a.*
+import app.b.*
+
+@Dao
+interface Writer {
+    @Insert
+    fun insert(topic: TopicEntity)
+}
+""",
+        },
+    )
+    assert not [e for e in batch.edges if e.kind is EdgeKind.WRITES]
