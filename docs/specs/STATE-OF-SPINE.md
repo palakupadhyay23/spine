@@ -1,7 +1,7 @@
-# State of Spine — 3.42.0
+# State of Spine — 3.43.0
 
-**The one document to read.** Verified against source on **2026-09-21**, at the 3.42.0 release
-cut. Every number below was re-measured that day.
+**The one document to read.** Verified against source on **2026-09-23**, at the 3.43.0 release
+cut. Every gated number below was re-measured that day (`scripts/state-numbers.py --check`).
 
 > **Why this exists.** `docs/specs/` holds **91** markdown files — **87 specs** plus this
 > page, [`README`](README.md) and [`SPEC-INDEX`](SPEC-INDEX.md) — with 6 archived, 10 build
@@ -24,7 +24,7 @@ gates (before building, before merging). The product is **Spine**; it ships as
 
 | | Value | How it is known |
 |---|---|---|
-| Version | **3.42.0** | cutting now; 3.41.1 is the last on PyPI. **Minor, not patch** — the fixes alone would be a patch, but `scoreboard.json` goes to version 2 and the accuracy gate now *refuses* an older baseline rather than guessing at a missing field, so anyone holding a committed board must regenerate it. A release that requires a user action is not a patch |
+| Version | **3.43.0** | cutting now; 3.42.0 is the last on PyPI. **Minor** — a new front-end: JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`) on the existing `typescript` extra, with CommonJS exports read into three trust tiers, Express routes and a Sequelize data layer; plus fixes that reach TypeScript too, and LiteLLM pricing from the installed map. No user action required |
 | Languages extracted | **12** languages (**13** front-ends) | Python, Java, TypeScript, JavaScript, C#, C, C++, Go, PHP, Perl, Kotlin, SQL, plus a **Gradle** reader that turns `.kts` build scripts into a module dependency graph rather than parsing them as source (D11) — Perl has comprehension + `CALLS` + routes + data layer (all six phases of [perl-support-roadmap.md](perl-support-roadmap.md)); Kotlin is at P0–P11 (all phases) of [kotlin-support-roadmap.md](kotlin-support-roadmap.md) (comprehension, `CALLS`, Room entities + DAO data edges, Retrofit calls as cross-repo `CONSUMES` candidates, Compose navigation as `NAV` endpoints, Hilt/Dagger wiring through the new `PROVIDES` edge, a Gradle `.kts` module graph that gives `state` real components instead of package-name prefixes, and Ktor + Spring MVC server routes that make a Kotlin service a **provider** — the Spring half is shared with the Java front-end, which had read JAX-RS only, Multiplatform source sets with `expect`/`actual` ids joined by `IMPLEMENTS`, and **Kotlin/JVM codegen** on Gradle — whose runner also gives *Java* codegen its first Gradle support) |
 | Perl codegen progress | **C-0 through C-5 DONE** | [Roadmap](perl-codegen-roadmap.md): dispatch mutation detection **4/8 → 8/8**, 0 skipped mutations; `--language perl` enabled with real green/red runner proof; greenfield live proof passes 81 assertions from a clean checkout; brownfield clean-checkout proof passes 4,192 tests, with 116 regression gaps unchanged |
 | PHP delivery | Composer or pinned PHPUnit PHAR | Configured test layout, changed-file lint, modern PHPUnit; [validation roadmap](php-codegen-roadmap.md) |
