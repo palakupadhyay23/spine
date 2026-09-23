@@ -82,7 +82,9 @@ Declared, measured, and left as they are:
   binding this pass misread, and kept, it became a rename; so a true export written there is
   lost too, and a call to it is resolved by name like any other on an opaque module.
 - **A file that declares its own `module`** (`var module = { exports: {} }`) exports nothing
-  through it, and its `module.exports` writes are read as a local's.
+  through it, and its `module.exports` writes are read as a local's. A `var module` inside a
+  class `static {}` block is the block's, but the surface then misreads the file's real
+  `module.exports = …` and over-exports.
 - **A whole-module binding is matched by its local name.** `class X extends log` after
   `const log = require('./log')` over `module.exports = Log; Log.log = log` names the member
   `log` — a function — because a member the export map names wins over the whole module.

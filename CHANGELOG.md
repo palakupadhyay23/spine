@@ -72,7 +72,7 @@ All notable changes to this project are documented here. Format loosely follows
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
   Twenty corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.97 (96 of 99), and the three misses are the three gaps declared
+  edge kind**, `CALLS` recall 0.97 (97 of 100), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`

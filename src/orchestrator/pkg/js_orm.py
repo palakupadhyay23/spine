@@ -66,7 +66,9 @@ Also declared, each measured and left as it is:
   declaration: `var Post = a; [1].forEach(() => Post.x()); var Post = b` binds `b`, though a
   synchronous callback runs while `Post` is still `a`. Telling a synchronous callee from an
   asynchronous one needs the callee; a function invoked on the spot and a `static {}` block are
-  read where they stand.
+  read where they stand. So is an `async` one, though code after its first `await` runs later,
+  and a generator's, though its body waits for `next()`; `(function () {}).call(this)` and
+  `new (function () {})` are taken to run later. Each needs one model declared twice.
 """
 
 from __future__ import annotations
