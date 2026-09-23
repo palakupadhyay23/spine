@@ -609,15 +609,29 @@ def sdlc_autorun(
         ),
     ] = True,
 ) -> None:
-    """Drive ONE ticket through the whole happy path: research → design → code → tests → PR.
+    """Drive ONE ticket through the whole path: research → design → code → tests → review.
 
     The stages are the commands you already have — `investigate`, `design`, `sdlc feature` —
     called in order with the same spec, and each result recorded. Default --safe makes no
     external write anywhere in the chain.
 
-    It does not yet judge whether the ticket is worth doing, enforce a budget, survive a
-    crash, or loop on review findings. Each stage says plainly when it skipped and why; see
-    docs/specs/autonomous-run-agent.md for what lands when.
+    It stops rather than guessing. It refuses to build a ticket whose build document nobody
+    approved (--plan-gate, on by default; decide it with `sdlc approve`). It parks the run —
+    raises an approval listed by `sdlc runs approvals`, and exits — when the validity gate
+    finds the ticket contradicts the code, duplicates another run, is too big, or is a bug that
+    resolves to no code; when the design names code that does not exist; or when --max-cost
+    runs out. After the build, a review pass reviews the diff and tries to fix what it finds,
+    for up to two rounds; what it leaves unresolved is recorded, and the run still ends done.
+
+    `--resume <run-id>` continues a run that crashed or ran out of budget: same run id, same
+    tracker issue, every stage re-run from the start. It refuses while an approval is pending
+    and after a rejection. Approving a validity or design park does not make the run build —
+    the resumed run meets the same verdict and parks again.
+
+    Not covered: there is no spend cap unless you pass --max-cost (SDLC_RUN_BUDGET_USD is not
+    read here), and the cap counts the build stage only. The review pass's fixes are left
+    uncommitted in the worktree — under --live, after the PR is already open. Review comments
+    on an open PR are `sdlc address-review`.
     """
     import asyncio
 

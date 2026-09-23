@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
+## Unreleased
+
+### Fixed
+
+- **`sdlc autorun --help` no longer denies the gates it has.** It said the command did not
+  judge whether a ticket is worth doing, enforce a budget, survive a crash, or loop on review
+  findings — written for the walking skeleton and never revised as the validity gate, the run
+  supervisor (`--resume`, `--max-cost`) and the review loop landed. The help now says what stops
+  a run, where each decision is made (`sdlc approve` for the plan gate, `sdlc runs approvals`
+  for a park), and what a resume keeps — and names the gaps that remain rather than implying
+  they are closed: no spend cap unless `--max-cost` is passed (this path does not read
+  `SDLC_RUN_BUDGET_USD`); a resume re-runs every stage, so approving a validity or design park
+  parks again rather than building; and the review pass leaves its fixes uncommitted — under
+  `--live`, after the PR is already open. The module docstring and
+  `docs/specs/autonomous-run-agent.md`'s status line, which the help points to, were stale the
+  same way.
+
 ## 3.43.1 — 2026-09-23
 
 ### Fixed
