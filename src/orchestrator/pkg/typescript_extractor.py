@@ -117,7 +117,7 @@ class TypeScriptExtractor:
         run, self._pending_calls, self._run = self._run, [], ExtractionRun()
         if not pending:
             return batch
-        route = _export_router(batch, run.exports)
+        route = _export_router(batch, run)
         known = {n.id for n in batch.nodes}
 
         def emit(caller: str, target: str, call: _PendingCall) -> None:
@@ -544,9 +544,7 @@ def _rebound(name: TSNode, call: TSNode, bound: dict[str, list[tuple[int, int]]]
     return any(start <= at < end for start, end in bound.get(_text(name, source), ()))
 
 
-def _export_router(
-    batch: FactBatch, cjs: dict[str, tuple[str, dict[str, str | None]]]
-) -> Callable[[str, str | None], str | None]:
+def _export_router(batch: FactBatch, run: ExtractionRun) -> Callable[[str, str | None], str | None]:
     """``route(target id, file it is named from)`` → the id it really is, or None for no such export.
 
     At any depth: `ts:m.Handler.run` is the `run` of whatever `m` exports as `Handler`, so the
@@ -558,25 +556,64 @@ def _export_router(
     Ids are dotted paths, so `ts:models/user.model.find` also reads as member `model` of
     `ts:models/user`; searching only the CommonJS modules walked straight past `user.model`
     (TypeScript) to `user.js`, found no export called `model`, and dropped every edge into it.
-    Only then is the map consulted, and only if that module has one. A target named from the
-    module's own file is left alone: a file reaches its own members whether exported or not.
+    Only then is the map consulted, and only if that module has one (see ``ExportMap``). A target
+    named from the module's own file is left alone: a file reaches its own members whether
+    exported or not.
+
+    **A call never lands on a module.** When the whole target is a module id — `db.config()`
+    beside a sibling `lib/db.config.ts`, or `cfg.json()` beside a required `cfg.json` — it is
+    retried as a member of the next shorter module, and dropped if that module has no map to
+    say what the member is.
+
+    **The default is not a member.** `const B = require('./base')` makes `extends B` resolve to
+    `ts:base.B`; the run records that pair as a whole-module binding (``ExtractionRun.whole``), so
+    it is routed to the module's default whatever the local is called — and a destructured
+    `{ Base }`, which names a member `Base` that the default is not, is dropped. A TypeScript
+    `import Base from './base'` is resolved by the parent under the local name and cannot be told
+    from a named import, so there the default is matched by name: a renamed default import into
+    a CommonJS module is a declared gap.
     """
     modules = {n.id for n in batch.nodes if n.kind is NodeKind.MODULE and not n.external}
+    exports, whole = run.exports, run.whole
 
-    def route(target: str, file: str | None) -> str | None:
-        if not cjs:
-            return target
+    def owner(target: str) -> str:
         module = target
         while module not in modules and "." in module:
             module = module.rpartition(".")[0]
-        entry = cjs.get(module)
-        if entry is None or module == target or file == entry[0]:
+        return module
+
+    def route(target: str, file: str | None) -> str | None:
+        if not exports:
+            return target
+        module = owner(target)
+        if module == target and module in modules:
+            if "." not in module:
+                return None
+            module = owner(module.rpartition(".")[0])
+            if module not in exports:
+                return None  # nothing says what the member is, and a module is no callee
+        entry = exports.get(module)
+        if entry is None or file == entry.file:
             return target
         head, _, tail = target[len(module) + 1 :].partition(".")
-        exported = entry[1].get(head)
-        if exported is None:
+        if (file, f"{module}.{head}") in whole:
+            exported = entry.default if entry.default is not None or entry.tier != "opaque" else target
+        elif head in entry.dead:
+            return None  # written onto an object the module no longer exports
+        elif entry.tier == "opaque":
+            exported = target  # nothing read decides: by name, and the existence check
+        elif head in entry.names:
+            exported = entry.names[head]
+            if exported is None and entry.tier != "readable":
+                exported = f"{module}.{head}"  # written, to a value this pass cannot name
+        elif file is not None and file.endswith((".ts", ".tsx")) and entry.default == f"{module}.{head}":
+            exported = entry.default
+        else:
             return None  # not exported under that name: the call reaches nothing we can see
-        return f"{exported}.{tail}" if tail else exported
+        if exported is None:
+            return None
+        routed = f"{exported}.{tail}" if tail and exported != target else exported
+        return None if routed in modules else routed
 
     return route
 
@@ -756,10 +793,14 @@ _NESTED_FUNCTIONS = frozenset({"arrow_function", "function_expression", "generat
 
 
 def _function_of(node: TSNode, body: TSNode) -> TSNode:
-    """The function a `var` is hoisted to: the nearest enclosing nested function, or the body."""
+    """The function a `var` is hoisted to: the nearest enclosing nested function, or the body.
+
+    A class `static {}` block counts: a `var` in it is the block's own, like a function's.
+    Hoisted past it, `var m` there shadowed an import across the whole enclosing function.
+    """
     current = node.parent
     while current is not None and _span(current) != _span(body):
-        if current.type in _NESTED_FUNCTIONS:
+        if current.type in _NESTED_FUNCTIONS or current.type == "class_static_block":
             return current
         current = current.parent
     return body

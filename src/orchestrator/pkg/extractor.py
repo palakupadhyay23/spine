@@ -21,7 +21,7 @@ import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
 from orchestrator.pkg.python_client import ClientState, PendingCall
@@ -649,6 +649,32 @@ def is_nested_repo(parent: Path, name: str) -> bool:
     return (parent / name / ".git").exists()
 
 
+class ExportMap(NamedTuple):
+    """What one CommonJS module exports, as far as its own source says (see
+    ``js_extractor._export_surface``, whose three tiers these are).
+
+    - ``readable``: ``names`` is exact.
+    - ``names-known``: ``names`` is every name the file *may* export — written under a branch, by
+      a merge, in a frozen literal, or by more than one `module.exports`. A name it lists with no
+      known node (a getter, a computed value) is resolved by name; one it does not list is not
+      exported.
+    - ``opaque``: some reference to the exports object was not a recognised form, so ``names`` is
+      empty and calls resolve by name — except to ``dead`` names, written only onto an object the
+      file has certainly stopped exporting.
+    """
+
+    #: The module's file — a file reaches its own members, exported or not.
+    file: str
+    #: ``{exported name: the node it is, or None for a value that is not a declaration}``.
+    names: dict[str, str | None]
+    tier: str
+    #: What `require` returns itself, when that is a declared class or function
+    #: (`module.exports = Base`). A default is not a member: `{ Base }` of it is `undefined`.
+    default: str | None = None
+    #: Names written only through `exports` after `module.exports` was replaced without it.
+    dead: frozenset[str] = frozenset()
+
+
 @dataclass
 class ExtractionRun:
     """What front-ends sharing one module namespace tell each other during one :meth:`extract`.
@@ -666,7 +692,12 @@ class ExtractionRun:
 
     #: ``module id -> (file, {exported name: the node it is, or None})`` for every module whose
     #: exports a front-end read in full — filled during the walk, read by every ``finalize``.
-    exports: dict[str, tuple[str, dict[str, str | None]]] = field(default_factory=dict)
+    exports: dict[str, ExportMap] = field(default_factory=dict)
+    #: ``(file, target)`` pairs a *whole-module* binding produced: after
+    #: `const B = require('./base')`, the parent resolves `extends B` to `ts:base.B` by the local
+    #: name, and only the file knows that `B` is the module itself — its default, whatever the
+    #: class is called. A destructured `{ Base }` resolves to the same kind of id and is a member.
+    whole: set[tuple[str, str]] = field(default_factory=set)
     #: Edges already routed through ``exports``. Routing is not idempotent — `ts:m.Impl.run`,
     #: routed again, looks for an export called `Impl` — so an edge is routed exactly once,
     #: whichever finalizer runs first.

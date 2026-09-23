@@ -54,7 +54,11 @@ from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Pr
 from orchestrator.pkg.typescript_extractor import _relative_module, _supertypes
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from tree_sitter import Node as TSNode
+
+    from orchestrator.pkg.extractor import ExportMap
 
 _LANG = "javascript"
 _PACKAGE = "sequelize"
@@ -442,7 +446,7 @@ def _association(
 
 def settle(
     batch: FactBatch,
-    cjs: dict[str, tuple[str, dict[str, str | None]]] | None = None,
+    cjs: Mapping[str, ExportMap] | None = None,
     models: dict[str, dict[str, str]] | None = None,
 ) -> FactBatch:
     """Replace each ``ts:entity-of:<module>#<name>`` end with the entity that module defines.
@@ -479,15 +483,19 @@ def settle(
         held = bindings.get(module, {})
         direct = held.get(f"exports.{name}")
         entry = maps.get(module)
-        if entry is not None:  # the module's exports are read in full: it decides
-            if name not in entry[1]:
+        if entry is not None and name in entry.dead:
+            return None  # written onto an object the module no longer exports
+        if entry is not None and entry.tier != "opaque":  # the names the module may export decide
+            if name not in entry.names:
                 return None  # not exported under that name
-            target = entry[1][name]
-            if target is None:  # a value, not a declaration: `exports.Post = sequelize.define(…)`
+            target = entry.names[name]
+            if target is None and entry.tier == "readable":
+                # a value, not a declaration: `exports.Post = sequelize.define(…)`
                 return entity_id(direct) if direct is not None else None
-            local = target[len(module) + 1 :] if target.startswith(f"{module}.") else ""
-            model = held.get(local) if local and "." not in local else None
-            return entity_id(model) if model is not None else None
+            if target is not None:
+                local = target[len(module) + 1 :] if target.startswith(f"{module}.") else ""
+                model = held.get(local) if local and "." not in local else None
+                return entity_id(model) if model is not None else None
         model = direct or held.get(name)
         if model is not None:
             return entity_id(model)
