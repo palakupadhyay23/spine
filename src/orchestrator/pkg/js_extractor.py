@@ -41,6 +41,20 @@ anonymous `module.exports = function () {}`, class expressions, `require` inside
 dynamic `import()`, and routes registered inside a function body. How much of each module's
 exports this pass has read — readable, names-known or opaque — decides how far calls into it are
 trusted (see `_export_surface`).
+
+Declared, measured, and left as they are:
+
+- **A file reaches its own members**, exported or not, so `const self = require('./m')` inside
+  `m.js` resolves `self.f()` to an unexported `f`.
+- **`delete exports.f` is a read.** The export it removes is still in the map, and `m.f()` is
+  kept.
+- **A TypeScript default import of a CommonJS default resolves by its local name.** The parent
+  cannot tell `import Base from './base'` from a named import, so the default slot is matched by
+  name there: `import B from './base'` over `module.exports = Base` loses `extends B`. The same
+  import in a JavaScript file is read (see `ExtractionRun.whole`).
+- **A `let` in an inner block shadows the exports alias over the whole function** when the
+  reference scan decides what is the module's own (`_declares`) — the direction that can only
+  hide a reference, and needs a local spelled like the alias.
 """
 
 from __future__ import annotations

@@ -385,9 +385,49 @@ def test_javascript_entity_parity_counts_a_class_style_model(source: str) -> Non
 
 @pytest.mark.parametrize(
     "source",
-    ["Sentry.init({ dsn: 1 });", "Chart.init({ el: '#c' });", "app.init({ DataTypes: 1 });"],
+    [
+        "Sentry.init({ dsn: 1 });",
+        "Chart.init({ el: '#c' });",
+        "app.init({ DataTypes: 1 });",
+        "Sentry.init({ dsn: 1 });\nconst column = DataTypes.STRING;",
+    ],
 )
 def test_javascript_entity_parity_ignores_an_init_without_a_type(source: str) -> None:
     from orchestrator.pkg.verify import _ENTITY_SYNTAX
 
     assert not _ENTITY_SYNTAX["javascript"].findall(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param(
+            "User.init({ meta: { a: 1 }, name: DataTypes.STRING }, { sequelize });", id="nested-object-first"
+        ),
+        pytest.param(
+            "User.init({ id: { validate: { min: 1 }, type: DataTypes.INTEGER } });", id="validate-before-type"
+        ),
+        pytest.param(
+            "class User extends Model {\n  static init(s) {\n"
+            "    return super.init({ name: DataTypes.STRING }, { sequelize: s });\n  }\n}",
+            id="v5-super-init",
+        ),
+    ],
+)
+def test_javascript_entity_parity_reads_the_whole_attribute_object(source: str) -> None:
+    """ORM N3: the type may follow a nested object; a v5 model calls `super.init`."""
+    from orchestrator.pkg.verify import _ENTITY_SYNTAX
+
+    assert len(_ENTITY_SYNTAX["javascript"].findall(source)) == 1
+
+
+def test_javascript_entity_parity_is_linear_on_adversarial_input() -> None:
+    """ORM N3: the regex it replaced took 68 s on this 400 KB input (5 s at 100 KB)."""
+    import time
+
+    from orchestrator.pkg.verify import _ENTITY_SYNTAX
+
+    source = ("A.init({ " * 45_000)[:400_000]
+    started = time.perf_counter()
+    assert not _ENTITY_SYNTAX["javascript"].findall(source)
+    assert time.perf_counter() - started < 2.0

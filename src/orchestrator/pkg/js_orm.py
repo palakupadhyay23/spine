@@ -44,6 +44,21 @@ sequelize-cli's generated models (``module.exports = (sequelize, DataTypes) => �
 v7, the column-level ``references: {model: …}`` form, and a *renamed* CommonJS destructure of
 the package (``const { Model: Base } = require('sequelize')``) — the front-end binds no local for
 a renamed key, so its base is unseen, where the ESM ``import { Model as Base }`` is read.
+
+Also declared, each measured and left as it is:
+
+- **The receiver of ``define`` is not checked**, and neither is every link of a type chain:
+  ``customElements.define('x-el', { a: DataTypes.STRING })`` mints an entity, and so does a
+  chain that reaches no type, such as ``Sequelize.Op.STRING``. Telling the connection from
+  another receiver needs receiver tracking this front-end does not have; neither shape is
+  realistic in a column position.
+- **A type imported by name marks nothing.** After ``const { STRING } = require('sequelize')``,
+  ``STRING(64)`` is no ``DataTypes.`` chain, so a model typed only that way is missed: a
+  recall gap.
+- **An import that does not match what the module exports can still invent**, in consumer
+  code that is itself broken: a whole-module ``const Booking = require('./b')`` of a module
+  exporting ``{ Booking }`` takes the module's one model, and an ESM ``import { Post }`` from
+  a file exporting only ``{ Post as Article }`` falls back to the model named ``post``.
 """
 
 from __future__ import annotations
