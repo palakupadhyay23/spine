@@ -172,9 +172,6 @@ def test_out_says_the_plan_it_writes_cannot_be_built(command: str, checkout: Pat
     assert "--out is deprecated" in said and "cannot be built" in said
 
 
-@pytest.mark.xfail(
-    strict=True, reason="B18: the gate re-derives the plan without the issue type it was planned with"
-)
 def test_a_bug_that_lands_nowhere_keeps_its_approval(checkout: Path, tmp_path: Path) -> None:
     """Typed `Bug`, §12's validity row reads UNLOCALIZED; re-derived untyped it reads PROCEED.
 
@@ -230,3 +227,16 @@ def test_a_spec_and_a_ticket_that_disagree_are_planned_as_the_spec_and_said_so(
     assert fetched == ["PROJ-43"]
     assert "WARNING" in result.output and "PROJ-42" in result.output and "PROJ-43" in result.output
     assert (checkout / ".spine" / "plans" / "PROJ-42-build.md").is_file()
+
+
+def test_an_approval_written_before_it_carried_a_type_still_loads_and_holds(
+    checkout: Path, tmp_path: Path
+) -> None:
+    """Approval JSON on disk today has no `issue_type`: it must load, and re-derive untyped as before."""
+    spec_file = _spec_file(tmp_path)
+    _plan_and_approve(CliRunner(), spec_file, checkout)
+    approval = checkout / ".spine" / "plans" / "PROJ-42-approval.json"
+    payload = json.loads(approval.read_text(encoding="utf-8"))
+    assert payload.pop("issue_type") == ""
+    approval.write_text(json.dumps(payload), encoding="utf-8")
+    assert _gate(spec_file, checkout) == "PASSED: reviewer"

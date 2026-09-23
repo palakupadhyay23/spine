@@ -525,6 +525,7 @@ def sdlc_approve(
         derived_at,
         plan_digest,
         plan_dir,
+        planned_issue_type,
         save_approval,
     )
 
@@ -554,6 +555,7 @@ def sdlc_approve(
         digest=plan_digest(document),
         commit=derived_at(path),
         note=note,
+        issue_type=planned_issue_type(document),
     )
     written = save_approval(approval, root=path, out=out)
     typer.echo(f"[plan] {approval.decision.lower()} by {who} — {written}")

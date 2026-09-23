@@ -146,6 +146,11 @@ class PlanApproval:
     digest: str  # of the document body that was read
     commit: str  # what it was derived at
     note: str = ""
+    # The issue type the approved document was derived with, read off its header. An *input* to
+    # the gate's re-derivation, not a decision: the type changes §12's validity row, so a gate
+    # re-deriving untyped refused every approved Bug that landed nowhere (ledger B18). Empty for
+    # approvals written before it existed — which re-derive untyped, exactly as they always did.
+    issue_type: str = ""
 
 
 def plan_digest(document: str) -> str:
@@ -1519,6 +1524,8 @@ async def require_approved_plan(
             # The ticket text is an input to section 8, so it has to be re-read here or the
             # re-derivation is of a different document than the one a human approved.
             source_text=load_source_text(intent, root=root),
+            # Likewise the issue type: it decides §12's validity row.
+            issue_type=approval.issue_type,
         )
     )
     if current != approval.digest:
