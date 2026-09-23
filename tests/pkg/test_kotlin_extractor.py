@@ -281,6 +281,76 @@ def test_imported_supertype_resolves_through_the_import(tmp_path: Path) -> None:
     assert ("java:com.shop.ui.Screen", "java:androidx.lifecycle.ViewModel") in implements
 
 
+# ---- #396: a same-file single-line body collapses the parse, not IMPLEMENTS -----
+
+
+def test_a_same_line_interface_body_no_longer_loses_the_whole_file(tmp_path: Path) -> None:
+    """#396 as filed: `interface Iface { fun f() }` immediately followed by another
+
+    single-line declaration in the same file. The bug wasn't in `IMPLEMENTS`
+    resolution (same-file vs. cross-file makes no difference to `_resolve_type`) —
+    it was that this exact shape is a `tree-sitter-kotlin` 1.1.0 scanner ambiguity
+    that swallows the *entire rest of the file* into one `ERROR` node, losing every
+    declaration in it, not just the `IMPLEMENTS` edge. `_recover_collapsed_parse`
+    detects the collapse and splits the pathological body onto two lines before
+    re-parsing.
+    """
+    batch = _facts(
+        tmp_path,
+        "package app\ninterface Iface { fun f() }\nclass C : Iface { override fun f() {} }\n",
+        "All.kt",
+    )
+    ids = {n.id for n in batch.nodes}
+    assert {"java:app.Iface", "java:app.Iface.f", "java:app.C", "java:app.C.f"} <= ids
+    assert ("java:app.C", "java:app.Iface") in _edges(batch, EdgeKind.IMPLEMENTS)
+
+
+def test_the_recovered_parse_reports_original_line_numbers(tmp_path: Path) -> None:
+    """Splitting a line to unblock the parser must not corrupt provenance — a reader
+
+    following `file:line` needs to land on the declaration in the *actual* file on
+    disk, not in a buffer that only ever existed in memory.
+    """
+    batch = _facts(
+        tmp_path,
+        "package app\ninterface Iface { fun f() }\nclass C : Iface { override fun f() {} }\n",
+        "All.kt",
+    )
+    by_id = {n.id: n for n in batch.nodes}
+    assert by_id["java:app.Iface"].provenance is not None
+    assert by_id["java:app.Iface"].provenance.line == 2
+    assert by_id["java:app.C"].provenance is not None
+    assert by_id["java:app.C"].provenance.line == 3
+
+
+def test_a_normally_parsing_file_takes_no_recovery_path(tmp_path: Path) -> None:
+    """The recovery attempt only runs when the initial parse already has an `ERROR` —
+
+    idiomatic, multi-line Kotlin (the overwhelming majority of real source) is
+    completely untouched, same file bytes, same tree, same line numbers as always.
+    """
+    src = (
+        "package app\n\ninterface Iface {\n    fun f()\n}\n\nclass C : Iface {\n    override fun f() {}\n}\n"
+    )
+    batch = _facts(tmp_path, src, "All.kt")
+    assert ("java:app.C", "java:app.Iface") in _edges(batch, EdgeKind.IMPLEMENTS)
+    by_id = {n.id: n for n in batch.nodes}
+    assert by_id["java:app.Iface"].provenance is not None
+    assert by_id["java:app.Iface"].provenance.line == 3
+    assert by_id["java:app.C"].provenance is not None
+    assert by_id["java:app.C"].provenance.line == 7
+
+
+def test_an_unrecoverable_parse_error_still_degrades_to_nothing_not_a_crash(tmp_path: Path) -> None:
+    """A genuine syntax error (not this one specific ambiguity) must not raise —
+
+    recovery gives up cleanly and extraction proceeds exactly as it did before this
+    fix existed: the module node, nothing else.
+    """
+    batch = _facts(tmp_path, "package app\nclass C {{{{ not valid kotlin ]][[\n", "Broken.kt")
+    assert {n.id for n in batch.nodes} == {"java:app"}
+
+
 # ---- suffixes and the .kts exclusion ----------------------------------------
 
 

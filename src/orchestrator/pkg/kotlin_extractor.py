@@ -335,6 +335,12 @@ class KotlinExtractor:
         parser = _kotlin_parser()
         source = path.read_bytes()
         tree = parser.parse(source)
+        line_remap: list[int] | None = None
+        if _has_error(tree.root_node):
+            recovered = _recover_collapsed_parse(source, parser)
+            if recovered is not None:
+                source, line_remap = recovered
+                tree = parser.parse(source)
         batch = FactBatch()
         module_id = f"java:{module}" if module else "java:<root>"
         batch.add_node(Node(module_id, NodeKind.MODULE, module or rel, _LANG, Provenance(rel, 1)))
@@ -376,6 +382,7 @@ class KotlinExtractor:
             # Field belongs to a Type (D6).
 
         # Pass 2 — calls, once every id in the file is known (D8, §3.2).
+        deferred_before = len(self._deferred)
         for pend in ctx.pending:
             self._calls(pend, ctx, source, rel, batch)
             scan_nav_calls(
@@ -399,6 +406,13 @@ class KotlinExtractor:
                 imports=ctx.imports.by_simple,
                 wildcard_prefixes=frozenset(ctx.imports.wildcard_prefixes),
             )
+        if line_remap is not None:
+            batch = _remap_batch_lines(batch, rel, line_remap)
+            for i in range(deferred_before, len(self._deferred)):
+                call = self._deferred[i]
+                if call.provenance.file == rel:
+                    remapped_line = line_remap[call.provenance.line - 1]
+                    self._deferred[i] = replace(call, provenance=replace(call.provenance, line=remapped_line))
         return batch
 
     # ---- declarations -------------------------------------------------------
@@ -1612,6 +1626,163 @@ def _text(node: TSNode | None, source: bytes) -> str:
     if node is None:
         return ""
     return source[node.start_byte : node.end_byte].decode("utf-8", "replace").strip()
+
+
+def _remap_batch_lines(batch: FactBatch, rel: str, line_remap: list[int]) -> FactBatch:
+    """Rewrite every fact's line number from ``_recover_collapsed_parse``'s modified
+
+    source back to the original file's — the source on disk, not the one actually
+    parsed, is what a reader opens at that line.
+    """
+
+    def remap(p: Provenance | None) -> Provenance | None:
+        if p is None or p.file != rel:
+            return p
+        return replace(
+            p,
+            line=line_remap[p.line - 1],
+            end_line=line_remap[p.end_line - 1] if p.end_line is not None else None,
+        )
+
+    out = FactBatch()
+    for node in batch.nodes:
+        out.add_node(replace(node, provenance=remap(node.provenance)))
+    for edge in batch.edges:
+        out.add_edge(replace(edge, provenance=remap(edge.provenance)))
+    return out
+
+
+def _has_error(node: TSNode) -> bool:
+    """Whether ``node`` or any descendant is a parse ``ERROR``."""
+    if node.type == "ERROR":
+        return True
+    return any(_has_error(c) for c in node.children)
+
+
+def _error_span(node: TSNode) -> int:
+    """Total bytes covered by every ``ERROR`` node under ``node`` — a size for
+
+    "did the last edit help", not a byte-exact measure (overlapping spans from
+    a nested ``ERROR`` are double-counted, which never matters here: recovery
+    only compares this number to its own previous value on the same tree shape).
+    """
+    total = node.end_byte - node.start_byte if node.type == "ERROR" else 0
+    for c in node.children:
+        total += _error_span(c)
+    return total
+
+
+def _same_line_brace_pairs(source: bytes) -> list[tuple[int, int]]:
+    """Byte offsets of every ``{ … }`` pair that opens and closes on one source line.
+
+    A hand-rolled scanner, not a second parser: it only needs to not be fooled by a
+    brace inside a string, char literal or comment, tracked with a plain nesting
+    stack. Kotlin's own triple-quoted `\"\"\"…\"\"\"` strings are skipped as a run
+    delimited by three quote bytes, so a `{` inside one is never treated as
+    structure either.
+    """
+    pairs: list[tuple[int, int]] = []
+    stack: list[tuple[int, int]] = []  # (byte offset, line) of each open '{'
+    line = 1
+    i = 0
+    n = len(source)
+    while i < n:
+        c = source[i]
+        if c == 0x0A:  # \n
+            line += 1
+            i += 1
+        elif source[i : i + 3] == b'"""':
+            i += 3
+            end = source.find(b'"""', i)
+            span = source[i : end if end != -1 else n]
+            line += span.count(b"\n")
+            i = (end + 3) if end != -1 else n
+        elif c in (0x22, 0x27):  # " or '
+            quote = c
+            i += 1
+            while i < n and source[i] != quote:
+                if source[i] == 0x5C:  # backslash escape
+                    i += 1
+                elif source[i] == 0x0A:
+                    line += 1
+                i += 1
+            i += 1
+        elif source[i : i + 2] == b"//":
+            nl = source.find(b"\n", i)
+            i = nl if nl != -1 else n
+        elif source[i : i + 2] == b"/*":
+            end = source.find(b"*/", i + 2)
+            span = source[i : end if end != -1 else n]
+            line += span.count(b"\n")
+            i = (end + 2) if end != -1 else n
+        elif c == 0x7B:  # {
+            stack.append((i, line))
+            i += 1
+        elif c == 0x7D:  # }
+            if stack:
+                open_off, open_line = stack.pop()
+                if open_line == line:
+                    pairs.append((open_off, i))
+            i += 1
+        else:
+            i += 1
+    return pairs
+
+
+def _recover_collapsed_parse(source: bytes, parser: Any) -> tuple[bytes, list[int]] | None:
+    """Best-effort recovery from a ``tree-sitter-kotlin`` 1.1.0 scanner ambiguity.
+
+    A single-line class/interface body whose last member is a function with no
+    explicit return type — ``interface Iface { fun f() }`` — can be misread as an
+    ``enum_class_body`` opening, and the ``ERROR`` recovery that follows swallows
+    every declaration for the rest of the file, not just this one (found reviewing
+    #396, filed as a same-file ``IMPLEMENTS`` defect that turned out not to exist —
+    this is the real mechanism behind the observation). Splitting such a body onto
+    two lines is enough to unblock the scanner.
+
+    Runs only when the initial parse already contains an ``ERROR`` — a file that
+    parses cleanly today takes none of this path and is entirely unaffected. Each
+    candidate split is accepted only when it strictly shrinks the tree's total
+    ``ERROR`` span, so a change that does not help (or fools the scanner some other
+    way) is reverted rather than kept on faith. Returns ``None`` when nothing
+    triggers or nothing helps, in which case the caller keeps the original,
+    unmodified source and its exact line numbers.
+    """
+    tree = parser.parse(source)
+    if not _has_error(tree.root_node):
+        return None
+    working = source
+    # `remap[i]` is the 1-based original line for 1-based modified line `i + 1`.
+    # A split duplicates one entry — both halves of the broken line point at the
+    # original line it came from, which is always the right line or the one
+    # immediately before it.
+    remap = list(range(1, working.count(b"\n") + 2))
+    best_span = _error_span(tree.root_node)
+    for _ in range(20):
+        pairs = _same_line_brace_pairs(working)
+        if not pairs:
+            break
+        improved = False
+        for _open_off, close_off in pairs:
+            candidate = working[:close_off] + b"\n" + working[close_off:]
+            candidate_tree = parser.parse(candidate)
+            span = _error_span(candidate_tree.root_node)
+            if span < best_span:
+                line_idx = working[:close_off].count(b"\n")  # 0-based line of the split
+                remap = remap[: line_idx + 1] + [remap[line_idx]] + remap[line_idx + 1 :]
+                working = candidate
+                best_span = span
+                improved = True
+                break
+        if not improved:
+            break
+        if best_span == 0:
+            break
+    if working == source or best_span != 0:
+        # Either nothing changed, or every candidate is exhausted and an `ERROR`
+        # remains — recovery is only trusted on a fully clean result.
+        return None
+    return working, remap
 
 
 def _kotlin_parser() -> Any:
