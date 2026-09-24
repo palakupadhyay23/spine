@@ -28,6 +28,32 @@ All notable changes to this project are documented here. Format loosely follows
   caller's own package now resolves with no import, as Kotlin does. It resolves only when the
   receiver in scope is compatible and no supertype the repository cannot see (or `Any`) could
   declare a member of that name, because a member beats an extension.
+- **A call through a Python re-export lands on the symbol that defines it.** `from app import
+  Store; Store()` put the edge on an external placeholder, `py:app.Store`, instead of
+  `py:app.store.Store` — so `blast_radius`, `explain_symbol`, `investigate` and grounding
+  under-counted the callers of every re-exported symbol and called it third-party. On Spine's own
+  graph that was 1,271 `CALLS` (5.5%) on 141 phantom twins: `FactStore` showed 57 call sites of
+  167. Resolution follows Python's binding rules — a package `__init__` or any module, renames
+  (`as`), chains through sub-packages, `import *` (a literal `__all__`, else public names),
+  `if TYPE_CHECKING:`, and members of a re-exported class. An import through a re-export now
+  names the defining symbol too, as a direct import always did. A binding that differs by
+  environment (`try`/`except ImportError`) or comes from a module `__getattr__` is never guessed.
+  **Upgrade note:** Python graphs change wherever a repository re-exports — more callers, and
+  `IMPORTS` that name a symbol instead of its package. Two consumers of the import graph move
+  with it: `pkg export`'s SQLite `imports` table (module → module only) loses the rows that now
+  name a symbol (110 on Spine's own graph), and the dependency lists on `understand`'s module
+  pages shift from the package to the defining module (104 pairs out, 162 in on Spine; import
+  cycles unchanged). An `understand --check` in CI therefore diffs once — regenerate `episteme/`
+  with `orchestrator understand .`. `import a.b` now binds `a` (the package) for call
+  resolution, as Python does; it used to bind `a.b`.
+
+### Added
+
+- **`pkg verify` warns on a `phantom-symbol`**: an external node that carries calls while a
+  first-party symbol of the same name lives under the same path — an unresolved re-export or
+  alias, whose callers are missing from the real symbol. It is the check that would have caught
+  the fix above (141 on the pre-fix graph, with `pkg verify` otherwise OK). A warning, never an
+  error; what it still finds is a binding no front-end can decide.
 
 ## 3.45.0 — 2026-09-24
 
