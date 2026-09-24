@@ -19,8 +19,13 @@ All notable changes to this project are documented here. Format loosely follows
   names the defining symbol too, as a direct import always did. A binding that differs by
   environment (`try`/`except ImportError`) or comes from a module `__getattr__` is never guessed.
   **Upgrade note:** Python graphs change wherever a repository re-exports — more callers, and
-  `IMPORTS` that name a symbol instead of its package — so an `understand --check` in CI diffs
-  once; regenerate `episteme/` with `orchestrator understand .`.
+  `IMPORTS` that name a symbol instead of its package. Two consumers of the import graph move
+  with it: `pkg export`'s SQLite `imports` table (module → module only) loses the rows that now
+  name a symbol (110 on Spine's own graph), and the dependency lists on `understand`'s module
+  pages shift from the package to the defining module (104 pairs out, 162 in on Spine; import
+  cycles unchanged). An `understand --check` in CI therefore diffs once — regenerate `episteme/`
+  with `orchestrator understand .`. `import a.b` now binds `a` (the package) for call
+  resolution, as Python does; it used to bind `a.b`.
 
 ### Added
 
