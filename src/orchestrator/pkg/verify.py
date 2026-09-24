@@ -28,10 +28,13 @@ Checks, cheapest first:
   path: ``py:app.Store`` beside a real ``py:app.store.Store``. That is an unresolved
   re-export or alias, and every edge on it is missing from the real symbol's callers —
   1,271 ``CALLS`` on this repository before Python re-exports were resolved (B20), with
-  this check reporting OK. Language-agnostic. The same-path rule is what keeps a
-  deliberately external call (a Kotlin extension that collides with an unrelated
-  first-party function) out of it; what remains is a binding the front-end could not
-  decide — Python's ``try``/``except ImportError`` pair, a PEP 562 ``__getattr__``.
+  this check reporting OK. It is written against no language, but it can only fire where
+  ids nest a symbol under its module path (Python, the JVM languages, PHP, C++); TS/JS,
+  Go, C and C# ids do not nest that way. The twin must be *module-level* and the edge
+  must not be ``CONTAINS`` — that keeps a same-named method, and a deliberately
+  external call (a Kotlin extension colliding with an unrelated first-party function),
+  out of it. What remains is a binding a front-end could not decide: Python's
+  ``try``/``except ImportError`` pair, a PEP 562 ``__getattr__``.
 - **source-parity** (warning) — the source plainly declares something the graph
   holds no node of. Every other check asks whether the graph is self-consistent;
   this is the only one that asks whether it is *complete with respect to the
@@ -182,15 +185,26 @@ _LEAF = re.compile(r"(::|\.)([^.:/]+)$")
 
 
 def _check_phantom_symbols(batch: FactBatch) -> list[VerifyIssue]:
+    nodes = {n.id: n for n in batch.nodes}
+    # A re-export can only bind what a module binds, so a twin must be module-level: a method
+    # or nested member of the same name (`py:app.worker.Worker.run` beside `py:app.run`) is not
+    # what the external node was meant to be.
+    module_level = {
+        e.dst
+        for e in batch.edges
+        if e.kind is EdgeKind.CONTAINS
+        and nodes.get(e.src) is not None
+        and nodes[e.src].kind is NodeKind.MODULE
+    }
     by_leaf: dict[str, list[str]] = {}
     for node in batch.nodes:
-        if node.grounded and node.kind in (NodeKind.TYPE, NodeKind.FUNCTION):
+        if node.grounded and node.kind in (NodeKind.TYPE, NodeKind.FUNCTION) and node.id in module_level:
             match = _LEAF.search(node.id)
             if match:
                 by_leaf.setdefault(match.group(2), []).append(node.id)
     carried: dict[str, int] = {}
     for edge in batch.edges:
-        if edge.kind is not EdgeKind.IMPORTS:
+        if edge.kind not in (EdgeKind.IMPORTS, EdgeKind.CONTAINS):
             carried[edge.dst] = carried.get(edge.dst, 0) + 1
     phantoms: list[tuple[int, str, str]] = []
     for node in batch.nodes:

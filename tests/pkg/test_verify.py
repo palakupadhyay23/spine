@@ -442,6 +442,9 @@ def _phantom_batch(external_id: str, real_id: str, kind: EdgeKind = EdgeKind.CAL
     batch.add_node(Node("py:client", NodeKind.MODULE, "client", "python", Provenance("client.py", 1)))
     batch.add_node(Node("py:client.go", NodeKind.FUNCTION, "go", "python", Provenance("client.py", 2)))
     batch.add_node(Node(real_id, NodeKind.TYPE, real_id.rsplit(".", 1)[-1], "python", Provenance("x.py", 1)))
+    owner = real_id.rsplit(".", 1)[0]  # the real symbol is module-level: its module contains it
+    batch.add_node(Node(owner, NodeKind.MODULE, owner, "python", Provenance("x.py", 1)))
+    batch.add_edge(Edge(owner, real_id, EdgeKind.CONTAINS))
     batch.add_node(
         Node(external_id, NodeKind.FUNCTION, external_id.rsplit(".", 1)[-1], "python", external=True)
     )
@@ -488,3 +491,20 @@ def test_an_undecidable_reexport_is_counted_end_to_end(tmp_path: Path) -> None:
     )
     (message,) = _phantom_symbol(RepoCodeExtractor().extract(tmp_path), tmp_path)
     assert message.startswith("1 external node(s)") and "py:lib.compute (vs py:lib.fast.compute" in message
+
+
+def test_a_same_named_method_is_not_a_twin(tmp_path: Path) -> None:
+    # `py:app.run` (an assigned name the resolver refused) beside a method `Worker.run`: a
+    # re-export binds a module-level name, so a member is never the symbol it was meant to be.
+    batch = FactBatch()
+    batch.add_node(Node("py:client.go", NodeKind.FUNCTION, "go", "python", Provenance("client.py", 1)))
+    batch.add_node(Node("py:app.worker", NodeKind.MODULE, "app.worker", "python", Provenance("w.py", 1)))
+    batch.add_node(Node("py:app.worker.Worker", NodeKind.TYPE, "Worker", "python", Provenance("w.py", 1)))
+    batch.add_node(
+        Node("py:app.worker.Worker.run", NodeKind.FUNCTION, "run", "python", Provenance("w.py", 2))
+    )
+    batch.add_edge(Edge("py:app.worker", "py:app.worker.Worker", EdgeKind.CONTAINS))
+    batch.add_edge(Edge("py:app.worker.Worker", "py:app.worker.Worker.run", EdgeKind.CONTAINS))
+    batch.add_node(Node("py:app.run", NodeKind.FUNCTION, "run", "python", external=True))
+    batch.add_edge(Edge("py:client.go", "py:app.run", EdgeKind.CALLS))
+    assert _phantom_symbol(batch, tmp_path) == []
