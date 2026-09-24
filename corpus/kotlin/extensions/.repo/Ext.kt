@@ -11,6 +11,7 @@ class Formatter {
         slug.tidy()
         slug.trim()
         slug.condense()
+        slug.toString()
         shorten(slug)
     }
 

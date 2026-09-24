@@ -51,4 +51,9 @@ interface TopicDao {
 
     @Insert
     fun insertWild(dto: WildEntity)
+
+    @Insert
+    fun insertDto(dto: WildDto)
 }
+
+data class WildDto(val id: String)

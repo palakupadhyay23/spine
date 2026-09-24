@@ -73,14 +73,11 @@ class JavaExtractor:
     def module_name(self, path: Path, root: Path) -> str:
         # Java's module is the package declaration, which lives in the file
         # (not the path); fall back to the repo-relative path when unpackaged.
-        # `.java` is stripped the way Python's own no-package fallback strips
-        # `.py` — a module id is not a file id, and keeping the extension leaked
-        # that.
         try:
             m = _PACKAGE_RE.search(path.read_text(encoding="utf-8"))
         except OSError:
             m = None
-        return m.group(1) if m else rel_module_name(path, root).removesuffix(".java")
+        return m.group(1) if m else rel_module_name(path, root)
 
     def extract(self, *, path: Path, module: str, rel: str) -> FactBatch:
         parser = _java_parser()

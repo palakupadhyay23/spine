@@ -532,3 +532,103 @@ interface Writer {
         },
     )
     assert not [e for e in batch.edges if e.kind is EdgeKind.WRITES]
+
+
+def _writes(batch: FactBatch) -> set[tuple[str, str]]:
+    return {(e.src, e.dst) for e in batch.edges if e.kind is EdgeKind.WRITES}
+
+
+_ENTITY_IN = """\
+package {pkg}
+
+import androidx.room.Entity
+
+@Entity
+class {name}(val id: String)
+"""
+
+_DAO = """\
+package app.db
+
+import androidx.room.Dao
+import androidx.room.Insert
+{imports}
+
+{decls}
+
+@Dao
+interface Writer {{
+{methods}
+}}
+"""
+
+
+def test_a_same_package_plain_class_hides_a_wildcard_imported_entity(tmp_path: Path) -> None:
+    """Kotlin resolves a simple name through the same package before any star
+    import, so `t: Topic` is the plain `app.db.Topic` — not the `@Entity` that
+    `import app.w.*` also offers. Treating the two as peers invented a `WRITES`."""
+    batch = _repo(
+        tmp_path,
+        {
+            "w/Topic.kt": _ENTITY_IN.format(pkg="app.w", name="Topic"),
+            "db/Dao.kt": _DAO.format(
+                imports="import app.w.*",
+                decls="data class Topic(val id: String)",
+                methods="    @Insert\n    fun insert(t: Topic)",
+            ),
+        },
+    )
+    assert not _writes(batch)
+
+
+def test_a_same_package_entity_wins_over_a_wildcard_imported_one(tmp_path: Path) -> None:
+    batch = _repo(
+        tmp_path,
+        {
+            "w/Topic.kt": _ENTITY_IN.format(pkg="app.w", name="TopicEntity"),
+            "db/Entity.kt": _ENTITY_IN.format(pkg="app.db", name="TopicEntity"),
+            "db/Dao.kt": _DAO.format(
+                imports="import app.w.*", decls="", methods="    @Insert\n    fun insert(t: TopicEntity)"
+            ),
+        },
+    )
+    assert _writes(batch) == {("java:app.db.Writer.insert", "java:entity:app.db.TopicEntity")}
+
+
+def test_overloaded_write_methods_each_keep_their_entity(tmp_path: Path) -> None:
+    """Overloads share one function id; settling them together made two grounded
+    entities look like one ambiguous parameter, and both edges were dropped."""
+    batch = _repo(
+        tmp_path,
+        {
+            "db/Entities.kt": _ENTITY_IN.format(pkg="app.db", name="TopicEntity")
+            + "\n@Entity\nclass NewsEntity(val id: String)\n",
+            "db/Dao.kt": _DAO.format(
+                imports="",
+                decls="",
+                methods=(
+                    "    @Insert\n    fun insert(t: TopicEntity)\n    @Insert\n    fun insert(n: NewsEntity)"
+                ),
+            ),
+        },
+    )
+    assert _writes(batch) == {
+        ("java:app.db.Writer.insert", "java:entity:app.db.TopicEntity"),
+        ("java:app.db.Writer.insert", "java:entity:app.db.NewsEntity"),
+    }
+
+
+def test_a_qualified_parameter_type_resolves_as_written(tmp_path: Path) -> None:
+    """`app.data.TopicEntity` names that class, even in a package declaring its own
+    `TopicEntity` — resolving the simple name wrote to the wrong entity."""
+    batch = _repo(
+        tmp_path,
+        {
+            "data/Topic.kt": _ENTITY_IN.format(pkg="app.data", name="TopicEntity"),
+            "db/Entity.kt": _ENTITY_IN.format(pkg="app.db", name="TopicEntity"),
+            "db/Dao.kt": _DAO.format(
+                imports="", decls="", methods="    @Insert\n    fun insert(t: app.data.TopicEntity)"
+            ),
+        },
+    )
+    assert _writes(batch) == {("java:app.db.Writer.insert", "java:entity:app.data.TopicEntity")}
