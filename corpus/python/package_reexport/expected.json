@@ -352,5 +352,5 @@
     "No package->submodule CONTAINS: the graph does not model package nesting (see python/relative_imports)."
   ],
   "open_questions": [],
-  "note": "Labelled from the source before the fix ran (P1 of ~/plans/python-reexport-resolution-roadmap.md); every CALLS, IMPLEMENTS and symbol-level IMPORTS edge failed on the base commit."
+  "note": "Labelled from the source before the fix ran. On the base commit 17 of its 44 labelled edges failed: all 9 CALLS, the IMPLEMENTS, and the 7 IMPORTS that name a re-exported symbol."
 }

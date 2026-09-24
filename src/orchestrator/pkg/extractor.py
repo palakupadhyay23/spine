@@ -297,7 +297,10 @@ class PythonExtractor:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for a in node.names:
-                    binds[a.asname or a.name.split(".")[0]] = f"py:{a.name}"
+                    # `import a.b` binds `a` — the package — not `a.b`: `a.run()` is `a`'s `run`.
+                    # `import a.b as c` binds `c` to `a.b`.
+                    top = a.name.split(".")[0]
+                    binds[a.asname or top] = f"py:{a.name if a.asname else top}"
             elif isinstance(node, ast.ImportFrom):
                 base = self._import_base(node)
                 for a in node.names:
