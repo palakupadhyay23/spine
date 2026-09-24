@@ -512,21 +512,6 @@ async def _fetch_ticket_documents(source: str, *, follow_links: bool = False) ->
     return documents, fetched.linked_pages
 
 
-def _warn_out_deprecated() -> None:
-    """`plan`/`approve --out` wrote where the plan gate never reads (ledger B17).
-
-    `require_approved_plan` looks only in `<repo>/.spine/plans`, so an approval written anywhere
-    else is refused as missing at build time, silently until then. Warned for one release rather
-    than removed, so a script using it gets notice; removal is ledger row N11. `autorun --out` is a
-    different option (the run's artifacts) and is not affected.
-    """
-    typer.echo(
-        "WARNING: --out is deprecated and will be removed in 3.45: a plan outside "
-        "<repo>/.spine/plans cannot be built — `sdlc autorun` only reads approvals there.",
-        err=True,
-    )
-
-
 @sdlc_app.command("approve")
 def sdlc_approve(
     intent: Annotated[str, typer.Argument(help="Intent id whose plan you are deciding, e.g. PROJ-123.")],
@@ -538,14 +523,6 @@ def sdlc_approve(
     reject: Annotated[
         bool, typer.Option("--reject", help="Record a rejection instead of an approval.")
     ] = False,
-    out: Annotated[
-        Path | None,
-        typer.Option(
-            "--out",
-            help="Deprecated, removed in 3.45: an approval outside <repo>/.spine/plans is one "
-            "`sdlc autorun` never reads.",
-        ),
-    ] = None,
 ) -> None:
     """Record that a human read this build document and decided.
 
@@ -565,9 +542,9 @@ def sdlc_approve(
         save_approval,
     )
 
-    if out is not None:
-        _warn_out_deprecated()
-    plan_file = (Path(out) if out else plan_dir(path)) / f"{intent}-build.md"
+    # Always beside the code: `require_approved_plan` reads approvals only from here, so a plan
+    # anywhere else could never be built (ledger B17; `--out` went in 3.45, ledger N11).
+    plan_file = plan_dir(path) / f"{intent}-build.md"
     if not plan_file.is_file():
         typer.echo(
             f"No plan at {plan_file}. Produce one first: orchestrator sdlc plan --spec <file>",
@@ -593,7 +570,7 @@ def sdlc_approve(
         note=note,
         issue_type=planned_issue_type(document),
     )
-    written = save_approval(approval, root=path, out=out)
+    written = save_approval(approval, root=path)
     typer.echo(f"[plan] {approval.decision.lower()} by {who} — {written}")
     typer.echo("[plan] re-run `orchestrator sdlc plan` to see the status on the document itself.")
 
@@ -761,14 +738,6 @@ def sdlc_plan(
         str | None, typer.Option("--intent", help="Intent id to plan (default: the first).")
     ] = None,
     path: Annotated[str, typer.Option("--path", help="Repo to reason about (the graph).")] = ".",
-    out: Annotated[
-        Path | None,
-        typer.Option(
-            "--out",
-            help="Deprecated, removed in 3.45: a plan outside <repo>/.spine/plans cannot be built — "
-            "`sdlc autorun` reads approvals only there.",
-        ),
-    ] = None,
     language: Annotated[
         str, typer.Option("--language", help="Target language for the prompt (auto detects).")
     ] = "auto",
@@ -818,8 +787,6 @@ def sdlc_plan(
         typer.echo(f"ERROR: {lang_error}", err=True)
         raise typer.Exit(code=2)
 
-    if out is not None:
-        _warn_out_deprecated()
     if not spec and not source:
         typer.echo("Give --spec <file.json> or --source <uri>.", err=True)
         raise typer.Exit(code=2)
@@ -918,14 +885,14 @@ def sdlc_plan(
             linked_pages=linked or ("not followed — `--follow-links` reads them" if source else ""),
             # Rendered, never stored in the document: a plan that changed since it was
             # approved shows as stale rather than carrying an approval it outgrew.
-            approval=load_approval(intent_key, root=path, out=out),
+            approval=load_approval(intent_key, root=path),
             # What every run of this ticket did, appended beneath the plan. Regenerating
             # is what refreshes the view; the entries themselves are never rewritten.
-            journey=load_journey(intent_key, root=path, out=out),
+            journey=load_journey(intent_key, root=path),
         )
         # Beside the plan, so the approval gate's re-derivation sees the same section 8.
-        save_source_text(intent_key, source_text, root=path, out=out)
-        written, superseded = persist(document, intent_id=intent_key, root=path, out=out)
+        save_source_text(intent_key, source_text, root=path)
+        written, superseded = persist(document, intent_id=intent_key, root=path)
         if not quiet:
             typer.echo(document)
         typer.echo(f"[plan] {written}", err=True)

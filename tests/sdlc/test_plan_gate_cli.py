@@ -146,31 +146,18 @@ def test_a_spec_with_its_ticket_plans_from_the_spec_and_keeps_the_ticket_text(
 
 
 @pytest.mark.parametrize("command", ["plan", "approve"])
-def test_out_says_the_plan_it_writes_cannot_be_built(command: str, checkout: Path, tmp_path: Path) -> None:
-    runner = CliRunner()
-    elsewhere = tmp_path / "elsewhere"
-    spec_file = _spec_file(tmp_path)
-    planned = runner.invoke(
-        app,
-        [
-            "sdlc",
-            "plan",
-            "--spec",
-            str(spec_file),
-            "--path",
-            str(checkout),
-            "--out",
-            str(elsewhere),
-            "--quiet",
-        ],
+def test_a_plan_can_only_be_written_where_the_gate_reads_it(command: str, tmp_path: Path) -> None:
+    """Ledger B17 → N11: `--out` wrote plans and approvals where `require_approved_plan` never
+    looks. Deprecated in 3.44, removed in 3.45 — asking for it is now an error, not a plan that
+    can never be built."""
+    args = (
+        ["sdlc", "plan", "--spec", str(_spec_file(tmp_path))]
+        if command == "plan"
+        else ["sdlc", "approve", "PROJ-42"]
     )
-    assert planned.exit_code == 0, planned.output
-    approved = runner.invoke(
-        app, ["sdlc", "approve", "PROJ-42", "--path", str(checkout), "--by", "r", "--out", str(elsewhere)]
-    )
-    assert approved.exit_code == 0, approved.output
-    said = planned.output if command == "plan" else approved.output
-    assert "--out is deprecated" in said and "cannot be built" in said
+    result = CliRunner().invoke(app, [*args, "--out", str(tmp_path / "elsewhere")])
+    assert result.exit_code == 2
+    assert "No such option" in result.output and "--out" in result.output
 
 
 def test_a_bug_that_lands_nowhere_keeps_its_approval(checkout: Path, tmp_path: Path) -> None:
