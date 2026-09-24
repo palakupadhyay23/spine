@@ -21,21 +21,29 @@ All notable changes to this project are documented here. Format loosely follows
   description and comments (page-id URLs and `/x/` tiny links, decoded offline and kept only when
   re-encoding reproduces the link; a `/display/…` title URL is named, not guessed). Direct links
   only, at most 5, the rest named with why. The pages reach both the criteria check and the spec,
-  and the build document's header says what was read. Off by default; without Confluence access
+  and the build document's header says what was read. A Confluence-typed remote link to *another*
+  site is named, not read — a page id means a different page on a different site. Off by default;
+  without Confluence access
   (an MCP server exposing `confluence_get_page`, or `CONFLUENCE_*` credentials) it **refuses**
   rather than planning from less than was asked for. A spec derived with linked pages is its own
   intake-cache entry, beside the flag-off one in the same file.
-- **A Jira ticket reads the same over MCP as over REST.** Through `mcp-jira` it used to arrive
-  as the description only (said so since 3.44.0); it now carries comments, issue links and
-  attachment text, rendered by the same code — attachment bytes via mcp-atlassian's
-  `jira_download_attachments` (`MCP_JIRA_ATTACHMENTS_TOOL` to rename). A server that lacks the
-  tool, or refuses the request for those fields, gets the parts it cannot supply named with why.
+- **A Jira ticket carries every part over MCP that it does over REST.** Through `mcp-jira` it used
+  to arrive as the description only (said so since 3.44.0); it now carries comments, issue links
+  and attachment text, rendered by the same code — attachment bytes via mcp-atlassian's
+  `jira_download_attachments` (`MCP_JIRA_ATTACHMENTS_TOOL` to rename), extracted by the same
+  reader, so attachment text is identical. Formatted prose is not byte-identical: REST flattens
+  ADF to text, mcp-atlassian returns Markdown. What the server cannot supply is named with why —
+  a missing download tool, two attachments with one name (it cannot tell revisions apart), or a
+  server that rejects the fields request, which is then read as the description only. Any other
+  server error is an error, not a quietly thinner ticket.
 
 ### Fixed
 
-- **`sdlc plan` fails cleanly when the ticket cannot be read.** A missing file, an HTTP error or
-  an MCP refusal was a Python traceback; it is now `ERROR:` and exit 2. A source that returns no
-  documents is a warning instead of a plan quietly checked against nothing.
+- **A ticket that cannot be read is an error, not a traceback.** A missing file, an HTTP error or
+  an MCP failure was a Python traceback in `sdlc plan`, `investigate` and `autorun`'s intake; it
+  is now `ERROR:` and exit 2 — only for those named source failures, so a bug in Spine's own code
+  still shows its traceback. A source that returns no text (no documents, or blank ones) is a
+  warning instead of a plan quietly checked against nothing.
 
 ### Removed
 

@@ -618,7 +618,7 @@ async def _stage_intake(
 
     from orchestrator.core.env import load_local_env
     from orchestrator.intake.cache import analyze_cached
-    from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+    from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for, source_read_errors
     from orchestrator.intake.service import parse_source_uri
     from orchestrator.intake.ticket_meta import resolve_ticket_meta
 
@@ -638,6 +638,10 @@ async def _stage_intake(
     except IntakeNotConfiguredError as exc:
         ctx.record_stage("intake", "failed", str(exc))
         raise AutorunError(str(exc), code=2) from exc
+    except source_read_errors() as exc:
+        why = f"could not read {ctx.source} — {type(exc).__name__}: {exc}"
+        ctx.record_stage("intake", "failed", why)
+        raise AutorunError(why, code=2) from exc
     if not plan.specs:
         ctx.record_stage("intake", "failed", "no specs derived from the source")
         raise AutorunError("No specs derived from the source — nothing to implement.", code=3)

@@ -270,3 +270,21 @@ async def test_the_service_appends_linked_pages_after_the_ticket(monkeypatch: py
     followed = await service.fetch_source_documents("FIN-42", follow_links=True)
     assert [d.id for d in followed.documents] == ["FIN-42", "confluence:5"]
     assert followed.linked_pages == "followed — 1 read"
+
+
+def test_a_flag_off_plan_never_prunes_progress_a_variant_still_holds(tmp_path: Path) -> None:
+    """Review finding 1: intent ids come from the LLM's titles, so the plan with linked pages can
+    name its intent differently from the plan without. A flag-off save after a flag-on run kept
+    only its own ids — the PR recorded for the variant's intent vanished, and `complete_by_pr`
+    could no longer find it."""
+    followed = _plan("with linked pages")
+    followed.intents[0] = followed.intents[0].model_copy(update={"id": "intent-with-links"})
+    save_plan(_SOURCE, followed, tmp_path, variant=FOLLOW_LINKS)
+    set_progress(
+        _SOURCE, "intent-with-links", status="in_progress", pr_url="https://x/pr/2", cache_dir=tmp_path
+    )
+
+    save_plan(_SOURCE, _plan("ticket only"), tmp_path)  # a later plain `sdlc plan`, id "intent-x"
+
+    assert load_progress(_SOURCE, tmp_path)["intent-with-links"]["pr_url"] == "https://x/pr/2"
+    assert complete_by_pr("https://x/pr/2", cache_dir=tmp_path) is not None

@@ -327,9 +327,34 @@ def test_nested_rest_shape_still_parses() -> None:
 # ---- parity with comments, links and attachments (Track E, E3) ---------------------------------
 
 
+def _adf_para(text: str) -> dict[str, Any]:
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+    }
+
+
+# What mcp-atlassian returns for the same ticket: it reads Cloud through API v2 and converts wiki
+# markup to Markdown (source @ `0a5d242`, `jira/issues.py`), so formatted prose reads differently.
+_MCP_DESCRIPTION = "## Steps\n\nThe CSV export loses the currency column."
+_MCP_COMMENT_BODIES = ["Seen on EUR.", "Keep **ISO** codes."]
+
+
 _RICH_REST_FIELDS: dict[str, Any] = {
     "summary": "Orders export drops the currency column",
-    "description": "The CSV export loses the currency column since 4.2.",
+    # What Jira Cloud's v3 API returns: ADF, never a plain string.
+    "description": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {"type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Steps"}]},
+            {
+                "type": "paragraph",
+                "content": [{"type": "text", "text": "The CSV export loses the currency column."}],
+            },
+        ],
+    },
     "issuetype": {"name": "Bug"},
     "status": {"name": "To Do"},
     "priority": {"name": "High"},
@@ -347,12 +372,12 @@ _RICH_REST_FIELDS: dict[str, Any] = {
             {
                 "author": {"displayName": "Ana"},
                 "created": "2026-09-01T10:00:00.000+0000",
-                "body": "Seen on EUR.",
+                "body": _adf_para("Seen on EUR."),
             },
             {
                 "author": {"displayName": "Raj"},
                 "created": "2026-09-02T10:00:00.000+0000",
-                "body": "Keep ISO codes.",
+                "body": _adf_para("Keep ISO codes."),
             },
         ],
     },
@@ -369,11 +394,11 @@ _FILES = {
 
 
 def _flattened(fields: dict[str, Any]) -> dict[str, Any]:
-    """The same issue as mcp-atlassian v0.23.1 returns it: flattened, three parts renamed."""
+    """The same issue as mcp-atlassian v0.23.0+53 (`0a5d242`) returns it: flattened, three parts renamed."""
     return {
         "key": "FIN-42",
         "summary": fields["summary"],
-        "description": fields["description"],
+        "description": _MCP_DESCRIPTION,
         "issue_type": fields["issuetype"],
         "status": fields["status"],
         "priority": fields["priority"],
@@ -389,7 +414,7 @@ def _flattened(fields: dict[str, Any]) -> dict[str, Any]:
         "comments": [
             {
                 "id": str(i),
-                "body": c["body"],
+                "body": _MCP_COMMENT_BODIES[i],
                 "author": {"display_name": c["author"]["displayName"], "name": "x"},
                 "created": c["created"],
             }
@@ -472,19 +497,72 @@ async def _rest_document() -> Any:
         return await adapter.fetch_document("FIN-42")
 
 
-async def test_an_issue_with_comments_links_and_attachments_reads_the_same_over_mcp_and_rest() -> None:
-    """Track E, E3 — the parity the byte-for-byte test above promised, for a ticket that has the
-    parts the MCP path used to drop. Both views: what the extractor reads and what §8 checks."""
+async def test_an_issue_with_comments_links_and_attachments_carries_every_part_over_mcp_and_rest() -> None:
+    """Track E, E3 — and review finding 3, which corrected what "the same" can mean. Over MCP the
+    ticket carries every part REST does: the header, the description, the linked issues, each
+    comment, every attachment read and every one named. Prose is *not* byte-identical: REST
+    flattens v3 ADF to text, mcp-atlassian returns Markdown converted from wiki markup, and making
+    two upstream converters agree on every formatting rule is not a promise the code can keep.
+    Attachments are identical — both transports extract them with the same reader."""
     fake = _RichJira()
     mcp_doc = await _rich_adapter(fake).fetch_document("FIN-42")
     rest_doc = await _rest_document()
 
-    assert "Comments (2 of 2" in rest_doc.body and "blocks FIN-9" in rest_doc.body  # the fixture bites
-    assert "Attachments read in full (2):" in rest_doc.full_body
-    assert mcp_doc.body == rest_doc.body
-    assert mcp_doc.full_body == rest_doc.full_body
+    for doc in (mcp_doc, rest_doc):
+        body = doc.body
+        assert body.startswith("Bug · status: To Do · priority: High")
+        assert "Steps" in body and "The CSV export loses the currency column." in body
+        assert "- parent FIN-1 — Finance exports" in body and "- blocks FIN-9 — Quarter close" in body
+        assert "Comments (2 of 2, most recent first):" in body
+        assert "- Raj (2026-09-02):" in body and "- Ana (2026-09-01): Seen on EUR." in body
+        assert "screen.png (image, not read)" in body
+        assert "Attachments read in full (2):" in doc.full_body
+    assert "## Steps" in mcp_doc.body and "## Steps" not in rest_doc.body  # the declared difference
+
+    def attachments(text: str) -> str:
+        return text[text.index("Attachments read") :]
+
+    assert attachments(mcp_doc.body) == attachments(rest_doc.body)
+    assert attachments(mcp_doc.full_body) == attachments(rest_doc.full_body)
     assert [name for name, _ in fake.calls] == ["jira_get_issue", "jira_download_attachments"]
     assert fake.calls[0][1]["fields"].split(",")[-3:] == ["comment", "issuelinks", "attachment"]
+
+
+async def test_a_transient_error_is_a_failure_not_a_refusal() -> None:
+    """Review finding 4: a 429 read as "refused fields" and was retried bare — the server's
+    defaults then rendered as "Comments (10 of 10…)", completeness nobody had."""
+    from orchestrator.mcp.client import MCPError
+
+    class _Busy(_RichJira):
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
+            self.calls.append((name, arguments))
+            return MCPToolResult(text="HTTP 429 Too Many Requests", is_error=True)
+
+    fake = _Busy()
+    with pytest.raises(MCPError, match="429"):
+        await _rich_adapter(fake).fetch_document("FIN-42")
+    assert len(fake.calls) == 1  # no bare retry
+
+
+async def test_two_attachments_with_one_name_are_both_named_not_one_read() -> None:
+    """Review finding 3: mcp-atlassian gives no attachment id and downloads by name, so two
+    revisions of `spec.md` collapsed into one — the other neither read nor named."""
+    payload = _flattened(_RICH_REST_FIELDS)
+    payload["attachments"] = [
+        {"filename": "spec.md", "size": 10, "url": "https://x/1"},
+        {"filename": "spec.md", "size": 12, "url": "https://x/2"},
+    ]
+
+    class _Twice(_RichJira):
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
+            if name == "jira_get_issue":
+                self.calls.append((name, arguments))
+                return MCPToolResult(text=json.dumps(payload))
+            return await super().call_tool(name, arguments)
+
+    doc = await _rich_adapter(_Twice()).fetch_document("FIN-42")
+    same = "another attachment has the same name — the MCP server cannot tell them apart"
+    assert doc.body.count(f"spec.md ({same})") == 2
 
 
 async def test_a_server_without_the_download_tool_names_each_attachment_with_why() -> None:
@@ -543,7 +621,14 @@ async def test_links_to_follow_are_found_over_mcp_too() -> None:
         async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
             self.calls.append((name, arguments))
             return MCPToolResult(
-                text=json.dumps({"key": "FIN-42", "description": "see the page", "remote_links": remote})
+                text=json.dumps(
+                    {
+                        "key": "FIN-42",
+                        "browse_url": "https://x.atlassian.net/browse/FIN-42",
+                        "description": "see the page",
+                        "remote_links": remote,
+                    }
+                )
             )
 
     fake = _WithLinks()

@@ -240,7 +240,11 @@ def _load_ticket(source: str | None, title: str, text: str, *, follow_links: boo
     if source:
         import asyncio
 
-        from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+        from orchestrator.intake.factory import (
+            IntakeNotConfiguredError,
+            build_service_for,
+            source_read_errors,
+        )
         from orchestrator.intake.service import SourceUriError, parse_source_uri
 
         try:
@@ -253,6 +257,9 @@ def _load_ticket(source: str | None, title: str, text: str, *, follow_links: boo
             )
         except (SourceUriError, IntakeNotConfiguredError) as exc:
             typer.echo(f"ERROR: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+        except source_read_errors() as exc:
+            typer.echo(f"ERROR: could not read {source} — {type(exc).__name__}: {exc}", err=True)
             raise typer.Exit(code=2) from exc
         docs = tree.documents
         if not docs:

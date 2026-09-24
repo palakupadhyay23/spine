@@ -18,7 +18,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from orchestrator.core.llm import LiteLLMClient
-from orchestrator.intake.confluence import ConfluenceAdapter, ConfluenceConfig
+from orchestrator.intake.confluence import ConfluenceAdapter, ConfluenceConfig, ConfluenceError
 from orchestrator.intake.file_source import FileSourceAdapter, FileSourceConfig
 from orchestrator.intake.gaps import GapAnalyzer, load_gap_rules
 from orchestrator.intake.intents import IntentExtractor
@@ -102,6 +102,32 @@ def _with_server(config: Any, server: str) -> Any:
     from dataclasses import replace
 
     return replace(config, server=server)
+
+
+def source_read_errors() -> tuple[type[BaseException], ...]:
+    """What a source raises when it cannot *read* a ticket — missing file, HTTP error, a tracker
+    or MCP server that refused — as opposed to a bug in Spine's own code.
+
+    Named, not ``RuntimeError``/``ValueError``: a CLI that turns these into ``ERROR:`` and exit 2
+    must not also turn a programming error into "could not read" and hide its traceback.
+    """
+    import httpx
+
+    from orchestrator.intake.file_source import FileSourceError
+    from orchestrator.intake.jira import IssueTrackerError
+    from orchestrator.intake.notion import NotionError
+    from orchestrator.mcp.client import MCPError
+
+    return (
+        FileSourceError,
+        ConfluenceError,
+        NotionError,
+        IssueTrackerError,
+        MCPError,
+        OSError,
+        httpx.HTTPError,
+        httpx.InvalidURL,
+    )
 
 
 def build_confluence_source() -> SourceAdapter:

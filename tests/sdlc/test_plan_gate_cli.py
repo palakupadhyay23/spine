@@ -349,7 +349,7 @@ def test_a_source_that_returns_nothing_says_so(
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "WARNING: openspec://nochange returned no documents" in result.output
+    assert "WARNING: openspec://nochange returned no text" in result.output
 
 
 class _LinkedService:
@@ -452,3 +452,81 @@ def test_investigate_reads_linked_pages_only_when_asked(
         result = CliRunner().invoke(app, ["investigate", str(checkout), "--source", "jira://PROJ-42", *flags])
         assert result.exit_code == 0, result.output
     assert service.asked == [False, True]
+
+
+def test_a_source_that_cannot_be_read_is_an_error_on_every_path(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review finding 2: with `--source` alone and a cold cache, the intake analysis reads the
+    source first — the fix covered only `--spec` + `--source`. `investigate` had the same gap."""
+    monkeypatch.setenv("ORCHESTRATOR_INTAKE_CACHE_DIR", str(tmp_path / "cold-cache"))
+    missing = f"file://{tmp_path / 'missing.md'}"
+    runs = {
+        "plan": ["sdlc", "plan", "--source", missing, "--path", str(checkout), "--quiet"],
+        "investigate": ["investigate", str(checkout), "--source", missing],
+    }
+    for name, args in runs.items():
+        result = CliRunner().invoke(app, args)
+        assert result.exit_code == 2, (name, result.output)
+        assert "ERROR: could not read" in result.output, name
+        assert isinstance(result.exception, SystemExit), name
+
+
+def test_a_bug_in_our_own_code_is_not_reported_as_an_unreadable_source(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review finding 8: catching `RuntimeError`/`ValueError` turned a programming error into
+    "could not read" with no traceback. Only the named source failures are an ERROR."""
+    import orchestrator.intake.factory as factory
+
+    class _Buggy:
+        async def fetch_source_documents(self, root_id: str, **_k: object) -> Any:
+            raise ValueError("a bug in an adapter")
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Buggy())
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            "jira://PROJ-42",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert isinstance(result.exception, ValueError)
+    assert "could not read" not in result.output
+
+
+def test_a_blank_page_warns_like_an_empty_source(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review finding 9: N13 checked for no documents, not for no text."""
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.source import FetchTreeResult, SourceDocument
+
+    class _Blank:
+        async def fetch_source_documents(self, root_id: str, **_k: object) -> Any:
+            return FetchTreeResult(documents=[SourceDocument(id="1", title="Spec", body="   \n")])
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Blank())
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            "confluence://1",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "WARNING: confluence://1 returned no text" in result.output

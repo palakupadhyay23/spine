@@ -484,10 +484,9 @@ async def _fetch_ticket_documents(source: str, *, follow_links: bool = False) ->
     (ledger N12). A source that answers with *nothing* is said out loud rather than planned as if
     the ticket were empty (N13): §8 then has only the spec to check the criteria against.
     """
-    import httpx
-
-    from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+    from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for, source_read_errors
     from orchestrator.intake.service import SourceUriError, parse_source_uri
+    from orchestrator.intake.source import document_text
 
     try:
         service = build_service_for(source, dry_run=True)
@@ -500,13 +499,14 @@ async def _fetch_ticket_documents(source: str, *, follow_links: bool = False) ->
     except (SourceUriError, IntakeNotConfiguredError) as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=2) from exc
-    except (RuntimeError, ValueError, OSError, httpx.HTTPError) as exc:
+    except source_read_errors() as exc:
         typer.echo(f"ERROR: could not read {source} — {type(exc).__name__}: {exc}", err=True)
         raise typer.Exit(code=2) from exc
     documents = list(fetched.documents)
-    if not documents:
+    if not any(document_text(d).strip() for d in documents):
+        # No documents, or documents with nothing in them — a blank page reads the same to §8.
         typer.echo(
-            f"WARNING: {source} returned no documents — the criteria are checked against the spec alone.",
+            f"WARNING: {source} returned no text — the criteria are checked against the spec alone.",
             err=True,
         )
     return documents, fetched.linked_pages
@@ -825,7 +825,11 @@ def sdlc_plan(
             from orchestrator.core.env import load_local_env
             from orchestrator.core.llm.client import LLMError
             from orchestrator.intake.cache import analyze_cached
-            from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+            from orchestrator.intake.factory import (
+                IntakeNotConfiguredError,
+                build_service_for,
+                source_read_errors,
+            )
             from orchestrator.intake.service import SourceUriError
 
             load_local_env()
@@ -840,6 +844,10 @@ def sdlc_plan(
                 )
             except IntakeNotConfiguredError as exc:
                 typer.echo(f"ERROR: {exc}", err=True)
+                raise typer.Exit(code=2) from exc
+            except source_read_errors() as exc:
+                # A cold cache reads the source here, before `_fetch_ticket_documents` runs.
+                typer.echo(f"ERROR: could not read {source} — {type(exc).__name__}: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
             except LLMError as exc:
                 typer.echo(f"ERROR: {exc}", err=True)

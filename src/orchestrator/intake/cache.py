@@ -229,10 +229,17 @@ def save_plan(
     # intents that still exist (deterministic ids map cleanly), drop the rest.
     old = _read_raw(path)
     old_progress = old.get("progress") or {}
+    variants = _variants_of(old)
+    # Progress is one record per ticket, shared by every entry in this file. An intent a variant
+    # still holds is live even when this extraction named it differently — ids come from the
+    # LLM's titles, and a run planned `--follow-links` must not lose its PR to a later flag-off
+    # plan of the same ticket.
     live_ids = {i.id for i in plan.intents}
+    for entry in variants.values():
+        live_ids |= {str(i.get("id")) for i in (entry.get("intents") or []) if isinstance(i, dict)}
     payload["progress"] = {k: v for k, v in old_progress.items() if k in live_ids}
-    if isinstance(old.get(_VARIANTS), dict):
-        payload[_VARIANTS] = old[_VARIANTS]
+    if variants:
+        payload[_VARIANTS] = variants
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return path
 

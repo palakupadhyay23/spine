@@ -27,6 +27,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -126,6 +127,14 @@ class MCPSourceConfig:
 _MCP_JIRA_FIELDS = "summary,description,issuetype,status,priority,labels,parent,comment,issuelinks,attachment"
 #: Said at the end of the ticket when the server would not take that request and answered with
 #: its defaults: the same `jira://KEY` then reads much thinner than over REST, and §8 must know.
+# How a server says it does not take an argument — the only failure that means "ask again without
+# the fields". Anything else (a 429, a timeout, a permission error) is a real failure and surfaces
+# as one: retrying bare would read the ticket with the server's defaults and claim completeness.
+_UNKNOWN_ARGUMENT = re.compile(
+    r"(unknown|unexpected|unrecognized|invalid|extra)\b.{0,60}\b(argument|parameter|field|keyword|input)"
+    r"|\b(fields|comment_limit)\b.{0,40}\b(not|unknown|unexpected|invalid)",
+    re.IGNORECASE | re.DOTALL,
+)
 MCP_JIRA_FIELDS_REFUSED = (
     "_Read through an MCP server that did not accept a request for comments, issue links and "
     "attachments: the description only._"
@@ -151,7 +160,7 @@ def _json_objects(text: str) -> list[Any]:
 def _rest_fields(data: dict[str, Any]) -> dict[str, Any]:
     """An issue as mcp-atlassian returns it, in the REST field shape the shared renderer reads.
 
-    mcp-atlassian flattens the issue and renames three parts (source @ ``0a5d242``, v0.23.1):
+    mcp-atlassian flattens the issue and renames three parts (source @ ``0a5d242``, v0.23.0+53):
     ``comments`` (oldest first, the newest N kept, ``author.display_name``, bodies as text),
     ``issuelinks`` (``inward_issue`` / ``outward_issue``) and ``attachments`` (``filename``,
     ``size``, ``url`` — no ``id``). A server that already answers in the REST shape — ``fields``
@@ -195,14 +204,18 @@ def _rest_fields(data: dict[str, Any]) -> dict[str, Any]:
 
     attachments = inner.get("attachments")
     if isinstance(attachments, list) and "attachment" not in fields:
+        # No `id` from mcp-atlassian, and the attachment key falls back to the filename — so give
+        # each its own, or two revisions of one filename would collapse into one entry, the other
+        # neither read nor named.
+        kept = [a for a in attachments if isinstance(a, dict) and a.get("filename")]
         fields["attachment"] = [
             {
+                "id": f"mcp:{i}",
                 "filename": a.get("filename"),
                 "size": a.get("size"),
                 "content": a.get("url") or f"mcp:{a.get('filename')}",
             }
-            for a in attachments
-            if isinstance(a, dict) and a.get("filename")
+            for i, a in enumerate(kept)
         ]
     return fields
 
@@ -334,9 +347,12 @@ class MCPSourceAdapter:
         args = {cfg.doc_arg: doc_id, "fields": _MCP_JIRA_FIELDS, "comment_limit": _MAX_COMMENTS + 1}
         try:
             result = await self._registry.call(tool, args)
-            refused = result.is_error
-        except MCPError:
-            refused = True
+            failure = result.text if result.is_error else ""
+        except MCPError as exc:
+            failure = str(exc) or "error"
+        refused = bool(failure) and bool(_UNKNOWN_ARGUMENT.search(failure))
+        if failure and not refused:
+            raise MCPError(f"{tool} failed for {doc_id}: {failure[:300]}")
         if refused:
             # A server that does not take mcp-atlassian's parameters still answers the bare call.
             result = await self._registry.call(tool, {cfg.doc_arg: doc_id})
@@ -346,14 +362,29 @@ class MCPSourceAdapter:
         if not isinstance(data, dict):
             return doc  # a payload not recognised as an issue: the raw text, as before
         fields = _rest_fields(data)
+        if refused:
+            # The bare call answers with the server's defaults — comments cut at *its* limit, with
+            # no total, links and attachments absent. Rendering those would claim a completeness
+            # that was never asked for, so the ticket is what the note says: the description.
+            for part in ("comment", "issuelinks", "attachment"):
+                fields.pop(part, None)
         files, unavailable = (
             await self._jira_attachment_bytes(doc_id) if fields.get("attachment") else ({}, "")
         )
 
+        names = [Path(str(a.get("filename") or "")).name for a in fields.get("attachment") or []]
+
         async def fetch(a: dict[str, Any]) -> bytes:
             if unavailable:
                 raise _UnreadableError(unavailable)
-            content = files.get(Path(str(a.get("filename") or "")).name)
+            name = Path(str(a.get("filename") or "")).name
+            if names.count(name) > 1:
+                # mcp-atlassian gives attachments no id and downloads them by name, so two
+                # revisions of `spec.md` cannot be told apart. Reading either could be the stale one.
+                raise _UnreadableError(
+                    "another attachment has the same name — the MCP server cannot tell them apart"
+                )
+            content = files.get(name)
             if content is None:
                 raise _UnreadableError("the MCP server returned no content for it")
             if len(content) > _MAX_ATTACHMENT_BYTES:

@@ -152,14 +152,22 @@ def test_a_wiki_path_on_another_site_is_not_a_confluence_link() -> None:
     assert found.pages == [] and found.unresolved == []
 
 
-def test_a_remote_link_jira_calls_confluence_is_trusted_whatever_its_host() -> None:
+def test_a_confluence_page_on_another_site_is_named_not_read_from_ours() -> None:
+    """Review finding 5: a page id means something only on the site that issued it — page 55 on a
+    partner's Confluence, read from ours, is a different page."""
     remote = [
         {
             "globalId": "appId=x&pageId=55",
             "application": {"type": CONFLUENCE_APPLICATION},
             "object": {"url": "https://wiki.partner.example/pages/viewpage.action?pageId=55"},
         },
+        {
+            "globalId": "appId=y&pageId=56",
+            "application": {"type": CONFLUENCE_APPLICATION},
+            "object": {"url": f"https://{_SITE}/wiki/pages/viewpage.action?pageId=56"},
+        },
         {"application": {"type": "com.github"}, "object": {"url": "https://github.com/acme/app/pull/1"}},
     ]
     found = find_linked_pages(remote_links=remote, site_hosts=[_SITE])
-    assert [p.page_id for p in found.pages] == ["55"]
+    assert [p.page_id for p in found.pages] == ["56"]
+    assert [u.reason for u in found.unresolved] == ["on another Confluence site (wiki.partner.example)"]

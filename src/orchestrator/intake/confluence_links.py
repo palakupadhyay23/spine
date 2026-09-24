@@ -11,8 +11,10 @@ Remote links are read first, then the text; the same page found twice is one pag
 
 **Only the site's own URLs.** A scanned URL counts only when its host is one of the Atlassian
 site's (Jira's or Confluence's base URL). A bare ``/wiki/`` path would otherwise make
-``en.wikipedia.org/wiki/Currency`` a "Confluence link". A remote link typed
-``com.atlassian.confluence`` is trusted whatever its host — Jira says what it is.
+``en.wikipedia.org/wiki/Currency`` a "Confluence link". The same holds for a remote link Jira types
+``com.atlassian.confluence``: a page id is only meaningful on the site that issued it, and page
+``123`` on a partner's Confluence read from this one is a *different page*. So one whose URL is on
+another host is named, not read.
 
 **What resolves, and what is only named.**
 - ``…/pages/<id>/…`` and ``…viewpage.action?pageId=<id>`` carry the id.
@@ -189,6 +191,9 @@ def find_linked_pages(
         url = str(obj.get("url") or "")
         application = str((link.get("application") or {}).get("type") or "")
         if application == CONFLUENCE_APPLICATION:
+            if url and _host(url) not in hosts:
+                add(Unresolved(url, f"on another Confluence site ({_host(url)})"), url, "remote link")
+                continue
             found = _GLOBAL_PAGE_ID.search(str(link.get("globalId") or ""))
             if found:
                 add(found.group(1), url, "remote link")
