@@ -5,7 +5,7 @@
 
 **Source:** [`src/orchestrator/pkg/js_orm.py`](../../src/orchestrator/pkg/js_orm.py)
 
-0 types · 17 functions · python
+0 types · 23 functions · python
 
 ## Changing this safely
 
@@ -13,137 +13,177 @@
 
 **Most depended-upon here** — a change to these reaches the most code (call graph, ≤4 hops):
 
-- [`_text`](../../src/orchestrator/pkg/js_orm.py#L113) — reaches **13** symbols · **no test path visible**
-- [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L141) — reaches **8** symbols · **no test path visible**
-- [`_args`](../../src/orchestrator/pkg/js_orm.py#L135) — reaches **5** symbols · **no test path visible**
-- [`_string`](../../src/orchestrator/pkg/js_orm.py#L119) — reaches **5** symbols · **no test path visible**
-- [`_entity`](../../src/orchestrator/pkg/js_orm.py#L325) — reaches **4** symbols · **no test path visible**
-- [`_option`](../../src/orchestrator/pkg/js_orm.py#L270) — reaches **4** symbols · **no test path visible**
-- [`_sequelize_type`](../../src/orchestrator/pkg/js_orm.py#L228) — reaches **4** symbols · **no test path visible**
-- [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L378) — reaches **3** symbols · **no test path visible**
+- [`_text`](../../src/orchestrator/pkg/js_orm.py#L142) — reaches **15** symbols · **no test path visible**
+- [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L170) — reaches **9** symbols · **no test path visible**
+- [`_args`](../../src/orchestrator/pkg/js_orm.py#L164) — reaches **5** symbols · **no test path visible**
+- [`_string`](../../src/orchestrator/pkg/js_orm.py#L148) — reaches **5** symbols · **no test path visible**
+- [`_called_here`](../../src/orchestrator/pkg/js_orm.py#L390) — reaches **4** symbols · **no test path visible**
+- [`_deferred`](../../src/orchestrator/pkg/js_orm.py#L370) — reaches **4** symbols · **no test path visible**
+- [`_entity`](../../src/orchestrator/pkg/js_orm.py#L556) — reaches **4** symbols · **no test path visible**
+- [`_in_scope`](../../src/orchestrator/pkg/js_orm.py#L344) — reaches **4** symbols · **no test path visible**
 
-_17 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
+_23 of the symbols other code depends on here have no test path the graph can see — worth a second look before changing them. Absence of a path is not proof of absence of a test: calls through an attribute chain (`obj.method()`) are skipped rather than guessed at, so indirect coverage is invisible._
 
 ## Functions
 
 ### `_args`
 
-[`src/orchestrator/pkg/js_orm.py:135`](../../src/orchestrator/pkg/js_orm.py#L135)
+[`src/orchestrator/pkg/js_orm.py:164`](../../src/orchestrator/pkg/js_orm.py#L164)
 
-- **Called by** (3): [`_association`](../../src/orchestrator/pkg/js_orm.py#L416), [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_init`](../../src/orchestrator/pkg/js_orm.py#L299)
+- **Called by** (3): [`_association`](../../src/orchestrator/pkg/js_orm.py#L648), [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_init`](../../src/orchestrator/pkg/js_orm.py#L530)
 
 ### `_association`
 
-[`src/orchestrator/pkg/js_orm.py:416`](../../src/orchestrator/pkg/js_orm.py#L416)
+[`src/orchestrator/pkg/js_orm.py:648`](../../src/orchestrator/pkg/js_orm.py#L648)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
-- **Calls** (5): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_args`](../../src/orchestrator/pkg/js_orm.py#L135), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L378), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (5): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_args`](../../src/orchestrator/pkg/js_orm.py#L164), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L609), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
+
+### `_called_here`
+
+[`src/orchestrator/pkg/js_orm.py:390`](../../src/orchestrator/pkg/js_orm.py#L390)
+
+- **Called by** (1): [`_deferred`](../../src/orchestrator/pkg/js_orm.py#L370)
+
+### `_deferred`
+
+[`src/orchestrator/pkg/js_orm.py:370`](../../src/orchestrator/pkg/js_orm.py#L370)
+
+- **Called by** (1): [`_in_scope`](../../src/orchestrator/pkg/js_orm.py#L344)
+- **Calls** (1): [`_called_here`](../../src/orchestrator/pkg/js_orm.py#L390)
 
 ### `_define`
 
-[`src/orchestrator/pkg/js_orm.py:280`](../../src/orchestrator/pkg/js_orm.py#L280)
+[`src/orchestrator/pkg/js_orm.py:511`](../../src/orchestrator/pkg/js_orm.py#L511)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
-- **Calls** (6): [`_args`](../../src/orchestrator/pkg/js_orm.py#L135), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L325), [`_option`](../../src/orchestrator/pkg/js_orm.py#L270), [`_string`](../../src/orchestrator/pkg/js_orm.py#L119), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113), [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L251)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (6): [`_args`](../../src/orchestrator/pkg/js_orm.py#L164), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L556), [`_option`](../../src/orchestrator/pkg/js_orm.py#L501), [`_string`](../../src/orchestrator/pkg/js_orm.py#L148), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142), [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L482)
 
 ### `_entity`
 
-[`src/orchestrator/pkg/js_orm.py:325`](../../src/orchestrator/pkg/js_orm.py#L325)
+[`src/orchestrator/pkg/js_orm.py:556`](../../src/orchestrator/pkg/js_orm.py#L556)
 
-- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_init`](../../src/orchestrator/pkg/js_orm.py#L299)
-- **Calls** (5): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113), [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L141)
+- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_init`](../../src/orchestrator/pkg/js_orm.py#L530)
+- **Calls** (5): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`Node`](../../src/orchestrator/pkg/facts.py#L128), [`Provenance`](../../src/orchestrator/pkg/facts.py#L88), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142), [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L170)
+
+### `_exported_literal`
+
+[`src/orchestrator/pkg/js_orm.py:402`](../../src/orchestrator/pkg/js_orm.py#L402)
+
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (2): [`_shadowed`](../../src/orchestrator/pkg/js_extractor.py#L695), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
+
+### `_exports_key`
+
+[`src/orchestrator/pkg/js_orm.py:290`](../../src/orchestrator/pkg/js_orm.py#L290)
+
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (3): [`_shadowed`](../../src/orchestrator/pkg/js_extractor.py#L695), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142), [`_top_level_this`](../../src/orchestrator/pkg/js_extractor.py#L780)
+
+### `_in_scope`
+
+[`src/orchestrator/pkg/js_orm.py:344`](../../src/orchestrator/pkg/js_orm.py#L344)
+
+- **Called by** (1): [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L609)
+- **Calls** (1): [`_deferred`](../../src/orchestrator/pkg/js_orm.py#L370)
 
 ### `_init`
 
-[`src/orchestrator/pkg/js_orm.py:299`](../../src/orchestrator/pkg/js_orm.py#L299)
+[`src/orchestrator/pkg/js_orm.py:530`](../../src/orchestrator/pkg/js_orm.py#L530)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
-- **Calls** (4): [`_args`](../../src/orchestrator/pkg/js_orm.py#L135), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L325), [`_option`](../../src/orchestrator/pkg/js_orm.py#L270), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (4): [`_args`](../../src/orchestrator/pkg/js_orm.py#L164), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L556), [`_option`](../../src/orchestrator/pkg/js_orm.py#L501), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_model_classes`
 
-[`src/orchestrator/pkg/js_orm.py:203`](../../src/orchestrator/pkg/js_orm.py#L203)
+[`src/orchestrator/pkg/js_orm.py:434`](../../src/orchestrator/pkg/js_orm.py#L434)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
-- **Calls** (2): [`_supertypes`](../../src/orchestrator/pkg/typescript_extractor.py#L870), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (2): [`_supertypes`](../../src/orchestrator/pkg/typescript_extractor.py#L1016), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_model_end`
 
-[`src/orchestrator/pkg/js_orm.py:378`](../../src/orchestrator/pkg/js_orm.py#L378)
+[`src/orchestrator/pkg/js_orm.py:609`](../../src/orchestrator/pkg/js_orm.py#L609)
 
-- **Called by** (1): [`_association`](../../src/orchestrator/pkg/js_orm.py#L416)
-- **Calls** (3): [`_relative_module`](../../src/orchestrator/pkg/typescript_extractor.py#L407), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113), [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L141)
+- **Called by** (1): [`_association`](../../src/orchestrator/pkg/js_orm.py#L648)
+- **Calls** (4): [`_in_scope`](../../src/orchestrator/pkg/js_orm.py#L344), [`_relative_module`](../../src/orchestrator/pkg/typescript_extractor.py#L438), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142), [`entity_id`](../../src/orchestrator/pkg/js_orm.py#L170)
 
 ### `_option`
 
-[`src/orchestrator/pkg/js_orm.py:270`](../../src/orchestrator/pkg/js_orm.py#L270)
+[`src/orchestrator/pkg/js_orm.py:501`](../../src/orchestrator/pkg/js_orm.py#L501)
 
-- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_init`](../../src/orchestrator/pkg/js_orm.py#L299)
-- **Calls** (2): [`_string`](../../src/orchestrator/pkg/js_orm.py#L119), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_init`](../../src/orchestrator/pkg/js_orm.py#L530)
+- **Calls** (2): [`_string`](../../src/orchestrator/pkg/js_orm.py#L148), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_registry_names`
 
-[`src/orchestrator/pkg/js_orm.py:356`](../../src/orchestrator/pkg/js_orm.py#L356)
+[`src/orchestrator/pkg/js_orm.py:587`](../../src/orchestrator/pkg/js_orm.py#L587)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
-- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
+- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
+
+### `_scope_of`
+
+[`src/orchestrator/pkg/js_orm.py:332`](../../src/orchestrator/pkg/js_orm.py#L332)
+
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
 
 ### `_sequelize_type`
 
-[`src/orchestrator/pkg/js_orm.py:228`](../../src/orchestrator/pkg/js_orm.py#L228)
+[`src/orchestrator/pkg/js_orm.py:459`](../../src/orchestrator/pkg/js_orm.py#L459)
 
-- **Called by** (1): [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L251)
-- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L482)
+- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_string`
 
-[`src/orchestrator/pkg/js_orm.py:119`](../../src/orchestrator/pkg/js_orm.py#L119)
+[`src/orchestrator/pkg/js_orm.py:148`](../../src/orchestrator/pkg/js_orm.py#L148)
 
-- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_option`](../../src/orchestrator/pkg/js_orm.py#L270)
-- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (2): [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_option`](../../src/orchestrator/pkg/js_orm.py#L501)
+- **Calls** (1): [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_text`
 
-[`src/orchestrator/pkg/js_orm.py:113`](../../src/orchestrator/pkg/js_orm.py#L113)
+[`src/orchestrator/pkg/js_orm.py:142`](../../src/orchestrator/pkg/js_orm.py#L142)
 
-- **Called by** (12): [`_association`](../../src/orchestrator/pkg/js_orm.py#L416), [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L325), [`_init`](../../src/orchestrator/pkg/js_orm.py#L299), [`_model_classes`](../../src/orchestrator/pkg/js_orm.py#L203), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L378), [`_option`](../../src/orchestrator/pkg/js_orm.py#L270), [`_registry_names`](../../src/orchestrator/pkg/js_orm.py#L356), [`_sequelize_type`](../../src/orchestrator/pkg/js_orm.py#L228), [`_string`](../../src/orchestrator/pkg/js_orm.py#L119), [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L251), [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
+- **Called by** (14): [`_association`](../../src/orchestrator/pkg/js_orm.py#L648), [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_entity`](../../src/orchestrator/pkg/js_orm.py#L556), [`_exported_literal`](../../src/orchestrator/pkg/js_orm.py#L402), [`_exports_key`](../../src/orchestrator/pkg/js_orm.py#L290), [`_init`](../../src/orchestrator/pkg/js_orm.py#L530), [`_model_classes`](../../src/orchestrator/pkg/js_orm.py#L434), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L609), [`_option`](../../src/orchestrator/pkg/js_orm.py#L501), [`_registry_names`](../../src/orchestrator/pkg/js_orm.py#L587), [`_sequelize_type`](../../src/orchestrator/pkg/js_orm.py#L459), [`_string`](../../src/orchestrator/pkg/js_orm.py#L148), [`_typed_attributes`](../../src/orchestrator/pkg/js_orm.py#L482), [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
 
 ### `_typed_attributes`
 
-[`src/orchestrator/pkg/js_orm.py:251`](../../src/orchestrator/pkg/js_orm.py#L251)
+[`src/orchestrator/pkg/js_orm.py:482`](../../src/orchestrator/pkg/js_orm.py#L482)
 
-- **Called by** (1): [`_define`](../../src/orchestrator/pkg/js_orm.py#L280)
-- **Calls** (2): [`_sequelize_type`](../../src/orchestrator/pkg/js_orm.py#L228), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113)
+- **Called by** (1): [`_define`](../../src/orchestrator/pkg/js_orm.py#L511)
+- **Calls** (2): [`_sequelize_type`](../../src/orchestrator/pkg/js_orm.py#L459), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142)
 
 ### `_walk`
 
-[`src/orchestrator/pkg/js_orm.py:125`](../../src/orchestrator/pkg/js_orm.py#L125)
+[`src/orchestrator/pkg/js_orm.py:154`](../../src/orchestrator/pkg/js_orm.py#L154)
 
-- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L145)
+- **Called by** (1): [`scan`](../../src/orchestrator/pkg/js_orm.py#L174)
 
 ### `entity_id`
 
-[`src/orchestrator/pkg/js_orm.py:141`](../../src/orchestrator/pkg/js_orm.py#L141)
+[`src/orchestrator/pkg/js_orm.py:170`](../../src/orchestrator/pkg/js_orm.py#L170)
 
-- **Called by** (3): [`_entity`](../../src/orchestrator/pkg/js_orm.py#L325), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L378), [`named`](../../src/orchestrator/pkg/js_orm.py#L478)
+- **Called by** (4): [`_entity`](../../src/orchestrator/pkg/js_orm.py#L556), [`_model_end`](../../src/orchestrator/pkg/js_orm.py#L609), [`named`](../../src/orchestrator/pkg/js_orm.py#L727), [`whole`](../../src/orchestrator/pkg/js_orm.py#L755)
 
 ### `scan`
 
-[`src/orchestrator/pkg/js_orm.py:145`](../../src/orchestrator/pkg/js_orm.py#L145)
+[`src/orchestrator/pkg/js_orm.py:174`](../../src/orchestrator/pkg/js_orm.py#L174)
 
-- **Called by** (1): [`_emit_module`](../../src/orchestrator/pkg/js_extractor.py#L189)
-- **Calls** (7): [`_association`](../../src/orchestrator/pkg/js_orm.py#L416), [`_define`](../../src/orchestrator/pkg/js_orm.py#L280), [`_init`](../../src/orchestrator/pkg/js_orm.py#L299), [`_model_classes`](../../src/orchestrator/pkg/js_orm.py#L203), [`_registry_names`](../../src/orchestrator/pkg/js_orm.py#L356), [`_text`](../../src/orchestrator/pkg/js_orm.py#L113), [`_walk`](../../src/orchestrator/pkg/js_orm.py#L125)
+- **Called by** (1): [`_emit_module`](../../src/orchestrator/pkg/js_extractor.py#L250)
+- **Calls** (10): [`_association`](../../src/orchestrator/pkg/js_orm.py#L648), [`_define`](../../src/orchestrator/pkg/js_orm.py#L511), [`_exported_literal`](../../src/orchestrator/pkg/js_orm.py#L402), [`_exports_key`](../../src/orchestrator/pkg/js_orm.py#L290), [`_init`](../../src/orchestrator/pkg/js_orm.py#L530), [`_model_classes`](../../src/orchestrator/pkg/js_orm.py#L434), [`_registry_names`](../../src/orchestrator/pkg/js_orm.py#L587), [`_scope_of`](../../src/orchestrator/pkg/js_orm.py#L332), [`_text`](../../src/orchestrator/pkg/js_orm.py#L142), [`_walk`](../../src/orchestrator/pkg/js_orm.py#L154)
 
 ### `settle`
 
-[`src/orchestrator/pkg/js_orm.py:443`](../../src/orchestrator/pkg/js_orm.py#L443)
+[`src/orchestrator/pkg/js_orm.py:675`](../../src/orchestrator/pkg/js_orm.py#L675)
 
-- **Called by** (1): [`finalize`](../../src/orchestrator/pkg/js_extractor.py#L117)
+- **Called by** (1): [`finalize`](../../src/orchestrator/pkg/js_extractor.py#L167)
 - **Calls** (2): [`Edge`](../../src/orchestrator/pkg/facts.py#L144), [`FactBatch`](../../src/orchestrator/pkg/facts.py#L157)
 
 ## Imports
 
-`__future__.annotations`, [`orchestrator.pkg.facts`](../../src/orchestrator/pkg/facts.py#L1), [`orchestrator.pkg.typescript_extractor`](orchestrator.pkg.typescript_extractor.md), `tree_sitter.Node`, `typing.TYPE_CHECKING`
+`__future__.annotations`, `collections.abc.Mapping`, [`orchestrator.pkg.extractor`](../../src/orchestrator/pkg/extractor.py#L1), [`orchestrator.pkg.facts`](../../src/orchestrator/pkg/facts.py#L1), [`orchestrator.pkg.js_extractor`](orchestrator.pkg.js_extractor.md), [`orchestrator.pkg.typescript_extractor`](orchestrator.pkg.typescript_extractor.md), `tree_sitter.Node`, `typing.TYPE_CHECKING`
 
 ## Imported by
 

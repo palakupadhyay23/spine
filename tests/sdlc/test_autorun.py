@@ -576,6 +576,8 @@ def _run(
     spec: dict[str, Any] | None = None,
     issue_type: str = "",
     log: Any = None,
+    source: str = "file://./spec.md",
+    follow_links: bool = False,
 ) -> RunContext:
     """Run the skeleton against a tiny real repo, so the graph stages do real work."""
     import asyncio
@@ -586,7 +588,7 @@ def _run(
 
     return asyncio.run(
         autorun(
-            "file://./spec.md",
+            source,
             intent_id=intent_id,
             root=repo,
             live=live,
@@ -601,6 +603,7 @@ def _run(
             log=log,
             # These tests exercise the rest of the run; the plan gate has its own below.
             plan_gate=False,
+            follow_links=follow_links,
         )
     )
 
@@ -788,6 +791,55 @@ def test_an_injected_spec_records_intake_as_skipped_not_ok(
     intake = next(s for s in ctx.stages if s.name == "intake")
     assert intake.status == "skipped"
     assert "spec supplied" in (intake.detail or "")
+
+
+def test_a_spec_naming_another_ticket_than_its_source_is_said_not_refused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D13 of Track D: the spec keys the plan gate, the run is filed against the source. When
+    they name different tickets the run still proceeds as the spec — and says so, the same
+    line `sdlc plan` prints for the pair."""
+    _install(monkeypatch, tmp_path)
+    lines: list[str] = []
+
+    ctx = _run(tmp_path, spec=dict(_INJECTED), source="jira://SSPN-32", log=lines.append)
+
+    assert ctx.spec is not None and ctx.spec["intent_id"] == "SSPN-31"
+    assert any("WARNING" in line and "SSPN-31" in line and "SSPN-32" in line for line in lines)
+
+    lines.clear()
+    _run(tmp_path, spec=dict(_INJECTED), source="jira://SSPN-31", log=lines.append)
+    assert not any("WARNING" in line for line in lines)
+
+
+def test_follow_links_reaches_intake_as_its_own_analysis(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Track E, D6: `autorun --follow-links` analyses the ticket *with* its linked pages — its own
+    cache entry — and without the flag nothing about the analysis changes."""
+    _install(monkeypatch, tmp_path)
+    import orchestrator.intake.cache as intake_cache
+
+    seen: list[bool] = []
+    real = intake_cache.analyze_cached
+
+    async def _spy(*args: Any, follow_links: bool = False, **kwargs: Any) -> Any:
+        seen.append(follow_links)
+        return await real(*args, follow_links=False, **kwargs)  # the fake service takes no flag
+
+    monkeypatch.setattr(intake_cache, "analyze_cached", _spy)
+    _run(tmp_path)
+    _run(tmp_path, follow_links=True)
+    assert seen == [False, True]
+
+
+def test_follow_links_with_a_spec_says_it_has_nothing_to_follow(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _install(monkeypatch, tmp_path)
+    lines: list[str] = []
+    _run(tmp_path, spec=dict(_INJECTED), follow_links=True, log=lines.append)
+    assert any("--follow-links has no effect with --spec" in line for line in lines)
 
 
 def test_intake_does_not_run_at_all_when_a_spec_is_given(

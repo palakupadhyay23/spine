@@ -4,7 +4,112 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
+## 3.45.0 — 2026-09-24
+
+### Added
+
+- **A plan's criteria are checked against the whole ticket.** §8 of the build document checks
+  each acceptance criterion against the ticket's own words, and those words were whatever
+  survived the intent extractor's caps (5 attachments, 8,000 characters each, 20,000 in total).
+  `sdlc plan --source` now reads the ticket fresh at every plan, **with every attachment read in
+  full** (up to 20 files, the 1 MB download cap still per file), and saves that as the text the
+  plan and its approval are checked against. The AI that derives a spec still reads exactly the
+  bounded summary it did before — pinned byte for byte by golden files — so no cached spec is
+  re-extracted and no approved run is re-parked; the intake cache is unchanged too.
+- **`--follow-links`** on `sdlc plan`, `sdlc autorun` and `investigate` also reads the
+  **Confluence pages a ticket links to** — Jira remote links first, then page URLs in its
+  description and comments (page-id URLs and `/x/` tiny links, decoded offline and kept only when
+  re-encoding reproduces the link; a `/display/…` title URL is named, not guessed). Direct links
+  only, at most 5, the rest named with why. The pages reach both the criteria check and the spec,
+  and the build document's header says what was read. A Confluence-typed remote link to *another*
+  site is named, not read — a page id means a different page on a different site. Off by default;
+  without Confluence access
+  (an MCP server exposing `confluence_get_page`, or `CONFLUENCE_*` credentials) it **refuses**
+  rather than planning from less than was asked for. A spec derived with linked pages is its own
+  intake-cache entry, beside the flag-off one in the same file.
+- **A Jira ticket carries every part over MCP that it does over REST.** Through `mcp-jira` it used
+  to arrive as the description only (said so since 3.44.0); it now carries comments, issue links
+  and attachment text, rendered by the same code — attachment bytes via mcp-atlassian's
+  `jira_download_attachments` (`MCP_JIRA_ATTACHMENTS_TOOL` to rename), extracted by the same
+  reader, so attachment text is identical. Formatted prose is not byte-identical: REST flattens
+  ADF to text, mcp-atlassian returns Markdown. What the server cannot supply is named with why —
+  a missing download tool, two attachments with one name (it cannot tell revisions apart), or a
+  server that rejects the fields request, which is then read as the description only. Any other
+  server error is an error, not a quietly thinner ticket.
+
+### Fixed
+
+- **A ticket that cannot be read is an error, not a traceback.** A missing file, an HTTP error or
+  an MCP failure was a Python traceback in `sdlc plan`, `investigate` and `autorun`'s intake; it
+  is now `ERROR:` and exit 2 — only for those named source failures, so a bug in Spine's own code
+  still shows its traceback. A source that returns no text (no documents, or blank ones) is a
+  warning instead of a plan quietly checked against nothing.
+
+### Removed
+
+- **`sdlc plan --out` and `sdlc approve --out`**, deprecated in 3.44.0. Plans live in
+  `<repo>/.spine/plans`, the only place `sdlc autorun` reads approvals from. `sdlc autorun --out`
+  (run artifacts) is a different option and is unchanged.
+
+## 3.44.0 — 2026-09-24
+
+### Fixed
+
+- **`sdlc autorun --help` no longer denies the gates it has.** It said the command did not
+  judge whether a ticket is worth doing, enforce a budget, survive a crash, or loop on review
+  findings — written for the walking skeleton and never revised as the validity gate, the run
+  supervisor (`--resume`, `--max-cost`) and the review loop landed. The help now says what stops
+  a run, where each decision is made (`sdlc approve` for the plan gate, `sdlc runs approvals`
+  for a park), and what a resume keeps — and names the gaps that remain rather than implying
+  they are closed: no spend cap unless `--max-cost` is passed (this path does not read
+  `SDLC_RUN_BUDGET_USD`); a resume re-runs every stage, so approving a validity or design park
+  parks again rather than building; and the review pass leaves its fixes uncommitted — under
+  `--live`, after the PR is already open. The module docstring and
+  `docs/specs/autonomous-run-agent.md`'s status line, which the help points to, were stale the
+  same way.
+- **An approved plan is the plan that builds.** Four ways `sdlc plan` → `sdlc approve` →
+  `sdlc autorun` refused, or could not be run for, a plan nobody had changed:
+  - **Planning no longer invalidates its own approval.** `sdlc plan` writes `.spine/plans/` into
+    the repository. Unless `.spine/` was ignored, the tree then read as dirty, the plan gate
+    re-derived a `<sha>-dirty` document and refused the approval it had just been given. That is
+    the exact sequence `.github/workflows/spine-sdlc.yml`'s build job runs. Every later command
+    also stopped trusting the knowledge-graph cache. `.spine/plans/` is no longer counted as an
+    uncommitted change anywhere, whether you commit it or not; `.spine/repos.yaml` and
+    `.spine/workflows/` still are. **One-time action:** an approval given while the tree read as
+    dirty (its plan's header says `Derived at: <sha>-dirty`) is now refused once — re-run
+    `sdlc plan` and `sdlc approve`.
+  - **`sdlc plan --spec X.json --source <uri>` no longer crashes** (`UnboundLocalError`). The
+    spec stays the requirements and the ticket is only read, with no model call, for §8 to check
+    the hand-written criteria against. A spec file and a `jira://` key that name different
+    tickets are warned about by `sdlc plan` and `sdlc autorun` alike.
+  - **A Bug that lands nowhere keeps its approval.** The gate re-derived the plan without the
+    issue type, so §12's validity row read `PROCEED` where the approved one read `UNLOCALIZED`.
+    The approval now records the issue type, and the document's header names it (or says
+    `untyped`).
+  - **A Jira ticket read through an MCP server says it is the description only.** The REST path
+    also carries links, comments and attachments; the MCP path silently did not.
+
+### Deprecated
+
+- **`sdlc plan --out` and `sdlc approve --out`** now warn and will be removed in 3.45. A plan or
+  approval written outside `<repo>/.spine/plans` is one `sdlc autorun` never reads, so it could
+  never be built. `sdlc autorun --out` (run artifacts) is a different option and is unaffected.
+
+## 3.43.1 — 2026-09-23
+
+### Fixed
+
+- **Python: a `src/` that is a package no longer breaks every import.** The src-layout rule
+  stripped a leading `src.` from every module id, even when `src/` held an `__init__.py` and the
+  code imported through it (`from src.services.x import …`). Ids and imports then named the same
+  modules two ways and nothing joined: a field report on 3.42.0 had `pkg verify` fail with 33 of
+  34 modules imported by nothing, 99% of import edges external, and `src/__init__.py` named
+  `py:<root>`. `src/` is now stripped only when it is a sys.path root (no `__init__.py`); a
+  package `src/` keeps its name, which is the one Python resolves. Graphs of repos with a
+  package `src/` change ids from `py:X` to `py:src.X`; the standard src layout is untouched. New
+  corpus case `python/src_package`.
+
+## 3.43.0 — 2026-09-23
 
 ### Added
 
@@ -36,37 +141,61 @@ All notable changes to this project are documented here. Format loosely follows
     irregular plural such as `people` needs `tableName` to match). A column type counts anywhere
     in its chain — `INTEGER.UNSIGNED`, `STRING(120)` — so a join model keyed only by unsigned
     integers is a model, while `Op.is` and `Sequelize.NOW` are not. An imported model is the
-    *binding* it was exported as: `module.exports = { Booking }` over `define('gig', …)` makes
-    `const { Booking }` the `gig` model, and a name the module's exports do not list is nothing.
-  - **Calls bound to what a module actually exports**, wherever the module states its exports in
-    a form this pass reads in full — an allowlist: an object literal, a declared object, class or
-    function named as `module.exports`, `Object.create(…)`, top-level `exports.f =` assignments. `module.exports = { run: helper }` beside a
-    private `function run` makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` —
-    reach `helper`. A file that undoes its own exports (assigns `module.exports` twice or inside
-    a branch, rebinds bare `exports`, reassigns an alias, sets a member before replacing the
-    object) exports nothing it undid. A module whose exports are anything else — `Object.freeze`,
-    a factory call, `Object.assign` or `defineProperty` onto the exports or an alias of them,
-    `exports['f'] =`, a write from inside a function, a spread or computed key, an ESM `export`
-    beside CommonJS — is left to name-based resolution rather than judged. The module a target
-    names is the longest prefix that *is* a module, so `user.model.ts` beside `user.js` keeps its
-    edges, TypeScript's included.
+    *binding* it was exported as, read through the same three tiers as calls:
+    `module.exports = { Booking }` over `define('gig', …)` makes `const { Booking }` the `gig`
+    model, as do `db.Booking = define(…)` on the exported object, `{ Booking: define(…) }`,
+    `exports.a = exports.b = define(…)` and `export const Booking = define(…)`. A name a readable
+    or names-known module does not export is nothing, and so is a binding declared inside a
+    function or a name written onto an object `module.exports` later replaced; an opaque module
+    is still matched by the model's name.
+  - **Calls bound to what a module actually exports**, as far as its own file says. Each
+    CommonJS module is read into one of three tiers, by what was *read* of it. **Readable**:
+    every reference to its exports object is a recognised form (an allowlist — a member write, a
+    string-key write, a read, the `exports = module.exports = …` chain, `Object.assign` or
+    `defineProperty` with literal names; the finder follows `exports`, `module.exports`, their
+    aliases, top-level `this` and bare `module`, and any spelling it cannot follow makes the
+    module opaque) and `module.exports` is set to something read in full,
+    so the export map is exact. **Names-known**: every reference is recognised, but a write sits
+    under a branch or in a function, a merge adds members, the value is `Object.freeze({…})`, or
+    a UMD branch assigns `module.exports` — so the map is every name the file may export.
+    **Opaque**: some reference is not recognised (`const e = exports`, `mixin(exports, …)`,
+    `exports[k] =`), and calls into it are resolved by name. A call reaches only a name a
+    readable or names-known module writes to its exports: `module.exports = { run: helper }`
+    makes `m.run()` — and `app.get('/', m.run)`, and `new m.run().go()` — reach `helper`, and
+    `Object.freeze({ f })` beside a private `secret` does not hand `m.secret()` to a name lookup.
+    `module.exports = Base` fills a *default* slot, not a member: `const B = require('./base');
+    class C extends B` reaches `Base` under any local name, and a destructured `{ Base }` —
+    `undefined` at run time — reaches nothing. Reassigned at the top level, the last
+    `module.exports` wins; members written onto the object it replaced are never exported. A
+    call never lands on a module node, from JavaScript or TypeScript: `db.config()` beside a
+    sibling `db.config.ts` is the `config` export of `db`, or nothing. TypeScript files calling into CommonJS get the same routing,
+    whichever file the walk reaches first. The module a target names is the longest prefix that
+    *is* a module, so `user.model.ts` beside `user.js` keeps its edges, TypeScript's included.
   - **An existence check** on everything it resolves by name: a `CALLS`, `IMPLEMENTS`,
     `EXPOSES` or `REFERENCES` edge from a JavaScript file to a node nothing declares is dropped
     rather than left dangling. Zero dangling edges on all four validation repositories.
   - **Compiled output is skipped**: a `foo.js` beside its `foo.ts` is `tsc`'s build, not source.
 
-  Fourteen corpus cases, each labelled before its first run: precision **1.00 on every node and
-  edge kind**, `CALLS` recall 0.93 (42 of 45), and the three misses are the three gaps declared
+  Twenty corpus cases, each labelled before its first run: precision **1.00 on every node and
+  edge kind**, `CALLS` recall 0.97 (97 of 100), and the three misses are the three gaps declared
   in advance — a renamed destructuring, an inherited `this.method()`, and a bare `new X()` with no
   member call. `pkg verify` and `--oracle parity` now count JavaScript routes and entities; the
   route count takes only named-handler registrations, the ones that can produce the `EXPOSES`
-  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss.
+  edge it checks, so an inline `function (req, res) {…}` is not reported as a miss. The entity
+  count reads a model class's whole `init({…})` object, `super.init` included, in linear time.
   Codegen is not part of this: `--language javascript` is refused with the list of supported
   languages, as before. Prisma is not either — its schema is its own `.prisma` language, and it
   has a track of its own.
 
 ### Fixed
 
+- **Whole-repository passes ran in the order the walk first met each language**, so which
+  front-end's `finalize` saw the other's edges depended on which file sorted first. They now run
+  in the order the front-ends are registered. Measured: no language's corpus result and none of
+  the four validation repositories changed; the order was simply not guaranteed.
+- **A `var` inside a class `static {}` block shadowed an import across the whole enclosing
+  function — in TypeScript too.** The block is its own `var` scope; hoisted past it, a true call
+  after a class expression carrying one was dropped.
 - **`sdlc plan` wrote a different build document for the same commit depending on whether
   GitHub was reachable.** Section 11's cost table is priced from LiteLLM's model map, and by
   default LiteLLM does not read the map it ships: every import fetches the current one from

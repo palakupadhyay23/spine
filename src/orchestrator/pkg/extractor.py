@@ -19,8 +19,9 @@ import ast
 import os
 import warnings
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 from orchestrator.pkg.facts import Edge, EdgeKind, FactBatch, Node, NodeKind, Provenance
 from orchestrator.pkg.python_client import ClientState, PendingCall
@@ -156,9 +157,16 @@ def repo_relative(path: Path, root: Path) -> Path:
 
 
 def module_qualname(path: Path, root: Path) -> str:
-    """Dotted module path relative to ``root`` (``src/`` stripped, ``__init__`` collapsed)."""
+    """Dotted module path relative to ``root`` (``src/`` stripped, ``__init__`` collapsed).
+
+    ``src/`` is stripped only when it is a src-layout *root* — a directory on ``sys.path``,
+    imported as ``shop.cart``. A ``src/`` holding an ``__init__.py`` is a *package*, imported
+    as ``src.shop.cart``; stripping it there named every module differently from its imports,
+    so none of them joined (a field report on 3.42.0: 33 of 34 modules imported by nothing,
+    and ``src/__init__.py`` itself became ``py:<root>``).
+    """
     parts = list(repo_relative(path, root).parts)
-    if parts and parts[0] == "src":
+    if parts and parts[0] == "src" and not (root / "src" / "__init__.py").is_file():
         parts = parts[1:]
     if not parts:
         return ""
@@ -648,6 +656,65 @@ def is_nested_repo(parent: Path, name: str) -> bool:
     return (parent / name / ".git").exists()
 
 
+class ExportMap(NamedTuple):
+    """What one CommonJS module exports, as far as its own source says (see
+    ``js_extractor._export_surface``, whose three tiers these are).
+
+    - ``readable``: ``names`` is exact.
+    - ``names-known``: ``names`` is every name the file *may* export — written under a branch, by
+      a merge, in a frozen literal, or by more than one `module.exports`. A name it lists with no
+      known node (a getter, a computed value) is resolved by name; one it does not list is not
+      exported.
+    - ``opaque``: some reference to the exports object was not a recognised form, or the value
+      hides its names. ``names`` holds only what the file visibly writes; any other name resolves
+      by name — except ``dead`` names, written only onto an object the file has certainly stopped
+      exporting.
+    """
+
+    #: The module's file — a file reaches its own members, exported or not.
+    file: str
+    #: ``{exported name: the node it is, or None for a value that is not a declaration}``.
+    names: dict[str, str | None]
+    tier: str
+    #: What `require` returns itself, when that is a declared class or function
+    #: (`module.exports = Base`). A default is not a member: `{ Base }` of it is `undefined`.
+    default: str | None = None
+    #: Names written only through `exports` after `module.exports` was replaced without it.
+    dead: frozenset[str] = frozenset()
+
+
+@dataclass
+class ExtractionRun:
+    """What front-ends sharing one module namespace tell each other during one :meth:`extract`.
+
+    TypeScript and JavaScript mint ids in one namespace (``ts:``), so a `.ts` file calls into a
+    CommonJS module whose exports only the JavaScript front-end can read. Each front-end used to
+    keep that knowledge to itself: TypeScript checked its deferred calls into `{ Handler: Impl }`
+    against a `Handler` that does not exist and dropped them, and whether JavaScript could repair
+    the ones that survived depended on which language's file the walk reached first.
+
+    Built fresh by every :meth:`RepoCodeExtractor.extract` and handed to a front-end with a
+    ``bind_run`` method before it reads its first file — duck-typed, as ``finalize`` is. A front-end drops its
+    reference when it finalizes, so nothing outlives the run.
+    """
+
+    #: ``module id -> (file, {exported name: the node it is, or None})`` for every module whose
+    #: exports a front-end read in full — filled during the walk, read by every ``finalize``.
+    exports: dict[str, ExportMap] = field(default_factory=dict)
+    #: ``(file, target)`` pairs a *whole-module* binding produced: after
+    #: `const B = require('./base')`, the parent resolves `extends B` to `ts:base.B` by the local
+    #: name, and only the file knows that `B` is the module itself — its default, whatever the
+    #: class is called. A destructured `{ Base }` resolves to the same kind of id and is a member.
+    whole: set[tuple[str, str]] = field(default_factory=set)
+    #: Front-ends of this namespace bound to the run and not yet finalized. The last to finalize
+    #: applies what must see every other one's edges first — whichever order they run in.
+    sharers: int = 0
+    #: Edges already routed through ``exports``. Routing is not idempotent — `ts:m.Impl.run`,
+    #: routed again, looks for an export called `Impl` — so an edge is routed exactly once,
+    #: whichever finalizer runs first.
+    routed: set[tuple[str, str, EdgeKind]] = field(default_factory=set)
+
+
 class RepoCodeExtractor:
     """Walk a repository → one merged ``FactBatch`` of grounded facts."""
 
@@ -701,6 +768,8 @@ class RepoCodeExtractor:
             if state is not None:
                 state.clear()
         batch = FactBatch()
+        run = ExtractionRun()
+        registered = list(dict.fromkeys(self._by_suffix.values()))
         used: list[LanguageExtractor] = []
         paths = list(self._iter_files(root_path))
         cpp = self._by_suffix.get(".cpp")
@@ -721,6 +790,10 @@ class RepoCodeExtractor:
                 continue
             if extractor not in used:
                 used.append(extractor)
+                # Bound on first use, so a front-end with no file here never holds the run.
+                bind = getattr(extractor, "bind_run", None)
+                if callable(bind):
+                    bind(run)
             try:
                 module = extractor.module_name(path, root_path)
                 batch.merge(extractor.extract(path=path, module=module, rel=rel))
@@ -734,7 +807,11 @@ class RepoCodeExtractor:
         # returns the same batch, so it worked either way — but a pass that needs to *replace*
         # an edge (C# repointing a mis-qualified base type) has to build a new batch, and
         # ignoring the result silently dropped that work.
-        for extractor in used:
+        # In registration order, never walk order: which language's file sorts first is not a
+        # reason for one finalizer to see the other's edges, and the graph must not depend on it.
+        for extractor in registered:
+            if extractor not in used:
+                continue
             finalize = getattr(extractor, "finalize", None)
             if callable(finalize):
                 batch = finalize(batch) or batch

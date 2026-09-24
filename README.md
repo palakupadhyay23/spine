@@ -78,7 +78,50 @@ and [five-repository evaluation](https://github.com/synaptixs/spine/blob/main/do
 
 ## What's new
 
-**3.42.0 (current)** — a round of Kotlin precision work, and a gate that was punishing
+**3.45.0 (current)** — a plan's criteria are checked against the whole ticket. `sdlc plan
+--source` now reads the ticket fresh at every plan with **every attachment in full** (up to 20),
+while the AI that writes the spec still reads the same bounded summary — so nothing already
+approved moves. `--follow-links` also reads the **Confluence pages a ticket links to** (at most
+5, refusing without Confluence access rather than reading less than you asked for). A Jira ticket
+read through an MCP server now carries its comments, links and attachments like one read over
+REST. An unreadable ticket is a clean error, not a traceback. **Removed:** `sdlc plan --out` and
+`sdlc approve --out`, as 3.44.0 announced.
+
+**3.44.0** — an approved plan is the plan that builds. `sdlc plan` → `sdlc approve`
+→ `sdlc autorun` could refuse a plan nobody had changed. Writing the plan into `.spine/plans/`
+made the repo look modified, so the gate refused the approval it had just been given — the
+exact sequence the `spine-sdlc.yml` build job runs. A Bug that matched no code lost its
+approval because the gate forgot the issue type. `--spec` with `--source` crashed. All three
+are fixed: the spec stays the requirements and the ticket is read, with no model call, for the
+criteria check. A Jira ticket read through an MCP server now says it is the description only.
+`sdlc plan --out` and `sdlc approve --out` are deprecated — a plan written elsewhere is one
+`autorun` can never build — and go in 3.45.
+
+**3.43.1** — a Python fix. A repository whose `src/` is a package — it has an
+`__init__.py`, and the code imports `from src.services.x import …` — got a graph with no
+in-repo imports: module ids dropped `src.`, the imports kept it, and nothing joined, so
+`pkg verify` reported nearly every module as imported by nothing. `src/` is now stripped only
+when it is a plain source root; a package `src/` keeps its name. The standard src layout is
+unchanged.
+
+**3.43.0** — JavaScript, the 13th front-end. `.js`, `.jsx`, `.mjs` and `.cjs` used to
+reach the walker with no front-end and produce nothing: `express` and `react-boilerplate`
+extracted to zero nodes. They now extract CommonJS `require` and exports, JSX, Express routes
+and a Sequelize data layer, on the existing `typescript` extra — no new install. A `.ts` file
+importing a `.js` one resolves across the pair.
+
+The hard part is CommonJS: a module's exports are whatever its code assigns, so each module is
+read into one of three tiers — **readable**, **names-known** or **opaque** — and a call into it
+is trusted only as far as its own file says. Twenty hand-labelled corpus cases: precision **1.00**
+on every node and edge kind, `CALLS` recall 0.97, and zero dangling edges on four real
+repositories. Codegen for JavaScript is not part of this.
+
+Also fixed, in TypeScript as well: `import './mod.js'` and `from '..'` no longer mint modules no
+file declares, and a member call on a rebound name no longer resolves through the file's
+namespace. `sdlc plan` now prices from the LiteLLM map that ships, so the same commit always
+writes the same build document.
+
+**3.42.0** — a round of Kotlin precision work, and a gate that was punishing
 honesty. Six reported Kotlin defects are closed, including an extension call that resolved onto
 an id nothing declares: comparing receiver *names* refused every subtype receiver, so
 `fun NavController.navigateToSearch()` called on a `NavHostController` — the standard Compose
