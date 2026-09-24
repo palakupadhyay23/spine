@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 import tempfile
 from collections import deque
-from collections.abc import Collection
+from collections.abc import Awaitable, Callable, Collection
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -220,6 +220,10 @@ def _comments_text(fields: dict[str, Any]) -> str:
     head = f"Comments ({len(lines)} of {total}, most recent first):"
     if total > len(lines):
         head = f"Comments ({len(lines)} most recent of {total}):"
+    if isinstance(block, dict) and block.get("more_exist"):
+        # A transport that returns the newest N and no total (mcp-atlassian) cannot say "of 37";
+        # "of 11" would be a count it never had.
+        head = f"Comments ({len(lines)} most recent — more exist):"
     return "\n".join([head, *lines])
 
 
@@ -370,6 +374,143 @@ def _bound_attachments(
     return read, unread
 
 
+def render_issue_bodies(
+    fields: dict[str, Any],
+    *,
+    attachment_texts: dict[str, tuple[str, str]],
+    attachment_skips: dict[str, str] | None,
+    full_texts: dict[str, tuple[str, str]] | None,
+    full_skips: dict[str, str] | None,
+    notes: tuple[str, ...] = (),
+) -> tuple[str, str]:
+    """``(body, full_body)`` for a Jira issue's REST-shaped ``fields`` — the one rendering both
+    transports use, so an issue reads the same whether REST or an MCP server fetched it.
+
+    ``body`` is the extractor's bounded view; ``full_body`` the same ticket with nothing cut from
+    its attachments, or ``""`` when nothing was. ``notes`` are what the transport could not
+    provide, said at the end of both.
+    """
+    texts = attachment_texts
+    # A short metadata header gives the extractor context — a Bug reads
+    # differently from a Story, and status tells done from open.
+    header = issue_meta_header(fields)
+    # Order is deliberate and is the ticket's own order of authority: what it *is*, what
+    # it says, what it is attached to, what was argued about it, what was attached and
+    # read, and finally what exists but was not read. The description stays directly
+    # under the header so a bounded comment thread can never displace the one section
+    # that is certainly on topic.
+    ticket = (
+        header,
+        _description_text(fields.get("description")),
+        _links_text(fields),
+        _comments_text(fields),
+    )
+    body = _collapse(
+        "\n\n".join(
+            p
+            for p in (
+                *ticket,
+                _attachments_read_text(texts),
+                _attachment_names(fields, exclude=texts.keys(), reasons=attachment_skips),
+                *notes,
+            )
+            if p
+        )
+    )
+    # The same ticket with nothing cut from its attachments — what §8 checks criteria against.
+    # Only when the bounded view actually lost something; otherwise the two are one text.
+    full_body = ""
+    if full_texts is not None:
+        full = full_texts
+        full_body = _collapse(
+            "\n\n".join(
+                p
+                for p in (
+                    *ticket,
+                    _attachments_read_in_full_text(full),
+                    _attachment_names(fields, exclude=full.keys(), reasons=full_skips),
+                    *notes,
+                )
+                if p
+            )
+        )
+        full_body = "" if full_body == body or full == texts else full_body
+    return body, full_body
+
+
+class _UnreadableError(Exception):
+    """An attachment the transport cannot supply; the message is the reason it is named with."""
+
+
+async def read_attachments_in_full(
+    fields: dict[str, Any], fetch: Callable[[dict[str, Any]], Awaitable[bytes]]
+) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
+    """``key → (filename, text)`` for every attachment read **in full**, and ``key → reason``
+    for every one that was not — whichever transport ``fetch`` downloads through.
+
+    No character cap — :func:`_bound_attachments` derives the extractor's bounded view from
+    these reads, so each file is downloaded at most once. Still bounded, each reason stated:
+    at most ``_MAX_ATTACHMENTS_READ_IN_FULL`` files, none over ``_MAX_ATTACHMENT_BYTES``
+    (checked against the record's ``size`` before any request, and by ``fetch`` on the bytes).
+    Any failure — HTTP, a reader that yields nothing, an unreadable file, a record with a
+    malformed ``size`` — leaves that attachment named with why. Never raises.
+
+    The readers are ``pkg.doc_source``'s, run over a temporary directory: the same PDF,
+    docx and markdown paths ``understand`` uses, with the same optional-extra behaviour.
+    """
+    from orchestrator.pkg.doc_source import is_doc_file, read_doc_pages
+    from orchestrator.pkg.media import MEDIA_SUFFIXES
+
+    read: dict[str, tuple[str, str]] = {}
+    unread: dict[str, str] = {}
+    for a in fields.get("attachment") or []:
+        if not isinstance(a, dict):
+            continue
+        key = _attachment_key(a)
+        name = Path(str(a.get("filename") or "")).name
+        url = str(a.get("content") or "")
+        if not name or not url:
+            continue
+        if Path(name).suffix.lower() in MEDIA_SUFFIXES:
+            # `is_doc_file` claims images too, because `pkg.media` registers a reader for
+            # them — one that reads a *committed* transcript artifact, which a downloaded
+            # attachment can never have. Requesting the bytes would be guaranteed waste.
+            unread[key] = "image, not read"
+            continue
+        if not is_doc_file(Path(name)):
+            unread[key] = "no reader for this type"
+            continue
+        if len(read) >= _MAX_ATTACHMENTS_READ_IN_FULL:
+            unread[key] = f"bound of {_MAX_ATTACHMENTS_READ_IN_FULL} reached"
+            continue
+        try:
+            if int(a.get("size") or 0) > _MAX_ATTACHMENT_BYTES:
+                unread[key] = f"over the {_MAX_ATTACHMENT_BYTES // 1_000_000} MB cap"
+                continue
+            data = await fetch(a)
+            with tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / name).write_bytes(data)
+                pages = read_doc_pages(tmp, sections=False)
+        except _UnreadableError as exc:
+            unread[key] = str(exc)
+            continue
+        except _AttachmentTooLargeError:
+            unread[key] = f"over the {_MAX_ATTACHMENT_BYTES // 1_000_000} MB cap"
+            continue
+        except _OffHostError:
+            unread[key] = "not on the tracker's host"
+            continue
+        except (httpx.HTTPError, IssueTrackerError, OSError, ValueError, TypeError, LookupError):
+            unread[key] = "download failed"
+            continue
+        text = "\n\n".join(p.text for p in pages).strip()
+        if not text:
+            unread[key] = "no text could be read"
+            continue
+        read[key] = (name, text)
+    return read, unread
+
+
 class JiraSourceAdapter:
     """SourceAdapter over Jira Cloud v3 (read-only)."""
 
@@ -393,49 +534,13 @@ class JiraSourceAdapter:
         fields = issue.get("fields") or {}
         summary = str(fields.get("summary") or "")
         labels = tuple(str(x) for x in (fields.get("labels") or []))
-        texts = attachment_texts or {}
-        # A short metadata header gives the extractor context — a Bug reads
-        # differently from a Story, and status tells done from open.
-        header = issue_meta_header(fields)
-        # Order is deliberate and is the ticket's own order of authority: what it *is*, what
-        # it says, what it is attached to, what was argued about it, what was attached and
-        # read, and finally what exists but was not read. The description stays directly
-        # under the header so a bounded comment thread can never displace the one section
-        # that is certainly on topic.
-        ticket = (
-            header,
-            _description_text(fields.get("description")),
-            _links_text(fields),
-            _comments_text(fields),
+        body, full_body = render_issue_bodies(
+            fields,
+            attachment_texts=attachment_texts or {},
+            attachment_skips=attachment_skips,
+            full_texts=full_texts,
+            full_skips=full_skips,
         )
-        body = _collapse(
-            "\n\n".join(
-                p
-                for p in (
-                    *ticket,
-                    _attachments_read_text(texts),
-                    _attachment_names(fields, exclude=texts.keys(), reasons=attachment_skips),
-                )
-                if p
-            )
-        )
-        # The same ticket with nothing cut from its attachments — what §8 checks criteria against.
-        # Only when the bounded view actually lost something; otherwise the two are one text.
-        full_body = ""
-        if full_texts is not None:
-            full = full_texts
-            full_body = _collapse(
-                "\n\n".join(
-                    p
-                    for p in (
-                        *ticket,
-                        _attachments_read_in_full_text(full),
-                        _attachment_names(fields, exclude=full.keys(), reasons=full_skips),
-                    )
-                    if p
-                )
-            )
-            full_body = "" if full_body == body or full == texts else full_body
         url = f"{self._config.base_url.rstrip('/')}/browse/{key}" if key else ""
         project = project_key_of(key)
         return SourceDocument(
@@ -461,67 +566,12 @@ class JiraSourceAdapter:
     async def _attachment_texts(
         self, fields: dict[str, Any]
     ) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
-        """``key → (filename, text)`` for every attachment read **in full**, and ``key → reason``
-        for every one that was not.
+        """Every attachment read in full over REST — :func:`read_attachments_in_full`."""
 
-        No character cap — :func:`_bound_attachments` derives the extractor's bounded view from
-        these reads, so each file is downloaded at most once. Still bounded, each reason stated:
-        at most ``_MAX_ATTACHMENTS_READ_IN_FULL`` files, none over ``_MAX_ATTACHMENT_BYTES``
-        (checked against Jira's ``size`` before any request and against the bytes as they stream
-        in). Any failure — HTTP, a reader that yields nothing, an unreadable file, a record with a
-        malformed ``size`` — leaves that attachment named with why. Never raises.
+        async def fetch(a: dict[str, Any]) -> bytes:
+            return await self._get_bytes(str(a.get("content") or ""))
 
-        The readers are ``pkg.doc_source``'s, run over a temporary directory: the same PDF,
-        docx and markdown paths ``understand`` uses, with the same optional-extra behaviour.
-        """
-        from orchestrator.pkg.doc_source import is_doc_file, read_doc_pages
-        from orchestrator.pkg.media import MEDIA_SUFFIXES
-
-        read: dict[str, tuple[str, str]] = {}
-        unread: dict[str, str] = {}
-        for a in fields.get("attachment") or []:
-            if not isinstance(a, dict):
-                continue
-            key = _attachment_key(a)
-            name = Path(str(a.get("filename") or "")).name
-            url = str(a.get("content") or "")
-            if not name or not url:
-                continue
-            if Path(name).suffix.lower() in MEDIA_SUFFIXES:
-                # `is_doc_file` claims images too, because `pkg.media` registers a reader for
-                # them — one that reads a *committed* transcript artifact, which a downloaded
-                # attachment can never have. Requesting the bytes would be guaranteed waste.
-                unread[key] = "image, not read"
-                continue
-            if not is_doc_file(Path(name)):
-                unread[key] = "no reader for this type"
-                continue
-            if len(read) >= _MAX_ATTACHMENTS_READ_IN_FULL:
-                unread[key] = f"bound of {_MAX_ATTACHMENTS_READ_IN_FULL} reached"
-                continue
-            try:
-                if int(a.get("size") or 0) > _MAX_ATTACHMENT_BYTES:
-                    unread[key] = f"over the {_MAX_ATTACHMENT_BYTES // 1_000_000} MB cap"
-                    continue
-                data = await self._get_bytes(url)
-                with tempfile.TemporaryDirectory() as tmp:
-                    (Path(tmp) / name).write_bytes(data)
-                    pages = read_doc_pages(tmp, sections=False)
-            except _AttachmentTooLargeError:
-                unread[key] = f"over the {_MAX_ATTACHMENT_BYTES // 1_000_000} MB cap"
-                continue
-            except _OffHostError:
-                unread[key] = "not on the tracker's host"
-                continue
-            except (httpx.HTTPError, IssueTrackerError, OSError, ValueError, TypeError):
-                unread[key] = "download failed"
-                continue
-            text = "\n\n".join(p.text for p in pages).strip()
-            if not text:
-                unread[key] = "no text could be read"
-                continue
-            read[key] = (name, text)
-        return read, unread
+        return await read_attachments_in_full(fields, fetch)
 
     async def _get_bytes(self, url: str) -> bytes:
         """An authenticated binary GET of an attachment's ``content`` link, streamed under the cap.

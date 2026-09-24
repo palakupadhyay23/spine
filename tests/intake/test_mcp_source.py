@@ -215,14 +215,9 @@ async def test_mcp_jira_carries_issue_type_status_and_priority() -> None:
 
 async def test_mcp_jira_matches_the_rest_adapter_byte_for_byte() -> None:
     """Parity is the actual requirement — one issue must read the same whichever transport
-    fetched it. Asserting equality (rather than each field) is what stops the two drifting.
-
-    One declared exception: the MCP path says it read the description only (ledger B19), because
-    for an issue with comments, links or attachments the two are *not* the same. Everything else
-    must still match byte for byte."""
+    fetched it. Asserting equality (rather than each field) is what stops the two drifting."""
     from orchestrator.intake.jira import JiraConfig
     from orchestrator.intake.jira_source import JiraSourceAdapter
-    from orchestrator.intake.mcp_source import MCP_JIRA_DESCRIPTION_ONLY
 
     fields = {
         "summary": "Login 500",
@@ -236,7 +231,7 @@ async def test_mcp_jira_matches_the_rest_adapter_byte_for_byte() -> None:
     rest = JiraSourceAdapter(JiraConfig(base_url="https://x.atlassian.net", email="e", api_token="t"))
     rest_doc = rest._issue_to_document({"key": "ENG-9", "fields": fields})
 
-    assert mcp_doc.body == f"{rest_doc.body}\n\n{MCP_JIRA_DESCRIPTION_ONLY}"
+    assert mcp_doc.body == rest_doc.body
     assert mcp_doc.title == rest_doc.title
     assert mcp_doc.labels == rest_doc.labels
     assert mcp_doc.space == rest_doc.space
@@ -246,7 +241,7 @@ async def test_mcp_jira_omits_the_header_when_the_issue_has_no_type() -> None:
     """A bare issue must not gain a stray blank header line."""
     adapter = _jira_adapter({"ENG-1": {"key": "ENG-1", "fields": {"summary": "S", "description": "d"}}}, {})
     doc = await adapter.fetch_document("ENG-1")
-    assert doc.body.split("\n\n")[0] == "d"
+    assert doc.body == "d"
     assert doc.space == ""
 
 
@@ -329,11 +324,229 @@ def test_nested_rest_shape_still_parses() -> None:
     assert "d" in doc.body
 
 
-async def test_a_jira_issue_read_over_mcp_says_it_is_the_description_only() -> None:
-    """Ledger B19: the same `jira://KEY` reads far thinner over MCP than over REST (no comments,
-    links or attachments), and §8 checks criteria against whatever arrived. Say so in the text."""
-    from orchestrator.intake.mcp_source import MCP_JIRA_DESCRIPTION_ONLY
+# ---- parity with comments, links and attachments (Track E, E3) ---------------------------------
 
-    adapter = _jira_adapter({"ENG-1": {"key": "ENG-1", "fields": {"summary": "S", "description": "d"}}}, {})
-    doc = await adapter.fetch_document("ENG-1")
-    assert doc.body == f"d\n\n{MCP_JIRA_DESCRIPTION_ONLY}"
+
+_RICH_REST_FIELDS: dict[str, Any] = {
+    "summary": "Orders export drops the currency column",
+    "description": "The CSV export loses the currency column since 4.2.",
+    "issuetype": {"name": "Bug"},
+    "status": {"name": "To Do"},
+    "priority": {"name": "High"},
+    "labels": ["export"],
+    "parent": {"key": "FIN-1", "fields": {"summary": "Finance exports"}},
+    "issuelinks": [
+        {
+            "type": {"inward": "is blocked by", "outward": "blocks"},
+            "outwardIssue": {"key": "FIN-9", "fields": {"summary": "Quarter close"}},
+        }
+    ],
+    "comment": {
+        "total": 2,
+        "comments": [
+            {
+                "author": {"displayName": "Ana"},
+                "created": "2026-09-01T10:00:00.000+0000",
+                "body": "Seen on EUR.",
+            },
+            {
+                "author": {"displayName": "Raj"},
+                "created": "2026-09-02T10:00:00.000+0000",
+                "body": "Keep ISO codes.",
+            },
+        ],
+    },
+    "attachment": [
+        {"filename": "mapping.md", "size": 60, "content": "https://x.atlassian.net/att/1"},
+        {"filename": "rules.md", "size": 40_000, "content": "https://x.atlassian.net/att/2"},
+        {"filename": "screen.png", "size": 10, "content": "https://x.atlassian.net/att/3"},
+    ],
+}
+_FILES = {
+    "mapping.md": b"# Mapping\n\n- currency: column 7\n",
+    "rules.md": ("- keep currency\n" * 2_500).encode(),
+}
+
+
+def _flattened(fields: dict[str, Any]) -> dict[str, Any]:
+    """The same issue as mcp-atlassian v0.23.1 returns it: flattened, three parts renamed."""
+    return {
+        "key": "FIN-42",
+        "summary": fields["summary"],
+        "description": fields["description"],
+        "issue_type": fields["issuetype"],
+        "status": fields["status"],
+        "priority": fields["priority"],
+        "labels": fields["labels"],
+        "parent": fields["parent"],
+        "issuelinks": [
+            {
+                "id": "1",
+                "type": {"id": "10", "name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+                "outward_issue": {"id": "9", "key": "FIN-9", "fields": {"summary": "Quarter close"}},
+            }
+        ],
+        "comments": [
+            {
+                "id": str(i),
+                "body": c["body"],
+                "author": {"display_name": c["author"]["displayName"], "name": "x"},
+                "created": c["created"],
+            }
+            for i, c in enumerate(fields["comment"]["comments"])
+        ],
+        "attachments": [
+            {"filename": a["filename"], "size": a["size"], "url": a["content"]} for a in fields["attachment"]
+        ],
+    }
+
+
+class _RichJira:
+    """mcp-atlassian with the attachment toolset: `jira_get_issue` + `jira_download_attachments`."""
+
+    def __init__(self, *, accepts_fields: bool = True) -> None:
+        self.accepts_fields = accepts_fields
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def list_tools(self) -> list[MCPTool]:
+        return [
+            MCPTool(server="jira", name=n, read_only=True)
+            for n in ("jira_get_issue", "jira_download_attachments")
+        ]
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
+        import base64
+
+        self.calls.append((name, arguments))
+        if name == "jira_get_issue":
+            if "fields" in arguments and not self.accepts_fields:
+                return MCPToolResult(text="unknown argument: fields", is_error=True)
+            payload = _flattened(_RICH_REST_FIELDS)
+            if "fields" not in arguments:  # a server's defaults: no attachments, no links
+                payload = {k: v for k, v in payload.items() if k not in {"attachments", "issuelinks"}}
+            return MCPToolResult(text=json.dumps(payload))
+        if name == "jira_download_attachments":
+            parts = [json.dumps({"success": True, "issue_key": arguments["issue_key"], "total": 3}, indent=2)]
+            parts += [
+                json.dumps(
+                    {
+                        "filename": n,
+                        "mime_type": "text/markdown",
+                        "encoding": "base64",
+                        "content": base64.b64encode(b).decode(),
+                    },
+                    indent=2,
+                )
+                for n, b in _FILES.items()
+            ]
+            return MCPToolResult(text="".join(parts))  # parts arrive concatenated
+        return MCPToolResult(text="{}")
+
+
+def _rich_adapter(
+    fake: _RichJira, *, allow: tuple[str, ...] = ("jira_get_issue", "jira_download_attachments")
+) -> MCPSourceAdapter:
+    cfg = MCPServerConfig(name="jira", url="http://x", allow=allow)
+    return MCPSourceAdapter(MCPRegistry([cfg], client_factory=lambda _c: fake), MCPSourceConfig.for_jira())
+
+
+async def _rest_document() -> Any:
+    import httpx
+
+    from orchestrator.intake.jira import JiraConfig
+    from orchestrator.intake.jira_source import JiraSourceAdapter
+
+    by_url = {a["content"]: _FILES.get(a["filename"]) for a in _RICH_REST_FIELDS["attachment"]}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/issue/FIN-42"):
+            return httpx.Response(200, json={"key": "FIN-42", "fields": _RICH_REST_FIELDS})
+        content = by_url.get(str(request.url))
+        return httpx.Response(200, content=content) if content else httpx.Response(404)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://x.atlassian.net")
+    adapter = JiraSourceAdapter(
+        JiraConfig(base_url="https://x.atlassian.net", email="e", api_token="t"), http_client=http
+    )
+    async with http:
+        return await adapter.fetch_document("FIN-42")
+
+
+async def test_an_issue_with_comments_links_and_attachments_reads_the_same_over_mcp_and_rest() -> None:
+    """Track E, E3 — the parity the byte-for-byte test above promised, for a ticket that has the
+    parts the MCP path used to drop. Both views: what the extractor reads and what §8 checks."""
+    fake = _RichJira()
+    mcp_doc = await _rich_adapter(fake).fetch_document("FIN-42")
+    rest_doc = await _rest_document()
+
+    assert "Comments (2 of 2" in rest_doc.body and "blocks FIN-9" in rest_doc.body  # the fixture bites
+    assert "Attachments read in full (2):" in rest_doc.full_body
+    assert mcp_doc.body == rest_doc.body
+    assert mcp_doc.full_body == rest_doc.full_body
+    assert [name for name, _ in fake.calls] == ["jira_get_issue", "jira_download_attachments"]
+    assert fake.calls[0][1]["fields"].split(",")[-3:] == ["comment", "issuelinks", "attachment"]
+
+
+async def test_a_server_without_the_download_tool_names_each_attachment_with_why() -> None:
+    doc = await _rich_adapter(_RichJira(), allow=("jira_get_issue",)).fetch_document("FIN-42")
+    assert "mapping.md (the MCP server offers no attachment download (PermissionError))" in doc.body
+    assert "Comments (2 of 2" in doc.body  # everything else still read
+
+
+async def test_a_server_that_refuses_the_fields_request_reads_the_description_and_says_so() -> None:
+    from orchestrator.intake.mcp_source import MCP_JIRA_FIELDS_REFUSED
+
+    fake = _RichJira(accepts_fields=False)
+    doc = await _rich_adapter(fake).fetch_document("FIN-42")
+    assert doc.body.endswith(MCP_JIRA_FIELDS_REFUSED)
+    assert [args.get("fields") for _, args in fake.calls] == [
+        "summary,description,issuetype,status,priority,labels,parent,comment,issuelinks,attachment",
+        None,
+    ]
+
+
+async def test_more_comments_than_are_shown_are_said_to_exist_not_counted() -> None:
+    """mcp-atlassian returns the newest N and no total; asking for one more than is shown is how
+    the adapter knows more exist without inventing a count."""
+    from orchestrator.intake.jira_source import _MAX_COMMENTS
+
+    payload = _flattened(_RICH_REST_FIELDS)
+    payload["comments"] = [
+        {"id": str(i), "body": f"comment {i}", "author": {"display_name": "A"}, "created": "2026-09-01"}
+        for i in range(_MAX_COMMENTS + 1)
+    ]
+    payload.pop("attachments")
+
+    class _Many(_RichJira):
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
+            self.calls.append((name, arguments))
+            return MCPToolResult(text=json.dumps(payload))
+
+    fake = _Many()
+    doc = await _rich_adapter(fake).fetch_document("FIN-42")
+    assert fake.calls[0][1]["comment_limit"] == _MAX_COMMENTS + 1
+    assert f"Comments ({_MAX_COMMENTS} most recent — more exist):" in doc.body
+    assert "comment 0" not in doc.body  # the oldest is the one left out
+
+
+async def test_links_to_follow_are_found_over_mcp_too() -> None:
+    """`--follow-links` over MCP: remote links arrive raw (`include=remote_links`)."""
+    remote = [
+        {
+            "globalId": "appId=a&pageId=77",
+            "application": {"type": "com.atlassian.confluence"},
+            "object": {"url": "https://x.atlassian.net/wiki/pages/viewpage.action?pageId=77"},
+        }
+    ]
+
+    class _WithLinks(_RichJira):
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPToolResult:
+            self.calls.append((name, arguments))
+            return MCPToolResult(
+                text=json.dumps({"key": "FIN-42", "description": "see the page", "remote_links": remote})
+            )
+
+    fake = _WithLinks()
+    linked = await _rich_adapter(fake).linked_pages("FIN-42")
+    assert [p.page_id for p in linked.pages] == ["77"]
+    assert fake.calls[0][1]["include"] == "remote_links"
