@@ -476,6 +476,37 @@ def _terminal_gate() -> Any:
     return gate
 
 
+async def _fetch_ticket_documents(source: str) -> list[Any]:
+    """The ticket's documents, fetched fresh and never analysed — what `source.txt` is built from.
+
+    A source that cannot be read is an `ERROR` and exit 2, whatever failed underneath: a missing
+    file, an HTTP error, an MCP server that refused. It used to escape as a Python traceback
+    (ledger N12). A source that answers with *nothing* is said out loud rather than planned as if
+    the ticket were empty (N13): §8 then has only the spec to check the criteria against.
+    """
+    import httpx
+
+    from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
+    from orchestrator.intake.service import SourceUriError, parse_source_uri
+
+    try:
+        service = build_service_for(source, dry_run=True)
+        fetched = await service.fetch_source_documents(parse_source_uri(source)[1])
+    except (SourceUriError, IntakeNotConfiguredError) as exc:
+        typer.echo(f"ERROR: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    except (RuntimeError, ValueError, OSError, httpx.HTTPError) as exc:
+        typer.echo(f"ERROR: could not read {source} — {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    documents = list(fetched.documents)
+    if not documents:
+        typer.echo(
+            f"WARNING: {source} returned no documents — the criteria are checked against the spec alone.",
+            err=True,
+        )
+    return documents
+
+
 def _warn_out_deprecated() -> None:
     """`plan`/`approve --out` wrote where the plan gate never reads (ledger B17).
 
@@ -792,21 +823,13 @@ def sdlc_plan(
             # §8 to check the hand-written criteria against. So fetch, never analyse: the spec
             # already says what to build, and the path stays free of any model call.
             from orchestrator.core.env import load_local_env
-            from orchestrator.intake.factory import IntakeNotConfiguredError, build_service_for
-            from orchestrator.intake.service import SourceUriError, parse_source_uri
             from orchestrator.sdlc.spec_file import spec_source_mismatch
 
             load_local_env()
             mismatch = spec_source_mismatch(resolved, source)
             if mismatch:
                 typer.echo(f"WARNING: {mismatch}", err=True)
-            try:
-                service = build_service_for(str(source), dry_run=True)
-                fetched = await service.fetch_source_documents(parse_source_uri(str(source))[1])
-            except (SourceUriError, IntakeNotConfiguredError) as exc:
-                typer.echo(f"ERROR: {exc}", err=True)
-                raise typer.Exit(code=2) from exc
-            documents = list(fetched.documents)
+            documents = await _fetch_ticket_documents(str(source))
         if resolved is None:
             from orchestrator.core.env import load_local_env
             from orchestrator.core.llm.client import LLMError
@@ -838,7 +861,11 @@ def sdlc_plan(
                 typer.echo(f"Intent {intent!r} not found. Available: {ids}", err=True)
                 raise typer.Exit(code=3)
             resolved = chosen.model_dump()
-            documents = list(getattr(plan_result, "documents", []) or [])
+            # The spec comes from the cache — re-extracting it could move an approved plan — but
+            # the ticket text §8 checks against is read fresh, with no model call: what the ticket
+            # says *now*, attachments uncut, which a cache entry written before either could not
+            # hold (Track E, D3).
+            documents = await _fetch_ticket_documents(str(source))
             if not resolved_type:
                 from orchestrator.intake.ticket_meta import resolve_ticket_meta
 

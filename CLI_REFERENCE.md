@@ -992,7 +992,7 @@ orchestrator sdlc plan --spec ./SSPN-49.json --path .
 | Option | Description |
 |---|---|
 | `--spec` | A hand-written spec (JSON). Skips intake entirely, and makes the run LLM-free. |
-| `--source` | Derive the spec from a ticket, e.g. `jira://<issue-key>`. Given **with** `--spec`, the spec stays the requirements and the ticket is only read — no model call — for §8 to check the hand-written criteria against; a spec file and a ticket key that differ are warned about. One of `--spec`/`--source` is required. |
+| `--source` | Derive the spec from a ticket, e.g. `jira://<issue-key>`. Given **with** `--spec`, the spec stays the requirements and the ticket is only read — no model call — for §8 to check the hand-written criteria against; a spec file and a ticket key that differ are warned about. Either way the ticket text §8 checks against is **read fresh** at every plan — every attachment uncut (up to 20 files), even when the spec comes from the intake cache — and a source that cannot be read is an error (exit 2), one that returns nothing a warning. One of `--spec`/`--source` is required. |
 | `--intent` | Intent id to plan (default: the first). |
 | `--path` | Repo to reason about — the graph the plan is grounded in. (default: `.`) |
 | `--out` | **Deprecated — removed in 3.45.** Where the document goes (default: `<repo>/.spine/plans`). A plan written anywhere else cannot be built: `sdlc autorun` reads approvals only from `<repo>/.spine/plans`, so this now warns. |

@@ -276,3 +276,89 @@ def test_the_ticket_text_a_plan_checks_against_is_the_whole_ticket(
     )
     assert result.exit_code == 0, result.output
     assert load_source_text("PROJ-42", root=checkout) == "the whole attachment"
+
+
+def test_a_cached_ticket_is_planned_from_its_cached_spec_and_its_fresh_text(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Track E, D3: the spec comes from the intake cache — re-extracting it could move an approved
+    plan — while `source.txt` is read fresh, with no model call."""
+    import orchestrator.intake.cache as intake_cache
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.service import BacklogPlan
+    from orchestrator.intake.source import FetchTreeResult, SourceDocument
+    from orchestrator.intake.specs import FeatureSpec
+    from orchestrator.sdlc.builddoc import load_source_text
+
+    cached_spec = FeatureSpec.model_validate({**_SPEC, "user_story": "", "summary": _SPEC["summary"]})
+
+    async def _cached(*_a: object, **_k: object) -> BacklogPlan:
+        stale = SourceDocument(id="PROJ-42", title="PROJ-42", body="what the ticket said when first cached")
+        return BacklogPlan(documents=[stale], specs=[cached_spec])
+
+    class _Service:
+        async def fetch_source_documents(self, root_id: str) -> FetchTreeResult:
+            return FetchTreeResult(
+                documents=[SourceDocument(id=root_id, title=root_id, body="what it says now")]
+            )
+
+    monkeypatch.setattr(intake_cache, "analyze_cached", _cached)
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    result = CliRunner().invoke(
+        app, ["sdlc", "plan", "--source", "jira://PROJ-42", "--path", str(checkout), "--quiet"]
+    )
+    assert result.exit_code == 0, result.output
+    assert load_source_text("PROJ-42", root=checkout) == "what it says now"
+    document = (checkout / ".spine" / "plans" / "PROJ-42-build.md").read_text(encoding="utf-8")
+    assert str(_SPEC["title"]) in document  # the cached spec, unchanged
+
+
+def test_a_source_that_cannot_be_read_is_an_error_not_a_traceback(checkout: Path, tmp_path: Path) -> None:
+    """Ledger N12: `file://missing.md` escaped as an uncaught `FileSourceError`."""
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            f"file://{tmp_path / 'missing.md'}",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "ERROR: could not read" in result.output and "missing.md" in result.output
+    assert isinstance(result.exception, SystemExit)  # a clean exit, not an uncaught error
+
+
+def test_a_source_that_returns_nothing_says_so(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ledger N13: an empty source planned silently, as if the ticket said nothing."""
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.source import FetchTreeResult
+
+    class _Empty:
+        async def fetch_source_documents(self, root_id: str) -> FetchTreeResult:
+            return FetchTreeResult(documents=[])
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Empty())
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            "openspec://nochange",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "WARNING: openspec://nochange returned no documents" in result.output
