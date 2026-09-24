@@ -1,6 +1,6 @@
-# State of Spine — 3.43.1
+# State of Spine — 3.44.0
 
-**The one document to read.** Verified against source on **2026-09-23**, at the 3.43.1 release
+**The one document to read.** Verified against source on **2026-09-24**, at the 3.44.0 release
 cut. Every gated number below was re-measured that day (`scripts/state-numbers.py --check`).
 
 > **Why this exists.** `docs/specs/` holds **91** markdown files — **87 specs** plus this
@@ -24,7 +24,7 @@ gates (before building, before merging). The product is **Spine**; it ships as
 
 | | Value | How it is known |
 |---|---|---|
-| Version | **3.43.1** | cutting now; 3.43.0 is the last on PyPI. **Patch** — one fix: a Python `src/` that is a package (has `__init__.py`, imported as `src.x`) no longer loses every in-repo import join. Module ids in such repos change from `py:X` to `py:src.X`; caches are commit-keyed, so no user action required |
+| Version | **3.44.0** | cutting now; 3.43.1 is the last on PyPI. **Minor** — the plan → approve → build seam: a plan written into `.spine/plans/` no longer invalidates its own approval (it made the repo read as modified), a Bug that lands nowhere keeps its approval (the gate now re-derives with the approved issue type), `sdlc plan --spec` with `--source` no longer crashes, and a Jira ticket read over MCP says it is the description only. **Deprecated:** `sdlc plan --out` / `sdlc approve --out` (removed in 3.45). **One-time action:** an approval given while the tree read as dirty (its plan says `Derived at: <sha>-dirty`) is refused once — re-run `sdlc plan` and `sdlc approve` |
 | Languages extracted | **12** languages (**13** front-ends) | Python, Java, TypeScript, JavaScript, C#, C, C++, Go, PHP, Perl, Kotlin, SQL, plus a **Gradle** reader that turns `.kts` build scripts into a module dependency graph rather than parsing them as source (D11) — Perl has comprehension + `CALLS` + routes + data layer (all six phases of [perl-support-roadmap.md](perl-support-roadmap.md)); Kotlin is at P0–P11 (all phases) of [kotlin-support-roadmap.md](kotlin-support-roadmap.md) (comprehension, `CALLS`, Room entities + DAO data edges, Retrofit calls as cross-repo `CONSUMES` candidates, Compose navigation as `NAV` endpoints, Hilt/Dagger wiring through the new `PROVIDES` edge, a Gradle `.kts` module graph that gives `state` real components instead of package-name prefixes, and Ktor + Spring MVC server routes that make a Kotlin service a **provider** — the Spring half is shared with the Java front-end, which had read JAX-RS only, Multiplatform source sets with `expect`/`actual` ids joined by `IMPLEMENTS`, and **Kotlin/JVM codegen** on Gradle — whose runner also gives *Java* codegen its first Gradle support) |
 | Perl codegen progress | **C-0 through C-5 DONE** | [Roadmap](perl-codegen-roadmap.md): dispatch mutation detection **4/8 → 8/8**, 0 skipped mutations; `--language perl` enabled with real green/red runner proof; greenfield live proof passes 81 assertions from a clean checkout; brownfield clean-checkout proof passes 4,192 tests, with 116 regression gaps unchanged |
 | PHP delivery | Composer or pinned PHPUnit PHAR | Configured test layout, changed-file lint, modern PHPUnit; [validation roadmap](php-codegen-roadmap.md) |

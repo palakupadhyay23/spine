@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the package is `synaptixs-spine`
 (import/CLI stay `orchestrator`).
 
-## Unreleased
+## 3.44.0 — 2026-09-24
 
 ### Fixed
 
@@ -28,7 +28,9 @@ All notable changes to this project are documented here. Format loosely follows
     the exact sequence `.github/workflows/spine-sdlc.yml`'s build job runs. Every later command
     also stopped trusting the knowledge-graph cache. `.spine/plans/` is no longer counted as an
     uncommitted change anywhere, whether you commit it or not; `.spine/repos.yaml` and
-    `.spine/workflows/` still are.
+    `.spine/workflows/` still are. **One-time action:** an approval given while the tree read as
+    dirty (its plan's header says `Derived at: <sha>-dirty`) is now refused once — re-run
+    `sdlc plan` and `sdlc approve`.
   - **`sdlc plan --spec X.json --source <uri>` no longer crashes** (`UnboundLocalError`). The
     spec stays the requirements and the ticket is only read, with no model call, for §8 to check
     the hand-written criteria against. A spec file and a `jira://` key that name different
