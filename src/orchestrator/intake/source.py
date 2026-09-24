@@ -80,6 +80,9 @@ class FetchTreeResult:
 
     documents: list[SourceDocument] = field(default_factory=list)
     truncated: bool = False  # True when max_depth / max_docs cut the walk short
+    #: What `--follow-links` read and could not, as the build document's header states it; empty
+    #: when links were not followed.
+    linked_pages: str = ""
 
 
 class SourceAdapter(Protocol):

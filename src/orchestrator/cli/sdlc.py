@@ -476,7 +476,7 @@ def _terminal_gate() -> Any:
     return gate
 
 
-async def _fetch_ticket_documents(source: str) -> list[Any]:
+async def _fetch_ticket_documents(source: str, *, follow_links: bool = False) -> tuple[list[Any], str]:
     """The ticket's documents, fetched fresh and never analysed — what `source.txt` is built from.
 
     A source that cannot be read is an `ERROR` and exit 2, whatever failed underneath: a missing
@@ -491,7 +491,12 @@ async def _fetch_ticket_documents(source: str) -> list[Any]:
 
     try:
         service = build_service_for(source, dry_run=True)
-        fetched = await service.fetch_source_documents(parse_source_uri(source)[1])
+        root_id = parse_source_uri(source)[1]
+        fetched = await (
+            service.fetch_source_documents(root_id, follow_links=True)
+            if follow_links
+            else service.fetch_source_documents(root_id)
+        )
     except (SourceUriError, IntakeNotConfiguredError) as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=2) from exc
@@ -504,7 +509,7 @@ async def _fetch_ticket_documents(source: str) -> list[Any]:
             f"WARNING: {source} returned no documents — the criteria are checked against the spec alone.",
             err=True,
         )
-    return documents
+    return documents, fetched.linked_pages
 
 
 def _warn_out_deprecated() -> None:
@@ -663,6 +668,14 @@ def sdlc_autorun(
             help="Refuse to build unless a human approved this ticket's build document.",
         ),
     ] = True,
+    follow_links: Annotated[
+        bool,
+        typer.Option(
+            "--follow-links",
+            help="Also read the Confluence pages the ticket links to (at most 5; needs Confluence "
+            "access — an MCP server or CONFLUENCE_* credentials — or the run refuses).",
+        ),
+    ] = False,
 ) -> None:
     """Drive ONE ticket through the whole path: research → design → code → tests → review.
 
@@ -720,6 +733,7 @@ def sdlc_autorun(
                 spec=injected,
                 plan_gate=plan_gate,
                 log=typer.echo,
+                follow_links=follow_links,
             )
         except AutorunError as exc:
             typer.echo(str(exc), err=True)
@@ -766,6 +780,14 @@ def sdlc_plan(
         ),
     ] = "",
     quiet: Annotated[bool, typer.Option("--quiet", help="Write the document without printing it.")] = False,
+    follow_links: Annotated[
+        bool,
+        typer.Option(
+            "--follow-links",
+            help="Also read the Confluence pages the ticket links to (at most 5; needs Confluence "
+            "access — an MCP server or CONFLUENCE_* credentials — or the run refuses).",
+        ),
+    ] = False,
 ) -> None:
     """Produce the build document for ONE ticket and stop. No worktree, no code, no spend.
 
@@ -818,6 +840,8 @@ def sdlc_plan(
         # The ticket as intake read it — description, comments, attachments — is what row 08
         # checks each filed criterion against. A hand-written `--spec` alone has none.
         documents: list[Any] = []
+        # What the header says about linked Confluence pages: only meaningful with a ticket.
+        linked = ""
         if resolved is not None and source:
             # `--spec` is the requirements; `--source` supplies only the ticket's own words, for
             # §8 to check the hand-written criteria against. So fetch, never analyse: the spec
@@ -829,7 +853,7 @@ def sdlc_plan(
             mismatch = spec_source_mismatch(resolved, source)
             if mismatch:
                 typer.echo(f"WARNING: {mismatch}", err=True)
-            documents = await _fetch_ticket_documents(str(source))
+            documents, linked = await _fetch_ticket_documents(str(source), follow_links=follow_links)
         if resolved is None:
             from orchestrator.core.env import load_local_env
             from orchestrator.core.llm.client import LLMError
@@ -844,7 +868,12 @@ def sdlc_plan(
                 typer.echo(f"ERROR: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
             try:
-                plan_result = await analyze_cached(service, str(source), refresh=False, log=lambda _m: None)
+                plan_result = await analyze_cached(
+                    service, str(source), refresh=False, log=lambda _m: None, follow_links=follow_links
+                )
+            except IntakeNotConfiguredError as exc:
+                typer.echo(f"ERROR: {exc}", err=True)
+                raise typer.Exit(code=2) from exc
             except LLMError as exc:
                 typer.echo(f"ERROR: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
@@ -865,7 +894,7 @@ def sdlc_plan(
             # the ticket text §8 checks against is read fresh, with no model call: what the ticket
             # says *now*, attachments uncut, which a cache entry written before either could not
             # hold (Track E, D3).
-            documents = await _fetch_ticket_documents(str(source))
+            documents, linked = await _fetch_ticket_documents(str(source), follow_links=follow_links)
             if not resolved_type:
                 from orchestrator.intake.ticket_meta import resolve_ticket_meta
 
@@ -886,6 +915,7 @@ def sdlc_plan(
             language=resolve_language(Path(path), language),
             issue_type=resolved_type,
             source_text=source_text,
+            linked_pages=linked or ("not followed — `--follow-links` reads them" if source else ""),
             # Rendered, never stored in the document: a plan that changed since it was
             # approved shows as stale rather than carrying an approval it outgrew.
             approval=load_approval(intent_key, root=path, out=out),

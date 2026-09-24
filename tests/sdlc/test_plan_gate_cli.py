@@ -13,6 +13,7 @@ import asyncio
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 from typer.testing import CliRunner
@@ -362,3 +363,105 @@ def test_a_source_that_returns_nothing_says_so(
     )
     assert result.exit_code == 0, result.output
     assert "WARNING: openspec://nochange returned no documents" in result.output
+
+
+class _LinkedService:
+    """A ticket whose linked pages `--follow-links` reads; records whether it was asked to."""
+
+    def __init__(self) -> None:
+        self.asked: list[bool] = []
+
+    async def fetch_source_documents(self, root_id: str, *, follow_links: bool = False) -> Any:
+        from orchestrator.intake.source import FetchTreeResult, SourceDocument
+
+        self.asked.append(follow_links)
+        docs = [SourceDocument(id=root_id, title=root_id, body="the ticket")]
+        if not follow_links:
+            return FetchTreeResult(documents=docs)
+        page = SourceDocument(
+            id="confluence:9", title="Linked page: Spec", body="- a criterion from the page"
+        )
+        return FetchTreeResult(documents=[*docs, page], linked_pages="followed — 1 read")
+
+
+@pytest.mark.parametrize(
+    ("flags", "header"),
+    [
+        ([], "**Linked pages:** not followed — `--follow-links` reads them"),
+        (["--follow-links"], "**Linked pages:** followed — 1 read"),
+    ],
+)
+def test_the_header_says_whether_linked_pages_were_read(
+    flags: list[str], header: str, checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Track E, D6: a reviewer sees in the document whether linked pages were part of it."""
+    import orchestrator.intake.factory as factory
+    from orchestrator.sdlc.builddoc import load_source_text
+
+    service = _LinkedService()
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: service)
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            "jira://PROJ-42",
+            "--path",
+            str(checkout),
+            "--quiet",
+            *flags,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    document = (checkout / ".spine" / "plans" / "PROJ-42-build.md").read_text(encoding="utf-8")
+    assert header in document
+    assert service.asked == [bool(flags)]
+    assert ("a criterion from the page" in load_source_text("PROJ-42", root=checkout)) is bool(flags)
+
+
+def test_following_links_without_confluence_access_is_refused(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D12: the refusal reaches the user as an error that says what to configure, exit 2."""
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.factory import IntakeNotConfiguredError
+
+    class _NoWiki:
+        async def fetch_source_documents(self, root_id: str, *, follow_links: bool = False) -> Any:
+            raise IntakeNotConfiguredError("Confluence not configured: set CONFLUENCE_BASE_URL …")
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _NoWiki())
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(_spec_file(tmp_path)),
+            "--source",
+            "jira://PROJ-42",
+            "--path",
+            str(checkout),
+            "--quiet",
+            "--follow-links",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "Confluence not configured" in result.output
+    assert not (checkout / ".spine" / "plans" / "PROJ-42-build.md").exists()
+
+
+def test_investigate_reads_linked_pages_only_when_asked(
+    checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import orchestrator.intake.factory as factory
+
+    service = _LinkedService()
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: service)
+    for flags in ([], ["--follow-links"]):
+        result = CliRunner().invoke(app, ["investigate", str(checkout), "--source", "jira://PROJ-42", *flags])
+        assert result.exit_code == 0, result.output
+    assert service.asked == [False, True]

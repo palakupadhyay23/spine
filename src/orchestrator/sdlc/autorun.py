@@ -264,6 +264,7 @@ async def autorun(
     plan_gate: bool = True,
     store: Any = None,
     log: Callable[[str], None] | None = None,
+    follow_links: bool = False,
 ) -> RunContext:
     """Drive one ticket through the happy path. Safe mode by default.
 
@@ -359,7 +360,14 @@ async def autorun(
     ):
         try:
             with ctx.stage_span("intake"):
-                await _stage_intake(ctx, intent_id=intent_id, spec=spec, issue_type=issue_type, emit=emit)
+                await _stage_intake(
+                    ctx,
+                    intent_id=intent_id,
+                    spec=spec,
+                    issue_type=issue_type,
+                    emit=emit,
+                    follow_links=follow_links,
+                )
             # Before the graph, before any spend: was this plan read and approved? The gate
             # is here rather than before intake because it needs the spec to know which plan
             # it is asking about.
@@ -569,6 +577,7 @@ async def _stage_intake(
     spec: dict[str, Any] | None = None,
     issue_type: str = "",
     emit: Callable[[str], None],
+    follow_links: bool = False,
 ) -> None:
     """Resolve the source to one spec, once, and hand it to every later stage.
 
@@ -599,6 +608,10 @@ async def _stage_intake(
         # way this path can reach the bug profile at all. Silence here is what made a
         # spec-file run untyped and unexplained.
         _adopt_issue_type(ctx, issue_type, origin="--issue-type", emit=emit)
+        if follow_links:
+            # Nothing to follow into: the spec is given, and the gate reads the ticket text the
+            # plan saved — `sdlc plan --follow-links` is where linked pages are read.
+            emit("[intake] --follow-links has no effect with --spec; plan with it instead")
         ctx.record_stage("intake", "skipped", "spec supplied by the caller")
         emit(f"[intake] skipped — spec supplied: {ctx.spec.get('title', '')}")
         return
@@ -617,7 +630,14 @@ async def _stage_intake(
         ctx.record_stage("intake", "failed", str(exc))
         raise AutorunError(str(exc), code=2) from exc
 
-    plan = await analyze_cached(service, ctx.source, refresh=False, log=emit)
+    # `--follow-links` is a different extraction — the ticket *and* its linked pages — so it reads
+    # and writes its own cache entry; the plan gate re-derives against the `source.txt` the plan
+    # saved, so a run and a plan made with different flags are different plans, and say so.
+    try:
+        plan = await analyze_cached(service, ctx.source, refresh=False, log=emit, follow_links=follow_links)
+    except IntakeNotConfiguredError as exc:
+        ctx.record_stage("intake", "failed", str(exc))
+        raise AutorunError(str(exc), code=2) from exc
     if not plan.specs:
         ctx.record_stage("intake", "failed", "no specs derived from the source")
         raise AutorunError("No specs derived from the source — nothing to implement.", code=3)

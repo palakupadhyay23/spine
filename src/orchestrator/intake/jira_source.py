@@ -26,7 +26,7 @@ import tempfile
 from collections import deque
 from collections.abc import Collection
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import httpx
@@ -39,6 +39,9 @@ from orchestrator.intake.source import (
     SourceDocument,
     SourceRef,
 )
+
+if TYPE_CHECKING:
+    from orchestrator.intake.confluence_links import LinkedPages
 
 #: Issue key (``PROJ-123``) vs bare project key (``PROJ``) — decides how a root
 #: is resolved: walk one issue's children, or run a project-wide search.
@@ -644,7 +647,37 @@ class JiraSourceAdapter:
         c = self._config
         return bool(c.base_url and c.email and c.api_token)
 
+    async def linked_pages(self, doc_id: str) -> LinkedPages:
+        """The Confluence pages this issue links to — its remote links, then URLs in its
+        description and comments (see :mod:`orchestrator.intake.confluence_links`).
+
+        Reads the *raw* description, never a rendering of it: link targets live in ADF marks and
+        smart cards, which any text conversion drops. Remote links that Jira will not return (no
+        permission, an old server) leave the text scan to find what it can.
+        """
+        from orchestrator.intake.confluence import ConfluenceConfig
+        from orchestrator.intake.confluence_links import find_linked_pages
+
+        data = await self._get(f"/issue/{doc_id}", params={"fields": "description,comment"})
+        fields = data.get("fields") or {}
+        try:
+            remote = await self._get_json(f"/issue/{doc_id}/remotelink")
+        except IssueTrackerError:
+            remote = []
+        comments = (fields.get("comment") or {}).get("comments") or []
+        texts: list[tuple[str, Any]] = [("description", fields.get("description"))]
+        texts += [("comment", c.get("body")) for c in comments if isinstance(c, dict)]
+        hosts = {urlparse(self._config.base_url).netloc, urlparse(ConfluenceConfig().base_url).netloc}
+        return find_linked_pages(
+            remote_links=remote if isinstance(remote, list) else [], texts=texts, site_hosts=hosts
+        )
+
     async def _get(self, path: str, *, params: dict[str, str] | None = None) -> dict[str, Any]:
+        data = await self._get_json(path, params=params)
+        return data if isinstance(data, dict) else {}
+
+    async def _get_json(self, path: str, *, params: dict[str, str] | None = None) -> Any:
+        """A GET whose JSON may be any shape — `remotelink` answers with an array."""
         if not self._read_ready():
             raise IssueTrackerError(
                 "Jira not configured for reading (need JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN)."
@@ -663,8 +696,7 @@ class JiraSourceAdapter:
                 await client.aclose()
         if resp.status_code != httpx.codes.OK:
             raise IssueTrackerError(f"GET {path} failed: HTTP {resp.status_code} {resp.text[:256]}")
-        data: dict[str, Any] = resp.json()
-        return data
+        return resp.json()
 
     async def aclose(self) -> None:
         if self._client is not None and self._owns_client:
