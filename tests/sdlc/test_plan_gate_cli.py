@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -155,9 +156,12 @@ def test_a_plan_can_only_be_written_where_the_gate_reads_it(command: str, tmp_pa
         if command == "plan"
         else ["sdlc", "approve", "PROJ-42"]
     )
-    result = CliRunner().invoke(app, [*args, "--out", str(tmp_path / "elsewhere")])
+    # CI forces colour (rich switches it on under GITHUB_ACTIONS) and a narrow panel wraps the
+    # message across boxed lines — read the words, not the rendering.
+    result = CliRunner().invoke(app, [*args, "--out", str(tmp_path / "elsewhere")], env={"COLUMNS": "200"})
     assert result.exit_code == 2
-    assert "No such option" in result.output and "--out" in result.output
+    plain = " ".join(re.sub(r"\x1b\[[0-9;]*m", "", result.output).replace("│", " ").split())
+    assert "No such option" in plain and "--out" in plain
 
 
 def test_a_bug_that_lands_nowhere_keeps_its_approval(checkout: Path, tmp_path: Path) -> None:
