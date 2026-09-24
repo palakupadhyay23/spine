@@ -189,7 +189,6 @@ def test_a_spec_and_a_ticket_that_disagree_are_planned_as_the_spec_and_said_so(
 
     The tracker is stubbed: this must never reach a real Jira through a developer's `.env`.
     """
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.source import FetchTreeResult, SourceDocument
 
     fetched: list[str] = []
@@ -199,7 +198,7 @@ def test_a_spec_and_a_ticket_that_disagree_are_planned_as_the_spec_and_said_so(
             fetched.append(root_id)
             return FetchTreeResult(documents=[SourceDocument(id=root_id, title=root_id, body="PROJ-43 text")])
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Service())
     spec_file = _spec_file(tmp_path)
     result = CliRunner().invoke(
         app,
@@ -239,7 +238,6 @@ def test_the_ticket_text_a_plan_checks_against_is_the_whole_ticket(
     checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Track E, E1: `source.txt` carries the full view, not the extractor's bounded one."""
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.source import FetchTreeResult, SourceDocument
     from orchestrator.sdlc.builddoc import load_source_text
 
@@ -250,7 +248,7 @@ def test_the_ticket_text_a_plan_checks_against_is_the_whole_ticket(
             )
             return FetchTreeResult(documents=[doc])
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Service())
     spec_file = _spec_file(tmp_path)
     result = CliRunner().invoke(
         app,
@@ -276,7 +274,6 @@ def test_a_cached_ticket_is_planned_from_its_cached_spec_and_its_fresh_text(
     """Track E, D3: the spec comes from the intake cache — re-extracting it could move an approved
     plan — while `source.txt` is read fresh, with no model call."""
     import orchestrator.intake.cache as intake_cache
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.service import BacklogPlan
     from orchestrator.intake.source import FetchTreeResult, SourceDocument
     from orchestrator.intake.specs import FeatureSpec
@@ -295,7 +292,7 @@ def test_a_cached_ticket_is_planned_from_its_cached_spec_and_its_fresh_text(
             )
 
     monkeypatch.setattr(intake_cache, "analyze_cached", _cached)
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Service())
     result = CliRunner().invoke(
         app, ["sdlc", "plan", "--source", "jira://PROJ-42", "--path", str(checkout), "--quiet"]
     )
@@ -330,14 +327,13 @@ def test_a_source_that_returns_nothing_says_so(
     checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Ledger N13: an empty source planned silently, as if the ticket said nothing."""
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.source import FetchTreeResult
 
     class _Empty:
         async def fetch_source_documents(self, root_id: str) -> FetchTreeResult:
             return FetchTreeResult(documents=[])
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Empty())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Empty())
     result = CliRunner().invoke(
         app,
         [
@@ -386,11 +382,10 @@ def test_the_header_says_whether_linked_pages_were_read(
     flags: list[str], header: str, checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Track E, D6: a reviewer sees in the document whether linked pages were part of it."""
-    import orchestrator.intake.factory as factory
     from orchestrator.sdlc.builddoc import load_source_text
 
     service = _LinkedService()
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: service)
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: service)
     result = CliRunner().invoke(
         app,
         [
@@ -417,14 +412,13 @@ def test_following_links_without_confluence_access_is_refused(
     checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """D12: the refusal reaches the user as an error that says what to configure, exit 2."""
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.factory import IntakeNotConfiguredError
 
     class _NoWiki:
         async def fetch_source_documents(self, root_id: str, *, follow_links: bool = False) -> Any:
             raise IntakeNotConfiguredError("Confluence not configured: set CONFLUENCE_BASE_URL …")
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _NoWiki())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _NoWiki())
     result = CliRunner().invoke(
         app,
         [
@@ -448,10 +442,9 @@ def test_following_links_without_confluence_access_is_refused(
 def test_investigate_reads_linked_pages_only_when_asked(
     checkout: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import orchestrator.intake.factory as factory
 
     service = _LinkedService()
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: service)
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: service)
     for flags in ([], ["--follow-links"]):
         result = CliRunner().invoke(app, ["investigate", str(checkout), "--source", "jira://PROJ-42", *flags])
         assert result.exit_code == 0, result.output
@@ -481,13 +474,12 @@ def test_a_bug_in_our_own_code_is_not_reported_as_an_unreadable_source(
 ) -> None:
     """Review finding 8: catching `RuntimeError`/`ValueError` turned a programming error into
     "could not read" with no traceback. Only the named source failures are an ERROR."""
-    import orchestrator.intake.factory as factory
 
     class _Buggy:
         async def fetch_source_documents(self, root_id: str, **_k: object) -> Any:
             raise ValueError("a bug in an adapter")
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Buggy())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Buggy())
     result = CliRunner().invoke(
         app,
         [
@@ -510,14 +502,13 @@ def test_a_blank_page_warns_like_an_empty_source(
     checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Review finding 9: N13 checked for no documents, not for no text."""
-    import orchestrator.intake.factory as factory
     from orchestrator.intake.source import FetchTreeResult, SourceDocument
 
     class _Blank:
         async def fetch_source_documents(self, root_id: str, **_k: object) -> Any:
             return FetchTreeResult(documents=[SourceDocument(id="1", title="Spec", body="   \n")])
 
-    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Blank())
+    monkeypatch.setattr("orchestrator.intake.factory.build_service_for", lambda *_a, **_k: _Blank())
     result = CliRunner().invoke(
         app,
         [

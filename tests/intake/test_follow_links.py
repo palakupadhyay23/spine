@@ -105,7 +105,7 @@ async def test_a_source_with_no_links_to_follow_says_so() -> None:
     class _File:
         source_kind = "file"
 
-    report = await follow_confluence_links(_File(), "./bug.md", reader_factory=lambda: _Wiki())
+    report = await follow_confluence_links(_File(), "./bug.md", reader_factory=_Wiki)
     assert (
         report.documents == []
         and report.summary() == "not followed — links are followed only for Jira tickets"
@@ -251,7 +251,6 @@ def test_a_flag_off_read_never_sees_the_variant(tmp_path: Path) -> None:
 
 
 async def test_the_service_appends_linked_pages_after_the_ticket(monkeypatch: pytest.MonkeyPatch) -> None:
-    import orchestrator.intake.follow_links as follow
     from orchestrator.intake.service import BacklogService
 
     class _Source(_Ticket):
@@ -260,7 +259,7 @@ async def test_the_service_appends_linked_pages_after_the_ticket(monkeypatch: py
         async def fetch_tree(self, root_id: str, **_k: Any) -> FetchTreeResult:
             return FetchTreeResult(documents=[SourceDocument(id=root_id, title="T", body="ticket")])
 
-    monkeypatch.setattr(follow, "_default_reader", lambda: _Wiki())
+    monkeypatch.setattr("orchestrator.intake.follow_links._default_reader", _Wiki)
     service = BacklogService.__new__(BacklogService)
     service._source = _Source(LinkedPages(pages=[_page(5)]))  # type: ignore[assignment]
 
