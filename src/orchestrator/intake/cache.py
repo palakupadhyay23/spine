@@ -53,10 +53,19 @@ def cache_path(source_uri: str, cache_dir: Path | None = None) -> Path:
     return root / f"{key}.json"
 
 
+def _cached_document(doc: SourceDocument) -> dict[str, Any]:
+    fields = dataclasses.asdict(doc)
+    fields.pop("full_body", None)
+    return fields
+
+
 def _plan_to_dict(plan: BacklogPlan) -> dict[str, Any]:
     return {
         "version": _CACHE_VERSION,
-        "documents": [dataclasses.asdict(d) for d in plan.documents],
+        # `full_body` is left out: `sdlc plan` fetches the ticket fresh for §8, so caching every
+        # attachment in full would only grow each entry — and leaving it out keeps the format, and
+        # `_CACHE_VERSION`, exactly as they were (Track E, D4).
+        "documents": [_cached_document(d) for d in plan.documents],
         "intents": [i.model_dump() for i in plan.intents],
         "gaps": [
             {

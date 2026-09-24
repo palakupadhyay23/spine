@@ -82,6 +82,13 @@ _MAX_ATTACHMENT_CHARS = 8_000
 #: document — the criteria, silently. This bound cuts the attachments instead, says so on the
 #: attachment, and leaves the ticket's own words whole.
 _MAX_ATTACHMENTS_TOTAL_CHARS = 20_000
+#: The *full* view (``SourceDocument.full_body``) has no character cap — it is what §8 checks a
+#: plan's criteria against, and a cut there is a criterion that reads as unstated. It is still
+#: bounded (invariant 7): a ticket with two hundred log files attached must not stall a plan,
+#: so at most this many files are read, the byte cap above still applies to each, and every
+#: file past the bound is named with why. The bounded view above is derived from the same
+#: reads, so no attachment is downloaded twice.
+_MAX_ATTACHMENTS_READ_IN_FULL = 20
 
 _MULTI_BLANK_RE = re.compile(r"\n{3,}")
 
@@ -289,6 +296,77 @@ def _attachments_read_text(texts: dict[str, tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _attachments_read_in_full_text(texts: dict[str, tuple[str, str]]) -> str:
+    """The full view's attachment section: every file read, none cut."""
+    if not texts:
+        return ""
+    lines = [f"Attachments read in full ({len(texts)}):"]
+    for name, text in texts.values():
+        lines.append(f"--- {name} ---\n{text}")
+    return "\n".join(lines)
+
+
+def _bound_attachments(
+    fields: dict[str, Any], full: dict[str, tuple[str, str]], not_read: dict[str, str]
+) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
+    """The bounded view the intent extractor reads, derived from the full reads.
+
+    Byte-identical to what 3.44.0 produced by downloading as it went: the same checks in the same
+    order (image → no reader → the five-file bound → the budget → why the full read failed), the
+    same cuts and markers, the same reasons. Pinned by ``tests/intake/test_llm_input_pinned.py`` —
+    a cached spec was extracted from exactly this text, and moving it can re-park approved runs.
+    """
+    from orchestrator.pkg.doc_source import is_doc_file
+    from orchestrator.pkg.media import MEDIA_SUFFIXES
+
+    read: dict[str, tuple[str, str]] = {}
+    unread: dict[str, str] = {}
+    used = 0
+    for a in fields.get("attachment") or []:
+        if not isinstance(a, dict):
+            continue
+        key = _attachment_key(a)
+        name = Path(str(a.get("filename") or "")).name
+        if not name or not str(a.get("content") or ""):
+            continue
+        if Path(name).suffix.lower() in MEDIA_SUFFIXES:
+            unread[key] = "image, not read"
+            continue
+        if not is_doc_file(Path(name)):
+            unread[key] = "no reader for this type"
+            continue
+        if len(read) >= _MAX_ATTACHMENTS:
+            unread[key] = f"bound of {_MAX_ATTACHMENTS} reached"
+            continue
+        if used >= _MAX_ATTACHMENTS_TOTAL_CHARS:
+            unread[key] = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+            continue
+        if key not in full:
+            unread[key] = not_read.get(key, "download failed")
+            continue
+        text = full[key][1]
+        remaining = _MAX_ATTACHMENTS_TOTAL_CHARS - used
+        if len(text) > min(_MAX_ATTACHMENT_CHARS, remaining):
+            why = (
+                f" — attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+                if remaining < min(len(text), _MAX_ATTACHMENT_CHARS)
+                else ""
+            )
+            marker = f" …[truncated, {len(text)} chars{why}]"
+            # The marker is part of what is carried, so it comes out of the same budget:
+            # counting only the content let the header print more chars than it allows.
+            keep = min(_MAX_ATTACHMENT_CHARS, remaining) - len(marker)
+            if keep <= 0:
+                # Not even room for the sentence saying it was cut. Naming it costs
+                # nothing and keeps the header's arithmetic true.
+                unread[key] = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+                continue
+            text = text[:keep].rstrip() + marker
+        used += len(text)
+        read[key] = (name, text)
+    return read, unread
+
+
 class JiraSourceAdapter:
     """SourceAdapter over Jira Cloud v3 (read-only)."""
 
@@ -305,6 +383,8 @@ class JiraSourceAdapter:
         *,
         attachment_texts: dict[str, tuple[str, str]] | None = None,
         attachment_skips: dict[str, str] | None = None,
+        full_texts: dict[str, tuple[str, str]] | None = None,
+        full_skips: dict[str, str] | None = None,
     ) -> SourceDocument:
         key = str(issue.get("key", ""))
         fields = issue.get("fields") or {}
@@ -319,20 +399,40 @@ class JiraSourceAdapter:
         # read, and finally what exists but was not read. The description stays directly
         # under the header so a bounded comment thread can never displace the one section
         # that is certainly on topic.
+        ticket = (
+            header,
+            _description_text(fields.get("description")),
+            _links_text(fields),
+            _comments_text(fields),
+        )
         body = _collapse(
             "\n\n".join(
                 p
                 for p in (
-                    header,
-                    _description_text(fields.get("description")),
-                    _links_text(fields),
-                    _comments_text(fields),
+                    *ticket,
                     _attachments_read_text(texts),
                     _attachment_names(fields, exclude=texts.keys(), reasons=attachment_skips),
                 )
                 if p
             )
         )
+        # The same ticket with nothing cut from its attachments — what §8 checks criteria against.
+        # Only when the bounded view actually lost something; otherwise the two are one text.
+        full_body = ""
+        if full_texts is not None:
+            full = full_texts
+            full_body = _collapse(
+                "\n\n".join(
+                    p
+                    for p in (
+                        *ticket,
+                        _attachments_read_in_full_text(full),
+                        _attachment_names(fields, exclude=full.keys(), reasons=full_skips),
+                    )
+                    if p
+                )
+            )
+            full_body = "" if full_body == body or full == texts else full_body
         url = f"{self._config.base_url.rstrip('/')}/browse/{key}" if key else ""
         project = project_key_of(key)
         return SourceDocument(
@@ -343,26 +443,30 @@ class JiraSourceAdapter:
             space=project,
             labels=labels,
             issue_type=issue_type_of(fields),
+            full_body=full_body,
         )
 
     async def fetch_document(self, doc_id: str) -> SourceDocument:
         data = await self._get(f"/issue/{doc_id}", params={"fields": _FIELDS})
-        read, unread = await self._attachment_texts(data.get("fields") or {})
-        return self._issue_to_document(data, attachment_texts=read, attachment_skips=unread)
+        fields = data.get("fields") or {}
+        full, not_read = await self._attachment_texts(fields)
+        read, unread = _bound_attachments(fields, full, not_read)
+        return self._issue_to_document(
+            data, attachment_texts=read, attachment_skips=unread, full_texts=full, full_skips=not_read
+        )
 
     async def _attachment_texts(
         self, fields: dict[str, Any]
     ) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
-        """``key → (filename, text)`` for the attachments that could be read, and ``key → reason``
+        """``key → (filename, text)`` for every attachment read **in full**, and ``key → reason``
         for every one that was not.
 
-        Bounded four ways, each reason stated — at most ``_MAX_ATTACHMENTS``, none over
-        ``_MAX_ATTACHMENT_BYTES`` (checked against Jira's ``size`` before any request and against
-        the bytes as they stream in), each text cut at ``_MAX_ATTACHMENT_CHARS`` with the cut
-        marked, and all of them together under ``_MAX_ATTACHMENTS_TOTAL_CHARS``, the one that
-        crosses it cut to what is left and the rest named with why. Any failure — HTTP, a
-        reader that yields nothing, an unreadable file, a record
-        with a malformed ``size`` — leaves that attachment named with why. Never raises.
+        No character cap — :func:`_bound_attachments` derives the extractor's bounded view from
+        these reads, so each file is downloaded at most once. Still bounded, each reason stated:
+        at most ``_MAX_ATTACHMENTS_READ_IN_FULL`` files, none over ``_MAX_ATTACHMENT_BYTES``
+        (checked against Jira's ``size`` before any request and against the bytes as they stream
+        in). Any failure — HTTP, a reader that yields nothing, an unreadable file, a record with a
+        malformed ``size`` — leaves that attachment named with why. Never raises.
 
         The readers are ``pkg.doc_source``'s, run over a temporary directory: the same PDF,
         docx and markdown paths ``understand`` uses, with the same optional-extra behaviour.
@@ -372,7 +476,6 @@ class JiraSourceAdapter:
 
         read: dict[str, tuple[str, str]] = {}
         unread: dict[str, str] = {}
-        used = 0
         for a in fields.get("attachment") or []:
             if not isinstance(a, dict):
                 continue
@@ -390,11 +493,8 @@ class JiraSourceAdapter:
             if not is_doc_file(Path(name)):
                 unread[key] = "no reader for this type"
                 continue
-            if len(read) >= _MAX_ATTACHMENTS:
-                unread[key] = f"bound of {_MAX_ATTACHMENTS} reached"
-                continue
-            if used >= _MAX_ATTACHMENTS_TOTAL_CHARS:
-                unread[key] = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
+            if len(read) >= _MAX_ATTACHMENTS_READ_IN_FULL:
+                unread[key] = f"bound of {_MAX_ATTACHMENTS_READ_IN_FULL} reached"
                 continue
             try:
                 if int(a.get("size") or 0) > _MAX_ATTACHMENT_BYTES:
@@ -417,24 +517,6 @@ class JiraSourceAdapter:
             if not text:
                 unread[key] = "no text could be read"
                 continue
-            remaining = _MAX_ATTACHMENTS_TOTAL_CHARS - used
-            if len(text) > min(_MAX_ATTACHMENT_CHARS, remaining):
-                why = (
-                    f" — attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
-                    if remaining < min(len(text), _MAX_ATTACHMENT_CHARS)
-                    else ""
-                )
-                marker = f" …[truncated, {len(text)} chars{why}]"
-                # The marker is part of what is carried, so it comes out of the same budget:
-                # counting only the content let the header print more chars than it allows.
-                keep = min(_MAX_ATTACHMENT_CHARS, remaining) - len(marker)
-                if keep <= 0:
-                    # Not even room for the sentence saying it was cut. Naming it costs
-                    # nothing and keeps the header's arithmetic true.
-                    unread[key] = f"attachment budget of {_MAX_ATTACHMENTS_TOTAL_CHARS:,} chars reached"
-                    continue
-                text = text[:keep].rstrip() + marker
-            used += len(text)
             read[key] = (name, text)
         return read, unread
 

@@ -241,3 +241,38 @@ def test_an_approval_written_before_it_carried_a_type_still_loads_and_holds(
     assert recorded == ""
     approval.write_text(json.dumps(payload), encoding="utf-8")
     assert _gate(spec_file, checkout) == "PASSED: reviewer"
+
+
+def test_the_ticket_text_a_plan_checks_against_is_the_whole_ticket(
+    checkout: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Track E, E1: `source.txt` carries the full view, not the extractor's bounded one."""
+    import orchestrator.intake.factory as factory
+    from orchestrator.intake.source import FetchTreeResult, SourceDocument
+    from orchestrator.sdlc.builddoc import load_source_text
+
+    class _Service:
+        async def fetch_source_documents(self, root_id: str) -> FetchTreeResult:
+            doc = SourceDocument(
+                id=root_id, title=root_id, body="bounded …[truncated]", full_body="the whole attachment"
+            )
+            return FetchTreeResult(documents=[doc])
+
+    monkeypatch.setattr(factory, "build_service_for", lambda *_a, **_k: _Service())
+    spec_file = _spec_file(tmp_path)
+    result = CliRunner().invoke(
+        app,
+        [
+            "sdlc",
+            "plan",
+            "--spec",
+            str(spec_file),
+            "--source",
+            "jira://PROJ-42",
+            "--path",
+            str(checkout),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert load_source_text("PROJ-42", root=checkout) == "the whole attachment"

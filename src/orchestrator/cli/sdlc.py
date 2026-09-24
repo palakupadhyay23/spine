@@ -845,7 +845,11 @@ def sdlc_plan(
                 resolved_type = resolve_ticket_meta(plan_result, chosen).issue_type
 
         intent_key = str(resolved.get("intent_id") or "spec")
-        source_text = "\n\n".join(d.body for d in documents)
+        # The whole ticket — every attachment uncut — because §8 checks criteria against its own
+        # words; the extractor already had its bounded view (`SourceDocument.full_body`).
+        from orchestrator.intake.source import document_text
+
+        source_text = "\n\n".join(document_text(d) for d in documents)
         # Resolved against the repo being planned, not left as the literal "auto" — the
         # codegen prompt, the layout and the test environment all read this, and the old
         # `python` default handed a C# repository Python scaffolding without saying so.
